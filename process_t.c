@@ -1372,7 +1372,10 @@ void std_stop_crit (uint inx)
   {
     error_t error = ABS (t_outputs[inx] - tt[t_it_idx + inx]);
     
-    tf_stop_crit = tf_stop_crit && (error < tcfg.group_criterion);
+    // Correction to fixed point arithmetic: tcfg.group_criterion is assumed
+    // to be in a format with 15 decimal bits, but appears to have 16, making
+    // it twice the size it should be.  Therefore shift one bit to the right.
+    tf_stop_crit = tf_stop_crit && (error < (tcfg.group_criterion >> 1));
   }
 }
 
@@ -1416,9 +1419,12 @@ void max_stop_crit (uint inx)
 
     error_t error = ABS (t_max_output - t_max_target);
 
+    // Correction to fixed point arithmetic: tcfg.group_criterion is assumed
+    // to be in a format with 15 decimal bits, but appears to have 16, making
+    // it twice the size it should be.  Therefore shift one bit to the right.
     if ((t_max_output_unit == -1)
 	 || ((t_max_output_unit == t_max_target_unit)
-	      && (error < tcfg.group_criterion)
+	     && (error < (tcfg.group_criterion >> 1))
             )
        )
       tf_stop_crit = TRUE;
