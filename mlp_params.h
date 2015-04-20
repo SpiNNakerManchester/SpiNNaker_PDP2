@@ -1,0 +1,316 @@
+#ifndef __MLP_PARAMS_H__
+#define __MLP_PARAMS_H__
+
+#include "limits.h"
+
+// ------------------------------------------------------------------------
+// MLP parameters
+// ------------------------------------------------------------------------
+// software configuration
+// ------------------------------------------------------------------------
+#define SPINN_USE_COUNTER_SB     TRUE
+#define SPINN_WEIGHT_HISTORY     FALSE
+#define SPINN_OUTPUT_HISTORY     FALSE
+
+
+// ------------------------------------------------------------------------
+// system constants
+// ------------------------------------------------------------------------
+#define SPINN_NUM_CORES_CHIP     16
+#define SPINN_CHIP_OFFSET        16
+#define SPINN_CORE_OFFSET        11
+
+
+// ------------------------------------------------------------------------
+// configuration "files" offsets in SDRAM
+// ------------------------------------------------------------------------
+//#define CONF_OFFSET        0x0000  this must be kept constant!
+#define SPINN_GCONF_OFFSET       0x000000       //global configuration
+/*
+#define SPINN_CHIP_OFFSET        0x000200       //chip configuration
+#define SPINN_CMAP_OFFSET        0x000100       //core map
+#define SPINN_ESET_OFFSET        0x200000       //example set
+#define SPINN_CDAT_OFFSET        0x001000       //core data
+#define SPINN_ROUT_OFFSET        0x000300       //routing tables
+#define SPINN_EXAM_OFFSET        0x200010       //examples
+#define SPINN_EVNT_OFFSET        0x201010       //events
+#define SPINN_INPT_OFFSET        0x020000       //inputs
+#define SPINN_TARG_OFFSET        0x030000       //targets
+#define SPINN_WGTS_OFFSET        0x100000       //weights
+*/
+#define SPINN_OUTP_OFFSET        0x1000000      //outputs
+#define SPINN_WUPD_OFFSET        0x2000000      //weight update
+
+
+// ------------------------------------------------------------------------
+// simulation constants
+// ------------------------------------------------------------------------
+#define SPINN_TIMER_TICK_PERIOD  1000000
+//#define SPINN_TIMER_TICK_PERIOD  100000
+#define SPINN_PRINT_DLY          200
+#define SPINN_PRINT_SHIFT        16
+#define SPINN_SKEW_DELAY         (chipID << 18) | (coreID << 16)
+#define SPINN_TIMER2_DIV         10
+#define SPINN_TIMER2_CONF        0x83
+#define SPINN_TIMER2_LOAD        0
+
+
+// ------------------------------------------------------------------------
+// neural net constants
+// ------------------------------------------------------------------------
+#define SPINN_NET_FEED_FWD       0
+#define SPINN_NET_SIMPLE_REC     1
+#define SPINN_NET_RBPTT          2
+#define SPINN_NET_CONT           3
+
+
+#define SPINN_NUM_IN_PROCS       2
+//--------------------------
+#define SPINN_IN_INTEGR          0
+#define SPINN_IN_SOFT_CLAMP      1
+
+
+#define SPINN_NUM_OUT_PROCS      5
+//--------------------------
+#define SPINN_OUT_LOGISTIC       0
+#define SPINN_OUT_INTEGR         1
+#define SPINN_OUT_HARD_CLAMP     2
+#define SPINN_OUT_WEAK_CLAMP     3
+#define SPINN_OUT_BIAS           4
+
+
+#define SPINN_NUM_STOP_PROCS     3
+//--------------------------
+#define SPINN_NO_STOP            0
+#define SPINN_STOP_STD           1
+#define SPINN_STOP_MAX           2
+
+
+#define SPINN_NUM_ERROR_PROCS    3
+//--------------------------
+#define SPINN_NO_ERR_FUNCTION    0
+#define SPINN_ERR_CROSS_ENTROPY  1
+#define SPINN_ERR_SQUARED        2
+
+
+// ------------------------------------------------------------------------
+// activation function options
+// ------------------------------------------------------------------------
+// input truncation is the default!
+//#define SPINN_SIGMD_ROUNDI
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// fixed-point arithmetic constants
+// ------------------------------------------------------------------------
+#define SPINN_FPREAL_SHIFT       16
+//#define SPINN_FP_NaN             0xffff0000
+#define SPINN_FP_NaN             (-1 << SPINN_FPREAL_SHIFT)
+
+// activations are 16-bit quantities with 15 decimal bits
+#define SPINN_ACTIV_SHIFT        15
+#define SPINN_ACTIV_MAX          ((1 << SPINN_ACTIV_SHIFT) - 1)
+#define SPINN_ACTIV_MIN          0
+//minimum negative value for an activation variable
+#define SPINN_ACTIV_MIN_NEG      (-1 * SPINN_ACTIV_MAX)
+#define SPINN_ACTIV_NaN          (-1 << SPINN_ACTIV_SHIFT)
+
+// long activations are 32-bit quantities with 15 decimal bits
+#define SPINN_LONG_ACTIV_MAX     INT_MAX
+#define SPINN_LONG_ACTIV_MIN     0
+//minimum negative value for a long activation variable
+#define SPINN_LONG_ACTIV_MIN_NEG INT_MIN
+
+//long long activations are 64-bit quantities with 15 decimal bits
+#define SPINN_LLONG_ACTIV_MAX    LLONG_MAX
+#define SPINN_LLONG_ACTIV_MIN    0
+//minimum negative value for a long long activation variable
+#define SPINN_LLONG_ACTIV_MIN_NEG  LLONG_MIN
+
+// weights are 16-bit quantities with 12 decimal bits
+#define SPINN_WEIGHT_SHIFT       12
+#define SPINN_WEIGHT_MAX         ((weight_t) ( 7 << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_MIN         ((weight_t) (-7 << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_POS_DELTA   ((weight_t)  1)
+#define SPINN_WEIGHT_NEG_DELTA   ((weight_t) -1)
+
+//TODO: set these values correctly!
+// nets are 32-bit quantities with 27 decimal bits
+#define SPINN_NET_SHIFT          (SPINN_WEIGHT_SHIFT + SPINN_ACTIV_SHIFT)
+#define SPINN_NET_MAX            ( 15.0 * (1 << SPINN_NET_SHIFT))
+#define SPINN_NET_MIN            (-15.0 * (1 << SPINN_NET_SHIFT))
+
+//TODO: set these values correctly!
+// errors are 32-bit quantities with 15 decimal bits
+#define SPINN_ERROR_SHIFT        SPINN_ACTIV_SHIFT
+#define SPINN_ERROR_MAX          ( 0.5 * (1 << SPINN_ERROR_SHIFT))
+#define SPINN_ERROR_MIN          (-0.5 * (1 << SPINN_ERROR_SHIFT))
+// intermediate error computations use longer types!
+#define SPINN_LONG_ERR_SHIFT     (SPINN_WEIGHT_SHIFT + SPINN_DELTA_SHIFT)
+#define SPINN_LONG_ERR_MAX       ( 0.5 * (1 << SPINN_LONG_ERR_SHIFT))
+#define SPINN_LONG_ERR_MIN       (-0.5 * (1 << SPINN_LONG_ERR_SHIFT))
+
+//TODO: set these values correctly!
+#define SPINN_DELTA_SHIFT        SPINN_ERROR_SHIFT
+
+//these values are set to compute the cross entropy error function
+#define SPINN_SMALL_VAL          1
+#define SPINN_LONG_ACTIV_ONE     1 << SPINN_ACTIV_SHIFT
+#define SPINN_LONG_ACTIV_NEG_ONE -1 << SPINN_ACTIV_SHIFT
+
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// phase or direction
+// ------------------------------------------------------------------------
+#define SPINN_FORWARD       0
+#define SPINN_BACKPROP      (!SPINN_FORWARD)
+
+#define SPINN_W_INIT_TICK   0
+#define SPINN_S_INIT_TICK   1
+#define SPINN_I_INIT_TICK   1
+#define SPINN_T_INIT_TICK   1
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// multicast packet routing keys and masks
+// ------------------------------------------------------------------------
+// NOTE: key bits[15:10] must be different from 111111
+//       to comply with system reserved key space!
+// ------------------------------------------------------------------------
+#define SPINN_BLK_R_MASK     0xff000000
+#define SPINN_BLK_C_MASK     0x00ff0000
+#define SPINN_SUM_B_MASK     0x00ff0000
+#define SPINN_THD_B_MASK     0x00ff0000
+#define SPINN_STOP_MASK      0x00003a00
+#define SPINN_STPF_MASK      0x00000800
+#define SPINN_SYNC_MASK      0x00001000
+#define SPINN_PHASE_MASK     0x00000800
+#define SPINN_COLOUR_MASK    0x00000400
+#define SPINN_FUNCT_MASK     0x00000300
+#define SPINN_OUTPUT_MASK    0x000000ff
+#define SPINN_NET_MASK       0x000000ff
+#define SPINN_DELTA_MASK     0x000000ff
+#define SPINN_ERROR_MASK     0x000000ff
+#define SPINN_STPD_MASK      0x000000ff
+
+#define SPINN_BLK_R_SHIFT    24
+#define SPINN_BLK_C_SHIFT    16
+#define SPINN_SUM_B_SHIFT    16
+#define SPINN_THD_B_SHIFT    16
+#define SPINN_STOP_SHIFT     13
+#define SPINN_SYNC_SHIFT     12
+#define SPINN_PHASE_SHIFT    11
+#define SPINN_COLOUR_SHIFT   10
+#define SPINN_FUNCT_SHIFT    8
+#define SPINN_STPD_SHIFT     0
+
+#define SPINN_BR_KEY(br)     (br << SPINN_BLK_R_SHIFT)
+#define SPINN_BC_KEY(bc)     (bc << SPINN_BLK_C_SHIFT)
+#define SPINN_SB_KEY(bc)     (bc << SPINN_SUM_B_SHIFT)
+#define SPINN_TB_KEY(bc)     (bc << SPINN_THD_B_SHIFT)
+#define SPINN_PHASE_KEY(p)   (p << SPINN_PHASE_SHIFT)
+#define SPINN_FUNCT_KEY(f)   (f << SPINN_FUNCT_SHIFT)
+#define SPINN_COLOUR_KEY     SPINN_COLOUR_MASK
+#define SPINN_CORETYPE_KEY   (coreType << SPINN_FUNCT_SHIFT)
+#define SPINN_SYNC_KEY       SPINN_SYNC_MASK
+#define SPINN_STPF_KEY       (SPINN_STOP_MASK & ~SPINN_STPF_MASK)
+#define SPINN_STPR_KEY       SPINN_STOP_MASK
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// core function types
+// ------------------------------------------------------------------------
+#define SPINN_WEIGHT_PROC    0x0
+#define SPINN_SUM_PROC       0x1
+#define SPINN_THRESHOLD_PROC 0x2
+#define SPINN_INPUT_PROC     0x3
+#define SPINN_UNUSED_PROC    0x4
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// implementation params
+// ------------------------------------------------------------------------
+//TODO: check if size is appropriate
+#define SPINN_PKT_QUEUE_LEN  256
+#define SPINN_SUM_PQ_LEN     512
+#define SPINN_INPUT_PQ_LEN   512
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// callback priorities
+// ------------------------------------------------------------------------
+// non-queueable callbacks
+#define SPINN_PACKET_P       -1
+#define SPINN_TIMER_P        0
+
+// queueable callbacks
+#define SPINN_UPDT_WEIGHT_P  1
+#define SPINN_WF_TICK_P      1
+#define SPINN_WB_TICK_P      1
+#define SPINN_WF_PROCESS_P   2
+#define SPINN_WB_PROCESS_P   2
+
+#define SPINN_S_TICK_P       1
+#define SPINN_S_PROCESS_P    2
+
+#define SPINN_I_TICK_P       1
+#define SPINN_I_PROCESS_P    2
+
+//TODO: review priorities
+#define SPINN_T_INIT_OUT_P   1
+#define SPINN_SEND_OUTS_P    1
+#define SPINN_SEND_DELTAS_P  1
+#define SPINN_SEND_STOP_P    1
+#define SPINN_T_TICK_P       1
+#define SPINN_TF_PROCESS_P   2
+#define SPINN_TB_PROCESS_P   2
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// HOST communication commands
+// ------------------------------------------------------------------------
+// commands
+// ------------------------------------------------------------------------
+#define SPINN_HOST_FINAL     0
+#define SPINN_HOST_NORMAL    1
+#define SPINN_HOST_INFO      2
+
+
+// ------------------------------------------------------------------------
+// SDP parameters
+// ------------------------------------------------------------------------
+#define SPINN_SDP_IPTAG       1
+#define SPINN_SDP_FLAGS       0x07
+#define SPINN_SDP_TMOUT       100
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// EXIT codes -- error
+// ------------------------------------------------------------------------
+#define SPINN_NO_ERROR         0
+#define SPINN_MEM_UNAVAIL      1
+#define SPINN_QUEUE_FULL       2
+#define SPINN_TIMEOUT_EXIT     3
+#define SPINN_UNXPD_PKT        4
+#define SPINN_CORE_TYPE_ERROR  5
+#define SPINN_UKNOWN_TYPE      100
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// convenient macros
+// ------------------------------------------------------------------------
+#define SPINN_CONV_TO_PRINT(num, shift)  num << (SPINN_PRINT_SHIFT - shift)
+#define SPINN_LCONV_TO_PRINT(num, shift) num >> (shift - SPINN_PRINT_SHIFT)
+// ------------------------------------------------------------------------
+
+#endif

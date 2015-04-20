@@ -1,0 +1,232 @@
+// SpiNNaker API
+#include "spin1_api.h"
+
+// mlp
+#include "mlp_params.h"
+#include "mlp_types.h"
+#include "sdram.h"
+
+#include "comms_w.h"
+
+// this files contains the initialization routine for W cores
+
+// ------------------------------------------------------------------------
+// global variables
+// ------------------------------------------------------------------------
+extern uint coreID;               // 5-bit virtual core ID
+extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
+extern uint fwdKey;               // 32-bit packet ID for forward passes
+extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint stpKey;               // 32-bit packet ID for stop criterion
+
+extern uint coreType;             // weight, sum or threshold
+
+extern uint         example;      // current example in epoch
+extern uint         num_events;   // number of events in current example
+extern uint         event_idx;    // index into current event
+extern uint         num_ticks;    // number of ticks in current event
+extern uint         max_ticks;    // maximum number of ticks in current event
+extern uint         min_ticks;    // minimum number of ticks in current event
+extern uint         tick;         // current tick in phase
+
+extern chip_struct_t        *ct; // chip-specific data
+extern uint                 *cm; // simulation core map
+extern uchar                *dt; // core-specific data
+extern mc_table_entry_t     *rt; // multicast routing table data
+extern weight_t             *wt; // initial connection weights
+extern struct mlp_set       *es; // example set data
+extern struct mlp_example   *ex; // example data
+extern struct mlp_event     *ev; // event data
+extern activation_t         *it; // example inputs
+extern activation_t         *tt; // example targets
+
+// ------------------------------------------------------------------------
+// network and core configurations
+// ------------------------------------------------------------------------
+extern global_conf_t  mlpc;       // network-wide configuration parameters
+extern chip_struct_t  ccfg;       // chip configuration parameters
+extern w_conf_t       wcfg;       // weight core configuration parameters
+// ------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------
+// weight core variables
+// ------------------------------------------------------------------------
+extern weight_t     * * w_weights;     // connection weights block
+extern wchange_t    * * w_wchanges;    // accumulated weight changes
+extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
+extern delta_t        * w_deltas[2];   // error deltas for b-d-p
+extern uint             wf_procs;      // pointer to processing unit outputs
+extern uint             wf_comms;      // pointer to receiving unit outputs
+extern scoreboard_t     wf_arrived;    // keeps track of received unit outputs
+extern uint             wf_thrds_done; // sync. semaphore: comms, proc & stop
+extern uint             wf_sync_key;   // FORWARD processing can start
+extern uint             wb_procs;      // pointer to processing deltas
+extern uint             wb_comms;      // pointer to receiving deltas
+extern scoreboard_t     wb_arrived;    // keeps track of received deltas
+extern uchar            wb_comms_done; // all expected deltas arrived
+extern uchar            wb_procs_done; // current tick error b-d-ps done
+//#extern uint             wb_thrds_done; // sync. semaphore: comms, proc & stop
+extern uint             wb_sync_key;   // BACKPROP processing can start
+// ------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------
+// DEBUG variables
+// ------------------------------------------------------------------------
+#ifdef DEBUG
+  extern uint pkt_sent;  // total packets sent
+  extern uint sent_fwd;  // packets sent in FORWARD phase
+#endif
+
+
+// ------------------------------------------------------------------------
+// code
+// ------------------------------------------------------------------------
+ 
+uint w_init (void)
+{
+  uint i, j;
+
+  #ifdef DEBUG_VRB
+    io_printf (IO_BUF, "br:%d bc:%d r:%d c:%d\n",
+                wcfg.blk_row,
+                wcfg.blk_col,
+                wcfg.num_rows,
+                wcfg.num_cols
+              );
+  #endif
+
+  // allocate memory for weights
+  if ((w_weights = ((weight_t * *)
+         spin1_malloc (wcfg.num_rows * sizeof(weight_t *)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  for (i = 0; i < wcfg.num_rows; i++)
+  {
+    if ((w_weights[i] = ((weight_t *)
+           spin1_malloc (wcfg.num_cols * sizeof(weight_t)))) == NULL
+       )
+    {
+    return (SPINN_MEM_UNAVAIL);
+    }
+  }
+
+  // allocate memory for weight changes
+  if ((w_wchanges = ((wchange_t * *)
+         spin1_malloc (wcfg.num_rows * sizeof(wchange_t *)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  for (i = 0; i < wcfg.num_rows; i++)
+  {
+    if ((w_wchanges[i] = ((wchange_t *)
+           spin1_malloc (wcfg.num_cols * sizeof(wchange_t)))) == NULL
+       )
+    {
+    return (SPINN_MEM_UNAVAIL);
+    }
+  }
+
+  // allocate memory for unit outputs
+  if ((w_outputs[0] = ((weight_t *)
+         spin1_malloc (wcfg.num_rows * sizeof(activation_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((w_outputs[1] = ((activation_t *)
+         spin1_malloc (wcfg.num_rows * sizeof(activation_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate memory for error deltas
+  if ((w_deltas[0] = ((delta_t*)
+         spin1_malloc (wcfg.num_cols * sizeof(delta_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((w_deltas[1] = ((delta_t *)
+         spin1_malloc (wcfg.num_cols * sizeof(delta_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  // initialize weights from SDRAM
+  wt = (weight_t *) wcfg.weights_struct_addr;  // initial connection weights
+
+  //NOTE: could use DMA
+  for (i = 0; i < wcfg.num_rows; i++)
+  {
+    spin1_memcpy (w_weights[i],
+                   &wt[i * wcfg.num_cols],
+                   wcfg.num_cols * sizeof(weight_t)
+                 );
+  }
+
+  #ifdef WEIGHT_TRACE
+    // dump weights to SDRAM for record keeping
+    //NOTE: could use DMA
+    //TODO: need to recompute indices!
+    for (i = 0; i < wcfg.num_rows; i++)
+    {
+      spin1_memcpy (&wh[((wcfg.blk_row * wcfg.num_rows + i) * mlpc.num_outs)
+                     + (wcfg.blk_col * wcfg.num_cols)],
+                     w_weights[i],
+                     wcfg.num_cols * sizeof(weight_t)
+                   );
+    }
+  #endif
+
+  // initialize weight changes
+  for (i = 0; i < wcfg.num_rows; i++)
+  {
+    for (j = 0; j < wcfg.num_cols; j++)
+    {
+      w_wchanges[i][j] = 0;
+    }
+  }
+
+  // intialize tick
+  tick = SPINN_W_INIT_TICK;
+
+  // initialize pointers to received unit outputs and error deltas
+  wf_procs = 0;
+  wf_comms = 1;
+  wb_procs = 0;
+  wb_comms = 1;
+
+  // initialize synchronization flags
+  wb_comms_done = FALSE;
+  // no processing in tick 0 -- just wait for initial error deltas
+  wb_procs_done = TRUE;
+  
+  // initialize synchronization semaphores
+  wf_thrds_done = 0; // just wait for initial unit outputs
+
+  // initialize arrival scoreboards
+  wf_arrived = 0;
+  wb_arrived = 0;
+
+  // initialize packet keys
+  //NOTE: colour is initialized to 0.
+  uint block_key = SPINN_BR_KEY(wcfg.blk_row) | SPINN_BC_KEY(wcfg.blk_col);
+  uint base_key = block_key | SPINN_CORETYPE_KEY;
+
+  fwdKey = base_key | SPINN_PHASE_KEY(SPINN_FORWARD);
+  bkpKey = base_key | SPINN_PHASE_KEY(SPINN_BACKPROP);
+
+  wf_sync_key = block_key | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
+  wb_sync_key = block_key | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
+
+  return (SPINN_NO_ERROR);
+}
