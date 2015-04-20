@@ -12,7 +12,7 @@
 // useful macros
 // ------------------------------------------------------------------------
 // compute the absolute function of an input value
-#define ABS(x) ((x >= 0) ? x : -x)
+#define ABS(x) (((x) >= 0) ? (x) : -(x))
 // ------------------------------------------------------------------------
 
 //The sigmoid routine computes the sigmoid function with interpolation.
