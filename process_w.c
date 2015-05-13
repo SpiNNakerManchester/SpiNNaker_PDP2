@@ -117,7 +117,7 @@ void wf_process (uint null0, uint null1)
       //1,15 * s3,12 = s4,27
       //NOTE: may need to use long_nets for the dot-products and saturate!
       net_part += ((net_t) w_outputs[wf_procs][i] * (net_t) w_weights[i][j]);
-
+    }
 
     // incorporate net index to the packet key and send
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));
