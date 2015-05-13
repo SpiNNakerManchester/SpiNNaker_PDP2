@@ -90,7 +90,7 @@ endif
 
   AR := $(GP)-ar -rcs
   OC := $(GP)-objcopy
-  OD := $(GP)-objdump -dxt > $(APP).txt
+  OD := $(GP)-objdump -dxt >
 
 # ARM tool setup
 
@@ -118,7 +118,7 @@ endif
 
   AR := armar -rcs
   OC := fromelf
-  OD := fromelf -cds --output $(APP).txt
+  OD := fromelf -cds --output
 
 endif
 
@@ -225,28 +225,28 @@ input.elf: $(OBJECTS_I) $(SCRIPT) $(LIBRARY)
 	$(CC) sark_build.c
 	$(LD) $(LFLAGS) $(OBJECTS_I) sark_build.o $(LIBRARY) -o input.elf
 	$(RM) sark_build.c sark_build.o
-	$(OD) input.elf
+	$(OD) input.txt input.elf
 
 sum.elf: $(OBJECTS_S) $(SCRIPT) $(LIBRARY) 
 	mkbuild sum > sark_build.c
 	$(CC) sark_build.c
 	$(LD) $(LFLAGS) $(OBJECTS_S) sark_build.o $(LIBRARY) -o sum.elf
 	$(RM) sark_build.c sark_build.o
-	$(OD) sum.elf
+	$(OD) sum.txt sum.elf
 
 threshold.elf: $(OBJECTS_T) $(SCRIPT) $(LIBRARY) 
 	mkbuild threshold > sark_build.c
 	$(CC) sark_build.c
 	$(LD) $(LFLAGS) $(OBJECTS_T) sark_build.o $(LIBRARY) -o threshold.elf
 	$(RM) sark_build.c sark_build.o
-	$(OD) threshold.elf
+	$(OD) threshold.txt threshold.elf
 
 weight.elf: $(OBJECTS_W) $(SCRIPT) $(LIBRARY) 
 	mkbuild weight > sark_build.c
 	$(CC) sark_build.c
 	$(LD) $(LFLAGS) $(OBJECTS_W) sark_build.o $(LIBRARY) -o weight.elf
 	$(RM) sark_build.c sark_build.o
-	$(OD) weight.elf
+	$(OD) weight.txt weight.elf
 
 # Build the main object file. If there are other files in the
 # application, place their build dependencies below this one.
@@ -278,31 +278,31 @@ init_t.o: init_t.c init_t.h mlp_types.h mlp_params.h
 
 init_w.o: init_w.c init_w.h mlp_types.h mlp_params.h
 	$(CC)  $(CFLAGS) init_w.c
-	
+
 comms_i.o: comms_i.c comms_i.h mlp_types.h mlp_params.h
 	$(CC)  $(CFLAGS) comms_i.c
 
 comms_s.o: comms_s.c comms_s.h mlp_types.h mlp_params.h
 	$(CC)  $(CFLAGS) comms_s.c
-	
+
 comms_t.o: comms_t.c comms_t.h mlp_types.h mlp_params.h
 	$(CC)  $(CFLAGS) comms_t.c
-	
+
 comms_w.o: comms_w.c comms_w.h mlp_types.h mlp_params.h
 	$(CC)  $(CFLAGS) comms_w.c
-	
+
 #process.o: process.c process.h mlp_types.h mlp_params.h
 #	$(CC)  $(CFLAGS) process.c
 
 process_w.o: process_w.c process_w.h mlp_types.h mlp_params.h
 	$(CC)  $(CFLAGS) process_w.c
-	
+
 process_s.o: process_s.c process_s.h mlp_types.h mlp_params.h
 	$(CC)  $(CFLAGS) process_s.c
-	
+
 process_i.o: process_i.c process_i.h mlp_types.h mlp_params.h
 	$(CC)  $(CFLAGS) process_i.c
-	
+
 process_t.o: process_t.c process_t.h mlp_types.h mlp_params.h
 	$(CC)  $(CFLAGS) process_t.c
 
