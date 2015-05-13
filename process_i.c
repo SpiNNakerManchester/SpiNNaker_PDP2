@@ -4,6 +4,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_macros.h"
 #include "sdram.h"
 
 #include "init_i.h"
@@ -12,12 +13,6 @@
 #include "activation.h"
 
 // set of routines to be used by I core to process data
-
-// ------------------------------------------------------------------------
-// useful macros
-// ------------------------------------------------------------------------
-#define ABS(x) (((x) >= 0) ? (x) : -(x))
-// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // global variables
@@ -549,7 +544,7 @@ void in_integr (uint inx)
   // representation: 37.27 + (48.16 * ( 37.27 - 37.27) >> 16) = 37.27
   // all the variables are expanded to 64 bits to avoid overflows and wrap-around
   long_net_t output = last_output + (dt * (desired_output - last_output) >> 16);
-  
+
   // saturate the value computed and assign it to the nets variable
   // to be used in the next stage of computation
   if (output > (long_net_t) SPINN_NET_MAX)

@@ -4,6 +4,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_macros.h"
 #include "sdram.h"
 
 #include "init_w.h"
@@ -12,12 +13,6 @@
 #include "activation.h"
 
 // set of routines to be used by W core to process data
-
-// ------------------------------------------------------------------------
-// useful macros
-// ------------------------------------------------------------------------
-#define ABS(x) (((x) >= 0) ? (x) : -(x))
-// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // global variables
@@ -109,13 +104,20 @@ void wf_process (uint null0, uint null1)
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
+    //net_t is a 32 bit value with 27 decimal bits
     net_t net_part = 0;
 
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
+      //w_outputs is a two-dimensional array of activation_t types
+      //activation_t is a 16 bit value with 15 decimal bits
+      //w_weights is a two-dimensional array of weight_t types
+      //weight_t is a 16 bit value with 12 decimal bits and one sign bit
+      //net_t is a 32 bit value with 27 decimal bits
+      //1,15 * s3,12 = s4,27
       //NOTE: may need to use long_nets for the dot-products and saturate!
       net_part += ((net_t) w_outputs[wf_procs][i] * (net_t) w_weights[i][j]);
-    }
+
 
     // incorporate net index to the packet key and send
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));

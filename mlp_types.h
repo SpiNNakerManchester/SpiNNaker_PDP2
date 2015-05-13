@@ -7,16 +7,59 @@ typedef short     activation_t;     // unit output or activation (16 bit)
 typedef int       long_activ_t;     // intermediate unit output or activation (32 bit)
 typedef long long llong_activ_t;    // intermediate unit output or activation (64 bit)
 
+// activations are 16-bit quantities with 15 decimal bits
+#define SPINN_ACTIV_SHIFT        15
+#define SPINN_ACTIV_MAX          ((1 << SPINN_ACTIV_SHIFT) - 1)
+#define SPINN_ACTIV_MIN          0
+//minimum negative value for an activation variable
+#define SPINN_ACTIV_MIN_NEG      (-1 * SPINN_ACTIV_MAX)
+#define SPINN_ACTIV_NaN          (-1 << SPINN_ACTIV_SHIFT)
+// long activations are 32-bit quantities with 15 decimal bits
+#define SPINN_LONG_ACTIV_MAX     INT_MAX
+#define SPINN_LONG_ACTIV_MIN     0
+//minimum negative value for a long activation variable
+#define SPINN_LONG_ACTIV_MIN_NEG INT_MIN
+//long long activations are 64-bit quantities with 15 decimal bits
+#define SPINN_LLONG_ACTIV_MAX    LLONG_MAX
+#define SPINN_LLONG_ACTIV_MIN    0
+//minimum negative value for a long long activation variable
+#define SPINN_LLONG_ACTIV_MIN_NEG  LLONG_MIN
+
 typedef int       net_t;            // unit internal net (inputs ot-product)
 typedef long long long_net_t;       // used for net intermediate calc
+
+//TODO: set these values correctly!
+// nets are 32-bit quantities with 27 decimal bits
+#define SPINN_NET_SHIFT          (SPINN_WEIGHT_SHIFT + SPINN_ACTIV_SHIFT)
+#define SPINN_NET_MAX            ( 15.0 * (1 << SPINN_NET_SHIFT))
+#define SPINN_NET_MIN            (-15.0 * (1 << SPINN_NET_SHIFT))
 
 typedef int       error_t;          // unit output error
 typedef long long long_error_t;     // used for error intermediate calc
 typedef int       delta_t;          // error derivative
 //#typedef long long long_delta_t;
 
+//TODO: set these values correctly!
+// errors are 32-bit quantities with 15 decimal bits
+#define SPINN_ERROR_SHIFT        SPINN_ACTIV_SHIFT
+#define SPINN_ERROR_MAX          ( 0.5 * (1 << SPINN_ERROR_SHIFT))
+#define SPINN_ERROR_MIN          (-0.5 * (1 << SPINN_ERROR_SHIFT))
+// intermediate error computations use longer types!
+#define SPINN_LONG_ERR_SHIFT     (SPINN_WEIGHT_SHIFT + SPINN_DELTA_SHIFT)
+#define SPINN_LONG_ERR_MAX       ( 0.5 * (1 << SPINN_LONG_ERR_SHIFT))
+#define SPINN_LONG_ERR_MIN       (-0.5 * (1 << SPINN_LONG_ERR_SHIFT))
+//deltas are 32-bit quantities with 15 decimal bits
+#define SPINN_DELTA_SHIFT        SPINN_ERROR_SHIFT
+
 typedef short     weight_t;         // connection weight
 typedef int       wchange_t;        // accumulated connection weight change
+
+// weights are 16-bit quantities with 12 decimal bits
+#define SPINN_WEIGHT_SHIFT       12
+#define SPINN_WEIGHT_MAX         ((weight_t) ( 7 << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_MIN         ((weight_t) (-7 << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_POS_DELTA   ((weight_t)  1)
+#define SPINN_WEIGHT_NEG_DELTA   ((weight_t) -1)
 
 typedef uint      scoreboard_t;     // keep track of received items
 
@@ -24,6 +67,14 @@ typedef uchar     proc_phase_t;     // phase (FORWARD or BACKPROP)
 
 typedef int       fpreal;           // int as 16.16 fixed-point number
 typedef long long lfpreal;          // int as 48.16 fixed-point number
+
+#define SPINN_FPREAL_SHIFT       16
+//#define SPINN_FP_NaN             0xffff0000
+#define SPINN_FP_NaN             (-1 << SPINN_FPREAL_SHIFT)
+//these values are set to compute the cross entropy error function
+#define SPINN_SMALL_VAL          1
+#define SPINN_LONG_ACTIV_ONE     1 << SPINN_ACTIV_SHIFT
+#define SPINN_LONG_ACTIV_NEG_ONE -1 << SPINN_ACTIV_SHIFT
 
 
 // ------------------------------------------------------------------------

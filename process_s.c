@@ -4,6 +4,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_macros.h"
 #include "sdram.h"
 
 #include "init_s.h"
@@ -12,12 +13,6 @@
 #include "activation.h"
 
 // set of routines to be used by S core to process data
-
-// ------------------------------------------------------------------------
-// useful macros
-// ------------------------------------------------------------------------
-#define ABS(x) (((x) >= 0) ? (x) : -(x))
-// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // global variables

@@ -4,16 +4,10 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_macros.h"
 
 #include "activation_lut.h"
 #include "activation.h"
-
-// ------------------------------------------------------------------------
-// useful macros
-// ------------------------------------------------------------------------
-// compute the absolute function of an input value
-#define ABS(x) (((x) >= 0) ? (x) : -(x))
-// ------------------------------------------------------------------------
 
 //The sigmoid routine computes the sigmoid function with interpolation.
 //the input parameter is a 5.27 fixed point 32-bit value. The returned output
