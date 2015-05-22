@@ -24,6 +24,35 @@ typedef long long llong_activ_t;    // intermediate unit output or activation (6
 #define SPINN_LLONG_ACTIV_MIN    0
 //minimum negative value for a long long activation variable
 #define SPINN_LLONG_ACTIV_MIN_NEG  LLONG_MIN
+//these values are set to compute the cross entropy error function
+#define SPINN_LONG_ACTIV_ONE     (1 << SPINN_ACTIV_SHIFT)
+#define SPINN_LONG_ACTIV_NEG_ONE (-1 << SPINN_ACTIV_SHIFT)
+
+
+typedef short     derivative_t;     // input or output derivative (16 bit)
+typedef int       long_deriv_t;     // intermediate unit input or output derivative (32 bit)
+typedef long long llong_deriv_t;    // intermediate unit input or output derivative (64 bit)
+
+// derivatives are 16-bit quantities with 15 decimal bits
+#define SPINN_DERIV_SHIFT        SPINN_ACTIV_SHIFT
+#define SPINN_DERIV_MAX          SPINN_ACTIV_MAX
+#define SPINN_DERIV_MIN          SPINN_ACTIV_MIN
+//minimum negative value for an derivative variable
+#define SPINN_DERIV_MIN_NEG      SPINN_ACTIV_MIN_NEG
+#define SPINN_DERIV_NaN          SPINN_ACTIV_NaN
+// long derivatives are 32-bit quantities with 15 decimal bits
+#define SPINN_LONG_DERIV_MAX     SPINN_LONG_ACTIV_MAX
+#define SPINN_LONG_DERIV_MIN     SPINN_LONG_ACTIV_MIN
+//minimum negative value for a long derivative variable
+#define SPINN_LONG_DERIV_MIN_NEG SPINN_LONG_ACTIV_MIN_NEG
+//long long derivative are 64-bit quantities with 15 decimal bits
+#define SPINN_LLONG_DERIV_MAX    SPINN_LLONG_ACTIV_MAX
+#define SPINN_LLONG_DERIV_MIN    SPINN_LLONG_ACTIV_MIN
+//minimum negative value for a long long derivative variable
+#define SPINN_LLONG_DERIV_MIN_NEG  SPINN_LLONG_ACTIV_MIN_NEG
+//these values are set to compute the cross entropy error function
+#define SPINN_LONG_DERIV_ONE     SPINN_LONG_ACTIV_ONE
+#define SPINN_LONG_DERIV_NEG_ONE SPINN_LONG_ACTIV_NEG_ONE
 
 typedef int       net_t;            // unit internal net (inputs ot-product)
 typedef long long long_net_t;       // used for net intermediate calc
@@ -71,10 +100,7 @@ typedef long long lfpreal;          // int as 48.16 fixed-point number
 #define SPINN_FPREAL_SHIFT       16
 //#define SPINN_FP_NaN             0xffff0000
 #define SPINN_FP_NaN             (-1 << SPINN_FPREAL_SHIFT)
-//these values are set to compute the cross entropy error function
 #define SPINN_SMALL_VAL          1
-#define SPINN_LONG_ACTIV_ONE     (1 << SPINN_ACTIV_SHIFT)
-#define SPINN_LONG_ACTIV_NEG_ONE (-1 << SPINN_ACTIV_SHIFT)
 
 
 // ------------------------------------------------------------------------
