@@ -73,8 +73,8 @@ typedef long long lfpreal;          // int as 48.16 fixed-point number
 #define SPINN_FP_NaN             (-1 << SPINN_FPREAL_SHIFT)
 //these values are set to compute the cross entropy error function
 #define SPINN_SMALL_VAL          1
-#define SPINN_LONG_ACTIV_ONE     1 << SPINN_ACTIV_SHIFT
-#define SPINN_LONG_ACTIV_NEG_ONE -1 << SPINN_ACTIV_SHIFT
+#define SPINN_LONG_ACTIV_ONE     (1 << SPINN_ACTIV_SHIFT)
+#define SPINN_LONG_ACTIV_NEG_ONE (-1 << SPINN_ACTIV_SHIFT)
 
 
 // ------------------------------------------------------------------------
