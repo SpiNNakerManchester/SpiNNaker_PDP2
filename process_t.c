@@ -440,7 +440,7 @@ void tb_advance_tick (uint null0, uint null1)
   #endif
 
   // and check if done with BACKPROP phase
-  if (tick == num_ticks)
+  if (tick == 0)
   {
     // if done initialize tick for next example,
     tick = SPINN_T_INIT_TICK;
@@ -456,8 +456,8 @@ void tb_advance_tick (uint null0, uint null1)
   }
   else
   {
-    // if not done increment tick
-    tick++;
+    // if not done decrement tick
+    tick--;
   }
 }
 
@@ -467,17 +467,12 @@ void tf_advance_event (void)
   // check if done with events,
   if (++evt >= num_events)
   {
-    // save number of ticks for backprop phase,
-    num_ticks = tick;
-
-    // initialize ticks for next example,
-    tick = SPINN_T_INIT_TICK;
-    ev_tick = SPINN_T_INIT_TICK;
-
     // check if in training mode
     if (mlpc.training)
     {
-      // if training the network do BACKPROP phase,
+      // if training, save the number of ticks
+      num_ticks = tick;
+      // then do BACKPROP phase
       t_switch_to_bp ();
 
       // and stop processing queue in this phase
@@ -485,7 +480,10 @@ void tf_advance_event (void)
     }
     else
     {
-      // if not training advance to next example
+      // if not training, initialize ticks for next example
+      tick = SPINN_T_INIT_TICK;
+      ev_tick = SPINN_T_INIT_TICK;
+      // then advance to next example
       t_advance_example ();
     }
   }
