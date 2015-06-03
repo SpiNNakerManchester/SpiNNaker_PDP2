@@ -92,8 +92,8 @@ extern activation_t     t_max_target;      // highest target value
 extern out_proc_t const t_out_procs[SPINN_NUM_OUT_PROCS];
 extern out_error_t const t_out_error[SPINN_NUM_ERROR_PROCS];
 extern activation_t   * t_output_history;
-extern llong_activ_t  * t_output_deriv;
-extern llong_activ_t  * t_output_deriv_history;
+extern llong_deriv_t  * t_output_deriv;
+extern llong_deriv_t  * t_output_deriv_history;
 extern activation_t   * t_target_history;
 extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
 // ------------------------------------------------------------------------
@@ -311,12 +311,12 @@ void tb_process (uint null0, uint null1)
     compute_out_back (inx);
     
     // TODO: saturate t_output_deriv into the variable t_error before sending it
-    if (t_output_deriv[inx] > (llong_activ_t) SPINN_LONG_ACTIV_MAX)
-      delta = (long_activ_t) SPINN_LONG_ACTIV_MAX;
-    else if (t_output_deriv[inx] <= (llong_activ_t) SPINN_LONG_ACTIV_MIN_NEG)
-      delta = (long_activ_t) SPINN_LONG_ACTIV_MIN_NEG;
+    if (t_output_deriv[inx] > (llong_deriv_t) SPINN_LONG_DERIV_MAX)
+      delta = (long_deriv_t) SPINN_LONG_DERIV_MAX;
+    else if (t_output_deriv[inx] <= (llong_deriv_t) SPINN_LONG_DERIV_MIN_NEG)
+      delta = (long_deriv_t) SPINN_LONG_DERIV_MIN_NEG;
     else
-      delta = (long_activ_t) t_output_deriv;
+      delta = (long_deriv_t) t_output_deriv;
     
     #ifdef DEBUG_VRB
       io_printf(IO_BUF, "e[%2d][%2d] = %10.7f (%08x)\n", tcfg.delta_blk, inx,
@@ -798,12 +798,12 @@ void t_init_deltas (uint null0, uint null1)
         
       // TODO: saturate the t_output_deriv into the t_error variable
       // t_errors[i] = t_output_deriv[i];
-      if (t_output_deriv[i] > (long_activ_t) SPINN_LONG_ACTIV_MAX)
-        delta = (long_activ_t) SPINN_LONG_ACTIV_MAX;
-      else if (t_output_deriv[i] <= (long_activ_t) SPINN_LONG_ACTIV_MIN_NEG)
-        delta = (long_activ_t) SPINN_LONG_ACTIV_MIN_NEG;
+      if (t_output_deriv[i] > (long_deriv_t) SPINN_LONG_DERIV_MAX)
+        delta = (long_deriv_t) SPINN_LONG_DERIV_MAX;
+      else if (t_output_deriv[i] <= (long_deriv_t) SPINN_LONG_DERIV_MIN_NEG)
+        delta = (long_deriv_t) SPINN_LONG_DERIV_MIN_NEG;
       else
-        delta = (long_activ_t) t_output_deriv[i];
+        delta = (long_deriv_t) t_output_deriv[i];
       
       // and compute error delta
       // keep the correct implicit decimal point position
@@ -860,7 +860,9 @@ void t_init_deltas (uint null0, uint null1)
 void compute_out (uint inx)
 {
   #ifdef TRACE
-    io_printf (IO_BUF, "compute_out\n");
+    char* group;
+    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
+    io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
   #endif
 
   // initialize the array element where to store the output value for the 
@@ -957,10 +959,10 @@ void store_output_deriv (uint inx)
   // derivative values, even though only the value related ot the unit inx has
   // to be stored
 /*
-  llong_activ_t * src_ptr = t_output_deriv;
-  llong_activ_t * dst_ptr = t_output_deriv_history + tick * tcfg.num_outputs;
+  llong_deriv_t * src_ptr = t_output_deriv;
+  llong_deriv_t * dst_ptr = t_output_deriv_history + tick * tcfg.num_outputs;
     
-  spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(llong_activ_t));
+  spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(llong_deriv_t));
 */
 }
 
@@ -1127,7 +1129,9 @@ void out_weak_clamp (uint inx)
 void compute_out_back (uint inx)
 {
   #ifdef TRACE
-    io_printf (IO_BUF, "compute_out_back\n");
+    char* group;
+    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
+    io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
   #endif
   
   int i;
@@ -1152,7 +1156,7 @@ void out_logistic_back (uint inx)
   // compute error delta,
   // keep the correct implicit decimal point position
   t_output_deriv[inx] = (t_output_deriv[inx] * sigmoid_prime (t_nets[inx]))
-                    >> (SPINN_ERROR_SHIFT + SPINN_ACTIV_SHIFT
+                    >> (SPINN_ERROR_SHIFT + SPINN_DERIV_SHIFT
                          - SPINN_DELTA_SHIFT
                        );
 }
@@ -1437,7 +1441,7 @@ void error_squared (uint inx)
   #endif
 
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
-    t_output_deriv[inx] = ((llong_activ_t) t_outputs[inx] - (llong_activ_t) tt[t_it_idx + inx]) << 1;
+    t_output_deriv[inx] = ((llong_deriv_t) t_outputs[inx] - (llong_deriv_t) tt[t_it_idx + inx]) << 1;
   else
     t_output_deriv[inx] = 0;
 }
@@ -1496,18 +1500,18 @@ void error_cross_entropy (uint inx)
       // largest value that can be represented
       if ((long_activ_t) SPINN_LONG_ACTIV_ONE - t_outputs[inx] <= (long_activ_t) SPINN_SMALL_VAL)
       {
-        t_output_deriv[inx] = (llong_activ_t) SPINN_LONG_ACTIV_MAX;
+        t_output_deriv[inx] = (llong_deriv_t) SPINN_LONG_DERIV_MAX;
       }
       // otherwise compute 1 / (1 - output)
       else
       {
-        long_activ_t numerator = (long_activ_t) SPINN_LONG_ACTIV_ONE; //representation: 17.15
-        long_activ_t denominator = (long_activ_t) SPINN_LONG_ACTIV_ONE - t_outputs[inx]; //representation: 17.15
+        long_deriv_t numerator = (long_deriv_t) SPINN_LONG_DERIV_ONE; //representation: 17.15
+        long_deriv_t denominator = (long_deriv_t) SPINN_LONG_DERIV_ONE - t_outputs[inx]; //representation: 17.15
   
         // the left shift needs to be done before the division, as the
         // precision reduces with the division
         // representation: 49.15
-        t_output_deriv[inx] = (((llong_activ_t) numerator << SPINN_ACTIV_SHIFT) / (llong_activ_t) denominator);
+        t_output_deriv[inx] = (((llong_deriv_t) numerator << SPINN_DERIV_SHIFT) / (llong_deriv_t) denominator);
       }
     }
     // if the target is close to 1, then the cross entropy function simplifies:
@@ -1519,18 +1523,18 @@ void error_cross_entropy (uint inx)
       // negative value that can be represented
       if (t_outputs[inx] <= (long_activ_t) SPINN_SMALL_VAL)
       {
-        t_output_deriv[inx] = (llong_activ_t) SPINN_LONG_ACTIV_MIN_NEG;
+        t_output_deriv[inx] = (llong_deriv_t) SPINN_LONG_DERIV_MIN_NEG;
       }
       // otherwise compute -1 / output
       else
       {
-        long_activ_t numerator = (long_activ_t) SPINN_LONG_ACTIV_NEG_ONE; //representation: 17.15
-        long_activ_t denominator = t_outputs[inx]; //representation: 17.15
+        long_deriv_t numerator = (long_deriv_t) SPINN_LONG_DERIV_NEG_ONE; //representation: 17.15
+        long_deriv_t denominator = t_outputs[inx]; //representation: 17.15
 
         // the left shift needs to be done before the division, as the
         // precision reduces with the division
         // representation: 49.15
-        t_output_deriv[inx] = (((llong_activ_t) numerator << SPINN_ACTIV_SHIFT) / (llong_activ_t) denominator);
+        t_output_deriv[inx] = (((llong_deriv_t) numerator << SPINN_DERIV_SHIFT) / (llong_deriv_t) denominator);
       }
     }
     // otherwise compute the standard function
@@ -1542,18 +1546,18 @@ void error_cross_entropy (uint inx)
       // where the MAX value is the maximum representable value
       if (( ((llong_activ_t) t_outputs[inx] * (llong_activ_t) ((long_activ_t) SPINN_LONG_ACTIV_ONE - t_outputs[inx])) << (llong_activ_t) SPINN_ACTIV_SHIFT) <= (long_activ_t) SPINN_SMALL_VAL)
       {
-        t_output_deriv[inx] = ((((llong_activ_t) SPINN_LONG_ACTIV_MAX) * (llong_activ_t)(t_outputs[inx] - tt[t_it_idx + inx])) >> SPINN_ACTIV_SHIFT);
+        t_output_deriv[inx] = ((((llong_deriv_t) SPINN_LONG_DERIV_MAX) * (llong_deriv_t)(t_outputs[inx] - tt[t_it_idx + inx])) >> SPINN_DERIV_SHIFT);
       }
       // otherwise compute the standard formula
       // (output - target) / (output * (1 - output))
       else
-      { 
-        long_activ_t numerator = ((long_activ_t) t_outputs[inx] - (long_activ_t) tt[t_it_idx + inx]); //representation: 17.15
-        long_activ_t one = (long_activ_t) SPINN_LONG_ACTIV_ONE; //representation: 17.15
-        llong_activ_t denominator = ((llong_activ_t) t_outputs[inx] * (llong_activ_t) (one - t_outputs[inx])) >> SPINN_ACTIV_SHIFT; //representation: 49.15
+      {
+        long_deriv_t numerator = ((long_deriv_t) t_outputs[inx] - (long_deriv_t) tt[t_it_idx + inx]); //representation: 17.15
+        long_deriv_t one = (long_deriv_t) SPINN_LONG_DERIV_ONE; //representation: 17.15
+        llong_deriv_t denominator = ((llong_deriv_t) t_outputs[inx] * (llong_deriv_t) (one - t_outputs[inx])) >> SPINN_DERIV_SHIFT; //representation: 49.15
         
         // representation: 49.15
-        t_output_deriv[inx] = (((llong_activ_t) numerator << SPINN_ACTIV_SHIFT) / (llong_activ_t) denominator);
+        t_output_deriv[inx] = (((llong_deriv_t) numerator << SPINN_DERIV_SHIFT) / (llong_deriv_t) denominator);
       }
     }
   }
