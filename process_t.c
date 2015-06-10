@@ -375,6 +375,17 @@ void tf_advance_tick (uint null0, uint null1)
   // initialize scoreboard for next tick,
   t_arrived = 0;
 
+  // check if in training mode, and if so, store outputs, targets, and output derivatives
+  // TODO: for non-continuous networks, this needs to check the requirement to have these 
+  // histories saved, which needs to come from splens. For continuous networks, these histories
+  // are always required. 
+  if (mlpc.training)
+  {
+    store_outputs ();
+    store_targets ();
+    store_output_deriv ();
+  }
+
   // dump outputs to SDRAM for record keeping,
   #if SPINN_OUTPUT_HISTORY == TRUE
     //TODO: works only if examples have a single event
@@ -440,10 +451,10 @@ void tb_advance_tick (uint null0, uint null1)
   #endif
 
   // and check if done with BACKPROP phase
-  if (tick == 0)
+  if (tick == SPINN_T_INIT_TICK)
   {
-    // if done initialize tick for next example,
-    tick = SPINN_T_INIT_TICK;
+    // initialize the event tick count
+    ev_tick = SPINN_T_INIT_TICK;
 
     // switch to FORWARD phase,
     t_switch_to_fw ();
@@ -480,7 +491,7 @@ void tf_advance_event (void)
     }
     else
     {
-      // if not training, initialize ticks for next example
+      // if not training, initialize ticks for the next example
       tick = SPINN_T_INIT_TICK;
       ev_tick = SPINN_T_INIT_TICK;
       // then advance to next example
@@ -792,7 +803,7 @@ void t_init_deltas (uint null0, uint null1)
       // TODO: compute the output backward pipeline
       // The only element currently implemented of this list is the derivative
       // of the sigmoid. The other element(s) needs to be programmed
-      compute_out_back(i);
+      //compute_out_back(i);
         
       // TODO: saturate the t_output_deriv into the t_error variable
       // t_errors[i] = t_output_deriv[i];
@@ -860,7 +871,7 @@ void compute_out (uint inx)
   #ifdef TRACE
     char* group;
     group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
-    io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
+    io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example, tick, inx);
   #endif
 
   // initialize the array element where to store the output value for the 
@@ -875,16 +886,6 @@ void compute_out (uint inx)
   {
     t_out_procs[tcfg.procs_list[i]] (inx);
   }
-  
-  // store the output values (if required)
-#if SPINN_STORE_OUTPUT == 1
-  store_outputs (inx);
-#endif
-  
-  // store the target values (if required)
-#if SPINN_STORE_TARGET == 1
-  store_targets (inx);
-#endif
 
   // if the network is set for training, then compute the output derivative
   // using the appropriate function as set by splens
@@ -899,69 +900,43 @@ void compute_out (uint inx)
     {
       t_out_error[tcfg.error_function] (inx);
     }
-    
-    // the output derivative needs always to be stores as this value needs to be
-    // used during the backward pass
-    store_output_deriv (inx);
   }
 }
 
-// store the history of the output values. See comments to the compute_out
-// routine. This routine should store only the output value of the unit
-// currently under computation (inx)
-void store_outputs (uint inx)
+void store_outputs (void)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "store_outputs\n");
   #endif
 
-  // FIXME: The memcopy operation copies every time the whole set of output values
-  // even though only the value related ot the unit inx has been updated
-/*
   activation_t * src_ptr = t_outputs;
-  activation_t * dst_ptr = t_output_history + tick * tcfg.num_outputs;
+  activation_t * dst_ptr = t_output_history + ((tick-1) * tcfg.num_outputs);
 
   spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(activation_t));
-*/
 }
 
-// store the history of the target values. See comments to the compute_out
-// routine. This routine should store only the value related to the unit
-// currently under computation (inx)
-void store_targets (uint inx)
+void store_targets (void)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "store_targets\n");
   #endif
 
-  // FIXME: The memcopy operation copies every time the whole set of target values
-  // even though only the value related ot the unit inx has to be copied
-/*
   activation_t * src_ptr = &tt[t_it_idx];
-  activation_t * dst_ptr = t_target_history + tick * tcfg.num_outputs;
-    
+  activation_t * dst_ptr = t_target_history + ((tick-1) * tcfg.num_outputs);
+
   spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(activation_t));
-*/
 }
 
-// store the history of the output derivative values. See comments to the
-// compute_out routine. This routine should store only the value related to the
-// unit currently under computation (inx)
-void store_output_deriv (uint inx)
+void store_output_deriv (void)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "store_output_deriv\n");
   #endif
 
-  // FIXME: The memcopy operation copies every time the whole set of output
-  // derivative values, even though only the value related ot the unit inx has
-  // to be stored
-/*
   llong_deriv_t * src_ptr = t_output_deriv;
-  llong_deriv_t * dst_ptr = t_output_deriv_history + tick * tcfg.num_outputs;
+  llong_deriv_t * dst_ptr = t_output_deriv_history + ((tick-1) * tcfg.num_outputs);
     
   spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(llong_deriv_t));
-*/
 }
 
 // compute the logistic function starting from the value received through the 
@@ -1129,7 +1104,7 @@ void compute_out_back (uint inx)
   #ifdef TRACE
     char* group;
     group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
-    io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
+    io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d - Unit: %d\n", group, example, tick, inx);
   #endif
   
   int i;

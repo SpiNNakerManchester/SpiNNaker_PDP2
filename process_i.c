@@ -493,6 +493,13 @@ void i_advance_example (void)
 // specified through splens
 void compute_in (uint inx)
 {
+  #ifdef TRACE
+    char* group;
+    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_nets == 1) ? "Bias" : "Hidden"));
+    io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
+  #endif
+  
+  int i;
   for (uint i = 0; i < icfg.num_in_procs; i++)
   {
     i_in_procs[icfg.procs_list[i]] (inx);
@@ -631,7 +638,9 @@ void in_soft_clamp (uint inx)
 void compute_in_back (uint inx)
 {
   #ifdef TRACE
-    io_printf (IO_BUF, "compute_in_back\n");
+    char* group;
+    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_nets == 1) ? "Bias" : "Hidden"));
+    io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
   #endif
   
   int i;

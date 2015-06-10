@@ -328,14 +328,13 @@ uint t_init (void)
     t_it_idx = ev[event_idx].it_idx * tcfg.num_outputs;
   }
 
-  // TODO: the following memory allocation is to be used in case lens simulator
-  // is set to store any of the history of the three sets of values. This
-  // information needs to come from splens and passed through the tcfg structure
-  
-/*
+  // TODO: the following memory allocation is to be used to store the history of any of these
+  // three sets of values. When training continuous networks, these three histories always 
+  // need to be saved. For non-continuous networks, they only need to be stored if the 
+  // backpropTicks field of the network is greater than one. This information needs to come 
+  // from splens and be passed through the tcfg structure.
+
   // allocate memory in SDRAM for output history
-  // TODO: this need a condition on the requirement to have output history
-  // this needs to come from splens
   if ((t_output_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
                        tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
@@ -347,8 +346,6 @@ uint t_init (void)
   }
   
   // allocate memory in SDRAM for target history
-  // TODO: this need a condition on the requirement to have target history
-  // this needs to come from splens
   if ((t_target_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
                        tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
@@ -360,8 +357,6 @@ uint t_init (void)
   }
 
   // allocate memory in SDRAM for output derivative history
-  // TODO: this need a condition on the requirement to have target history
-  // this needs to come from splens
   if ((t_output_deriv_history = ((llong_activ_t *)
           sark_xalloc (sv->sdram_heap,
                        tcfg.num_outputs * mlpc.global_max_ticks * sizeof(llong_activ_t),
@@ -371,7 +366,6 @@ uint t_init (void)
   {
     return (SPINN_MEM_UNAVAIL);
   }
-*/
 
   // schedule initialization and sending of unit outputs
   spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
