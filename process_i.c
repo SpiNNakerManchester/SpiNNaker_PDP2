@@ -76,7 +76,7 @@ extern long_net_t     * i_last_integr_output;   //last integrator output value
 // list of input pipeline procedures
 extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
 extern in_proc_back_t const  i_in_back_procs[SPINN_NUM_IN_PROCS];
-extern long_net_t     * i_input_history; //sdram pointer where to store input history
+extern long_net_t     * i_net_history; //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -391,11 +391,8 @@ void ib_advance_tick (uint null0, uint null1)
   #endif
 
   // and check if end of BACKPROP phase
-  if (tick == num_ticks)
+  if (tick == SPINN_I_INIT_TICK)
   {
-    // initialize tick,
-    tick = SPINN_I_INIT_TICK;
-
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
 
@@ -404,8 +401,8 @@ void ib_advance_tick (uint null0, uint null1)
   }
   else
   {
-    // if not done increment tick
-    tick++;
+    // if not done decrement tick
+    tick--;
   }
 }
 
@@ -415,21 +412,19 @@ void if_advance_event (void)
   // check if done with events
   if (++evt >= num_events)
   {
-    // save number of ticks for backprop phase,
-    num_ticks = tick;
-
-    // initialize tick,
-    tick = SPINN_I_INIT_TICK;
-
     // and check if in training mode
     if (mlpc.training)
     {
-      // if training network do BACKPROP phase
+      // if training, save number of ticks
+      num_ticks = tick;
+      // then do BACKPROP phase
       phase = SPINN_BACKPROP;
     }
     else
     {
-      // if not move to next example
+      // if not training, initialize ticks for the next example
+      tick = SPINN_I_INIT_TICK;
+      // then move to next example
       i_advance_example ();
     }
   }
@@ -499,7 +494,6 @@ void compute_in (uint inx)
     io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
   #endif
   
-  int i;
   for (uint i = 0; i < icfg.num_in_procs; i++)
   {
     i_in_procs[icfg.procs_list[i]] (inx);
@@ -525,7 +519,7 @@ void store_nets (uint inx)
 
   // FIXME: The memcopy operation copies every time the whole set of net values
   // even though only the value related ot the unit inx has been updated
-/*    
+/*
   long_net_t * src_ptr = i_nets;
   long_net_t * dst_ptr = i_input_history + tick * icfg.num_nets;
 

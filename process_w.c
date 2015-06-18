@@ -424,12 +424,9 @@ void wb_advance_tick (uint null0, uint null1)
   #endif
   
   // and check if end of example's BACKPROP phase
-  if (tick == num_ticks)
+  if (tick == SPINN_W_INIT_TICK)
   {
-    // if end initialize tick for next example,
-    tick = 0;
-
-    // no processing in tick 0 -- just wait for initial error deltas,
+    // no processing in initial tick -- just wait for initial error deltas,
     wb_procs_done = TRUE;
 
     // compute weight deltas after last tick,
@@ -445,8 +442,8 @@ void wb_advance_tick (uint null0, uint null1)
   }
   else
   {
-    // if not increment tick,
-    tick++;
+    // if not decrement tick,
+    tick--;
 
     #ifdef DEBUG
       tot_tick++;
@@ -472,25 +469,23 @@ void wf_advance_event (void)
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
 
-    // save number of ticks for backprop phase,
-    num_ticks = tick;
-
     // initialize crit for next example,
     // first tick does not get a stop packet!
     tick_stop = FALSE;
 
-    // initialize tick for next example,
-    tick = 0;
-
     // and check if in training mode
     if (mlpc.training)
     {
-      // if in training mode go to BACKPROP phase
+      // if training, save number of ticks
+      num_ticks = tick;
+      // then do BACKPROP phase
       w_switch_to_bp ();
     }
     else
     {
-      // if not move to next example
+      // if not training, initialize ticks for next example
+      tick = SPINN_W_INIT_TICK;
+      // and move to next example
       w_advance_example ();
     }
   }

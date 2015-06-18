@@ -373,11 +373,8 @@ void sb_advance_tick (uint null0, uint null1)
   #endif
 
   // and check if end of BACKPROP phase
-  if (tick == num_ticks)
+  if (tick == SPINN_S_INIT_TICK)
   {
-    // initialize tick,
-    tick = SPINN_S_INIT_TICK;
-
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
 
@@ -386,8 +383,8 @@ void sb_advance_tick (uint null0, uint null1)
   }
   else
   {
-    // if not done increment tick
-    tick++;
+    // if not done decrement tick
+    tick--;
   }
 }
 
@@ -397,21 +394,19 @@ void sf_advance_event (void)
   // check if done with events
   if (++evt >= num_events)
   {
-    // save number of ticks for backprop phase,
-    num_ticks = tick;
-
-    // initialize tick,
-    tick = SPINN_S_INIT_TICK;
-
     // and check if in training mode
     if (mlpc.training)
-    {
-      // if training network do BACKPROP phase
+    {   
+      // if training, save number of ticks
+      num_ticks = tick;
+      // then do BACKPROP phase
       phase = SPINN_BACKPROP;
     }
     else
     {
-      // if not move to next example
+      // if not training, initialize ticks for the next example
+      tick = SPINN_S_INIT_TICK;
+      // then move to next example
       s_advance_example ();
     }
   }
