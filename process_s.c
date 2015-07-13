@@ -342,6 +342,10 @@ void s_backprop_packet (uint key, uint payload)
 // processed, advance the simulation tick
 void sf_advance_tick (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "sf_advance_tick\n");
+  #endif
+  
   // prepare for next tick,
   sf_done = 0;
 
@@ -358,6 +362,10 @@ void sf_advance_tick (uint null0, uint null1)
   {
     // if not done increment tick
     tick++;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
 
@@ -365,6 +373,10 @@ void sf_advance_tick (uint null0, uint null1)
 // processed, advance the simulation tick
 void sb_advance_tick (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "sb_advance_tick\n");
+  #endif
+  
   // prepare for next tick,
   sb_done = 0;
 
@@ -373,8 +385,11 @@ void sb_advance_tick (uint null0, uint null1)
   #endif
 
   // and check if end of BACKPROP phase
-  if (tick == SPINN_S_INIT_TICK)
+  if (tick == SPINN_SB_END_TICK)
   {
+    // initialize the tick count
+    tick = SPINN_S_INIT_TICK;
+
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
 
@@ -385,12 +400,20 @@ void sb_advance_tick (uint null0, uint null1)
   {
     // if not done decrement tick
     tick--;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
 
 // forward pass: update the event at the end of a simulation tick
 void sf_advance_event (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "sf_advance_event\n");
+  #endif
+  
   // check if done with events
   if (++evt >= num_events)
   {
@@ -399,8 +422,13 @@ void sf_advance_event (void)
     {   
       // if training, save number of ticks
       num_ticks = tick;
+
       // then do BACKPROP phase
       phase = SPINN_BACKPROP;
+
+      // s cores skip first bp tick!
+      //TODO: check if need to schedule or can simply call
+      sb_advance_tick (NULL, NULL);
     }
     else
     {
@@ -420,6 +448,10 @@ void sf_advance_event (void)
 // forward pass: update the example at the end of a simulation tick
 void s_advance_example (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "s_advance_example\n");
+  #endif
+  
   // check if done with examples
   if (++example >= mlpc.num_examples)
   {

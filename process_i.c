@@ -359,6 +359,10 @@ void i_backprop_packet (uint key, uint payload)
 // updating the indexes to the events/examples as required
 void if_advance_tick (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "if_advance_tick\n");
+  #endif
+  
   // prepare for next tick,
   if_done = 0;
 
@@ -375,6 +379,10 @@ void if_advance_tick (uint null0, uint null1)
   {
     // if not done increment tick
     tick++;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
 
@@ -382,6 +390,10 @@ void if_advance_tick (uint null0, uint null1)
 // updating the indexes to the events/examples as required
 void ib_advance_tick (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "ib_advance_tick\n");
+  #endif
+  
   // prepare for next tick,
   ib_done = 0;
 
@@ -391,8 +403,11 @@ void ib_advance_tick (uint null0, uint null1)
   #endif
 
   // and check if end of BACKPROP phase
-  if (tick == SPINN_I_INIT_TICK)
+  if (tick == SPINN_IB_END_TICK)
   {
+    // initialize the tick count
+    tick = SPINN_I_INIT_TICK;
+
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
 
@@ -403,12 +418,20 @@ void ib_advance_tick (uint null0, uint null1)
   {
     // if not done decrement tick
     tick--;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "ib_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
 
 // forward pass: update the event at the end of a simulation tick
 void if_advance_event (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "if_advance_event\n");
+  #endif
+  
   // check if done with events
   if (++evt >= num_events)
   {
@@ -447,6 +470,10 @@ void if_advance_event (void)
 // forward pass: update the example at the end of a simulation tick
 void i_advance_example (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "i_advance_example\n");
+  #endif
+  
   // check if done with examples
   if (++example >= mlpc.num_examples)
   {
@@ -514,7 +541,7 @@ void compute_in (uint inx)
 void store_nets (uint inx)
 {
   #ifdef TRACE
-    io_printf (IO_BUF, "in_soft_clamp_back\n");
+    io_printf (IO_BUF, "store_nets\n");
   #endif
 
   // FIXME: The memcopy operation copies every time the whole set of net values

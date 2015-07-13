@@ -247,6 +247,10 @@ void w_update_weights (void)
     wght_ups++;
   #endif
 
+  #ifdef TRACE
+    io_printf (IO_BUF, "w_update_weights\n");
+  #endif
+  
   // update weights
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
@@ -401,11 +405,11 @@ void wf_advance_tick (uint null0, uint null1)
 
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
-  }
 
-  #ifdef TRACE
-    io_printf (IO_BUF, "wf_tick: %d\n", tick);
-  #endif
+    #ifdef TRACE
+      io_printf (IO_BUF, "wf_tick: %d/%d\n", tick, tot_tick);
+    #endif
+  }
 }
 
 // backward pass: once the processing is completed and all the units have been
@@ -424,7 +428,7 @@ void wb_advance_tick (uint null0, uint null1)
   #endif
   
   // and check if end of example's BACKPROP phase
-  if (tick == SPINN_W_INIT_TICK)
+  if (tick == SPINN_WB_END_TICK)
   {
     // no processing in initial tick -- just wait for initial error deltas,
     wb_procs_done = TRUE;
@@ -435,6 +439,9 @@ void wb_advance_tick (uint null0, uint null1)
 
     // go to FORWARD phase,
     w_switch_to_fw ();
+
+    // initialize tick for next example
+    tick = SPINN_W_INIT_TICK;
 
     // and move to next example
     //TODO: should be called or scheduled?
@@ -451,12 +458,20 @@ void wb_advance_tick (uint null0, uint null1)
 
     // and trigger computation
     spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "wb_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
 
 // forward pass: update the event at the end of a simulation tick
 void wf_advance_event (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "wf_advance_event\n");
+  #endif
+  
   // check if done with events -- end of example's FORWARD phase
   if (++evt >= num_events)
   {
@@ -483,8 +498,9 @@ void wf_advance_event (void)
     }
     else
     {
-      // if not training, initialize ticks for next example
+      // if not training initialize tick for next example,
       tick = SPINN_W_INIT_TICK;
+
       // and move to next example
       w_advance_example ();
     }
@@ -506,6 +522,10 @@ void wf_advance_event (void)
 // forward pass: update the example at the end of a simulation tick
 void w_advance_example (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "w_advance_example\n");
+  #endif
+  
   // check if done with examples
   if (++example >= mlpc.num_examples)
   {
@@ -566,6 +586,10 @@ void w_advance_example (void)
 // switch to the forward pass again, if required 
 void w_switch_to_fw (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "w_switch_to_fw\n");
+  #endif
+  
   // move to new FORWARD phase,
   phase = SPINN_FORWARD;
 }
@@ -574,6 +598,10 @@ void w_switch_to_fw (void)
 // switch to the bacward pass if training is required 
 void w_switch_to_bp (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "w_switch_to_bp\n");
+  #endif
+  
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 

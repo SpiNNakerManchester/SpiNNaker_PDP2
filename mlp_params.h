@@ -111,6 +111,11 @@
 #define SPINN_S_INIT_TICK   1
 #define SPINN_I_INIT_TICK   1
 #define SPINN_T_INIT_TICK   1
+
+#define SPINN_WB_END_TICK   1
+#define SPINN_SB_END_TICK   1
+#define SPINN_IB_END_TICK   1
+#define SPINN_TB_END_TICK   1
 // ------------------------------------------------------------------------
 
 

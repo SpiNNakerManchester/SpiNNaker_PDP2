@@ -261,9 +261,9 @@ void tf_process (uint null0, uint null1)
 // process a backward multicast packet received by a threshold core
 void tb_process (uint null0, uint null1)
 {
-#ifdef TRACE
-  io_printf (IO_BUF, "tb_process\n");
-#endif
+  #ifdef TRACE
+    io_printf (IO_BUF, "tb_process\n");
+  #endif
 
   // process packet queue
   // access queue with interrupts disabled
@@ -330,7 +330,7 @@ void tb_process (uint null0, uint null1)
                );
     #endif
 
-    // incorporate delta index into packet key and send to weight cores,
+    // incorporate delta index into packet key and send to input cores,
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
 
     #ifdef DEBUG
@@ -432,6 +432,10 @@ void tf_advance_tick (uint null0, uint null1)
     // if not done increment ticks
     tick++;
     ev_tick++;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "tf_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
 
@@ -451,8 +455,11 @@ void tb_advance_tick (uint null0, uint null1)
   #endif
 
   // and check if done with BACKPROP phase
-  if (tick == SPINN_T_INIT_TICK)
+  if (tick == SPINN_TB_END_TICK)
   {
+    // initialize the tick count
+    tick = SPINN_T_INIT_TICK;
+
     // initialize the event tick count
     ev_tick = SPINN_T_INIT_TICK;
 
@@ -469,12 +476,20 @@ void tb_advance_tick (uint null0, uint null1)
   {
     // if not done decrement tick
     tick--;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
 
 // forward pass: update the event at the end of a simulation tick
 void tf_advance_event (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "tf_advance_event\n");
+  #endif
+  
   // check if done with events,
   if (++evt >= num_events)
   {
@@ -536,6 +551,10 @@ void tf_advance_event (void)
 // forward pass: update the example at the end of a simulation tick
 void t_advance_example (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "t_advance_example\n");
+  #endif
+  
   // check if done with examples
   //TODO: alternative algorithms for chosing example order!
   if (++example >= mlpc.num_examples)
@@ -658,7 +677,10 @@ void t_switch_to_bp (void)
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 
-  // and compute and send initial deltas to weight cores,
+  // flag going active -- sending initial deltas,
+  t_active = TRUE;
+
+  // and compute and send initial deltas to input cores,
   //TODO: check if need to schedule or can simply call
   spin1_schedule_callback (t_init_deltas, 0, 0, SPINN_SEND_DELTAS_P);
 
@@ -684,6 +706,10 @@ void t_switch_to_bp (void)
 // across all the output groups to all the cores in teh simulation
 void tf_send_stop (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "tf_send_stop\n");
+  #endif
+  
   // "aggregate" criteria,
   tf_stop_crit = tf_stop_crit && tf_stop_prev;
 
@@ -784,7 +810,7 @@ void t_init_deltas (uint null0, uint null1)
     io_printf (IO_BUF, "t_init_deltas\n");
   #endif
 
-  // compute deltas and send to weight cores
+  // compute initial partial deltas and send to input cores
   // TODO: no need to check for output_grp on every iteration!
   for (uint i = 0; i < tcfg.num_outputs; i++)
   {
@@ -842,10 +868,10 @@ void t_init_deltas (uint null0, uint null1)
       delta = 0;
     }
 
-    #ifdef DEBUG
-      io_printf (IO_BUF, "t_init_deltas: sending packet withpayload %d\n", delta);
+    #ifdef DEBUG_VRB
+      io_printf (IO_BUF, "t_init_deltas: sending packet with payload %d\n", delta);
     #endif
-    // and incorporate output index into packet key and send to weight cores
+    // and incorporate output index into packet key and send to input cores
     while (!spin1_send_mc_packet ((bkpKey | i), (uint) delta, WITH_PAYLOAD));
 
     #ifdef DEBUG
@@ -853,6 +879,13 @@ void t_init_deltas (uint null0, uint null1)
       sent_bkp++;
     #endif
   }
+
+  // advance tick
+  //TODO: check if need to schedule or can simply call
+  tb_advance_tick (NULL, NULL);
+
+  // when done flag going to sleep
+  t_active = FALSE;
 }
 
 // This routine calls in the appropriate order all the elements of the output
@@ -869,6 +902,10 @@ void t_init_deltas (uint null0, uint null1)
 void compute_out (uint inx)
 {
   #ifdef TRACE
+    io_printf (IO_BUF, "compute_out\n");
+  #endif
+
+  #ifdef DEBUG_VRB
     char* group;
     group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example, tick, inx);
@@ -1449,7 +1486,7 @@ void error_squared (uint inx)
 /*  LENS code end                                                             */
 /******************************************************************************/
 
-// this routine has beed extracted and rewritted and tested starting from the
+// this routine has been extracted and rewritten and tested starting from the
 // LENS code above. SMALL_VAL and LARGE_VAL are constants defined by LENS and
 // represent a sort of saturation values, since the derivative of the cross
 // entropy function has two discontinuities for the output value equal to 0 and
