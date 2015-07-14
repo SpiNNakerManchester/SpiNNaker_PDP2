@@ -99,7 +99,10 @@ extern scoreboard_t     sb_done;       // current tick error computation done
 // process a multicast packet received by a sum core
 void s_process (uint null0, uint null1)
 {
-  
+  #ifdef TRACE
+    io_printf (IO_BUF, "s_process\n");
+  #endif
+
   // process packet queue
   // access queue with interrupts disabled
   uint cpsr = spin1_int_disable ();
@@ -390,6 +393,10 @@ void sb_advance_tick (uint null0, uint null1)
     // initialize the tick count
     tick = SPINN_S_INIT_TICK;
 
+    #ifdef TRACE
+      io_printf (IO_BUF, "w_switch_to_fw\n");
+    #endif
+  
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
 
@@ -423,6 +430,10 @@ void sf_advance_event (void)
       // if training, save number of ticks
       num_ticks = tick;
 
+      #ifdef TRACE
+        io_printf (IO_BUF, "w_switch_to_bp\n");
+      #endif
+  
       // then do BACKPROP phase
       phase = SPINN_BACKPROP;
 

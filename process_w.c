@@ -98,6 +98,10 @@ extern uint             wb_sync_key;   // BACKPROP processing can start
 // process a forward multicast packet received by a weight core
 void wf_process (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "wf_process\n");
+  #endif
+  
   // change packet key colour,
   fwdKey ^= SPINN_COLOUR_KEY;
 
@@ -145,7 +149,7 @@ void wf_process (uint null0, uint null1)
 
     // and advance tick
     //TODO: check if need to schedule or can simply call
-    #ifdef TRACE
+    #ifdef TRACE_VRB
       io_printf (IO_BUF, "wfp calling wf_advance_tick\n");
     #endif
 
@@ -198,7 +202,7 @@ void wb_process (uint null0, uint null1)
     #endif
   }
 
-  #ifdef DEBUG
+  #ifdef DEBUG_VRB
     io_printf (IO_BUF, "wb_process: wb_comms_done %d\n", wb_comms_done);
   #endif
 
@@ -217,7 +221,7 @@ void wb_process (uint null0, uint null1)
 
     // and advance tick
     //TODO: check if need to schedule or can simply call
-    #ifdef TRACE
+    #ifdef TRACE_VRB
       io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
     #endif
 
@@ -424,6 +428,10 @@ void wb_advance_tick (uint null0, uint null1)
   wb_procs = 1 - wb_procs;
 
   #ifdef DEBUG
+     tot_tick++;
+  #endif
+
+  #ifdef DEBUG_VRB
     io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
   #endif
   
@@ -451,10 +459,6 @@ void wb_advance_tick (uint null0, uint null1)
   {
     // if not decrement tick,
     tick--;
-
-    #ifdef DEBUG
-      tot_tick++;
-    #endif
 
     // and trigger computation
     spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);

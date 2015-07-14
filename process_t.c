@@ -901,7 +901,7 @@ void t_init_deltas (uint null0, uint null1)
 // the next unit
 void compute_out (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "compute_out\n");
   #endif
 
@@ -928,7 +928,7 @@ void compute_out (uint inx)
   // using the appropriate function as set by splens
   if (mlpc.training && tcfg.output_grp)
   {
-    #ifdef TRACE
+    #ifdef TRACE_VRB
       io_printf (IO_BUF, "compute output deriv\n");
     #endif
 
@@ -980,7 +980,7 @@ void store_output_deriv (void)
 // multicast packet.
 void out_logistic (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_logistic\n");
   #endif
 
@@ -991,7 +991,7 @@ void out_logistic (uint inx)
 // compute the output integration operation
 void out_integr (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_integr\n");
   #endif
   
@@ -1033,7 +1033,7 @@ void out_integr (uint inx)
 // in the backward pass can be set appropriately
 void out_hard_clamp (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_hard_clamp\n");
   #endif
 
@@ -1060,7 +1060,7 @@ void out_hard_clamp (uint inx)
 // on spinnaker, and 1 in lens
 void out_bias (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_bias\n");
   #endif
 
@@ -1093,7 +1093,7 @@ void out_bias (uint inx)
 // the network needs training
 void out_weak_clamp (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_weak_clamp\n");
   #endif
   
@@ -1138,7 +1138,11 @@ void out_weak_clamp (uint inx)
 // the elements need to be computed in the reverse order, if they exist
 void compute_out_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
+    io_printf (IO_BUF, "compute_out_back\n");
+  #endif
+
+  #ifdef DEBUG_VRB
     char* group;
     group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d - Unit: %d\n", group, example, tick, inx);
@@ -1159,7 +1163,7 @@ void compute_out_back (uint inx)
 // derivative of the logistic function computed through a lookup table
 void out_logistic_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_logistic_back\n");
   #endif
 
@@ -1195,7 +1199,7 @@ static void integrateOutputBack(Group G, GroupProc P) {
 // TODO: backward pass for the output integrator - this is a stub
 void out_integr_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_integr_back\n");
   #endif
 }
@@ -1221,7 +1225,7 @@ static void hardClampOutputBack(Group G, GroupProc P) {
 // TODO: backward pass for the hard clamp - this is a stub
 void out_hard_clamp_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_hard_clamp_back\n");
   #endif
 
@@ -1255,7 +1259,7 @@ static void weakClampOutputBack(Group G, GroupProc P) {
 // TODO: backward pass for the weak clamp - for the moment is a stub
 void out_weak_clamp_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_weak_clamp_back\n");
   #endif
 }
@@ -1276,7 +1280,7 @@ static void biasClampOutputBack(Group G, GroupProc P) {
 // TODO: backward pass for the bias clamp
 void out_bias_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_bias_back\n");
   #endif
 
@@ -1289,7 +1293,7 @@ void out_bias_back (uint inx)
 // set to initoutput in the following initialization steps
 int init_out_integr ()
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "init_out_integr\n");
   #endif
 
@@ -1314,7 +1318,7 @@ int init_out_integr ()
 // information related to the values injected. This function is currently a stub
 int init_out_hard_clamp ()
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "init_out_hard_clamp\n");
   #endif
 
@@ -1343,7 +1347,7 @@ int init_out_hard_clamp ()
 // information related to the values injected. This function is currently a stub
 int init_out_weak_clamp ()
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "init_out_weak_clamp\n");
   #endif
 
@@ -1372,7 +1376,7 @@ int init_out_weak_clamp ()
 // acceptance margin
 void std_stop_crit (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "std_stop_crit\n");
   #endif
 
@@ -1407,7 +1411,7 @@ void max_stop_crit (uint inx)  //## DEBUGGING
 // rule, rather than an individual one, as the standard convergence criterion
 void max_stop_crit (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "max_stop_crit\n");
   #endif
 
@@ -1446,7 +1450,7 @@ void max_stop_crit (uint inx)
 // (output - target) * 2
 void error_squared (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "error_squared\n");
   #endif
 
@@ -1494,7 +1498,7 @@ void error_squared (uint inx)
 // (output - target) / (output * (1 - output))
 void error_cross_entropy (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "error_cross_entropy\n");
   #endif
 

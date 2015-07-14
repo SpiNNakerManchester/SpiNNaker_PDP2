@@ -103,9 +103,13 @@ extern long_net_t     * i_net_history; //sdram pointer where to store input hist
 // code
 // ------------------------------------------------------------------------
 
-// process a multicast packet received by an input core
+// process received multicast packets
 void i_process (uint null0, uint null1)
 {  
+  #ifdef TRACE
+    io_printf (IO_BUF, "i_process\n");
+  #endif
+  
   // process packet queue
   // access queue with interrupts disabled
   uint cpsr = spin1_int_disable ();
@@ -399,6 +403,9 @@ void ib_advance_tick (uint null0, uint null1)
 
   #ifdef DEBUG
     tot_tick++;
+  #endif
+
+  #ifdef DEBUG_VRB
     io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
   #endif
 
@@ -408,6 +415,10 @@ void ib_advance_tick (uint null0, uint null1)
     // initialize the tick count
     tick = SPINN_I_INIT_TICK;
 
+    #ifdef TRACE
+      io_printf (IO_BUF, "w_switch_to_fw\n");
+    #endif
+  
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
 
@@ -440,6 +451,11 @@ void if_advance_event (void)
     {
       // if training, save number of ticks
       num_ticks = tick;
+
+      #ifdef TRACE
+        io_printf (IO_BUF, "w_switch_to_bp\n");
+      #endif
+  
       // then do BACKPROP phase
       phase = SPINN_BACKPROP;
     }
@@ -515,7 +531,11 @@ void i_advance_example (void)
 // specified through splens
 void compute_in (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
+    io_printf (IO_BUF, "compute_in\n");
+  #endif
+
+  #ifdef DEBUG_VRB
     char* group;
     group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_nets == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
@@ -540,7 +560,7 @@ void compute_in (uint inx)
 
 void store_nets (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "store_nets\n");
   #endif
 
@@ -557,7 +577,7 @@ void store_nets (uint inx)
 //input integrator element
 void in_integr (uint inx)
 {  
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_integr\n");
   #endif
   
@@ -608,7 +628,7 @@ void in_integr (uint inx)
 //soft clamp element
 void in_soft_clamp (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_soft_clamp\n");
   #endif
 
@@ -658,7 +678,11 @@ void in_soft_clamp (uint inx)
 // input elements pipeline
 void compute_in_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
+    io_printf (IO_BUF, "compute_in_back\n");
+  #endif
+
+  #ifdef DEBUG_VRB
     char* group;
     group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_nets == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
@@ -680,7 +704,7 @@ void compute_in_back (uint inx)
 // TODO: fill this with the data path as descrbed in lens
 void in_integr_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_integr_back\n");
   #endif
 }
@@ -689,7 +713,7 @@ void in_integr_back (uint inx)
 /*
 void in_soft_clamp_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_soft_clamp_back\n");
   #endif
 }
@@ -698,7 +722,7 @@ void in_soft_clamp_back (uint inx)
 // initialization of the input intergrator state
 int init_in_integr ()
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "init_in_integr\n");
   #endif
   

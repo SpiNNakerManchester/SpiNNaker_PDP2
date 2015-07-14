@@ -103,7 +103,7 @@ void w_receivePacket (uint key, uint payload)
         wf_thrds_done = 2;
 
       // and advance tick
-      #ifdef TRACE
+      #ifdef TRACE_VRB
         io_printf (IO_BUF, "wrp scheduling wf_advance_tick\n");
       #endif
 
@@ -169,7 +169,7 @@ void w_forwardPacket (uint key, uint payload)
         wf_thrds_done = 2;
 
       // and advance tick
-      #ifdef TRACE
+      #ifdef TRACE_VRB
         io_printf (IO_BUF, "wfpkt scheduling wf_advance_tick\n");
       #endif
 
@@ -227,7 +227,7 @@ void w_backpropPacket (uint key, uint payload)
       wb_procs_done = FALSE;
 
       // and advance tick
-      #ifdef TRACE
+      #ifdef TRACE_VRB
         io_printf (IO_BUF, "wbpkt scheduling wb_advance_tick\n");
       #endif
 
