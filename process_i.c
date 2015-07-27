@@ -307,13 +307,7 @@ void i_backprop_packet (uint key, uint payload)
   if (ib_arrived[inx] == ib_all_arrived)
   {
     error_t err_tmp;
-    
-    // restore inputs for the tick prior to the one currently being processed
-    i_nets[inx] = i_net_history[((tick-1) * icfg.num_nets) + inx];
-    if (example == 0 && inx == 0) {
-      //io_printf (IO_BUF, "Update %d example %d tick %d unit %d\n", epoch, example, tick, inx);
-      //io_printf (IO_BUF, "Restored input before running compute_in_back: %r\n", (i_nets[inx] >> 12));
-    }
+
     compute_in_back (inx);
     
 /* //#
@@ -552,15 +546,17 @@ void compute_in (uint inx)
     i_in_procs[icfg.procs_list[i]] (inx);
   }
 
-  // check if in training mode, and if so, store nets
-  // TODO: for non-continuous networks, this needs to check the requirement to have these 
-  // histories saved, which needs to come from splens. For continuous networks, these histories
-  // are always required. 
-  if (mlpc.training)
-  {
-    store_nets(inx); //this stores the net for each unit at the end of each tick individually, might be better to do them all at once if this is possible
-  }
+#if SPINN_STORE_INPUT == 1
+  store_nets(inx); //see note for the routine itself
+#endif
 }
+
+// the following routine needs to be called in case lens is set to store the
+// history of input values. This boolean needs to be retrieved from splens
+// stored in the configuration data for each of the groups (in the icfg
+// structure) and used here to perform the operation if required
+// every time this routine is called, is needs to store only the information
+// related to the unit inx
 
 void store_nets (uint inx)
 {
@@ -568,10 +564,14 @@ void store_nets (uint inx)
     io_printf (IO_BUF, "store_nets\n");
   #endif
 
+  // FIXME: The memcopy operation copies every time the whole set of net values
+  // even though only the value related ot the unit inx has been updated
+/*
   long_net_t * src_ptr = i_nets;
-  long_net_t * dst_ptr = i_net_history + (tick * icfg.num_nets) + inx;
+  long_net_t * dst_ptr = i_input_history + tick * icfg.num_nets + inx;
 
-  spin1_memcpy(dst_ptr, src_ptr, sizeof(long_net_t));
+  spin1_memcpy(dst_ptr, src_ptr, icfg.num_nets * sizeof(long_net_t));
+*/
 }
 
 //input integrator element

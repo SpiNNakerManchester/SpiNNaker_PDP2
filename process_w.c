@@ -121,9 +121,6 @@ void wf_process (uint null0, uint null1)
       //1,15 * s3,12 = s4,27
       //NOTE: may need to use long_nets for the dot-products and saturate!
       net_part += ((net_t) w_outputs[wf_procs][i] * (net_t) w_weights[i][j]);
-      if (epoch == 1 && example == 0 && tick == 1) {
-        //io_printf (IO_BUF, "Output: %r, Weight: %r, Product: %r, Current total: %r\n", w_outputs[wf_procs][i], (w_weights[i][j] << 3), (((net_t) w_outputs[wf_procs][i] * (net_t) w_weights[i][j]) >> 12), (net_part >> 12));
-      }
     }
     if (epoch == 0 && example == 0 && tick == 1) {
       //io_printf (IO_BUF, "w_nets[%d] for update %d example %d tick %d unit %d: %r\n", j, epoch, example, tick, j, (net_part >> 12));
@@ -174,7 +171,6 @@ void wf_process (uint null0, uint null1)
 // process a backward multicast packet received by a weight core
 void wb_process (uint null0, uint null1)
 {
-  io_printf (IO_BUF, "starting wb_process for tick %d\n", tick);
   #ifdef TRACE
     io_printf (IO_BUF, "wb_process\n");
   #endif
@@ -186,9 +182,6 @@ void wb_process (uint null0, uint null1)
   // change colour,
   bkpKey ^= SPINN_COLOUR_KEY;
   
-  if (epoch == 0 && example == 1) {
-    //io_printf(IO_BUF, "Computing error dot products for Update %d, Example %d, Tick %d\n", epoch, example, tick);
-  }
   // compute all error block dot-products and send them for accumulation,
   for (uint i = 0; i < wcfg.num_rows; i++)
   {
@@ -200,10 +193,7 @@ void wb_process (uint null0, uint null1)
       /*err_part += ((long_error_t) w_weights[i][j]
                     * (long_error_t) w_deltas[wb_procs][j]
                   ) >> (LONG_ERR_SHIFT - ERROR_SHIFT);*/
-      if (epoch == 0 && example == 1 && tick == 20) {
-        io_printf (IO_BUF, "Sending Unit: %d, Receiving Unit: %d, err_part (aka V_DRV): %r, w_deltas[%d] (aka inputDeriv): %r, w_weights[%d][%d] (aka L_WGT): %r\n", i, j, err_part, j, w_deltas[wb_procs][j], i, j, w_weights[i][j]);
-      }
-      err_part += (error_t) w_weights[i][j] * (error_t) w_deltas[wb_procs][j]; 
+      err_part += (error_t) w_weights[i][j] * (error_t) w_deltas[wb_procs][j];
     }
     
     // incorporate error index to the packet key and send
@@ -238,7 +228,6 @@ void wb_process (uint null0, uint null1)
       io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
     #endif
 
-    io_printf (IO_BUF, "Calling wb_advance_tick from wb_process for tick %d\n", tick);
     wb_advance_tick (NULL, NULL);
   }
   else
@@ -283,9 +272,6 @@ void w_update_weights (void)
       {
         // compute new weight
         weight_t temp = w_weights[i][j] + w_wchanges[i][j];
-        if (epoch == 0) {
-          //io_printf (IO_BUF, "Updating weights for link %d to %d...  old weight: %r, weight change: %r, new weight: %r\n", i, j, (w_weights[i][j] << 3), (w_wchanges[i][j] << 3), (temp << 3));
-        }
 
         // saturate new weight,
         if (temp >= SPINN_WEIGHT_MAX)
@@ -360,7 +346,6 @@ void w_weight_deltas (void)
   {
     wchange_t temp = wcfg.learningRate * w_deltas[wb_procs][j];
     
-
     #ifdef DEBUG_VRB
       io_printf (IO_BUF, "t = %10.7f (0x%08x)\n",
                      SPINN_LCONV_TO_PRINT(temp,
@@ -382,9 +367,7 @@ void w_weight_deltas (void)
 			     ) >> (2 * SPINN_ACTIV_SHIFT)
                             );
       }
-      if (epoch == 0) {
-      	//io_printf (IO_BUF, "Computing weight change for link %d to %d... learning rate: %r, link derivative: %r, weight change: %r\n", i, j, wcfg.learningRate, ((w_deltas[wb_procs][j] * w_outputs[wf_procs][i]) >> SPINN_ACTIV_SHIFT), w_wchanges[i][j]);
-      }
+
       #ifdef DEBUG_VRB
         uint roff = wcfg.blk_row * wcfg.num_rows;
         uint coff = wcfg.blk_col * wcfg.num_cols;
@@ -440,7 +423,6 @@ void wf_advance_tick (uint null0, uint null1)
 // processed, advance the simulation tick
 void wb_advance_tick (uint null0, uint null1)
 {
-  io_printf (IO_BUF, "Starting wb_advance_tick for tick %d\n", tick);
   #ifdef TRACE
     io_printf (IO_BUF, "wb_advance_tick\n");
   #endif
@@ -518,7 +500,6 @@ void wf_advance_event (void)
     {
       // if training, save number of ticks
       num_ticks = tick;
-      io_printf (IO_BUF, "Switching to backprop, tick %d\n", tick);
       // then do BACKPROP phase
       w_switch_to_bp ();
     }
