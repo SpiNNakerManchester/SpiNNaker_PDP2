@@ -122,7 +122,7 @@ scoreboard_t   * ib_arrived;        // keep track of expected error b-d-p
 scoreboard_t     ib_done;           // current tick error computation done
 //#uint             ib_thrds_done;     // sync. semaphore: proc & stop
 
-long_net_t     * i_input_history;   //sdram pointer where to store input history
+long_net_t     * i_net_history;   //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

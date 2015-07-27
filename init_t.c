@@ -58,6 +58,8 @@ extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors;      // current tick errors
 extern activation_t   * t_last_integr_output;   //last integrator output value
+extern llong_activ_t  * t_last_integr_output_deriv;   //last integrator output derivative value
+extern activation_t   * t_unit_history_data; //information needed by group procedures for each unit at each tick
 extern uchar            t_hard_clamp_en; //hard clamp output enabled
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example
@@ -85,10 +87,12 @@ extern activation_t     t_max_target;      // highest target value
 extern out_proc_t const  t_out_procs[SPINN_NUM_OUT_PROCS];
 // list of stop eval procedures
 extern stop_crit_t const t_stop_procs[SPINN_NUM_STOP_PROCS];
-//list of initialization procedures for output pipeline
+// list of initialization procedures for output pipeline
 extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
+// derivative of the output
+extern llong_activ_t  * t_output_deriv;
+// history arrays
 extern activation_t   * t_output_history;
-extern llong_activ_t  * t_output_deriv;// derivative of the output
 extern llong_activ_t  * t_output_deriv_history;
 extern activation_t   * t_target_history;
 // ------------------------------------------------------------------------
@@ -337,7 +341,7 @@ uint t_init (void)
   // allocate memory in SDRAM for output history
   if ((t_output_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
+                       tcfg.num_outputs * (mlpc.global_max_ticks + 1) * sizeof(activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -348,7 +352,7 @@ uint t_init (void)
   // allocate memory in SDRAM for target history
   if ((t_target_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
+                       tcfg.num_outputs * (mlpc.global_max_ticks + 1) * sizeof(activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -359,12 +363,19 @@ uint t_init (void)
   // allocate memory in SDRAM for output derivative history
   if ((t_output_deriv_history = ((llong_activ_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(llong_activ_t),
+                       tcfg.num_outputs * (mlpc.global_max_ticks + 1) * sizeof(llong_activ_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
+  }
+
+  //initialize history array state
+  for (i = 0; i<tcfg.num_outputs * (mlpc.global_max_ticks + 1); i++) {
+    t_output_history[i] = 0;
+    t_target_history[i] = 0;
+    t_output_deriv_history[i] = 0;
   }
 
   // schedule initialization and sending of unit outputs

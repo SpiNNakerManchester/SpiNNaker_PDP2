@@ -202,6 +202,9 @@ void s_forward_packet (uint key, uint payload)
     {
       net_tmp = (net_t) s_nets[clr][inx];
     }
+    if (epoch == 0 && example == 0 && tick == 1) {
+      io_printf (IO_BUF, "s_nets[%d]: %r\n", inx, (net_tmp >> 12));
+    }
     
     // incorporate net index to the packet key and send,
     while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
@@ -439,7 +442,7 @@ void sf_advance_event (void)
 
       // s cores skip first bp tick!
       //TODO: check if need to schedule or can simply call
-      sb_advance_tick (NULL, NULL);
+      //sb_advance_tick (NULL, NULL);
     }
     else
     {

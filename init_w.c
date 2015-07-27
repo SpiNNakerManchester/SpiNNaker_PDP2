@@ -207,8 +207,7 @@ uint w_init (void)
 
   // initialize synchronization flags
   wb_comms_done = FALSE;
-  // no processing in tick 0 -- just wait for initial error deltas
-  wb_procs_done = TRUE;
+  wb_procs_done = FALSE;
   
   // initialize synchronization semaphores
   wf_thrds_done = 0; // just wait for initial unit outputs

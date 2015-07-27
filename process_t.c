@@ -72,6 +72,8 @@ extern uchar            t_active;      // processing nets/errors from queue?
 extern scoreboard_t     t_arrived;     // keep track of expected nets/errors
 extern uchar            t_sync_done;   // have expected sync packets arrived?
 extern activation_t   * t_last_integr_output;  //last integrator output value
+extern llong_activ_t  * t_last_integr_output_deriv; //last integrator output derivative value
+extern activation_t   * t_unit_history_data; //information needed by group procedures for each unit at each tick
 extern activation_t   * t_out_hard_clamp_data; //values injected by hard clamps
 extern activation_t   * t_out_weak_clamp_data; //values injected by weak clamps
 extern uchar            t_hard_clamp_en;       //hard clamp output enabled
@@ -91,11 +93,12 @@ extern activation_t     t_max_target;      // highest target value
 // list of output pipeline procedures
 extern out_proc_t const t_out_procs[SPINN_NUM_OUT_PROCS];
 extern out_error_t const t_out_error[SPINN_NUM_ERROR_PROCS];
-extern activation_t   * t_output_history;
 extern llong_deriv_t  * t_output_deriv;
+extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
+// history arrays
+extern activation_t   * t_output_history;
 extern llong_deriv_t  * t_output_deriv_history;
 extern activation_t   * t_target_history;
-extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -149,6 +152,9 @@ void tf_process (uint null0, uint null1)
 
     // store net for backprop computation,
     t_nets[inx] = net;
+    if (epoch == 0 && example == 0 && tick == 1) {
+      io_printf (IO_BUF, "t_nets[%d] for update %d example %d tick %d unit %d before compute_out: %r\n", inx, epoch, example, tick, inx, (t_nets[inx] >> 12));
+    }
 
     // compute unit output,
     //TODO: need to make sure this is the same as Lens
@@ -290,7 +296,7 @@ void tb_process (uint null0, uint null1)
 
     // get error index: mask out block, phase and colour data,
     uint inx = (key & SPINN_ERROR_MASK);
-
+/*
     // store error for tracking,
     //TODO: do we really need to store errors?
     if (tcfg.output_grp)
@@ -305,7 +311,10 @@ void tb_process (uint null0, uint null1)
 
     // the output pipeline performs its operations on t_output_deriv
     t_output_deriv[inx] = t_errors[inx];
-    
+*/
+    // restore output derivatives for the tick currently being processed
+    t_output_deriv[inx] = t_output_deriv_history[(tick * tcfg.num_outputs) + inx];
+
     // TODO: Insert here the backward computation of the output pipeline
     // this backward computation needs to be performed on t_output_deriv
     compute_out_back (inx);
@@ -317,6 +326,9 @@ void tb_process (uint null0, uint null1)
       delta = (long_deriv_t) SPINN_LONG_DERIV_MIN_NEG;
     else
       delta = (long_deriv_t) t_output_deriv;
+
+    // restore outputs for the tick prior to the one currently being processed
+    t_outputs[inx] = t_output_history[((tick-1) * tcfg.num_outputs) + inx];
     
     #ifdef DEBUG_VRB
       io_printf(IO_BUF, "e[%2d][%2d] = %10.7f (%08x)\n", tcfg.delta_blk, inx,
@@ -540,7 +552,7 @@ void tf_advance_event (void)
       }
     }
 
-    // increment example tick,
+    // if not done, increment example tick
     tick++;
 
     // and initialize event tick
@@ -947,7 +959,7 @@ void store_outputs (void)
   #endif
 
   activation_t * src_ptr = t_outputs;
-  activation_t * dst_ptr = t_output_history + ((tick-1) * tcfg.num_outputs);
+  activation_t * dst_ptr = t_output_history + (tick * tcfg.num_outputs);
 
   spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(activation_t));
 }
@@ -959,7 +971,7 @@ void store_targets (void)
   #endif
 
   activation_t * src_ptr = &tt[t_it_idx];
-  activation_t * dst_ptr = t_target_history + ((tick-1) * tcfg.num_outputs);
+  activation_t * dst_ptr = t_target_history + (tick * tcfg.num_outputs);
 
   spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(activation_t));
 }
@@ -971,7 +983,7 @@ void store_output_deriv (void)
   #endif
 
   llong_deriv_t * src_ptr = t_output_deriv;
-  llong_deriv_t * dst_ptr = t_output_deriv_history + ((tick-1) * tcfg.num_outputs);
+  llong_deriv_t * dst_ptr = t_output_deriv_history + (tick * tcfg.num_outputs);
     
   spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(llong_deriv_t));
 }
@@ -986,7 +998,39 @@ void out_logistic (uint inx)
 
   // compute the sigmoid using a lookup table and an interpolation function
   t_outputs[inx] = sigmoid (t_nets[inx]);
+
+  if (example == 0) {
+    //io_printf (IO_BUF, "t_nets[%d]: %r\n", inx, (t_nets[inx] >> 12));
+    //io_printf (IO_BUF, "Output for update %d example %d tick %d unit %d after out_logistic: %r\n", epoch, example, tick, inx, t_outputs[inx]);
+  }
 }
+
+/******************************************************************************/
+/*  LENS code starts                                                          */
+/******************************************************************************/
+/*
+static void integrateOutput(Group G, GroupProc P) {
+  #ifdef TRACE
+    printf("integrateOutput\n");
+  #endif
+  real dt = Net->dt * G->dtScale;
+  real *lastOutput = P->unitData;
+  real *instantOutput = P->unitHistoryData[HISTORY_INDEX(Net->currentTick)];
+  FOR_EACH_UNIT2(G, {
+    instantOutput[u] = U->output;
+    lastOutput[u] += dt * U->dtScale * (U->output - lastOutput[u]);
+    U->output = lastOutput[u];
+    #ifdef OUTPUT_DEBUG
+      if (G->num == 3 && U->num==2) {
+        printf("Example %d, Tick %d, Unit %d, After integrateOutput, %.7f\n", Net->currentExample->num, Net->currentTick, U->num, U->output);
+      }
+    #endif
+  });
+}
+*/
+/******************************************************************************/
+/*  LENS code end                                                             */
+/******************************************************************************/
 
 // compute the output integration operation
 void out_integr (uint inx)
@@ -995,12 +1039,12 @@ void out_integr (uint inx)
     io_printf (IO_BUF, "out_integr\n");
   #endif
   
+  // representation 48.16, with the topmost 32 bits set to 0
+  lfpreal dt = tcfg.out_integr_dt;
   // representation 49.15, with the topmost 48 bits set to 0
   llong_activ_t last_output = t_last_integr_output[inx]; 
   // representation 49.15, with the topmost 48 bits set to 0
-  llong_activ_t new_output = t_outputs[inx];
-  // representation 48.16, with the topmost 32 bits set to 0
-  lfpreal dt = tcfg.out_integr_dt;
+  t_unit_history_data[((tick-1) * tcfg.num_outputs) + inx] = t_outputs[inx];
   
   // compute the output integration following Lens code
   // representation: 
@@ -1010,7 +1054,12 @@ void out_integr (uint inx)
   // The values are unlikely to overflow, as the variables are extended to
   // 64 bits for this purpose and the 32 or 48 topmost bits are set to 0 by the
   // extension
-  llong_activ_t output = last_output + ((dt * (new_output - last_output)) >> 16);
+  llong_activ_t output = last_output + ((dt * (t_outputs[inx] - last_output)) >> 16);
+  if (epoch == 1 && example == 0) {
+    //io_printf (IO_BUF, "last_output: %r\n", last_output);
+    //io_printf (IO_BUF, "t_outputs[%d]: %r\n", inx, t_outputs[inx]);
+    //io_printf (IO_BUF, "output: %r\n", output);
+  }
 
   // saturate the value computed and assign it to the output variable
   if (output > (long long) SPINN_ACTIV_MAX)
@@ -1025,6 +1074,10 @@ void out_integr (uint inx)
   
   // store the integrator state for the next iteration
   t_last_integr_output[inx] = t_outputs[inx];
+
+  if (epoch == 1 && example == 0) {
+    //io_printf(IO_BUF, "Output for update %d example %d tick %d unit %d after out_integr: %r\n", epoch, example, tick, inx, t_outputs[inx]);
+  }
 }
 
 // compute the output hard clamp, and store the injected value in SDRAM
@@ -1173,6 +1226,9 @@ void out_logistic_back (uint inx)
                     >> (SPINN_ERROR_SHIFT + SPINN_DERIV_SHIFT
                          - SPINN_DELTA_SHIFT
                        );
+  if (epoch == 1 && example == 0) {
+    //io_printf(IO_BUF, "(Input?) Derivative for update %d example %d tick %d unit %d after out_logistic_back: %r\n", epoch, example, tick, inx, t_output_deriv[inx]);
+  }
 }
 
 /******************************************************************************/
@@ -1196,12 +1252,35 @@ static void integrateOutputBack(Group G, GroupProc P) {
 /*  LENS code end                                                             */
 /******************************************************************************/
 
-// TODO: backward pass for the output integrator - this is a stub
 void out_integr_back (uint inx)
 {
   #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_integr_back\n");
   #endif
+
+  // representation 48.16, with the topmost 32 bits set to 0
+  lfpreal dt = tcfg.out_integr_dt;
+  // representation 49.15, with the topmost 48 bits set to 0
+  llong_deriv_t last_output_deriv = t_last_integr_output_deriv[inx];
+  // representation 49.15, with the topmost 48 bits set to 0
+  llong_activ_t instant_output = t_unit_history_data[((tick-1)*tcfg.num_outputs)+inx];
+
+  // (lfpreal * llong_deriv_t) >> 16 = llong_deriv_t
+  // (48.16 * 49.15) >> 16 = 49.15
+  llong_deriv_t d = (dt * last_output_deriv) >> 16;
+
+  // t_outputs[inx] is activation_t, instant_output is llong_activ_t: needs to be saturated
+  t_outputs[inx] = instant_output;
+  // last_output_deriv is llong_deriv_t, t_output_deriv is llong_deriv_t, d is llong_deriv_t: all OK
+  last_output_deriv += t_output_deriv[inx] - d;
+  // t_output_deriv is llong_output_deriv, d is llong_deriv_t: all OK
+  t_output_deriv[inx] = d;
+  // t_last_integr_output_deriv is llong_output_deriv, last_output_deriv is llong_deriv_t: all OK
+  t_last_integr_output_deriv[inx] = last_output_deriv;
+
+  if (example == 0 && inx == 0) { 
+    //io_printf(IO_BUF, "Output Derivative for update %d example %d tick %d unit %d after out_integr_back: %r\n", epoch, example, tick, inx, t_output_deriv[inx]);
+  }
 }
 
 /******************************************************************************/
@@ -1307,9 +1386,32 @@ int init_out_integr ()
     return (SPINN_MEM_UNAVAIL);
   }
 
+  if ((t_last_integr_output_deriv = ((llong_activ_t *)
+       spin1_malloc (tcfg.num_outputs * sizeof(llong_activ_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((t_unit_history_data = ((activation_t *)
+       spin1_malloc (tcfg.num_outputs * sizeof(activation_t) * mlpc.global_max_ticks))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
   //initialize integrator state
-  for (i = 0; i<tcfg.num_outputs; i++)
+  for (i = 0; i<tcfg.num_outputs; i++) {
     t_last_integr_output[i] = 0;
+  }
+
+  for (i = 0; i<tcfg.num_outputs; i++) {
+    t_last_integr_output_deriv[i] = 0;
+  }
+
+  for (i = 0; i<tcfg.num_outputs; i++) {
+    t_unit_history_data[i] = 0;
+  }
   
   return SPINN_NO_ERROR;
 }
@@ -1578,4 +1680,8 @@ void error_cross_entropy (uint inx)
   // if the target is not defined, set the output derivative to 0
   else
     t_output_deriv[inx] = 0;
+
+  if (example == 0 && inx == 0) {
+    //io_printf(IO_BUF, "Output Derivative for update %d example %d tick %d unit %d after error_cross_entropy: %r\n", epoch, example, tick, inx, t_output_deriv[inx]);
+  }
 }

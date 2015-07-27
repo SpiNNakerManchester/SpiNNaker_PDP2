@@ -124,6 +124,8 @@ activation_t   * t_outputs;         // current tick unit outputs
 net_t          * t_nets;            // nets received from sum cores
 error_t        * t_errors;          // current tick errors
 activation_t   * t_last_integr_output;  //last integrator output value
+llong_activ_t  * t_last_integr_output_deriv;  //last integrator derivative output value
+activation_t   * t_unit_history_data; //information needed by group procedures for each unit at each tick
 activation_t   * t_out_hard_clamp_data; //values injected by hard clamps
 activation_t   * t_out_weak_clamp_data; //values injected by weak clamps
 uchar            t_hard_clamp_en;   //hard clamp output enabled
@@ -150,9 +152,9 @@ int              t_max_target_unit; // unit with highest target
 activation_t     t_max_output;      // highest output value
 activation_t     t_max_target;      // highest target value
 llong_activ_t  * t_output_deriv;    // derivative of the output value
-activation_t   * t_output_history;
-llong_activ_t  * t_output_deriv_history;
-activation_t   * t_target_history;
+activation_t   * t_output_history;  // history array for outputs
+llong_activ_t  * t_output_deriv_history; // history array for output derivatives
+activation_t   * t_target_history;  // output array for targets
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

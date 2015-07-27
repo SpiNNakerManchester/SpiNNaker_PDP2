@@ -70,7 +70,7 @@ extern long_net_t     * i_last_integr_output;   //last integrator output value
 extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
 //list of initialization procedures for input pipeline
 extern in_proc_init_t const  i_init_in_procs[SPINN_NUM_IN_PROCS];
-extern long_net_t      * i_input_history; //sdram pointer where to store input history
+extern long_net_t      * i_net_history; //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -200,20 +200,21 @@ uint i_init (void)
           return return_value;
     }
 
-/*
   // allocate memory in SDRAM for input history
-  // TODO: this need a condition on the requirement to have input history
-  // this needs to come from splens
-  if ((i_input_history = ((long_net_t *)
+  if ((i_net_history = ((long_net_t *)
           sark_xalloc (sv->sdram_heap,
-                       icfg.num_nets * mlpc.global_max_ticks * sizeof(long_net_t),
+                       icfg.num_nets * (mlpc.global_max_ticks + 1) * sizeof(long_net_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
-*/
+
+  //initialize history array state
+  for (i = 0; i<icfg.num_nets * (mlpc.global_max_ticks + 1); i++) {
+    i_net_history[i] = 0;
+  }
 
   return (SPINN_NO_ERROR);
 }
