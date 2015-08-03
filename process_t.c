@@ -17,8 +17,8 @@
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for forward passes
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint fwdKey;               // 32-bit packet ID for FORWARD phasees
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phasees
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -63,18 +63,17 @@ extern t_conf_t   tcfg;           // threshold core configuration parameters
 // ------------------------------------------------------------------------
 extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
-extern error_t        * t_errors;      // current tick errors
+extern error_t        * t_errors[2];   // error banks: current and next tick
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example
 extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
-extern pkt_queue_t      t_err_pkt_q;   // queue to hold received errors
 extern uchar            t_active;      // processing nets/errors from queue?
-extern scoreboard_t     t_arrived;     // keep track of expected nets/errors
 extern uchar            t_sync_done;   // have expected sync packets arrived?
 extern activation_t   * t_last_integr_output;  //last integrator output value
 extern activation_t   * t_out_hard_clamp_data; //values injected by hard clamps
 extern activation_t   * t_out_weak_clamp_data; //values injected by weak clamps
 extern uchar            t_hard_clamp_en;       //hard clamp output enabled
+extern scoreboard_t     tf_arrived;    // keep track of expected nets
 extern uint             tf_thrds_init; // sync. semaphore initial value
 extern uint             tf_thrds_done; // sync. semaphore: proc & stop
 extern uchar            tf_stop_prev;  // previous group stop criterion met?
@@ -83,7 +82,9 @@ extern uchar            tf_stop_init;  // sync. semaphore: stop daisy chain
 extern uchar            tf_stop_done;  // sync. semaphore: stop daisy chain
 extern stop_crit_t      tf_stop_func;  // stop evaluation function
 extern uint             tf_stop_key;   // stop criterion packet key
-//#extern uint             tb_thrds_done; // sync. semaphore: proc & stop
+extern uint             tb_procs;      // pointer to processing errors
+extern scoreboard_t     tb_arrived;    // keep track of expected errors
+extern uint             tb_thrds_done; // sync. semaphore: proc & stop
 extern int              t_max_output_unit; // unit with highest output
 extern int              t_max_target_unit; // unit with highest target
 extern activation_t     t_max_output;      // highest output value
@@ -106,8 +107,6 @@ extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
   extern uint sent_fwd;  // packets sent in FORWARD phase
   extern uint sent_bkp;  // packets sent in BACKPROP phase
   extern uint pkt_recv;  // total packets received
-  extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received in BACKPROP phase
   extern uint spk_sent;  // sync packets sent
   extern uint spk_recv;  // sync packets received
   extern uint stp_sent;  // stop packets sent
@@ -116,11 +115,12 @@ extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
   extern uint wght_ups;  // number of weight updates done
   extern uint tot_tick;  // total number of ticks executed
 #endif
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
-// code
+// process FORWARD phase: compute outputs
 // ------------------------------------------------------------------------
-// process a forward multicast packet received by a threshold core
 void tf_process (uint null0, uint null1)
 {
   // process packet queue
@@ -133,21 +133,15 @@ void tf_process (uint null0, uint null1)
     // if not empty dequeue packet,
     uint key = t_net_pkt_q.queue[t_net_pkt_q.head].key;
     net_t net = (net_t) t_net_pkt_q.queue[t_net_pkt_q.head].payload;
-    t_net_pkt_q.head = (t_net_pkt_q.head + 1) % SPINN_PKT_QUEUE_LEN;
+    t_net_pkt_q.head = (t_net_pkt_q.head + 1) % SPINN_THLD_PQ_LEN;
 
     // restore interrupts after queue access,
     spin1_mode_restore (cpsr);
 
-    #ifdef DEBUG
-      recv_fwd++;
-      if (((key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT) != SPINN_FORWARD)
-        wrng_phs++;
-    #endif
-
     // get net index: mask out block, phase and colour data,
     uint inx = (key & SPINN_NET_MASK);
 
-    // store net for backprop computation,
+    // store net for BACKPROP computation,
     t_nets[inx] = net;
 
     // compute unit output,
@@ -181,15 +175,15 @@ void tf_process (uint null0, uint null1)
 
     // mark net as arrived,
     #if SPINN_USE_COUNTER_SB == FALSE
-      t_arrived |= (1 << inx);
+      tf_arrived |= (1 << inx);
     #else
-      t_arrived++;
+      tf_arrived++;
     #endif
 
     // and check if all nets arrived (i.e., all outputs done)
-    if (t_arrived == tcfg.f_all_arrived)
+    if (tf_arrived == tcfg.f_all_arrived)
     {
-      // if possible, forward stop criterion
+      // if possible, FORWARD stop criterion
       if (tcfg.output_grp)
       {
         // check flags status in critical section
@@ -257,60 +251,37 @@ void tf_process (uint null0, uint null1)
   // and restore interrupts after queue access and leave
   spin1_mode_restore (cpsr);
 }
+// ------------------------------------------------------------------------
 
-// process a backward multicast packet received by a threshold core
+
+// ------------------------------------------------------------------------
+// process BACKPROP phase: compute error deltas
+// ------------------------------------------------------------------------
 void tb_process (uint null0, uint null1)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "tb_process\n");
   #endif
 
-  // process packet queue
-  // access queue with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-  // process until queue empty,
-  while (t_err_pkt_q.head != t_err_pkt_q.tail)
+  // compute deltas based on pre-computed errors,
+  //TODO: this needs checking!
+  for (uint inx = 0; inx < tcfg.num_outputs; inx++)
   {
-    // if not empty dequeue packet,
-    uint key = t_err_pkt_q.queue[t_err_pkt_q.head].key;
-    error_t error = (error_t) t_err_pkt_q.queue[t_err_pkt_q.head].payload;
-    t_err_pkt_q.head = (t_err_pkt_q.head + 1) % SPINN_PKT_QUEUE_LEN;
-
     delta_t delta;
-    
-    // restore interrupts after queue access,
-    spin1_mode_restore (cpsr);
 
-    #ifdef DEBUG
-      recv_bkp++;
-      if (((key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT) != SPINN_BACKPROP)
-        wrng_phs++;
-    #endif
-
-    // get error index: mask out block, phase and colour data,
-    uint inx = (key & SPINN_ERROR_MASK);
-
-    // store error for tracking,
-    //TODO: do we really need to store errors?
-    if (tcfg.output_grp)
+    // update output derivatives for non-output groups
+    //TODO: could avoid testiong on every iteration
+    if (!tcfg.output_grp)
     {
-      // if OUTPUT group re-send same delta
-      error = t_errors[inx];
-    }
-    else
-    {
-      t_errors[inx] = error;
+      // use received error computed in previous tick
+      t_output_deriv[inx] = t_errors[tb_procs][inx];
     }
 
-    // the output pipeline performs its operations on t_output_deriv
-    t_output_deriv[inx] = t_errors[inx];
-
-    // TODO: Insert here the backward computation of the output pipeline
-    // this backward computation needs to be performed on t_output_deriv
+    // BACKPROP computation performed on t_output_deriv
+    //TODO: this function should modify deltas (input derivatives)!
     compute_out_back (inx);
     
-    // TODO: saturate t_output_deriv into the variable t_error before sending it
+    // TODO: saturate output derivative before sending
     if (t_output_deriv[inx] > (llong_deriv_t) SPINN_LONG_DERIV_MAX)
       delta = (long_deriv_t) SPINN_LONG_DERIV_MAX;
     else if (t_output_deriv[inx] <= (llong_deriv_t) SPINN_LONG_DERIV_MIN_NEG)
@@ -318,22 +289,7 @@ void tb_process (uint null0, uint null1)
     else
       delta = (long_deriv_t) t_output_deriv;
 
-    // restore outputs for the tick prior to the one currently being processed
-    t_outputs[inx] = t_output_history[((tick-1) * tcfg.num_outputs) + inx];
-    
-    #ifdef DEBUG_VRB
-      io_printf(IO_BUF, "e[%2d][%2d] = %10.7f (%08x)\n", tcfg.delta_blk, inx,
-                 SPINN_CONV_TO_PRINT(error, SPINN_ERROR_SHIFT),
-                 error
-               );
-
-      io_printf(IO_BUF, "d[%2d][%2d] = %10.7f (%08x)\n", tcfg.delta_blk, inx,
-                 SPINN_CONV_TO_PRINT(delta, SPINN_DELTA_SHIFT),
-                 delta
-               );
-    #endif
-
-    // incorporate delta index into packet key and send to input cores,
+    // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
 
     #ifdef DEBUG
@@ -341,34 +297,53 @@ void tb_process (uint null0, uint null1)
       sent_bkp++;
     #endif
 
-    // mark error as arrived,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      t_arrived |= (1 << inx);
-    #else
-      t_arrived++;
+    // restore outputs for the tick prior to the one currently being processed
+    t_outputs[inx] = t_output_history[((tick-1) * tcfg.num_outputs) + inx];
+    
+    #ifdef DEBUG_VRB
+      io_printf(IO_BUF, "d[%2d][%2d] = %10.7f (%08x)\n", tcfg.delta_blk, inx,
+                 SPINN_CONV_TO_PRINT(delta, SPINN_DELTA_SHIFT),
+                 delta
+               );
     #endif
-
-    // and check if all errors arrived (i.e., all deltas done)
-    if (t_arrived == tcfg.b_all_arrived)
-    {
-      // advance tick
-      //TODO: check if need to schedule or can simply call
-      tb_advance_tick (NULL, NULL);
-    }
-
-    // access queue with interrupts disabled
-    cpsr = spin1_int_disable ();
   }
 
-  // when done flag going to sleep,
-  t_active = FALSE;
+  // access synchronization semaphore with interrupts disabled
+  uint cpsr = spin1_int_disable ();
 
-  // and restore interrupts after queue access and leave
-  spin1_mode_restore (cpsr);
+  // and check if all threads done
+  if (tb_thrds_done == 0)
+  {
+    // if done initialize synchronization semaphore,
+    tb_thrds_done = 1;
+
+    // restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+
+    // and advance tick
+    //TODO: check if need to schedule or can simply call
+    #ifdef TRACE_VRB
+      io_printf (IO_BUF, "tbp calling tb_advance_tick\n");
+    #endif
+
+    tb_advance_tick (NULL, NULL);
+  }
+  else
+  {
+    // if not done report processing thread done,
+    tb_thrds_done -= 1;
+
+    // and restore interrupts after flag access
+    spin1_mode_restore (cpsr);
+  }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: once the processing is completed and all the units have been
+
+// ------------------------------------------------------------------------
+// FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
+// ------------------------------------------------------------------------
 void tf_advance_tick (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -376,7 +351,7 @@ void tf_advance_tick (uint null0, uint null1)
   #endif
   
   // initialize scoreboard for next tick,
-  t_arrived = 0;
+  tf_arrived = 0;
 
   // check if in training mode, and if so, store outputs, targets, and output derivatives
   // TODO: for non-continuous networks, this needs to check the requirement to have these 
@@ -441,23 +416,24 @@ void tf_advance_tick (uint null0, uint null1)
     #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// backward pass: once the processing is completed and all the units have been
+
+// ------------------------------------------------------------------------
+// BACKPROP: once the processing is completed and all the units have been
 // processed, advance the simulation tick
+// ------------------------------------------------------------------------
 void tb_advance_tick (uint null0, uint null1)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "tb_advance_tick\n");
   #endif
   
-  // prepare for next tick,
-  t_arrived = 0;
-
   #ifdef DEBUG
     tot_tick++;
   #endif
 
-  // and check if done with BACKPROP phase
+  // check if done with BACKPROP phase
   if (tick == SPINN_TB_END_TICK)
   {
     // initialize the tick count
@@ -480,13 +456,20 @@ void tb_advance_tick (uint null0, uint null1)
     // if not done decrement tick
     tick--;
 
+    // and trigger computation
+    spin1_schedule_callback (tb_process, NULL, NULL, SPINN_TB_PROCESS_P);
+
     #ifdef TRACE
       io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
     #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the event at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the event at the end of a simulation tick
+// ------------------------------------------------------------------------
 void tf_advance_event (void)
 {
   #ifdef TRACE
@@ -550,8 +533,12 @@ void tf_advance_event (void)
     ev_tick = SPINN_T_INIT_TICK;
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the example at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the example at the end of a simulation tick
+// ------------------------------------------------------------------------
 void t_advance_example (void)
 {
   #ifdef TRACE
@@ -619,7 +606,7 @@ void t_advance_example (void)
 
     // schedule sending of unit outputs,
     //TODO: check if need to schedule or can simply call
-    spin1_schedule_callback (t_init_outputs, 0, 0, SPINN_T_INIT_OUT_P);
+    spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
 
     // and, if required, send outputs to host
     if (tcfg.write_out)
@@ -635,9 +622,13 @@ void t_advance_example (void)
     spin1_mode_restore (cpsr);
   }
 }
+// ------------------------------------------------------------------------
 
-// backpropagation: when the simulation is completed in the backward pass,
-// switch to the forward pass again, if required 
+
+// ------------------------------------------------------------------------
+// BACKPROP phase: when the simulation is completed in the BACKPROP phase,
+// switch to the FORWARD phase again, if required 
+// ------------------------------------------------------------------------
 void t_switch_to_fw (void)
 {
   #ifdef TRACE
@@ -651,10 +642,11 @@ void t_switch_to_fw (void)
   phase = SPINN_FORWARD;
 
   // check if ready to start processing in FORWARD phase,
+  //TODO: need to check this? -- see comms_t.c
   if (t_net_pkt_q.head != t_net_pkt_q.tail)
   {
     // if queue not empty schedule FORWARD processing
-    spin1_schedule_callback (tf_process, 0, 0, SPINN_TF_PROCESS_P);
+    spin1_schedule_callback (tf_process, NULL, NULL, SPINN_TF_PROCESS_P);
   }
   else
   {
@@ -665,9 +657,13 @@ void t_switch_to_fw (void)
   // and restore interrupts
   spin1_mode_restore (cpsr);
 }
+// ------------------------------------------------------------------------
 
-// forward pass: when the simulation is completed in the forward pass,
-// switch to the bacward pass if training is required 
+
+// ------------------------------------------------------------------------
+// FORWARD phase: when the simulation is completed in the FORWARD phase,
+// switch to the bacward phase if training is required 
+// ------------------------------------------------------------------------
 void t_switch_to_bp (void)
 {
   #ifdef TRACE
@@ -680,33 +676,22 @@ void t_switch_to_bp (void)
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 
-  // flag going active -- sending initial deltas,
-  t_active = TRUE;
-
-  // and compute and send initial deltas to input cores,
-  //TODO: check if need to schedule or can simply call
-  spin1_schedule_callback (t_init_deltas, 0, 0, SPINN_SEND_DELTAS_P);
-
-  // check if ready to start processing in BACKPROP phase,
-  if (t_err_pkt_q.head != t_err_pkt_q.tail)
-  {
-    // if queue not empty schedule BACKPROP processing
-    spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
-  }
-  else
-  {
-    // if empty flag going inactive
-    t_active = FALSE;
-  }
+  // start processing in BACKPROP phase,
+  //TODO: check!
+  spin1_schedule_callback (tb_process, NULL, NULL, SPINN_TB_PROCESS_P);
   
   // and restore interrupts
   spin1_mode_restore (cpsr);
 }
+// ------------------------------------------------------------------------
 
-// in the forward pass the convergence critieron may require the simulation to
+
+// ------------------------------------------------------------------------
+// in the FORWARD phase the convergence critieron may require the simulation to
 // stop before the maximum time is reached. This routine sends a broadcast
 // message to communicate the final decision if the criterion has been reached
 // across all the output groups to all the cores in teh simulation
+// ------------------------------------------------------------------------
 void tf_send_stop (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -729,7 +714,7 @@ void tf_send_stop (uint null0, uint null1)
     io_printf (IO_BUF, "M:%d t:%d sc:%x\n", max_ticks, ev_tick, tf_stop_crit);
   #endif
 
-  // forward aggregated criterion,
+  // FORWARD aggregated criterion,
   while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit),
                                  0,
                                  NO_PAYLOAD
@@ -743,11 +728,15 @@ void tf_send_stop (uint null0, uint null1)
   // and initialize criterion for next tick
   tf_stop_crit = TRUE;
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // this routine initializes the output values of the units. There is a conflict
 // in the initialization routine between lens 2.63 and lens 2.64.
 // The current version implements the routine as expressed by lens 2.63, with
 // comments on the line to change to apply lens version 2.64
+// ------------------------------------------------------------------------
 void t_init_outputs (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -805,92 +794,10 @@ void t_init_outputs (uint null0, uint null1)
     #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// backpropagation: initialize the delta variables used to compute the errors
-void t_init_deltas (uint null0, uint null1)
-{
-  #ifdef TRACE
-    io_printf (IO_BUF, "t_init_deltas\n");
-  #endif
 
-  // compute initial partial deltas and send to input cores
-  // TODO: no need to check for output_grp on every iteration!
-  for (uint i = 0; i < tcfg.num_outputs; i++)
-  {
-    net_t delta;
-
-    // if output group compute initial deltas from target
-    // TODO: needs looking into!
-    if (tcfg.output_grp)
-    {
-    
-      // compute unit output error,
-      // t_errors[i] = tt[t_it_idx + i] - t_outputs[i];
-      // depending on the function set by Lens, the error can be computed
-      // using different formulas
-    
-      // TODO: compute the output backward pipeline
-      // The only element currently implemented of this list is the derivative
-      // of the sigmoid. The other element(s) needs to be programmed
-      //compute_out_back(i);
-        
-      // TODO: saturate the t_output_deriv into the t_error variable
-      // t_errors[i] = t_output_deriv[i];
-      if (t_output_deriv[i] > (long_deriv_t) SPINN_LONG_DERIV_MAX)
-        delta = (long_deriv_t) SPINN_LONG_DERIV_MAX;
-      else if (t_output_deriv[i] <= (long_deriv_t) SPINN_LONG_DERIV_MIN_NEG)
-        delta = (long_deriv_t) SPINN_LONG_DERIV_MIN_NEG;
-      else
-        delta = (long_deriv_t) t_output_deriv[i];
-      
-      // and compute error delta
-      // keep the correct implicit decimal point position
-      // delta = (t_errors[i] * sigmoid_prime (t_nets[i]))
-      //          >> (SPINN_ERROR_SHIFT + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT);
-    
-      #ifdef DEBUG_VRB
-        io_printf(IO_BUF, "t[%2d] = %10.7f (%04x)\n", i,
-                   tt[t_it_idx + i] << (SPINN_PRINT_SHIFT - SPINN_ACTIV_SHIFT),
-                   tt[t_it_idx + i]
-                 );
-
-        io_printf(IO_BUF, "e[%2d] = %10.7f (%08x)\n", i,
-                   t_errors[i] << (SPINN_PRINT_SHIFT - SPINN_ERROR_SHIFT),
-                   t_errors[i]
-                 );
-
-        io_printf(IO_BUF, "d[%2d] = %10.7f (%08x)\n", i,
-                   delta << (SPINN_PRINT_SHIFT - SPINN_DELTA_SHIFT),
-                   delta
-                 );
-      #endif
-    }
-    else
-    {
-      // if non-output group initial deltas = 0
-      delta = 0;
-    }
-
-    #ifdef DEBUG_VRB
-      io_printf (IO_BUF, "t_init_deltas: sending packet with payload %d\n", delta);
-    #endif
-    // and incorporate output index into packet key and send to input cores
-    while (!spin1_send_mc_packet ((bkpKey | i), (uint) delta, WITH_PAYLOAD));
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_bkp++;
-    #endif
-  }
-
-  // advance tick
-  //TODO: check if need to schedule or can simply call
-  tb_advance_tick (NULL, NULL);
-
-  // when done flag going to sleep
-  t_active = FALSE;
-}
-
+// ------------------------------------------------------------------------
 // This routine calls in the appropriate order all the elements of the output
 // pipeline, as expressed in the array passed by splens tcfg.procs_list[i].
 // the routines to be called are listed in the array t_out_procs[]
@@ -899,9 +806,10 @@ void t_init_deltas (uint null0, uint null1)
 // This has also an implication in the initialization routine, as the memory
 // where to store the history needs to be allocated in SDRAM.
 // Finally also the return values of the error function (output_deriv) need to
-// be stored to be used in the backward pass
+// be stored to be used in the BACKPROP phase
 // The output pipeline is computer for each single unit (inx) before passing to
 // the next unit
+// ------------------------------------------------------------------------
 void compute_out (uint inx)
 {
   #ifdef TRACE_VRB
@@ -942,7 +850,12 @@ void compute_out (uint inx)
     }
   }
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
+//TODO: need a function description.
+// ------------------------------------------------------------------------
 void store_outputs (void)
 {
   #ifdef TRACE
@@ -954,7 +867,12 @@ void store_outputs (void)
 
   spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(activation_t));
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
+//TODO: need a function description.
+// ------------------------------------------------------------------------
 void store_targets (void)
 {
   #ifdef TRACE
@@ -966,7 +884,12 @@ void store_targets (void)
 
   spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(activation_t));
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
+//TODO: need a function description.
+// ------------------------------------------------------------------------
 void store_output_deriv (void)
 {
   #ifdef TRACE
@@ -978,9 +901,13 @@ void store_output_deriv (void)
     
   spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(llong_deriv_t));
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // compute the logistic function starting from the value received through the 
 // multicast packet.
+// ------------------------------------------------------------------------
 void out_logistic (uint inx)
 {
   #ifdef TRACE_VRB
@@ -990,8 +917,12 @@ void out_logistic (uint inx)
   // compute the sigmoid using a lookup table and an interpolation function
   t_outputs[inx] = sigmoid (t_nets[inx]);
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // compute the output integration operation
+// ------------------------------------------------------------------------
 void out_integr (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1029,11 +960,15 @@ void out_integr (uint inx)
   // store the integrator state for the next iteration
   t_last_integr_output[inx] = t_outputs[inx];
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // compute the output hard clamp, and store the injected value in SDRAM
-// to be used in the backward pass: in fact, the backward pass needs to know
+// to be used in the BACKPROP phase: in fact, the BACKPROP phase needs to know
 // to which units a value has been injected so that the output derivative
-// in the backward pass can be set appropriately
+// in the BACKPROP phase can be set appropriately
+// ------------------------------------------------------------------------
 void out_hard_clamp (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1057,10 +992,14 @@ void out_hard_clamp (uint inx)
   }
 */
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // compute the bias clamp. This clamp is used only by the bias group, and sets
 // the output value to a constant maximum output value (which is close to 1
 // on spinnaker, and 1 in lens
+// ------------------------------------------------------------------------
 void out_bias (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1070,6 +1009,7 @@ void out_bias (uint inx)
   // set output value to SPINN_ACTIV_MAX (close to 1)
   t_outputs[inx] = (activation_t) SPINN_ACTIV_MAX;
 }
+// ------------------------------------------------------------------------
 
 
 /******************************************************************************/
@@ -1092,8 +1032,11 @@ void out_bias (uint inx)
 /*  LENS code end                                                             */
 /******************************************************************************/
 
+
+// ------------------------------------------------------------------------
 // compute the weak clamp, as defined by lens, and store the injected value, if
 // the network needs training
+// ------------------------------------------------------------------------
 void out_weak_clamp (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1105,7 +1048,7 @@ void out_weak_clamp (uint inx)
 /*
   if (mlpc.training)
   {
-    //store previous value of t_output for backward computation
+    //store previous value of t_output for BACKPROP computation
     activation_t * tmp = t_out_weak_clamp_data + tick * tcfg.num_outputs;
     tmp[inx] = t_outputs[inx];
   }
@@ -1136,9 +1079,13 @@ void out_weak_clamp (uint inx)
       t_outputs[inx] = (activation_t) output;
   }
 }
+// ------------------------------------------------------------------------
 
-// routine to compute the backward pass of the elements of the output pipeline
+
+// ------------------------------------------------------------------------
+// routine to compute the BACKPROP phase of the elements of the output pipeline
 // the elements need to be computed in the reverse order, if they exist
+// ------------------------------------------------------------------------
 void compute_out_back (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1162,8 +1109,12 @@ void compute_out_back (uint inx)
         t_out_back_procs[tcfg.procs_list[i]] (inx);
     }
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // derivative of the logistic function computed through a lookup table
+// ------------------------------------------------------------------------
 void out_logistic_back (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1180,6 +1131,8 @@ void out_logistic_back (uint inx)
     //io_printf(IO_BUF, "(Input?) Derivative for update %d example %d tick %d unit %d after out_logistic_back: %r\n", epoch, example, tick, inx, t_output_deriv[inx]);
   }
 }
+// ------------------------------------------------------------------------
+
 
 /******************************************************************************/
 /*  LENS code starts                                                          */
@@ -1202,13 +1155,18 @@ static void integrateOutputBack(Group G, GroupProc P) {
 /*  LENS code end                                                             */
 /******************************************************************************/
 
-// TODO: backward pass for the output integrator - this is a stub
+
+// ------------------------------------------------------------------------
+// TODO: BACKPROP phase for the output integrator - this is a stub
+// ------------------------------------------------------------------------
 void out_integr_back (uint inx)
 {
   #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_integr_back\n");
   #endif
 }
+// ------------------------------------------------------------------------
+
 
 /******************************************************************************/
 /*  LENS code starts                                                          */
@@ -1228,7 +1186,10 @@ static void hardClampOutputBack(Group G, GroupProc P) {
 /*  LENS code end                                                             */
 /******************************************************************************/
 
-// TODO: backward pass for the hard clamp - this is a stub
+
+// ------------------------------------------------------------------------
+// TODO: BACKPROP phase for the hard clamp - this is a stub
+// ------------------------------------------------------------------------
 void out_hard_clamp_back (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1242,6 +1203,8 @@ void out_hard_clamp_back (uint inx)
     t_output_deriv[inx] = 0;
 */
 }
+// ------------------------------------------------------------------------
+
 
 /******************************************************************************/
 /*  LENS code starts                                                          */
@@ -1262,13 +1225,18 @@ static void weakClampOutputBack(Group G, GroupProc P) {
 /*  LENS code end                                                             */
 /******************************************************************************/
 
-// TODO: backward pass for the weak clamp - for the moment is a stub
+
+// ------------------------------------------------------------------------
+// TODO: BACKPROP phase for the weak clamp - for the moment is a stub
+// ------------------------------------------------------------------------
 void out_weak_clamp_back (uint inx)
 {
   #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_weak_clamp_back\n");
   #endif
 }
+// ------------------------------------------------------------------------
+
 
 /******************************************************************************/
 /*  LENS code starts                                                          */
@@ -1283,7 +1251,10 @@ static void biasClampOutputBack(Group G, GroupProc P) {
 /*  LENS code end                                                             */
 /******************************************************************************/
 
-// TODO: backward pass for the bias clamp
+
+// ------------------------------------------------------------------------
+// TODO: BACKPROP phase for the bias clamp
+// ------------------------------------------------------------------------
 void out_bias_back (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1292,11 +1263,15 @@ void out_bias_back (uint inx)
 
   t_output_deriv[inx] = 0;
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // initialization code for the output integrator: allocate the memory to save
 // the state of the integrator and initialize the state to 0
 // FIXME: to be checked - the initialization may be superfluous as the value is
 // set to initoutput in the following initialization steps
+// ------------------------------------------------------------------------
 int init_out_integr ()
 {
   #ifdef TRACE_VRB
@@ -1318,9 +1293,13 @@ int init_out_integr ()
 
   return SPINN_NO_ERROR;
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // initialization of the hard clamp includes SDRAM memory allocation to store
 // information related to the values injected. This function is currently a stub
+// ------------------------------------------------------------------------
 int init_out_hard_clamp ()
 {
   #ifdef TRACE_VRB
@@ -1347,9 +1326,13 @@ int init_out_hard_clamp ()
 
   return SPINN_NO_ERROR;
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // initialization of the hard clamp includes SDRAM memory allocation to store
 // information related to the values injected. This function is currently a stub
+// ------------------------------------------------------------------------
 int init_out_weak_clamp ()
 {
   #ifdef TRACE_VRB
@@ -1374,11 +1357,15 @@ int init_out_weak_clamp ()
 
   return SPINN_NO_ERROR;
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // evaluation of the standard convergence criteria.
 // for each unit in the output group check if the output value is close
 // to the target value, with the "group_criterion" variable defining the
 // acceptance margin
+// ------------------------------------------------------------------------
 void std_stop_crit (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1396,17 +1383,23 @@ void std_stop_crit (uint inx)
     tf_stop_crit = tf_stop_crit && (error < (tcfg.group_criterion >> 1));
   }
 }
+// ------------------------------------------------------------------------
 
+
+/*
+// ------------------------------------------------------------------------
 // The following routine has only been used for debugging purposes
 // and the only scope for it is to run the simulation always for the maximum
 // number of ticks
-/*
+// ------------------------------------------------------------------------
 void max_stop_crit (uint inx)  //## DEBUGGING
 {
   tf_stop_crit = FALSE;
 }
 */
 
+
+// ------------------------------------------------------------------------
 // evaluation of the "max" convergence criteria.
 // for each unit in the output group check if both the output and target values
 // are the maximum in the group and, in this case, if their difference is less
@@ -1414,6 +1407,7 @@ void max_stop_crit (uint inx)  //## DEBUGGING
 // TODO: this routine needs to be modified to adapt to the case in which the
 // output group is split across multiple cores, as this i sa global convergence
 // rule, rather than an individual one, as the standard convergence criterion
+// ------------------------------------------------------------------------
 void max_stop_crit (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1450,9 +1444,13 @@ void max_stop_crit (uint inx)
       tf_stop_crit = FALSE;
   }
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // compute the output derivative as derivative of the squared error function:
 // (output - target) * 2
+// ------------------------------------------------------------------------
 void error_squared (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1464,6 +1462,7 @@ void error_squared (uint inx)
   else
     t_output_deriv[inx] = 0;
 }
+// ------------------------------------------------------------------------
 
 
 /******************************************************************************/
@@ -1495,12 +1494,15 @@ void error_squared (uint inx)
 /*  LENS code end                                                             */
 /******************************************************************************/
 
+
+// ------------------------------------------------------------------------
 // this routine has been extracted and rewritten and tested starting from the
 // LENS code above. SMALL_VAL and LARGE_VAL are constants defined by LENS and
 // represent a sort of saturation values, since the derivative of the cross
 // entropy function has two discontinuities for the output value equal to 0 and
 // to 1. The general version of the derivative of the cross entropy function is:
 // (output - target) / (output * (1 - output))
+// ------------------------------------------------------------------------
 void error_cross_entropy (uint inx)
 {
   #ifdef TRACE_VRB
@@ -1584,3 +1586,4 @@ void error_cross_entropy (uint inx)
   else
     t_output_deriv[inx] = 0;
 }
+// ------------------------------------------------------------------------

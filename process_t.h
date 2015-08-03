@@ -11,7 +11,6 @@ void  t_switch_to_fw    (void);
 void  t_switch_to_bp    (void);
 void  tf_send_stop      (uint null0, uint null1);
 void  t_init_outputs    (uint null0, uint null1);
-void  t_init_deltas     (uint null0, uint null1);
 
 void  store_outputs	  (void);
 void  store_targets	  (void);

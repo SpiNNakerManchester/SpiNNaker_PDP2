@@ -18,7 +18,7 @@
 // global "constants"
 // ------------------------------------------------------------------------
 
-// list of procedures for the forward pass in the output pipeline. The order is
+// list of procedures for the FORWARD phase in the output pipeline. The order is
 // relevant, as the index is defined in mlp_params.h
 out_proc_t const
   t_out_procs[SPINN_NUM_OUT_PROCS] = 
@@ -26,8 +26,8 @@ out_proc_t const
     out_logistic, out_integr, out_hard_clamp, out_weak_clamp, out_bias
   };
 
-// list of procedures for the backward pass in the output pipeline. The order
-// is relevant, as the index needs to be the same as in the forward pass. In
+// list of procedures for the BACKPROP phase in the output pipeline. The order
+// is relevant, as the index needs to be the same as in the FORWARD phase. In
 // case one routine is not intended to be available in lens, then a NULL should
 // replace the call
 out_proc_back_t const
@@ -37,7 +37,7 @@ out_proc_back_t const
   };
   
 // list of procedures for the initialization of the output pipeline. The order
-// is relevant, as the index needs to be the same as in the forward pass. In
+// is relevant, as the index needs to be the same as in the FORWARD phase. In
 // case one routine is not intended to be available because no initialization
 // is required, then a NULL should replace the call
 out_proc_init_t const
@@ -74,8 +74,8 @@ out_error_t const
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 uint coreIndex;            // coreID - 1 (convenient for array indexing)
-uint fwdKey;               // 32-bit packet ID for forward passes
-uint bkpKey;               // 32-bit packet ID for backprop passes
+uint fwdKey;               // 32-bit packet ID for FORWARD phase
+uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 uint stpKey;               // 32-bit packet ID for stop criterion
 
 uint coreType;             // weight, sum or threshold
@@ -122,7 +122,7 @@ t_conf_t      tcfg;           // threshold core configuration parameters
 // ------------------------------------------------------------------------
 activation_t   * t_outputs;         // current tick unit outputs
 net_t          * t_nets;            // nets received from sum cores
-error_t        * t_errors;          // current tick errors
+error_t        * t_errors[2];       // error banks: current and next tick
 activation_t   * t_last_integr_output;  //last integrator output value
 activation_t   * t_out_hard_clamp_data; //values injected by hard clamps
 activation_t   * t_out_weak_clamp_data; //values injected by weak clamps
@@ -130,25 +130,35 @@ uchar            t_hard_clamp_en;   //hard clamp output enabled
 uint             t_it_idx;          // index into current inputs/targets
 uint             t_tot_ticks;       // total ticks on current example
 pkt_queue_t      t_net_pkt_q;       // queue to hold received nets
-pkt_queue_t      t_err_pkt_q;       // queue to hold received errors
 uchar            t_active;          // processing nets/errors from queue?
-scoreboard_t     t_arrived;         // keep track of expected nets/errors
 scoreboard_t     t_sync_arr;        // keep track of expected sync packets
 uchar            t_sync_done;       // have expected sync packets arrived?
 sdp_msg_t        t_sdp_msg;         // SDP message buffer for host comms.
+
+// FORWARD phase specific
+// (output computation)
+scoreboard_t     tf_arrived;        // keep track of expected nets
 uint             tf_thrds_init;     // sync. semaphore: proc & stop
 uint             tf_thrds_done;     // sync. semaphore: proc & stop
 uchar            tf_stop_prev;      // previous group stop criterion met?
 uchar            tf_stop_crit;      // stop criterion met?
-uchar            tf_stop_init;       // sync. semaphore: stop daisy chain
-uchar            tf_stop_done;       // sync. semaphore: stop daisy chain
+uchar            tf_stop_init;      // sync. semaphore: stop daisy chain
+uchar            tf_stop_done;      // sync. semaphore: stop daisy chain
 stop_crit_t      tf_stop_func;      // stop evaluation function
 uint             tf_stop_key;       // stop criterion packet key
-//#uint             tb_thrds_done;     // sync. semaphore: proc & stop
+
+// BACKPROP phase specific
+// (error delta computation)
+uint             tb_procs;          // pointer to processing errors
+uint             tb_comms;          // pointer to receiving errors
+scoreboard_t     tb_arrived;        // keep track of expected errors
+uint             tb_thrds_done;     // sync. semaphore: proc & stop
+
 int              t_max_output_unit; // unit with highest output
 int              t_max_target_unit; // unit with highest target
 activation_t     t_max_output;      // highest output value
 activation_t     t_max_target;      // highest target value
+
 llong_activ_t  * t_output_deriv;    // derivative of the output value
 activation_t   * t_output_history;
 llong_activ_t  * t_output_deriv_history;
@@ -179,11 +189,8 @@ activation_t   * t_target_history;
 
 
 // ------------------------------------------------------------------------
-// code
+// load configuration from SDRAM and initialize variables
 // ------------------------------------------------------------------------
-
-// routine which loads the configuration files from SDRAM, and initializes
-// some of the variables
 uint init ()
 {
   // return code
@@ -237,6 +244,7 @@ uint init ()
   it = (activation_t *) tcfg.inputs_addr;          // example inputs
   tt = (activation_t *) tcfg.targets_addr;         // example targets
 
+  // allocate memory and initialize variables,
   rcode = t_init ();
 
   // if init went well fill routing table -- only 1 core needs to do it
@@ -269,8 +277,12 @@ uint init ()
 
   return (rcode);
 }
+// ------------------------------------------------------------------------
 
-// routine which checks the type of exit values and prints details of the state
+
+// ------------------------------------------------------------------------
+// check exit code and print details of the state
+// ------------------------------------------------------------------------
 void done (uint ec)
 {
   // skew execution to avoid tubotron congestion
@@ -302,17 +314,28 @@ void done (uint ec)
 
       break;
 
+    case SPINN_UNXPD_PKT:
+      io_printf (IO_STD, "unexpected packet received - abort!\n");
+      io_printf (IO_BUF, "unexpected packet received - abort!\n");
+
+      break;
+
     case SPINN_TIMEOUT_EXIT:
       io_printf (IO_STD, "timeout - see I/O buffer for log - abort!\n");
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                  epoch, example, phase, tick
                 );
-      io_printf (IO_BUF, "(tactive:%u  ta:0x%08x/0x%08x)\n",
-                 t_active, t_arrived, tcfg.f_all_arrived
-                );
-      io_printf (IO_BUF, "(tsd:%u tsa:0x%08x/0x%08x)\n",
-                 t_sync_done, t_sync_arr, tcfg.f_s_all_arr
-                );
+
+      #ifdef DEBUG_VRB
+        io_printf (IO_BUF, "(tactive:%u ta:0x%08x/0x%08x tb:0x%08x/0x%08x)\n",
+                    t_active, tf_arrived, tcfg.f_all_arrived,
+                    tb_arrived, tcfg.b_all_arrived
+                  );
+        io_printf (IO_BUF, "(tsd:%u tsa:0x%08x/0x%08x)\n",
+                    t_sync_done, t_sync_arr, tcfg.f_s_all_arr
+                  );
+      #endif
+
       if (tcfg.write_out)  // make sure the output monitor closes!
       {
         send_outputs_to_host (SPINN_HOST_FINAL, tick);
@@ -369,10 +392,13 @@ void done (uint ec)
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
   #endif
 }
+// ------------------------------------------------------------------------
 
-// this function is a timer callback: if the execution takes too long,
-// probably it deadlocked. Therefore the execution is terminated with the
-// SPINN_TIMEOUT_EXIT value returned to the API and SARK
+
+// ------------------------------------------------------------------------
+// timer callback: if the execution takes too long it probably deadlocked.
+// Therefore the execution is terminated with SPINN_TIMEOUT_EXIT exit code.
+// ------------------------------------------------------------------------
 void timeout (uint ticks, uint null)
 {
   if (ticks == mlpc.timeout)
@@ -381,22 +407,26 @@ void timeout (uint ticks, uint null)
     spin1_kill (SPINN_TIMEOUT_EXIT);
   }
 }
+// ------------------------------------------------------------------------
 
-// main function call: initialize callbacks and basic system variables
+
+// ------------------------------------------------------------------------
+// main: register callbacks and initialize basic system variables
+// ------------------------------------------------------------------------
 void c_main ()
 {
-  // say hello
+  // say hello,
   io_printf (IO_STD, ">> mlp\n");
 
-  // get this core's IDs
+  // get this core's IDs,
   chipID = spin1_get_chip_id();
   coreID = spin1_get_core_id();
   coreIndex = coreID - 1; // used to access arrays!
 
-  // initialize application
+  // initialize application,
   uint exit_code = init ();
 
-  // check if init completed successfully
+  // check if init completed successfully,
   if (exit_code != SPINN_NO_ERROR)
   {
 
@@ -407,10 +437,10 @@ void c_main ()
     return;
   }
 
-  // set the core map for the simulation
+  // set the core map for the simulation,
   spin1_set_core_map (mlpc.num_chips, cm);
 
-  // set timer tick value (in microseconds)
+  // set timer tick value (in microseconds),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
 
   #ifdef PROFILE
@@ -420,15 +450,14 @@ void c_main ()
     tc[T2_LOAD] = SPINN_TIMER2_LOAD;
   #endif
 
-  /* register callbacks */
-  /* ------------------ */
+  // register callbacks,
   // timeout escape -- in case something went wrong!
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
   // packet received callback depends on core function
   spin1_callback_on (MC_PACKET_RECEIVED, t_receivePacket, SPINN_PACKET_P);
 
-  // go
+  // go,
   io_printf (IO_STD, "-----------------------\n");
   io_printf (IO_STD, "starting simulation\n");
 
@@ -437,7 +466,7 @@ void c_main ()
     io_printf (IO_STD, "start count: %u\n", start_time);
   #endif
 
-  // start the asynchronous framework and wait until the execution ends
+  // start execution and get exit code,
   exit_code = spin1_start ();
 
   #ifdef PROFILE
@@ -447,14 +476,13 @@ void c_main ()
                   (start_time - final_time) / SPINN_TIMER2_DIV);
   #endif
 
-  // report results
+  // report results,
   done (exit_code);
 
   io_printf (IO_STD, "stopping simulation\n");
   io_printf (IO_STD, "-----------------------\n");
 
-  // say goodbye
+  // and say goodbye
   io_printf (IO_STD, "<< mlp\n");
 }
-/*
-*******/
+// ------------------------------------------------------------------------

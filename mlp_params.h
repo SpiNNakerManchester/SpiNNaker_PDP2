@@ -181,7 +181,8 @@
 // implementation params
 // ------------------------------------------------------------------------
 //TODO: check if size is appropriate
-#define SPINN_PKT_QUEUE_LEN  256
+#define SPINN_THLD_PQ_LEN    256
+#define SPINN_WEIGHT_PQ_LEN  512
 #define SPINN_SUM_PQ_LEN     512
 #define SPINN_INPUT_PQ_LEN   512
 // ------------------------------------------------------------------------
@@ -212,7 +213,8 @@
 #define SPINN_SEND_OUTS_P    1
 #define SPINN_SEND_DELTAS_P  1
 #define SPINN_SEND_STOP_P    1
-#define SPINN_T_TICK_P       1
+#define SPINN_TF_TICK_P      1
+#define SPINN_TB_TICK_P      1
 #define SPINN_TF_PROCESS_P   2
 #define SPINN_TB_PROCESS_P   2
 // ------------------------------------------------------------------------

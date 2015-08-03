@@ -15,8 +15,8 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
-extern uint fwdKey;               // 32-bit packet ID for forward passes
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint coreType;             // weight, sum or threshold
@@ -80,12 +80,12 @@ extern long_net_t      * i_input_history; //sdram pointer where to store input h
   extern uint pkt_sent;  // total packets sent
   extern uint sent_fwd;  // packets sent in FORWARD phase
 #endif
+// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// code
+// allocate memory and initialize variables
 // ------------------------------------------------------------------------
- 
 uint i_init (void)
 {
   uint i;
@@ -107,7 +107,7 @@ uint i_init (void)
   }
 
   // TODO: probably this variable can be removed
-  // allocate memory to store error values during the first backpropagation tick
+  // allocate memory to store error values during the first BACKPROPagation tick
   if ((i_init_err = ((long_error_t *)
          spin1_malloc (icfg.num_nets * sizeof(long_error_t)))) == NULL
      )
@@ -216,3 +216,4 @@ uint i_init (void)
 
   return (SPINN_NO_ERROR);
 }
+// ------------------------------------------------------------------------

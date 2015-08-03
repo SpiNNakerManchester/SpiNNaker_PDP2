@@ -17,8 +17,8 @@
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for forward passes
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -90,13 +90,12 @@ extern scoreboard_t     sb_done;       // current tick error computation done
   extern uint wght_ups;  // number of weight updates done
   extern uint tot_tick;  // total number of ticks executed
 #endif
+// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// code
+// process queued packets until queue empty
 // ------------------------------------------------------------------------
-
-// process a multicast packet received by a sum core
 void s_process (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -119,12 +118,14 @@ void s_process (uint null0, uint null1)
     spin1_mode_restore (cpsr);
 
     // and check packet phase and process accordingly
-    if (((key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT) == SPINN_FORWARD)
+    uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
+    if (ph == SPINN_FORWARD)
     {
       // process FORWARD phase packet
       #ifdef DEBUG
         recv_fwd++;
-        if (phase != SPINN_FORWARD) wrng_phs++;
+        if (phase != SPINN_FORWARD)
+          wrng_phs++;
       #endif
 
       s_forward_packet (key, payload);
@@ -134,7 +135,8 @@ void s_process (uint null0, uint null1)
       // process BACKPROP phase packet
       #ifdef DEBUG
         recv_bkp++;
-        if (phase != SPINN_BACKPROP) wrng_phs++;
+        if (phase != SPINN_BACKPROP)
+          wrng_phs++;
       #endif
 
       s_backprop_packet (key, payload);
@@ -150,8 +152,12 @@ void s_process (uint null0, uint null1)
   // restore interrupts and leave
   spin1_mode_restore (cpsr);
 }
+// ------------------------------------------------------------------------
 
-// process a forward multicast packet received by a sum core
+
+// ------------------------------------------------------------------------
+// process FORWARD phase: accumulate dot products to produce nets
+// ------------------------------------------------------------------------
 void s_forward_packet (uint key, uint payload)
 {
   // get net index: mask out block, phase and colour data,
@@ -178,7 +184,7 @@ void s_forward_packet (uint key, uint payload)
       }
     #endif
 
-      // mark it
+    // mark it
     sf_arrived[clr][inx] |= (1 << blk);
   #else
     sf_arrived[clr][inx]++;
@@ -252,8 +258,12 @@ void s_forward_packet (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// process a multicast backward packet received by a sum core
+
+// ------------------------------------------------------------------------
+// process BACKPROP phase: accumulate dot products to produce errors
+// ------------------------------------------------------------------------
 void s_backprop_packet (uint key, uint payload)
 {
   // get error index: mask out block, phase and colour data,
@@ -340,9 +350,13 @@ void s_backprop_packet (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: once the processing is completed and all the units have been
+
+// ------------------------------------------------------------------------
+// FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
+// ------------------------------------------------------------------------
 void sf_advance_tick (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -371,9 +385,13 @@ void sf_advance_tick (uint null0, uint null1)
     #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// backward pass: once the processing is completed and all the units have been
+
+// ------------------------------------------------------------------------
+// BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
+// ------------------------------------------------------------------------
 void sb_advance_tick (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -413,8 +431,12 @@ void sb_advance_tick (uint null0, uint null1)
     #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the event at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the event at the end of a simulation tick
+// ------------------------------------------------------------------------
 void sf_advance_event (void)
 {
   #ifdef TRACE
@@ -427,25 +449,22 @@ void sf_advance_event (void)
     // and check if in training mode
     if (mlpc.training)
     {   
-      // if training, save number of ticks
+      // if training save number of ticks,
       num_ticks = tick;
 
       #ifdef TRACE
         io_printf (IO_BUF, "w_switch_to_bp\n");
       #endif
   
-      // then do BACKPROP phase
+      // and do BACKPROP phase
       phase = SPINN_BACKPROP;
-
-      // s cores skip first bp tick!
-      //TODO: check if need to schedule or can simply call
-      sb_advance_tick (NULL, NULL);
     }
     else
     {
-      // if not training, initialize ticks for the next example
+      // if not training initialize ticks,
       tick = SPINN_S_INIT_TICK;
-      // then move to next example
+
+      // and move to next example
       s_advance_example ();
     }
   }
@@ -455,8 +474,12 @@ void sf_advance_event (void)
     tick++;
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the example at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the example at the end of a simulation tick
+// ------------------------------------------------------------------------
 void s_advance_example (void)
 {
   #ifdef TRACE
@@ -484,3 +507,4 @@ void s_advance_example (void)
   evt = 0;
   num_events = ex[example].num_events;
 }
+// ------------------------------------------------------------------------

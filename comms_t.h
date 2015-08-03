@@ -4,6 +4,8 @@
 void t_receivePacket  (uint, uint);
 void t_forwardPacket  (uint, uint);
 void t_backpropPacket (uint, uint);
+void t_stopPacket     (uint, uint);
+void t_chainPacket    (uint, uint);
 void t_syncPacket     (uint, uint);
 
 //#void t_sendDeltas    (uint, uint);

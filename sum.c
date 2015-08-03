@@ -19,8 +19,8 @@
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 uint coreIndex;            // coreID - 1 (convenient for array indexing)
-uint fwdKey;               // 32-bit packet ID for forward passes
-uint bkpKey;               // 32-bit packet ID for backprop passes
+uint fwdKey;               // 32-bit packet ID for FORWARD phase
+uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 uint stpKey;               // 32-bit packet ID for stop criterion
 
 uint coreType;             // weight, sum or threshold
@@ -109,11 +109,8 @@ scoreboard_t     sb_done;           // current tick error computation done
 
 
 // ------------------------------------------------------------------------
-// code
+// load configuration from SDRAM and initialize variables
 // ------------------------------------------------------------------------
-
-// routine which loads the configuration files from SDRAM, and initializes
-// some of the variables
 uint init ()
 {
   // return code
@@ -167,6 +164,7 @@ uint init ()
   it = (activation_t *) scfg.inputs_addr;          // example inputs
   tt = NULL;                                       // example targets
   
+  // allocate memory and initialize variables,
   rcode = s_init ();
 
   // if init went well fill routing table -- only 1 core needs to do it
@@ -199,8 +197,12 @@ uint init ()
 
   return (rcode);
 }
+// ------------------------------------------------------------------------
 
-// routine which checks the type of exit values and prints details of the state
+
+// ------------------------------------------------------------------------
+// check exit code and print details of the state
+// ------------------------------------------------------------------------
 void done (uint ec)
 {
   // skew execution to avoid tubotron congestion
@@ -229,6 +231,12 @@ void done (uint ec)
     case SPINN_MEM_UNAVAIL:
       io_printf (IO_STD, "malloc failed\n");
       io_printf (IO_BUF, "malloc failed\n");
+
+      break;
+
+    case SPINN_UNXPD_PKT:
+      io_printf (IO_STD, "unexpected packet received - abort!\n");
+      io_printf (IO_BUF, "unexpected packet received - abort!\n");
 
       break;
 
@@ -300,10 +308,13 @@ void done (uint ec)
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
   #endif
 }
+// ------------------------------------------------------------------------
 
-// this function is a timer callback: if the execution takes too long,
-// probably it deadlocked. Therefore the execution is terminated with the
-// SPINN_TIMEOUT_EXIT value returned to the API and SARK
+
+// ------------------------------------------------------------------------
+// timer callback: if the execution takes too long it probably deadlocked.
+// Therefore the execution is terminated with SPINN_TIMEOUT_EXIT exit code.
+// ------------------------------------------------------------------------
 void timeout (uint ticks, uint null)
 {
   if (ticks == mlpc.timeout)
@@ -312,22 +323,26 @@ void timeout (uint ticks, uint null)
     spin1_kill (SPINN_TIMEOUT_EXIT);
   }
 }
+// ------------------------------------------------------------------------
 
-// main function: initialize callbacks and basic system variables
+
+// ------------------------------------------------------------------------
+// main: register callbacks and initialize basic system variables
+// ------------------------------------------------------------------------
 void c_main ()
 {
-  // say hello
+  // say hello,
   io_printf (IO_STD, ">> mlp\n");
 
-  // get this core's IDs
+  // get this core's IDs,
   chipID = spin1_get_chip_id();
   coreID = spin1_get_core_id();
   coreIndex = coreID - 1; // used to access arrays!
 
-  // initialize application
+  // initialize application,
   uint exit_code = init ();
 
-  // check if init completed successfully
+  // check if init completed successfully,
   if (exit_code != SPINN_NO_ERROR)
   {
 
@@ -338,10 +353,10 @@ void c_main ()
     return;
   }
 
-  // set the core map for the simulation
+  // set the core map for the simulation,
   spin1_set_core_map (mlpc.num_chips, cm);
 
-  // set timer tick value (in microseconds)
+  // set timer tick value (in microseconds),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
 
   #ifdef PROFILE
@@ -351,15 +366,14 @@ void c_main ()
     tc[T2_LOAD] = SPINN_TIMER2_LOAD;
   #endif
 
-  /* register callbacks */
-  /* ------------------ */
+  // register callbacks,
   // timeout escape -- in case something went wrong!
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
   // packet received callback depends on core function
   spin1_callback_on (MC_PACKET_RECEIVED, s_receivePacket, SPINN_PACKET_P);
 
-  // go
+  // go,
   io_printf (IO_STD, "-----------------------\n");
   io_printf (IO_STD, "starting simulation\n");
 
@@ -368,7 +382,7 @@ void c_main ()
     io_printf (IO_STD, "start count: %u\n", start_time);
   #endif
 
-  // start the asynchronous framework and wait until the execution ends
+  // start execution and get exit code,
   exit_code = spin1_start ();
 
   #ifdef PROFILE
@@ -378,14 +392,13 @@ void c_main ()
                   (start_time - final_time) / SPINN_TIMER2_DIV);
   #endif
 
-  // report results
+  // report results,
   done (exit_code);
 
   io_printf (IO_STD, "stopping simulation\n");
   io_printf (IO_STD, "-----------------------\n");
 
-  // say goodbye
+  // and say goodbye
   io_printf (IO_STD, "<< mlp\n");
 }
-/*
-*******/
+// ------------------------------------------------------------------------

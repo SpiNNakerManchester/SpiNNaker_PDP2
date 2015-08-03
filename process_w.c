@@ -17,8 +17,8 @@
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for forward passes
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -60,15 +60,14 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 extern weight_t     * * w_weights;     // connection weights block
 extern wchange_t    * * w_wchanges;    // accumulated weight changes
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern delta_t        * w_deltas[2];   // error deltas for b-d-p
+extern delta_t        * w_deltas;      // error deltas for b-d-p
+extern error_t        * w_errors;      // computed errors next tick
+extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
 extern uint             wf_procs;      // pointer to processing unit outputs
 extern uint             wf_thrds_done; // sync. semaphore: comms, proc & stop
 extern uint             wf_sync_key;   // FORWARD processing can start
-extern uint             wb_procs;      // pointer to processing deltas
-extern uint             wb_comms;      // pointer to receiving deltas
-extern uchar            wb_comms_done; // all expected deltas arrived
-extern uchar            wb_procs_done; // current tick error b-d-ps done
-//#extern uint             wb_thrds_done; // sync. semaphore: comms, proc & stop
+extern uchar            wb_active;     // processing deltas from queue?
+extern scoreboard_t     wb_arrived;    // keeps track of received deltas
 extern uint             wb_sync_key;   // BACKPROP processing can start
 // ------------------------------------------------------------------------
 
@@ -90,21 +89,18 @@ extern uint             wb_sync_key;   // BACKPROP processing can start
   extern uint wght_ups;  // number of weight updates done
   extern uint tot_tick;  // total number of ticks executed
 #endif
+// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// code
+// process FORWARD phase: compute partial dot products (output * weight)
 // ------------------------------------------------------------------------
-// process a forward multicast packet received by a weight core
 void wf_process (uint null0, uint null1)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "wf_process\n");
   #endif
   
-  // change packet key colour,
-  fwdKey ^= SPINN_COLOUR_KEY;
-
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
@@ -122,9 +118,14 @@ void wf_process (uint null0, uint null1)
       //NOTE: may need to use long_nets for the dot-products and saturate!
       net_part += ((net_t) w_outputs[wf_procs][i] * (net_t) w_weights[i][j]);
     }
-    if (epoch == 0 && example == 0 && tick == 1) {
-      //io_printf (IO_BUF, "w_nets[%d] for update %d example %d tick %d unit %d: %r\n", j, epoch, example, tick, j, (net_part >> 12));
-    }
+
+//    if (epoch == 0 && example == 0 && tick == 1)
+//    {
+//      io_printf (IO_BUF,
+//                  "w_nets[%d] for update %d example %d tick %d unit %d: %r\n",
+//                  j, epoch, example, tick, j, (net_part >> 12)
+//                );
+//    }
 
     // incorporate net index to the packet key and send
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));
@@ -142,10 +143,7 @@ void wf_process (uint null0, uint null1)
   if (wf_thrds_done == 0)
   {
     // if done initialize synchronization semaphore,
-    if (tick_stop)
-      wf_thrds_done = 0;  // no processing and no stop in tick 0 
-    else
-      wf_thrds_done = 2;
+    wf_thrds_done = 2;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
@@ -167,8 +165,12 @@ void wf_process (uint null0, uint null1)
     spin1_mode_restore (cpsr);
   }
 }
+// ------------------------------------------------------------------------
 
-// process a backward multicast packet received by a weight core
+
+// ------------------------------------------------------------------------
+// process BACKPROP phase: compute partial products (weight * delta)
+// ------------------------------------------------------------------------
 void wb_process (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -179,75 +181,100 @@ void wb_process (uint null0, uint null1)
     io_printf (IO_STD, "tin:  %u\n", tc[T2_COUNT]);
   #endif
 
-  // change colour,
-  bkpKey ^= SPINN_COLOUR_KEY;
-  
-  // compute all error block dot-products and send them for accumulation,
-  for (uint i = 0; i < wcfg.num_rows; i++)
-  {
-    error_t err_part = 0;
+  // process delta packet queue
+  // access queue with interrupts disabled
+  uint cpsr = spin1_int_disable ();
 
-    for (uint j = 0; j < wcfg.num_cols; j++)
+  // process until queue empty
+  while (w_delta_pkt_q.head != w_delta_pkt_q.tail)
+  {
+    // if not empty dequeue packet,
+    uint inx = w_delta_pkt_q.queue[w_delta_pkt_q.head].key;
+    uint delta = (delta_t) w_delta_pkt_q.queue[w_delta_pkt_q.head].payload;
+    w_delta_pkt_q.head = (w_delta_pkt_q.head + 1) % SPINN_WEIGHT_PQ_LEN;
+
+    // restore interrupts after queue access,
+    spin1_mode_restore (cpsr);
+
+    // get delta index: mask out phase, core and block data,
+    inx &= SPINN_DELTA_MASK;
+
+    // store received error delta,
+    w_deltas[inx] = delta;
+
+    // update scoreboard,
+    #if SPINN_USE_COUNTER_SB == FALSE
+      wb_arrived |= (1 << inx);
+    #else
+      wb_arrived++;
+    #endif
+
+    // partially compute error dot products,
+    for (uint i = 0; i < wcfg.num_rows; i++)
     {
       //TODO: may need to use long_error for the dot_products and saturate!
       /*err_part += ((long_error_t) w_weights[i][j]
                     * (long_error_t) w_deltas[wb_procs][j]
                   ) >> (LONG_ERR_SHIFT - ERROR_SHIFT);*/
-      err_part += (error_t) w_weights[i][j] * (error_t) w_deltas[wb_procs][j];
+      w_errors[inx] += (error_t) w_weights[i][inx] * (error_t) delta;
+    
+      //TODO: need to compute "link derivative" here (see w_weight_deltas)
+
+      // check if done with all deltas
+      if (wb_arrived == wcfg.b_all_arrived)
+      {
+        // send computed error dot product,
+        while (!spin1_send_mc_packet ((bkpKey | i),
+                (uint) w_errors[inx], WITH_PAYLOAD)
+              );
+
+        #ifdef DEBUG
+          pkt_sent++;
+          sent_bkp++;
+        #endif
+
+        // and initialize error for next tick
+        w_errors[inx] = 0;
+      }
     }
-    
-    // incorporate error index to the packet key and send
-    while (!spin1_send_mc_packet ((bkpKey | i), (uint) err_part, WITH_PAYLOAD));
-    
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_bkp++;
-    #endif
+
+    // if done with all deltas advance tick
+    if (wb_arrived == wcfg.b_all_arrived)
+    {
+      // initialize arrival scoreboard for next tick,
+      wb_arrived = 0;
+
+      #ifdef TRACE_VRB
+        io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
+      #endif
+
+      //TODO: check if need to schedule or can simply call
+      wb_advance_tick (NULL, NULL);
+    }
+
+    // access queue with interrupts disabled
+    cpsr = spin1_int_disable ();
   }
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "wb_process: wb_comms_done %d\n", wb_comms_done);
-  #endif
+  // when done, flag that going to sleep,
+  wb_active = FALSE;
 
-  // and check synchronization with comms thread
-  // access synchronization flags with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-  // check if comms done
-  if (wb_comms_done)
-  {
-    // if done initialize synchronization flag for next tick,
-    wb_comms_done = FALSE;
-
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    //TODO: check if need to schedule or can simply call
-    #ifdef TRACE_VRB
-      io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
-    #endif
-
-    wb_advance_tick (NULL, NULL);
-  }
-  else
-  {
-    // if not done report processing thread done,
-    wb_procs_done = TRUE;
-
-    // and restore interrupts after flag access
-    spin1_mode_restore (cpsr);
-  }
+  // restore interrupts and leave
+  spin1_mode_restore (cpsr);
 
   #ifdef PROFILE
     io_printf (IO_STD, "tout: %u\n", tc[T2_COUNT]);
   #endif
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // perform a weight update
 // a weight of 0 means that there is no connection between the two units.
 // the zero value is represented by the lowest possible (positive or negative)
 // weight. A weight value is a 4.12 variable in fixed point
+// ------------------------------------------------------------------------
 void w_update_weights (void)
 {
   #ifdef DEBUG
@@ -332,9 +359,13 @@ void w_update_weights (void)
     }
   #endif
 }
+// ------------------------------------------------------------------------
 
-// compute weight changes and store it in the w_wchanges matrix to be applied
-// afterwards, through the weight update routine
+
+// ------------------------------------------------------------------------
+// compute weight changes and store them in the w_wchanges matrix
+// to be applied afterwards, through the weight update routine
+// ------------------------------------------------------------------------
 void w_weight_deltas (void)
 {
   #ifdef TRACE
@@ -344,14 +375,14 @@ void w_weight_deltas (void)
   // compute weight changes
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
-    wchange_t temp = wcfg.learningRate * w_deltas[wb_procs][j];
+    wchange_t temp = wcfg.learningRate * w_deltas[j];
     
     #ifdef DEBUG_VRB
       io_printf (IO_BUF, "t = %10.7f (0x%08x)\n",
-                     SPINN_LCONV_TO_PRINT(temp,
-                                           (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT)
-                                         ),
-                     temp
+                  SPINN_LCONV_TO_PRINT(temp,
+                                        (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT)
+                                      ),
+                  temp
                 );
     #endif
 
@@ -384,9 +415,13 @@ void w_weight_deltas (void)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: once the processing is completed and all the units have been
+
+// ------------------------------------------------------------------------
+// FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
+// ------------------------------------------------------------------------
 void wf_advance_tick (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -410,6 +445,9 @@ void wf_advance_tick (uint null0, uint null1)
       tot_tick++;
     #endif
 
+    // change packet key colour,
+    fwdKey ^= SPINN_COLOUR_KEY;
+
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
 
@@ -418,17 +456,18 @@ void wf_advance_tick (uint null0, uint null1)
     #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// backward pass: once the processing is completed and all the units have been
+
+// ------------------------------------------------------------------------
+// BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
+// ------------------------------------------------------------------------
 void wb_advance_tick (uint null0, uint null1)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "wb_advance_tick\n");
   #endif
-
-  // update pointer to processing deltas,
-  wb_procs = 1 - wb_procs;
 
   #ifdef DEBUG
      tot_tick++;
@@ -438,21 +477,21 @@ void wb_advance_tick (uint null0, uint null1)
     io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
   #endif
   
+  // change packet key colour,
+  bkpKey ^= SPINN_COLOUR_KEY;
+  
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)
   {
-    // no processing in initial tick -- just wait for initial error deltas,
-    wb_procs_done = FALSE;
-
     // compute weight deltas after last tick,
     //TODO: should be called or scheduled?
     //w_weight_deltas ();
 
-    // go to FORWARD phase,
-    w_switch_to_fw ();
-
     // initialize tick for next example
     tick = SPINN_W_INIT_TICK;
+
+    // go to FORWARD phase,
+    w_switch_to_fw ();
 
     // and move to next example
     //TODO: should be called or scheduled?
@@ -471,8 +510,12 @@ void wb_advance_tick (uint null0, uint null1)
     #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the event at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the event at the end of a simulation tick
+// ------------------------------------------------------------------------
 void wf_advance_event (void)
 {
   #ifdef TRACE
@@ -500,6 +543,7 @@ void wf_advance_event (void)
     {
       // if training, save number of ticks
       num_ticks = tick;
+
       // then do BACKPROP phase
       w_switch_to_bp ();
     }
@@ -521,12 +565,19 @@ void wf_advance_event (void)
       tot_tick++;
     #endif
 
+    // change packet key colour,
+    fwdKey ^= SPINN_COLOUR_KEY;
+
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the example at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// update the example at the end of a simulation tick
+// ------------------------------------------------------------------------
 void w_advance_example (void)
 {
   #ifdef TRACE
@@ -588,22 +639,27 @@ void w_advance_example (void)
     spk_sent++;
   #endif
 }
+// ------------------------------------------------------------------------
 
 
-// backpropagation: when the simulation is completed in the backward pass,
-// switch to the forward pass again, if required 
+// ------------------------------------------------------------------------
+// switch from BACKPROP to FORWARD phase
+// ------------------------------------------------------------------------
 void w_switch_to_fw (void)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "w_switch_to_fw\n");
   #endif
   
-  // move to new FORWARD phase,
+  // move to new FORWARD phase
   phase = SPINN_FORWARD;
 }
+// ------------------------------------------------------------------------
 
-// forward pass: when the simulation is completed in the forward pass,
-// switch to the bacward pass if training is required 
+
+// ------------------------------------------------------------------------
+// switch from FORWARD to BACKPROP phase
+// ------------------------------------------------------------------------
 void w_switch_to_bp (void)
 {
   #ifdef TRACE
@@ -613,7 +669,7 @@ void w_switch_to_bp (void)
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 
-  // and trigger computation
+  // and trigger BACKPROP computation
   spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);
 
   // and send sync packet to allow unit outputs to be sent
@@ -623,3 +679,4 @@ void w_switch_to_bp (void)
 //#    spk_sent++;
 //#  #endif
 }
+// ------------------------------------------------------------------------

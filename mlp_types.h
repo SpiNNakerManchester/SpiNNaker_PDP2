@@ -276,7 +276,7 @@ typedef struct t_conf    // threshold core configuration
   uchar        is_first_output_group; // is this the firso of the output groups
   uchar        is_last_output_group;  // is this the last of the output groups
   uchar        error_function;        // is the error function id to be used for
-                                      // backprop
+                                      // BACKPROP
   uint         group_id;              // ID of the group
   uint         subgroup_id;           // ID of the subgroup
   uint         total_subgroups;       // total number of subgroups
@@ -342,7 +342,7 @@ typedef struct mlp_event {
 typedef void (*out_proc_t) (uint);   // output comp procedures
 
 
-typedef void (*out_proc_back_t) (uint);   // backward output comp procedures
+typedef void (*out_proc_back_t) (uint);   // BACKPROP output comp procedures
 
 
 typedef int  (*out_proc_init_t) (void);    // input initialization procedures
@@ -351,7 +351,7 @@ typedef int  (*out_proc_init_t) (void);    // input initialization procedures
 typedef void (*in_proc_t) (uint);    // input (net) comp procedures
 
 
-typedef void (*in_proc_back_t) (uint);    // backward input (net) comp procedures
+typedef void (*in_proc_back_t) (uint);    // BACKPROP input (net) comp procedures
 
 
 typedef int  (*in_proc_init_t) (void);    // input initialization procedures

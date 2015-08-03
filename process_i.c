@@ -17,8 +17,8 @@
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for forward passes
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -97,13 +97,12 @@ extern long_net_t     * i_net_history; //sdram pointer where to store input hist
   extern uint wght_ups;  // number of weight updates done
   extern uint tot_tick;  // total number of ticks executed
 #endif
+// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// code
+// process queued packets until queue empty
 // ------------------------------------------------------------------------
-
-// process received multicast packets
 void i_process (uint null0, uint null1)
 {  
   #ifdef TRACE
@@ -126,16 +125,14 @@ void i_process (uint null0, uint null1)
     spin1_mode_restore (cpsr);
 
     // and check packet phase and process accordingly
-    if (((key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT) == SPINN_FORWARD)
+    uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
+    if (ph == SPINN_FORWARD)
     {
       // process FORWARD phase packet
       #ifdef DEBUG
         recv_fwd++;
         if (phase != SPINN_FORWARD)
-        {
-          io_printf (IO_BUF, "i_process wrong phase - phase: BACKPROP, packet: FORWARD\n");
           wrng_phs++;
-        }
       #endif
 
       i_forward_packet (key, payload);
@@ -146,10 +143,7 @@ void i_process (uint null0, uint null1)
       #ifdef DEBUG
         recv_bkp++;
         if (phase != SPINN_BACKPROP)
-        {
-          io_printf (IO_BUF, "i_process wrong phase - phase: FORWARD, packet: BACKPROP\n");
           wrng_phs++;
-        }
       #endif
 
       i_backprop_packet (key, payload);
@@ -165,8 +159,12 @@ void i_process (uint null0, uint null1)
   // restore interrupts and leave
   spin1_mode_restore (cpsr);
 }
+// ------------------------------------------------------------------------
 
-// process a forward multicast packet received by an input core
+
+// ------------------------------------------------------------------------
+// process FORWARD phase: apply input pipeline elements
+// ------------------------------------------------------------------------
 void i_forward_packet (uint key, uint payload)
 {
   // get net index: mask out block, phase and colour data,
@@ -268,8 +266,12 @@ void i_forward_packet (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// process a received backpropagation packet
+
+// ------------------------------------------------------------------------
+// process BACKPROP phase: apply BACKPROP input pipeline elements
+// ------------------------------------------------------------------------
 void i_backprop_packet (uint key, uint payload)
 {
   // get error index: mask out block, phase and colour data,
@@ -358,9 +360,13 @@ void i_backprop_packet (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: the tick has been completed, move forward to the next tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: the tick has been completed, move FORWARD to the next tick
 // updating the indexes to the events/examples as required
+// ------------------------------------------------------------------------
 void if_advance_tick (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -389,9 +395,13 @@ void if_advance_tick (uint null0, uint null1)
     #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// backward pass: the tick has been completed, move forward to the next tick
+
+// ------------------------------------------------------------------------
+// BACKPROP phase: the tick has been completed, move FORWARD to the next tick
 // updating the indexes to the events/examples as required
+// ------------------------------------------------------------------------
 void ib_advance_tick (uint null0, uint null1)
 {
   #ifdef TRACE
@@ -435,8 +445,12 @@ void ib_advance_tick (uint null0, uint null1)
     #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the event at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the event at the end of a simulation tick
+// ------------------------------------------------------------------------
 void if_advance_event (void)
 {
   #ifdef TRACE
@@ -471,7 +485,7 @@ void if_advance_event (void)
   {
     // if input or output group update input/target index
     // TODO: to check if the target value is required in I cores
-    // for the backward pass, otherwise remove the condition for the
+    // for the BACKPROP phase, otherwise remove the condition for the
     // output group
     if (icfg.input_grp || icfg.output_grp)
     {
@@ -482,8 +496,12 @@ void if_advance_event (void)
     tick++;
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the example at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the example at the end of a simulation tick
+// ------------------------------------------------------------------------
 void i_advance_example (void)
 {
   #ifdef TRACE
@@ -514,7 +532,7 @@ void i_advance_example (void)
   
   // if input or output group initialize new event input/target index
   //TODO: check if the target value is required in I cores
-  // for the backward pass, otherwise remove the condition for the
+  // for the BACKPROP phase, otherwise remove the condition for the
   // output group
   if (icfg.input_grp || icfg.output_grp)
   {
@@ -526,9 +544,14 @@ void i_advance_example (void)
     for (uint i = 0; i < icfg.num_nets; i++)
       i_last_integr_output[i] = (long_net_t) icfg.initNets;
 }
+// ------------------------------------------------------------------------
 
-// routine which calls all the elements of the input pipeline, as they have been
+
+// ------------------------------------------------------------------------
+// FORWARD phase:
+// call the elements in the input pipeline, as they have been
 // specified through splens
+// ------------------------------------------------------------------------
 void compute_in (uint inx)
 {
   #ifdef TRACE_VRB
@@ -550,14 +573,17 @@ void compute_in (uint inx)
   store_nets(inx); //see note for the routine itself
 #endif
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // the following routine needs to be called in case lens is set to store the
 // history of input values. This boolean needs to be retrieved from splens
 // stored in the configuration data for each of the groups (in the icfg
 // structure) and used here to perform the operation if required
 // every time this routine is called, is needs to store only the information
 // related to the unit inx
-
+// ------------------------------------------------------------------------
 void store_nets (uint inx)
 {
   #ifdef TRACE_VRB
@@ -573,8 +599,12 @@ void store_nets (uint inx)
   spin1_memcpy(dst_ptr, src_ptr, icfg.num_nets * sizeof(long_net_t));
 */
 }
+// ------------------------------------------------------------------------
 
-//input integrator element
+
+// ------------------------------------------------------------------------
+// input integrator element
+// ------------------------------------------------------------------------
 void in_integr (uint inx)
 {  
   #ifdef TRACE_VRB
@@ -605,6 +635,7 @@ void in_integr (uint inx)
   // store the outcome of the computation for the next tick
   i_last_integr_output[inx] = i_nets[inx];
 }
+// ------------------------------------------------------------------------
 
 
 /******************************************************************************/
@@ -625,7 +656,10 @@ void in_integr (uint inx)
 /*  LENS code end                                                             */
 /******************************************************************************/
 
+
+// ------------------------------------------------------------------------
 //soft clamp element
+// ------------------------------------------------------------------------
 void in_soft_clamp (uint inx)
 {
   #ifdef TRACE_VRB
@@ -651,6 +685,7 @@ void in_soft_clamp (uint inx)
     i_nets[inx] += inv_sigmoid((activation_t) output);
   }
 }
+// ------------------------------------------------------------------------
 
 
 /******************************************************************************/
@@ -674,8 +709,11 @@ void in_soft_clamp (uint inx)
 /*  LENS code end                                                             */
 /******************************************************************************/
 
-// routine which computes the backpropagation pass of the computation of the
+
+// ------------------------------------------------------------------------
+// routine which computes the BACKPROP phase of the computation of the
 // input elements pipeline
+// ------------------------------------------------------------------------
 void compute_in_back (uint inx)
 {
   #ifdef TRACE_VRB
@@ -700,15 +738,22 @@ void compute_in_back (uint inx)
         i_in_back_procs[icfg.procs_list[i]] (inx);
     }
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // TODO: fill this with the data path as descrbed in lens
+// ------------------------------------------------------------------------
 void in_integr_back (uint inx)
 {
   #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_integr_back\n");
   #endif
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 /* There is no softClampInputBack in Lens*/
 /*
 void in_soft_clamp_back (uint inx)
@@ -718,8 +763,12 @@ void in_soft_clamp_back (uint inx)
   #endif
 }
 */
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // initialization of the input intergrator state
+// ------------------------------------------------------------------------
 int init_in_integr ()
 {
   #ifdef TRACE_VRB
@@ -742,3 +791,4 @@ int init_in_integr ()
 
   return SPINN_NO_ERROR;
 }
+// ------------------------------------------------------------------------
