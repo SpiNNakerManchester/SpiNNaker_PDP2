@@ -216,8 +216,8 @@ void wb_process (uint null0, uint null1)
       /*err_part += ((long_error_t) w_weights[i][j]
                     * (long_error_t) w_deltas[wb_procs][j]
                   ) >> (LONG_ERR_SHIFT - ERROR_SHIFT);*/
-      w_errors[inx] += (error_t) w_weights[i][inx] * (error_t) delta;
-    
+      w_errors[i] += ((error_t) w_weights[i][inx] * (error_t) delta) >> SPINN_WEIGHT_SHIFT;
+
       //TODO: need to compute "link derivative" here (see w_weight_deltas)
 
       // check if done with all deltas
