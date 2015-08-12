@@ -95,6 +95,7 @@ extern out_error_t const t_out_error[SPINN_NUM_ERROR_PROCS];
 extern activation_t   * t_output_history;
 extern llong_deriv_t  * t_output_deriv;
 extern llong_deriv_t  * t_output_deriv_history;
+extern delta_t	      * t_deltas;
 extern activation_t   * t_target_history;
 extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
 // ------------------------------------------------------------------------
@@ -1123,13 +1124,10 @@ void out_logistic_back (uint inx)
 
   // compute error delta,
   // keep the correct implicit decimal point position
-  t_output_deriv[inx] = (t_output_deriv[inx] * sigmoid_prime (t_nets[inx]))
+  t_deltas[inx] = (t_output_deriv[inx] * sigmoid_prime (t_nets[inx]))
                     >> (SPINN_ERROR_SHIFT + SPINN_DERIV_SHIFT
                          - SPINN_DELTA_SHIFT
                        );
-  if (epoch == 1 && example == 0) {
-    //io_printf(IO_BUF, "(Input?) Derivative for update %d example %d tick %d unit %d after out_logistic_back: %r\n", epoch, example, tick, inx, t_output_deriv[inx]);
-  }
 }
 // ------------------------------------------------------------------------
 

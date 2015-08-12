@@ -94,6 +94,7 @@ extern llong_activ_t  * t_output_deriv;
 // history arrays
 extern activation_t   * t_output_history;
 extern llong_activ_t  * t_output_deriv_history;
+extern delta_t        * t_deltas;
 extern activation_t   * t_target_history;
 // ------------------------------------------------------------------------
 
@@ -138,6 +139,14 @@ uint t_init (void)
   {
     return (SPINN_MEM_UNAVAIL);
   }
+
+  // allocate memory for deltas
+  if ((t_deltas = ((delta_t *)
+	 spin1_malloc (tcfg.num_outputs * sizeof(delta_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
   
   // allocate memory for errors
   if ((t_errors[0] = ((error_t *)
@@ -152,6 +161,12 @@ uint t_init (void)
      )
   {
     return (SPINN_MEM_UNAVAIL);
+  }
+
+  // initialize deltas
+  for (i = 0; i < tcfg.num_outputs; i++)
+  {
+    t_deltas[i] = 0;
   }
 
   // check if the hard clamp is in use in the sequence of pipeline elements
