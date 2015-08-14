@@ -58,6 +58,7 @@ extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
 extern activation_t   * t_last_integr_output;   //last integrator output value
+extern llong_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
 extern uchar            t_hard_clamp_en; //hard clamp output enabled
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example
@@ -90,10 +91,10 @@ extern stop_crit_t const t_stop_procs[SPINN_NUM_STOP_PROCS];
 // list of initialization procedures for output pipeline
 extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
 // derivative of the output
-extern llong_activ_t  * t_output_deriv;
+extern llong_deriv_t  * t_output_deriv;
 // history arrays
 extern activation_t   * t_output_history;
-extern llong_activ_t  * t_output_deriv_history;
+extern llong_deriv_t  * t_output_deriv_history;
 extern delta_t        * t_deltas;
 extern activation_t   * t_target_history;
 // ------------------------------------------------------------------------
@@ -133,8 +134,8 @@ uint t_init (void)
   }
 
   // allocate memory for output derivative (which is equal to error derivative)
-  if ((t_output_deriv = ((llong_activ_t *)
-         spin1_malloc (tcfg.num_outputs * sizeof(llong_activ_t)))) == NULL
+  if ((t_output_deriv = ((llong_deriv_t *)
+         spin1_malloc (tcfg.num_outputs * sizeof(llong_deriv_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -380,9 +381,9 @@ uint t_init (void)
   }
 
   // allocate memory in SDRAM for output derivative history
-  if ((t_output_deriv_history = ((llong_activ_t *)
+  if ((t_output_deriv_history = ((llong_deriv_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(llong_activ_t),
+                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(llong_deriv_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )

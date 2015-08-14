@@ -15,6 +15,7 @@ void  t_init_outputs    (uint null0, uint null1);
 void  store_outputs	  (void);
 void  store_targets	  (void);
 void  store_output_deriv  (void);
+void  restore_output_deriv (uint inx);
 
 void  compute_out         (uint inx);
 void  out_logistic        (uint inx);
