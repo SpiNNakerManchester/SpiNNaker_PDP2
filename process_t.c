@@ -269,10 +269,6 @@ void tb_process (uint null0, uint null1)
   //TODO: this needs checking!
   for (uint inx = 0; inx < tcfg.num_outputs; inx++)
   {
-    if (epoch == 0 && example == 0 && tick > 18) {
-      io_printf (IO_BUF, "Update %d, Example %d, Tick %d, Unit %d\n", epoch, example, tick, inx);
-      io_printf (IO_BUF, "t_output_deriv[%d] before calling compute_out_back: %r\n", inx, t_output_deriv[inx]);
-    }
     delta_t delta;
 
     // update output derivatives for non-output groups
@@ -296,10 +292,6 @@ void tb_process (uint null0, uint null1)
       delta = (long_deriv_t) SPINN_LONG_DERIV_MIN_NEG;
     else
       delta = (long_deriv_t) t_output_deriv;
-
-    if (epoch == 0 && example == 0 && tick > 18) {
-      io_printf (IO_BUF, "t_output_deriv[%d] after returning from compute_out_back: %r\n", inx, t_output_deriv[inx]);
-    }
 
     // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
@@ -1111,12 +1103,6 @@ void compute_out_back (uint inx)
     io_printf (IO_BUF, "compute_out_back\n");
   #endif
 
-
-  if (epoch == 0 && example == 0 && tick > 18) {
-    io_printf (IO_BUF, "t_output_deriv[%d] before compute_out_back: %r\n", inx, t_output_deriv[inx]);
-  }
-
-
   #ifdef DEBUG_VRB
     char* group;
     group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
@@ -1128,21 +1114,14 @@ void compute_out_back (uint inx)
   // if the output pipeline includes one or more elements, compute them in the
   // reverse order
   if (tcfg.num_out_procs >= 1)
+  {
     for (i = tcfg.num_out_procs-1; i >= 0; i--)
     {
-      if (t_out_back_procs[tcfg.procs_list[i]] != NULL);
-        if (epoch == 0 && example == 0 && tick > 18) {
-          io_printf (IO_BUF, "t_output_deriv[%d] before proc %d: %r\n", inx, i, t_output_deriv[inx]);
-        }
+      if (t_out_back_procs[tcfg.procs_list[i]] != NULL)
+      {
         t_out_back_procs[tcfg.procs_list[i]] (inx);
-        
-        if (epoch == 0 && example == 0 && tick > 18) {
-          io_printf (IO_BUF, "t_output_deriv[%d] after proc %d: %r\n", inx, i, t_output_deriv[inx]);
-        }
+      }
     }
-
-  if (epoch == 0 && example == 0 && tick > 18) {
-    io_printf (IO_BUF, "t_output_deriv[%d] after compute_out_back: %r\n", inx, t_output_deriv[inx]);
   }
 }
 // ------------------------------------------------------------------------
@@ -1157,52 +1136,18 @@ void out_logistic_back (uint inx)
     io_printf (IO_BUF, "out_logistic_back\n");
   #endif
 
-  if (epoch == 0 && example == 0 && tick > 18) {
-    //io_printf (IO_BUF, "Update %d, Example %d, Tick %d, Unit %d input deriv before out_logistic_back: %r\n", epoch, example, tick, inx, t_deltas[inx]);
-    //io_printf (IO_BUF, "t_nets[%d]: %r\n", inx, (t_nets[inx]  >> 12));
-    //io_printf (IO_BUF, "Inverse sigmoid of t_nets[%d]: %r\n", inx, (sigmoid_prime (t_nets[inx]) >> 12));
-    io_printf (IO_BUF, "t_output_deriv[%d] before out_logistic_back: %r\n", inx, t_output_deriv[inx]);
-  }
-
   // compute error delta,
   // keep the correct implicit decimal point position
   t_deltas[inx] = (t_output_deriv[inx] * sigmoid_prime (t_nets[inx]))
                     >> (SPINN_ERROR_SHIFT + SPINN_DERIV_SHIFT
                          - SPINN_DELTA_SHIFT
                        );
-
-  if (epoch == 0 && example == 0 && tick > 18) {
-    //io_printf (IO_BUF, "Update %d, Example %d, Tick %d, Unit %d input deriv after out_logistic_back: %r\n", epoch, example, tick, inx, t_deltas[inx]);
-    io_printf (IO_BUF, "t_output_deriv[%d] after out_logistic_back: %r\n", inx, t_output_deriv[inx]);
-  }
 }
 // ------------------------------------------------------------------------
 
 
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
-static void integrateOutputBack(Group G, GroupProc P) {
-  printf ("integrateOutputBack\n");
-  real dt = Net->dt * G->dtScale;
-  real *lastOutputDeriv = P->unitData;
-  real *instantOutput = P->unitHistoryData[HISTORY_INDEX(Net->currentTick)];
-  FOR_EACH_UNIT2(G, {
-    real d = dt * U->dtScale * lastOutputDeriv[u];
-    U->output = instantOutput[u];
-    lastOutputDeriv[u] += U->outputDeriv - d;
-    U->outputDeriv = d;
-  });
-}
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
-
-
 // ------------------------------------------------------------------------
-// TODO: BACKPROP phase for the output integrator - this is a stub
+// compute the output integration operation for the backprop
 // ------------------------------------------------------------------------
 void out_integr_back (uint inx)
 {
@@ -1210,34 +1155,18 @@ void out_integr_back (uint inx)
     io_printf (IO_BUF, "out_integr_back\n");
   #endif
 
-  if (epoch == 0 && example == 0 && tick > 18) {
-    io_printf (IO_BUF, "t_output_deriv[%d] before out_integr_back: %r\n", inx, t_output_deriv[inx]);
-  }
-
   // representation 49.15, with the topmost 48 bits set to 0
-  llong_activ_t last_output_deriv = t_last_integr_output_deriv[inx];
+  llong_deriv_t last_output_deriv = t_last_integr_output_deriv[inx];
   // representation 48.16, with the topmost 32 bits set to 0
   lfpreal dt = tcfg.out_integr_dt;
 
-
-  /*if (epoch == 0 && example == 0 && tick > 18) {
-    io_printf (IO_BUF, "last_output_deriv: %r\n", last_output_deriv);
-  }*/
-
-  // 48.16 * 49.15 >> 16
-  llong_activ_t d = (dt * last_output_deriv) >> 16;
+  // 48.16 * 49.15 >> 16 = 49.15
+  llong_deriv_t d = (dt * last_output_deriv) >> 16;
   last_output_deriv += t_output_deriv[inx] - d;
   t_output_deriv[inx] = d;
-
-  /*if (epoch == 0 && example == 0 && tick > 18) {
-    io_printf (IO_BUF, "d: %r\n", d);
-    io_printf (IO_BUF, "last_output_deriv: %r\n", last_output_deriv);
-  }*/
-
-
-  if (epoch == 0 && example == 0 && tick > 18) {
-    io_printf (IO_BUF, "t_output_deriv[%d] after out_integr_back: %r\n", inx, t_output_deriv[inx]);
-  }
+  
+  // store the integrator state for the next iteration
+  t_last_integr_output_deriv[inx] = last_output_deriv;
 }
 // ------------------------------------------------------------------------
 
@@ -1336,10 +1265,6 @@ void out_bias_back (uint inx)
   #endif
 
   t_output_deriv[inx] = 0;
-
-  if (epoch == 0 && example == 0 && tick > 18) { 
-    io_printf (IO_BUF, "t_output_deriv[%d] after out_bias_back: %r\n", inx, t_output_deriv[inx]);
-  }
 }
 // ------------------------------------------------------------------------
 
@@ -1547,10 +1472,6 @@ void error_squared (uint inx)
     t_output_deriv[inx] = ((llong_deriv_t) t_outputs[inx] - (llong_deriv_t) tt[t_it_idx + inx]) << 1;
   else
     t_output_deriv[inx] = 0;
-
-  if (epoch == 0 && example == 0 && tick > 18) { 
-    io_printf (IO_BUF, "t_output_deriv[%d] after error_squared: %r\n", inx, t_output_deriv[inx]);
-  }
 }
 // ------------------------------------------------------------------------
 
@@ -1598,10 +1519,6 @@ void error_cross_entropy (uint inx)
   #ifdef TRACE_VRB
     io_printf (IO_BUF, "error_cross_entropy\n");
   #endif
-
-  if (epoch == 0 && example == 0 && tick > 18) {
-    io_printf (IO_BUF, "t_output_deriv[%d] before error_cross_entropy: %r\n", inx, t_output_deriv[inx]);
-  }
 
   // if the target is defined, compute the output derivative, otherwise set it to 0
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
@@ -1679,9 +1596,5 @@ void error_cross_entropy (uint inx)
   // if the target is not defined, set the output derivative to 0
   else
     t_output_deriv[inx] = 0;
-
-  if (epoch == 0 && example == 0 && tick > 18) {
-    io_printf (IO_BUF, "t_output_deriv[%d] after error_cross_entropy: %r\n", inx, t_output_deriv[inx]);
-  }
 }
 // ------------------------------------------------------------------------
