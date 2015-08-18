@@ -860,7 +860,7 @@ void compute_out (uint inx)
 
 
 // ------------------------------------------------------------------------
-//TODO: need a function description.
+// stores the outputs for the current tick
 // ------------------------------------------------------------------------
 void store_outputs (void)
 {
@@ -877,7 +877,7 @@ void store_outputs (void)
 
 
 // ------------------------------------------------------------------------
-//TODO: need a function description.
+// stores the targets for the current tick
 // ------------------------------------------------------------------------
 void store_targets (void)
 {
@@ -894,7 +894,7 @@ void store_targets (void)
 
 
 // ------------------------------------------------------------------------
-//TODO: need a function description.
+// stores the output derivatives for the current tick
 // ------------------------------------------------------------------------
 void store_output_deriv (void)
 {
@@ -909,11 +909,19 @@ void store_output_deriv (void)
 }
 // ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
+// restores the output derivative for the specified unit and the 
+// current value of the global variable tick.
+// ------------------------------------------------------------------------
 void restore_output_deriv (uint inx)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "restore_output_deriv\n");
+  #endif
   t_output_deriv[inx] = t_output_deriv_history[(((tick-1) * tcfg.num_outputs) + inx)];
 }
-
+// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // compute the logistic function starting from the value received through the 
