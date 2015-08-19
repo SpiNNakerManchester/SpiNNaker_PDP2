@@ -164,6 +164,12 @@ uint t_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
+  // initialize output derivatives
+  for (i = 0; i < tcfg.num_outputs; i++)
+  {
+    t_output_deriv[i] = 0;
+  }
+
   // initialize deltas
   for (i = 0; i < tcfg.num_outputs; i++)
   {
