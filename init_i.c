@@ -52,20 +52,21 @@ extern i_conf_t       icfg;       // input core configuration parameters
 // input core variables
 // ------------------------------------------------------------------------
 extern long_net_t     * i_nets;        // unit nets computed in current tick
-extern long_error_t   * i_errors;      // errors computed in current tick
-extern long_error_t   * i_init_err;    // errors computed in first tick
+extern long_delta_t   * i_deltas;      // deltas computed in current tick
+extern long_delta_t   * i_init_delta;  // deltas computed in first tick
 extern pkt_queue_t      i_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            i_active;      // processing b-d-ps from queue?
 extern uint             i_it_idx;      // index into current inputs/targets
 extern scoreboard_t   * if_arrived;    // keep track of expected net b-d-p
 extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_done; // sync. semaphore: proc & stop
-extern long_error_t   * ib_init_error; // initial error value for every tick
+extern long_delta_t   * ib_init_delta; // initial delta value for every tick
 extern scoreboard_t     ib_all_arrived;// all deltas have arrived in tick
-extern scoreboard_t   * ib_arrived;    // keep track of expected error b-d-p
-extern scoreboard_t     ib_done;       // current tick error computation done
+extern scoreboard_t   * ib_arrived;    // keep track of expected delta b-d-p
+extern scoreboard_t     ib_done;       // current tick delta computation done
 //#extern uint             ib_thrds_done; // sync. semaphore: proc & stop
 extern long_net_t     * i_last_integr_output;   //last integrator output value
+extern long_delta_t   * i_last_integr_delta; //last integrator delta value
 //list of input pipeline procedures
 extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
 //list of initialization procedures for input pipeline
@@ -98,18 +99,18 @@ uint i_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for errors
-  if ((i_errors = ((long_error_t *)
-         spin1_malloc (icfg.num_nets * sizeof(long_error_t)))) == NULL
+  // allocate memory for deltas
+  if ((i_deltas = ((long_delta_t *)
+         spin1_malloc (icfg.num_nets * sizeof(long_delta_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   // TODO: probably this variable can be removed
-  // allocate memory to store error values during the first BACKPROPagation tick
-  if ((i_init_err = ((long_error_t *)
-         spin1_malloc (icfg.num_nets * sizeof(long_error_t)))) == NULL
+  // allocate memory to store delta values during the first BACKPROPagation tick
+  if ((i_init_delta = ((long_delta_t *)
+         spin1_malloc (icfg.num_nets * sizeof(long_delta_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -131,7 +132,7 @@ uint i_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for received error b-d-ps scoreboards
+  // allocate memory for received delta b-d-ps scoreboards
   if ((ib_arrived = ((scoreboard_t *)
           spin1_malloc (icfg.num_nets * sizeof(scoreboard_t)))) == NULL
      )
@@ -143,11 +144,11 @@ uint i_init (void)
   //NOTE: input cores do not have a tick 0
   tick = SPINN_I_INIT_TICK;
 
-  // initialize nets, errors and scoreboards
+  // initialize nets, deltas and scoreboards
   for (i = 0; i < icfg.num_nets; i++)
   {
     i_nets[i] = 0;
-    i_errors[i] = 0;
+    i_deltas[i] = 0;
     if_arrived[i] = 0;
     ib_arrived[i] = 0;
   }
@@ -174,7 +175,7 @@ uint i_init (void)
   //NOTE: colour is initialized to 0.
   fwdKey = SPINN_SB_KEY(icfg.net_blk)   | SPINN_CORETYPE_KEY
              | SPINN_PHASE_KEY(SPINN_FORWARD);
-  bkpKey = SPINN_SB_KEY(icfg.error_blk) | SPINN_CORETYPE_KEY
+  bkpKey = SPINN_SB_KEY(icfg.delta_blk) | SPINN_CORETYPE_KEY
              | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
   // if input or output group initialize event input/target index

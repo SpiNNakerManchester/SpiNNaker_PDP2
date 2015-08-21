@@ -99,12 +99,13 @@ i_conf_t      icfg;           // input core configuration parameters
 // input cores process the input values through a sequence of functions.
 // ------------------------------------------------------------------------
 long_net_t     * i_nets;            // unit nets computed in current tick
-long_error_t   * i_errors;          // errors computed in current tick
-long_error_t   * i_init_err;        // errors computed in initial tick
+long_delta_t   * i_deltas;          // deltas computed in current tick
+long_delta_t   * i_init_delta;      // deltas computed in initial tick
 pkt_queue_t      i_pkt_queue;       // queue to hold received b-d-ps
 uchar            i_active;          // processing b-d-ps from queue?
 
 long_net_t     * i_last_integr_output;  //last integrator output value
+long_delta_t   * i_last_integr_delta; //last integrator delta value
 
 uint             i_it_idx;          // index into current inputs/targets
 
@@ -115,11 +116,11 @@ scoreboard_t     if_done;           // current tick net computation done
 uint             if_thrds_done;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
-// (error delta processing)
-long_error_t   * ib_init_error;     // initial error value for every tick
+// (delta processing)
+long_delta_t   * ib_init_delta;     // initial delta value for every tick
 scoreboard_t     ib_all_arrived;    // all deltas have arrived in tick
-scoreboard_t   * ib_arrived;        // keep track of expected error b-d-p
-scoreboard_t     ib_done;           // current tick error computation done
+scoreboard_t   * ib_arrived;        // keep track of expected delta b-d-p
+scoreboard_t     ib_done;           // current tick delta computation done
 //#uint             ib_thrds_done;     // sync. semaphore: proc & stop
 
 long_net_t     * i_input_history;   //sdram pointer where to store input history

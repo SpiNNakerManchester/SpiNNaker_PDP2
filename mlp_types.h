@@ -65,8 +65,8 @@ typedef long long long_net_t;       // used for net intermediate calc
 
 typedef int       error_t;          // unit output error
 typedef long long long_error_t;     // used for error intermediate calc
-typedef int       delta_t;          // error derivative
-//#typedef long long long_delta_t;
+typedef int       delta_t;          // input derivative
+typedef long long long_delta_t;     // used for delta intermediate calc
 
 //TODO: set these values correctly!
 // errors are 32-bit quantities with 15 decimal bits
@@ -79,6 +79,12 @@ typedef int       delta_t;          // error derivative
 #define SPINN_LONG_ERR_MIN       (-0.5 * (1 << SPINN_LONG_ERR_SHIFT))
 //deltas are 32-bit quantities with 15 decimal bits
 #define SPINN_DELTA_SHIFT        SPINN_ERROR_SHIFT
+#define SPINN_DELTA_MAX          SPINN_ERROR_MAX
+#define SPINN_DELTA_MIN          SPINN_ERROR_MIN
+// intermediate error computations use longer types!
+#define SPINN_LONG_DELTA_SHIFT   SPINN_LONG_ERR_SHIFT
+#define SPINN_LONG_DELTA_MAX     SPINN_LONG_DELTA_MAX
+#define SPINN_LONG_DELTA_MIN     SPINN_LONG_DELTA_MIN
 
 typedef short     weight_t;         // connection weight
 typedef int       wchange_t;        // accumulated connection weight change
@@ -217,7 +223,7 @@ typedef struct i_conf               // sum core configuration
   uchar        input_grp;           // is this an INPUT group?
   uint         num_nets;            // this core's number of unit nets
   uint         net_blk;             // this core's net block
-  uint         error_blk;           // this core's error block
+  uint         delta_blk;           // this core's delta block
   scoreboard_t f_all_arrived;       // all expected unit output b-d-ps
   scoreboard_t f_all_done;          // all unit outputs
   scoreboard_t b_all_arrived;       // all expected error d-b-ps

@@ -59,20 +59,21 @@ extern i_conf_t   icfg;           // input core configuration parameters
 // input core variables
 // ------------------------------------------------------------------------
 extern long_net_t     * i_nets;        // unit nets computed in current tick
-extern long_error_t   * i_errors;      // errors computed in current tick
-extern long_error_t   * i_init_err;    // errors computed in first tick
+extern long_delta_t   * i_deltas;      // deltas computed in current tick
+extern long_delta_t   * i_init_delta;  // deltas computed in first tick
 extern pkt_queue_t      i_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            i_active;      // processing b-d-ps from queue?
 extern uint             i_it_idx;      // index into current inputs/targets
 extern scoreboard_t   * if_arrived;    // keep track of expected net b-d-p
 extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_done; // sync. semaphore: proc & stop
-extern long_error_t   * ib_init_error; // initial error value for every tick
+extern long_delta_t   * ib_init_delta; // initial delta value for every tick
 extern scoreboard_t     ib_all_arrived;// all deltas have arrived in tick
-extern scoreboard_t   * ib_arrived;    // keep track of expected error b-d-p
-extern scoreboard_t     ib_done;       // current tick error computation done
+extern scoreboard_t   * ib_arrived;    // keep track of expected delta b-d-p
+extern scoreboard_t     ib_done;       // current tick delta computation done
 //#extern uint             ib_thrds_done; // sync. semaphore: proc & stop
-extern long_net_t     * i_last_integr_output;   //last integrator output value
+extern long_net_t     * i_last_integr_output; //last integrator output value
+extern long_delta_t   * i_last_integr_delta; //last integrator delta value
 // list of input pipeline procedures
 extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
 extern in_proc_back_t const  i_in_back_procs[SPINN_NUM_IN_PROCS];
@@ -274,15 +275,15 @@ void i_forward_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void i_backprop_packet (uint key, uint payload)
 {
-  // get error index: mask out block, phase and colour data,
-  uint inx = key & SPINN_ERROR_MASK;
+  // get delta index: mask out block, phase and colour data,
+  uint inx = key & SPINN_DELTA_MASK;
 
-  // accumulate new error b-d-p,
-  i_errors[inx] = (error_t) payload;
+  // accumulate new delta b-d-p,
+  i_deltas[inx] = (delta_t) payload;
 
-  // mark error b-d-p as arrived,
+  // mark delta b-d-p as arrived,
   #if SPINN_USE_COUNTER_SB == FALSE
-    // get error block: mask out phase, colour and net index data
+    // get delta block: mask out phase, colour and net index data
     uint blk = (key & SPINN_BLK_C_MASK) >> SPINN_BLK_C_SHIFT;
   
     // check if already marked -- problem,
@@ -301,39 +302,39 @@ void i_backprop_packet (uint key, uint payload)
     ib_arrived[inx]++;
   #endif
 
-  // and check if error complete to send to next stage
+  // and check if delta complete to send to next stage
   // TODO: can use a configuration constant -- needs fixing
   // this core always receives packets from a single S core. Therefore the
   // ib_all_arrived will always be 1, and the if lose meaning: this routine
   // is executed when a packet is received -- to be chekced
   if (ib_arrived[inx] == ib_all_arrived)
   {
-    error_t err_tmp;
+    delta_t delta_tmp;
 
     compute_in_back (inx);
     
 /* //#
-    //TODO: may need to saturate and cast the long errors before sending
-    if (i_errors[inx] >= (long_error_t) LONG_ERR_MAX)
+    //TODO: may need to saturate and cast the long deltas before sending
+    if (i_deltas[inx] >= (long_delta_t) LONG_DELTA_MAX)
     {
-      err_tmp = (error_t) ERROR_MAX;
+      delta_tmp = (delta_t) DELTA_MAX;
     }
-    else if (i_errors[inx] <= (long_error_t) LONG_ERR_MIN)
+    else if (i_deltas[inx] <= (long_delta_t) LONG_DELTA_MIN)
     {
-      err_tmp = (error_t) ERROR_MIN;
+      delta_tmp = (delta_t) DELTA_MIN;
     }
     else
     {
       // keep the correct implicit decimal point position
-      err_tmp = (error_t) (i_errors[inx] >> (LONG_ERR_SHIFT - ERROR_SHIFT));
+      delta_tmp = (delta_t) (i_deltas[inx] >> (LONG_DELTA_SHIFT - DELTA_SHIFT));
     }
 */
 
     // casting to smaller size -- adjust the implicit decimal point position
-    err_tmp = i_errors[inx] >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
+    delta_tmp = i_deltas[inx] >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
 
-    // incorporate error index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | inx), err_tmp, WITH_PAYLOAD));
+    // incorporate delta index to the packet key and send,
+    while (!spin1_send_mc_packet ((bkpKey | inx), delta_tmp, WITH_PAYLOAD));
 
     #ifdef DEBUG
       pkt_sent++;
@@ -341,17 +342,17 @@ void i_backprop_packet (uint key, uint payload)
     #endif
 
     // prepare for next tick,
-    i_errors[inx] = 0;
+    i_deltas[inx] = 0;
     ib_arrived[inx] = 0;
 
-    // mark error as done,
+    // mark delta as done,
     #if SPINN_USE_COUNTER_SB == FALSE
       ib_done |= (1 << inx);
     #else
       ib_done++;
     #endif
 
-    // and check if all errors done
+    // and check if all deltas done
     if (ib_done == icfg.b_all_done)
     {
       // advance tick
@@ -542,7 +543,10 @@ void i_advance_example (void)
   // if the input integrator is used reset the array of last values
   if (icfg.in_integr_en)
     for (uint i = 0; i < icfg.num_nets; i++)
+    {
       i_last_integr_output[i] = (long_net_t) icfg.initNets;
+      i_last_integr_delta[i] = 0;
+    }
 }
 // ------------------------------------------------------------------------
 
@@ -742,13 +746,26 @@ void compute_in_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-// TODO: fill this with the data path as descrbed in lens
+// compute the input integration operation for the backprop
 // ------------------------------------------------------------------------
 void in_integr_back (uint inx)
 {
   #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_integr_back\n");
   #endif
+
+  // representation 49.15, with the topmost 48 bits set to 0
+  long_delta_t last_delta = i_last_integr_delta[inx];
+  // representation 48.16, with the topmost 32 bits set to 0
+  lfpreal dt = icfg.in_integr_dt;
+
+  // 48.16 * 49.15 >> 16 = 49.15
+  long_delta_t d = (dt * last_delta) >> 16;
+  last_delta += i_deltas[inx] - d;
+  i_deltas[inx] = d;
+  
+  // store the integrator state for the next iteration
+  i_last_integr_delta[inx] = last_delta;
 }
 // ------------------------------------------------------------------------
 
@@ -777,7 +794,7 @@ int init_in_integr ()
   
   int i;
 
-  // allocate the memory for the integrator state variable
+  // allocate the memory for the integrator state variable for outputs
   if ((i_last_integr_output = ((long_net_t *)
          spin1_malloc (icfg.num_nets * sizeof(long_net_t)))) == NULL
        )
@@ -785,9 +802,20 @@ int init_in_integr ()
       return (SPINN_MEM_UNAVAIL);
   }
 
+  // allocate the memory for the integrator state variable for deltas
+  if ((i_last_integr_delta = ((long_delta_t *)
+         spin1_malloc (icfg.num_nets * sizeof(long_delta_t)))) == NULL
+       )
+  {
+      return (SPINN_MEM_UNAVAIL);
+  }
+
   // reset the memory of the integrator state variable
   for (i = 0; i<icfg.num_nets; i++)
-      i_last_integr_output[i] = (long_net_t) icfg.initNets;
+  {
+    i_last_integr_output[i] = (long_net_t) icfg.initNets;
+    i_last_integr_delta[i] = 0;
+  }
 
   return SPINN_NO_ERROR;
 }
