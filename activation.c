@@ -106,15 +106,36 @@ activation_t sigmoid_prime (net_t input)
   }
   else
   {
+    long_activ_t output;  // computed inverse sigmoid output
+    uchar x0;             // input bits to access LUT
+    long_activ_t z;       // input remainder bits to do interpolation
+    activation_t y0, y1;  // look-up values
+
     // LUT contains only positive inputs
     if (temp >= 0)
     {
-      return (sigmoid_prime_lut[(uchar) (temp >> SPINN_SIGMD_LUT_SHIFT)]);
+      x0 = temp >> SPINN_SIGMD_LUT_SHIFT; //input value of the lookup table
+      z  = (long_activ_t) temp & (long_activ_t) SPINN_SIGMD_LUT_IMASK;
     }
     else
     {
-      return (sigmoid_prime_lut[(uchar) ((-temp) >> SPINN_SIGMD_LUT_SHIFT)]);
+      x0 = (-temp) >> SPINN_SIGMD_LUT_SHIFT; //input value of the lookup table
+      z  = (long_activ_t) (-temp) & (long_activ_t) SPINN_SIGMD_LUT_IMASK;
     }
+
+    y0 = sigmoid_prime_lut[x0]; //value correspondant to lookup table
+
+    // if x0 is the largest value in the table -- interpolate with MAX value
+    if (x0 == (SPINN_SIGMD_RES - 1))
+      y1 = (activation_t) SPINN_ACTIV_MAX;
+    else
+      y1 = sigmoid_prime_lut[x0 + 1];
+
+    // interpolate (using long variables)
+    output = (long_activ_t) y0 + 
+               (((long_activ_t) (y1 - y0) * z) >> SPINN_SIGMD_LUT_SHIFT);
+
+    return (output);
   }
 }
 
