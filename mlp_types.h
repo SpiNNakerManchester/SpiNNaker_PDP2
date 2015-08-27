@@ -73,18 +73,18 @@ typedef long long long_delta_t;     // used for delta intermediate calc
 #define SPINN_ERROR_SHIFT        SPINN_ACTIV_SHIFT
 #define SPINN_ERROR_MAX          ( 0.5 * (1 << SPINN_ERROR_SHIFT))
 #define SPINN_ERROR_MIN          (-0.5 * (1 << SPINN_ERROR_SHIFT))
-// intermediate error computations use longer types!
-#define SPINN_LONG_ERR_SHIFT     (SPINN_WEIGHT_SHIFT + SPINN_DELTA_SHIFT)
+// intermediate error computations use longer types!  (64-bit quantities with 27 decimal bits)
+#define SPINN_LONG_ERR_SHIFT     (SPINN_WEIGHT_SHIFT + SPINN_ERROR_SHIFT)
 #define SPINN_LONG_ERR_MAX       ( 0.5 * (1 << SPINN_LONG_ERR_SHIFT))
 #define SPINN_LONG_ERR_MIN       (-0.5 * (1 << SPINN_LONG_ERR_SHIFT))
 //deltas are 32-bit quantities with 15 decimal bits
 #define SPINN_DELTA_SHIFT        SPINN_ERROR_SHIFT
 #define SPINN_DELTA_MAX          SPINN_ERROR_MAX
 #define SPINN_DELTA_MIN          SPINN_ERROR_MIN
-// intermediate error computations use longer types!
+// intermediate delta computations use longer types!  (64-bit quantities with 27 decimal bits)
 #define SPINN_LONG_DELTA_SHIFT   SPINN_LONG_ERR_SHIFT
-#define SPINN_LONG_DELTA_MAX     SPINN_LONG_DELTA_MAX
-#define SPINN_LONG_DELTA_MIN     SPINN_LONG_DELTA_MIN
+#define SPINN_LONG_DELTA_MAX     SPINN_LONG_ERR_MAX
+#define SPINN_LONG_DELTA_MIN     SPINN_LONG_ERR_MIN
 
 typedef short     weight_t;         // connection weight
 typedef int       wchange_t;        // accumulated connection weight change
