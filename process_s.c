@@ -58,7 +58,7 @@ extern s_conf_t   scfg;           // sum core configuration parameters
 // sum core variables
 // ------------------------------------------------------------------------
 extern long_net_t     * s_nets[2];     // unit nets computed in current tick
-extern long_error_t   * s_errors[2];   // errors computed in current tick
+extern error_t        * s_errors[2];   // errors computed in current tick
 extern long_error_t   * s_init_err[2]; // errors computed in first tick
 extern pkt_queue_t      s_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            s_active;      // processing b-d-ps from queue?
@@ -320,7 +320,7 @@ void s_backprop_packet (uint key, uint payload)
 */
 
     // casting to smaller size -- adjust the implicit decimal point position
-    err_tmp = s_errors[clr][inx] >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
+    err_tmp = s_errors[clr][inx];
 
     // incorporate error index to the packet key and send,
     while (!spin1_send_mc_packet ((bkpKey | inx), err_tmp, WITH_PAYLOAD));
