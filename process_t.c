@@ -96,7 +96,7 @@ extern out_error_t const t_out_error[SPINN_NUM_ERROR_PROCS];
 extern activation_t   * t_output_history;
 extern llong_deriv_t  * t_output_deriv;
 extern llong_deriv_t  * t_output_deriv_history;
-extern delta_t	      * t_deltas;
+extern delta_t        * t_deltas;
 extern activation_t   * t_target_history;
 extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
 // ------------------------------------------------------------------------
@@ -279,19 +279,12 @@ void tb_process (uint null0, uint null1)
       t_output_deriv[inx] = t_errors[tb_procs][inx];
     }
 
-    // BACKPROP computation performed on t_output_deriv
     // restore output derivatives for the tick being processed
     restore_output_deriv (inx);
-    //TODO: this function should modify deltas (input derivatives)!
+
     compute_out_back (inx);
     
-    // TODO: saturate output derivative before sending
-    if (t_output_deriv[inx] > (llong_deriv_t) SPINN_LONG_DERIV_MAX)
-      delta = (long_deriv_t) SPINN_LONG_DERIV_MAX;
-    else if (t_output_deriv[inx] <= (llong_deriv_t) SPINN_LONG_DERIV_MIN_NEG)
-      delta = (long_deriv_t) SPINN_LONG_DERIV_MIN_NEG;
-    else
-      delta = (long_deriv_t) t_output_deriv;
+    delta = t_deltas[inx];
 
     // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
@@ -1146,10 +1139,10 @@ void out_logistic_back (uint inx)
 
   // compute error delta,
   // keep the correct implicit decimal point position
+    // 17.15 = (49.15 + 1.15) >> 15
   t_deltas[inx] = (t_output_deriv[inx] * sigmoid_prime (t_nets[inx]))
-                    >> (SPINN_ERROR_SHIFT + SPINN_DERIV_SHIFT
-                         - SPINN_DELTA_SHIFT
-                       );
+                      >> (SPINN_DERIV_SHIFT + SPINN_ACTIV_SHIFT 
+                           - SPINN_DELTA_SHIFT);
 }
 // ------------------------------------------------------------------------
 
@@ -1603,6 +1596,8 @@ void error_cross_entropy (uint inx)
   }
   // if the target is not defined, set the output derivative to 0
   else
+  {
     t_output_deriv[inx] = 0;
+  }
 }
 // ------------------------------------------------------------------------
