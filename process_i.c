@@ -576,7 +576,14 @@ void compute_in (uint inx)
     i_in_procs[icfg.procs_list[i]] (inx);
   }
 
-  store_nets(inx);
+  // check if in training mode, and if so, store nets
+  // TODO: for non-continuous networks, this needs to check the requirement to have these 
+  // histories saved, which needs to come from splens. For continuous networks, these histories
+  // are always required. 
+  if (mlpc.training)
+  {
+    store_nets(inx);
+  }
 }
 // ------------------------------------------------------------------------
 
@@ -593,7 +600,7 @@ void store_nets (uint inx)
   long_net_t * src_ptr = i_nets + inx;
   long_net_t * dst_ptr = i_net_history + (((tick-1) * icfg.num_nets) + inx);
 
-  spin1_memcpy(dst_ptr, src_ptr, icfg.num_nets * sizeof(long_net_t));
+  spin1_memcpy(dst_ptr, src_ptr, sizeof(long_net_t));
 }
 // ------------------------------------------------------------------------
 

@@ -350,17 +350,6 @@ void tf_advance_tick (uint null0, uint null1)
   // initialize scoreboard for next tick,
   tf_arrived = 0;
 
-  // check if in training mode, and if so, store outputs, targets, and output derivatives
-  // TODO: for non-continuous networks, this needs to check the requirement to have these 
-  // histories saved, which needs to come from splens. For continuous networks, these histories
-  // are always required. 
-  if (mlpc.training)
-  {
-    store_outputs ();
-    store_targets ();
-    store_output_deriv ();
-  }
-
   // dump outputs to SDRAM for record keeping,
   #if SPINN_OUTPUT_HISTORY == TRUE
     //TODO: works only if examples have a single event
@@ -429,6 +418,9 @@ void tb_advance_tick (uint null0, uint null1)
   #ifdef DEBUG
     tot_tick++;
   #endif
+
+  // update pointer to processing unit outputs,
+  tb_procs = 1 - tb_procs;
 
   // check if done with BACKPROP phase
   if (tick == SPINN_TB_END_TICK)
@@ -848,6 +840,17 @@ void compute_out (uint inx)
       t_out_error[tcfg.error_function] (inx);
     }
   }
+
+  // check if in training mode, and if so, store outputs, targets, and output derivatives
+  // TODO: for non-continuous networks, this needs to check the requirement to have these 
+  // histories saved, which needs to come from splens. For continuous networks, these histories
+  // are always required. 
+  if (mlpc.training)
+  {
+    store_outputs (inx);
+    store_targets (inx);
+    store_output_deriv (inx);
+  }
 }
 // ------------------------------------------------------------------------
 
@@ -855,16 +858,16 @@ void compute_out (uint inx)
 // ------------------------------------------------------------------------
 // stores the outputs for the current tick
 // ------------------------------------------------------------------------
-void store_outputs (void)
+void store_outputs (uint inx)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "store_outputs\n");
   #endif
 
-  activation_t * src_ptr = t_outputs;
-  activation_t * dst_ptr = t_output_history + ((tick-1) * tcfg.num_outputs);
+  activation_t * src_ptr = t_outputs + inx;
+  activation_t * dst_ptr = t_output_history + (((tick-1) * tcfg.num_outputs) + inx);
 
-  spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(activation_t));
+  spin1_memcpy(dst_ptr, src_ptr, sizeof(activation_t));
 }
 // ------------------------------------------------------------------------
 
@@ -872,16 +875,16 @@ void store_outputs (void)
 // ------------------------------------------------------------------------
 // stores the targets for the current tick
 // ------------------------------------------------------------------------
-void store_targets (void)
+void store_targets (uint inx)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "store_targets\n");
   #endif
 
-  activation_t * src_ptr = &tt[t_it_idx];
-  activation_t * dst_ptr = t_target_history + ((tick-1) * tcfg.num_outputs);
+  activation_t * src_ptr = &tt[t_it_idx + inx];
+  activation_t * dst_ptr = t_target_history + (((tick-1) * tcfg.num_outputs) + inx);
 
-  spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(activation_t));
+  spin1_memcpy(dst_ptr, src_ptr, sizeof(activation_t));
 }
 // ------------------------------------------------------------------------
 
@@ -889,16 +892,16 @@ void store_targets (void)
 // ------------------------------------------------------------------------
 // stores the output derivatives for the current tick
 // ------------------------------------------------------------------------
-void store_output_deriv (void)
+void store_output_deriv (uint inx)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "store_output_deriv\n");
   #endif
 
-  llong_deriv_t * src_ptr = t_output_deriv;
-  llong_deriv_t * dst_ptr = t_output_deriv_history + ((tick-1) * tcfg.num_outputs);
+  llong_deriv_t * src_ptr = t_output_deriv + inx;
+  llong_deriv_t * dst_ptr = t_output_deriv_history + (((tick-1) * tcfg.num_outputs) + inx);
     
-  spin1_memcpy(dst_ptr, src_ptr, tcfg.num_outputs * sizeof(llong_deriv_t));
+  spin1_memcpy(dst_ptr, src_ptr, sizeof(llong_deriv_t));
 }
 // ------------------------------------------------------------------------
 

@@ -12,9 +12,9 @@ void  t_switch_to_bp    (void);
 void  tf_send_stop      (uint null0, uint null1);
 void  t_init_outputs    (uint null0, uint null1);
 
-void  store_outputs	  (void);
-void  store_targets	  (void);
-void  store_output_deriv  (void);
+void  store_outputs	  (uint inx);
+void  store_targets	  (uint inx);
+void  store_output_deriv  (uint inx);
 void  restore_output_deriv (uint inx);
 
 void  compute_out         (uint inx);
