@@ -311,6 +311,9 @@ void i_backprop_packet (uint key, uint payload)
   {
     delta_t delta_tmp;
 
+    // restore outputs for the tick prior to the one being processed
+    restore_nets (inx);
+
     compute_in_back (inx);
     
 /* //#
@@ -573,20 +576,13 @@ void compute_in (uint inx)
     i_in_procs[icfg.procs_list[i]] (inx);
   }
 
-#if SPINN_STORE_INPUT == 1
-  store_nets(inx); //see note for the routine itself
-#endif
+  store_nets(inx);
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// the following routine needs to be called in case lens is set to store the
-// history of input values. This boolean needs to be retrieved from splens
-// stored in the configuration data for each of the groups (in the icfg
-// structure) and used here to perform the operation if required
-// every time this routine is called, is needs to store only the information
-// related to the unit inx
+// stores nets for the current tick
 // ------------------------------------------------------------------------
 void store_nets (uint inx)
 {
@@ -594,14 +590,25 @@ void store_nets (uint inx)
     io_printf (IO_BUF, "store_nets\n");
   #endif
 
-  // FIXME: The memcopy operation copies every time the whole set of net values
-  // even though only the value related ot the unit inx has been updated
-/*
-  long_net_t * src_ptr = i_nets;
-  long_net_t * dst_ptr = i_input_history + tick * icfg.num_nets + inx;
+  long_net_t * src_ptr = i_nets + inx;
+  long_net_t * dst_ptr = i_net_history + (((tick-1) * icfg.num_nets) + inx);
 
   spin1_memcpy(dst_ptr, src_ptr, icfg.num_nets * sizeof(long_net_t));
-*/
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// restores the net for the specified unit and the previous value of the 
+// global variable tick.
+// ------------------------------------------------------------------------
+void restore_nets (uint inx)
+{
+  #ifdef TRACE
+    io_printf (IO_BUF, "restore_nets\n");
+  #endif
+
+  i_nets[inx] = i_net_history[(((tick-2) * icfg.num_nets) + inx)];
 }
 // ------------------------------------------------------------------------
 
