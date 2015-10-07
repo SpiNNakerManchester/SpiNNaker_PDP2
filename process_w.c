@@ -114,14 +114,6 @@ void wf_process (uint null0, uint null1)
       net_part += ((net_t) w_outputs[wf_procs][i] * (net_t) w_weights[i][j]);
     }
 
-//    if (epoch == 0 && example == 0 && tick == 1)
-//    {
-//      io_printf (IO_BUF,
-//                  "w_nets[%d] for update %d example %d tick %d unit %d: %r\n",
-//                  j, epoch, example, tick, j, (net_part >> 12)
-//                );
-//    }
-
     // incorporate net index to the packet key and send
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));
     

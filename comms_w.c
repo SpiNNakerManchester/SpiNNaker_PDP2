@@ -158,11 +158,6 @@ void w_forwardPacket (uint key, uint payload)
 
   store_outputs (inx);
 
-  if (epoch == 0 && example == 0 && tick > 15)
-  {
-    io_printf (IO_BUF, "Output being stored for Tick %d Unit %d: %r\n", tick, inx, w_outputs[wf_comms][inx]);
-  }
-
   // and update scoreboard,
   #if SPINN_USE_COUNTER_SB == FALSE
     wf_arrived |= (1 << inx);
