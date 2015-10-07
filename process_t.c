@@ -93,7 +93,6 @@ extern activation_t     t_max_target;      // highest target value
 // list of output pipeline procedures
 extern out_proc_t const t_out_procs[SPINN_NUM_OUT_PROCS];
 extern out_error_t const t_out_error[SPINN_NUM_ERROR_PROCS];
-extern activation_t   * t_output_history;
 extern llong_deriv_t  * t_output_deriv;
 extern llong_deriv_t  * t_output_deriv_history;
 extern delta_t        * t_deltas;
@@ -293,9 +292,6 @@ void tb_process (uint null0, uint null1)
       pkt_sent++;
       sent_bkp++;
     #endif
-
-    // restore outputs for the tick prior to the one currently being processed
-    t_outputs[inx] = t_output_history[((tick-1) * tcfg.num_outputs) + inx];
     
     #ifdef DEBUG_VRB
       io_printf(IO_BUF, "d[%2d][%2d] = %10.7f (%08x)\n", tcfg.delta_blk, inx,
@@ -847,27 +843,9 @@ void compute_out (uint inx)
   // are always required. 
   if (mlpc.training)
   {
-    store_outputs (inx);
     store_targets (inx);
     store_output_deriv (inx);
   }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores the outputs for the current tick
-// ------------------------------------------------------------------------
-void store_outputs (uint inx)
-{
-  #ifdef TRACE
-    io_printf (IO_BUF, "store_outputs\n");
-  #endif
-
-  activation_t * src_ptr = t_outputs + inx;
-  activation_t * dst_ptr = t_output_history + (((tick-1) * tcfg.num_outputs) + inx);
-
-  spin1_memcpy(dst_ptr, src_ptr, sizeof(activation_t));
 }
 // ------------------------------------------------------------------------
 

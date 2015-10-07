@@ -161,7 +161,6 @@ activation_t     t_max_output;      // highest output value
 activation_t     t_max_target;      // highest target value
 
 llong_activ_t  * t_output_deriv;    // derivative of the output value
-activation_t   * t_output_history;
 llong_activ_t  * t_output_deriv_history;
 delta_t        * t_deltas;
 activation_t   * t_target_history;

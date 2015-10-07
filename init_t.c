@@ -93,7 +93,6 @@ extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
 // derivative of the output
 extern llong_deriv_t  * t_output_deriv;
 // history arrays
-extern activation_t   * t_output_history;
 extern llong_deriv_t  * t_output_deriv_history;
 extern delta_t        * t_deltas;
 extern activation_t   * t_target_history;
@@ -358,22 +357,11 @@ uint t_init (void)
   }
 
   // TODO: the following memory allocation is to be used to store
-  // the history of any of these three sets of values. When training
-  // continuous networks, these three histories always need to be saved.
+  // the history of any of these sets of values. When training
+  // continuous networks, these histories always need to be saved.
   // For non-continuous networks, they only need to be stored if the 
   // backpropTicks field of the network is greater than one. This
   // information needs to come from splens in the tcfg structure.
-
-  // allocate memory in SDRAM for output history
-  if ((t_output_history = ((activation_t *)
-          sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
   
   // allocate memory in SDRAM for target history
   if ((t_target_history = ((activation_t *)

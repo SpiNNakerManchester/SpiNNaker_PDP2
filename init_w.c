@@ -65,6 +65,8 @@ extern uint             wf_sync_key;   // FORWARD processing can start
 extern uchar            wb_active;     // processing deltas from queue?
 extern scoreboard_t     wb_arrived;    // keeps track of received deltas
 extern uint             wb_sync_key;   // BACKPROP processing can start
+// history arrays
+extern activation_t   * w_output_history;
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -92,6 +94,24 @@ uint w_init (void)
                 wcfg.num_cols
               );
   #endif
+
+  // TODO: the following memory allocation is to be used to store
+  // the history of any of these sets of values. When training
+  // continuous networks, these histories always need to be saved.
+  // For non-continuous networks, they only need to be stored if the 
+  // backpropTicks field of the network is greater than one. This
+  // information needs to come from splens in the tcfg structure.
+
+  // allocate memory in SDRAM for output history
+  if ((w_output_history = ((activation_t *)
+          sark_xalloc (sv->sdram_heap,
+                       wcfg.num_rows * mlpc.global_max_ticks * sizeof(activation_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
 
   // allocate memory for weights
   if ((w_weights = ((weight_t * *)
@@ -167,6 +187,8 @@ uint w_init (void)
   {
     return (SPINN_MEM_UNAVAIL);
   }
+
+
 
   // initialize weights from SDRAM
   wt = (weight_t *) wcfg.weights_struct_addr;  // initial connection weights

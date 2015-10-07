@@ -39,6 +39,7 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // weight core variables
 // ------------------------------------------------------------------------
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
+extern activation_t   * w_output_history; // history array for the outputs
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
 extern uint             wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t     wf_arrived;    // keeps track of received unit outputs
@@ -155,6 +156,13 @@ void w_forwardPacket (uint key, uint payload)
   // store received unit output,
   w_outputs[wf_comms][inx] = (activation_t) payload;
 
+  store_outputs (inx);
+
+  if (epoch == 0 && example == 0 && tick > 15)
+  {
+    io_printf (IO_BUF, "Output being stored for Tick %d Unit %d: %r\n", tick, inx, w_outputs[wf_comms][inx]);
+  }
+
   // and update scoreboard,
   #if SPINN_USE_COUNTER_SB == FALSE
     wf_arrived |= (1 << inx);
@@ -229,5 +237,22 @@ void w_backpropPacket (uint key, uint payload)
       spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);
     }
   }
+}
+// ------------------------------------------------------------------------+
+
+
+// ------------------------------------------------------------------------
+// stores the outputs received for the current tick
+// ------------------------------------------------------------------------
+void store_outputs (uint inx)
+{
+  #ifdef TRACE
+    io_printf (IO_BUF, "store_outputs\n");
+  #endif
+
+  activation_t * src_ptr = w_outputs[wf_comms] + inx;
+  activation_t * dst_ptr = w_output_history + (((tick-1) * wcfg.num_rows) + inx);
+
+  spin1_memcpy(dst_ptr, src_ptr, sizeof(activation_t));
 }
 // ------------------------------------------------------------------------
