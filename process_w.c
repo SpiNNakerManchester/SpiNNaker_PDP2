@@ -104,18 +104,13 @@ void wf_process (uint null0, uint null1)
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
-    //net_t is a 32 bit value with 27 decimal bits
+    //net_t is s4.27
     net_t net_part = 0;
 
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      //w_outputs is a two-dimensional array of activation_t types
-      //activation_t is a 16 bit value with 15 decimal bits
-      //w_weights is a two-dimensional array of weight_t types
-      //weight_t is a 16 bit value with 12 decimal bits and one sign bit
-      //net_t is a 32 bit value with 27 decimal bits
-      //1,15 * s3,12 = s4,27
       //NOTE: may need to use long_nets for the dot-products and saturate!
+      // s4.27 = s0.15 * s3.12
       net_part += ((net_t) w_outputs[wf_procs][i] * (net_t) w_weights[i][j]);
     }
 
@@ -190,7 +185,7 @@ void wb_process (uint null0, uint null1)
   {
     // if not empty dequeue packet,
     uint inx = w_delta_pkt_q.queue[w_delta_pkt_q.head].key;
-    uint delta = (delta_t) w_delta_pkt_q.queue[w_delta_pkt_q.head].payload;
+    delta_t delta = (delta_t) w_delta_pkt_q.queue[w_delta_pkt_q.head].payload;
     w_delta_pkt_q.head = (w_delta_pkt_q.head + 1) % SPINN_WEIGHT_PQ_LEN;
 
     // restore interrupts after queue access,
@@ -212,11 +207,12 @@ void wb_process (uint null0, uint null1)
     // partially compute error dot products,
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      //TODO: may need to use long_error for the dot_products and saturate!
-      /*err_part += ((long_error_t) w_weights[i][j]
-                    * (long_error_t) w_deltas[wb_procs][j]
-                  ) >> (LONG_ERR_SHIFT - ERROR_SHIFT);*/
-      w_errors[i] += ((error_t) w_weights[i][inx] * (error_t) delta) >> SPINN_WEIGHT_SHIFT;
+      //NOTE: may need to make w_errors a long_error_t type and saturate!
+      // s16.15 = (s3.12 * s16.15) >> 12
+      w_errors[i] += (error_t) (((long_error_t) w_weights[i][inx]
+                       * (long_error_t) delta)
+                       >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT)
+                     );
 
       //TODO: need to compute "link derivative" here (see w_weight_deltas)
 
@@ -225,7 +221,7 @@ void wb_process (uint null0, uint null1)
       {
         // send computed error dot product,
         while (!spin1_send_mc_packet ((bkpKey | i),
-                (uint) w_errors[inx], WITH_PAYLOAD)
+                (uint) w_errors[i], WITH_PAYLOAD)
               );
 
         #ifdef DEBUG
@@ -234,7 +230,7 @@ void wb_process (uint null0, uint null1)
         #endif
 
         // and initialize error for next tick
-        w_errors[inx] = 0;
+        w_errors[i] = 0;
       }
     }
 
@@ -298,14 +294,15 @@ void w_update_weights (void)
       if (w_weights[i][j] != 0)
       {
         // compute new weight
-        weight_t temp = w_weights[i][j] + w_wchanges[i][j];
+        long_weight_t temp = (long_weight_t) w_weights[i][j]
+                              + (long_weight_t) w_wchanges[i][j];
 
         // saturate new weight,
-        if (temp >= SPINN_WEIGHT_MAX)
+        if (temp >= (long_weight_t) SPINN_WEIGHT_MAX)
         {
           w_weights[i][j] = SPINN_WEIGHT_MAX;
         }
-        else if (temp <= SPINN_WEIGHT_MIN)
+        else if (temp <= (long_weight_t) SPINN_WEIGHT_MIN)
         {
           w_weights[i][j] = SPINN_WEIGHT_MIN;
         }
@@ -323,7 +320,7 @@ void w_update_weights (void)
         }
         else
         {
-          w_weights[i][j] = temp;
+          w_weights[i][j] = (weight_t) temp;
         }
       }
 

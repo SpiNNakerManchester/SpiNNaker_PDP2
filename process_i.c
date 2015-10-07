@@ -279,7 +279,8 @@ void i_backprop_packet (uint key, uint payload)
   uint inx = key & SPINN_DELTA_MASK;
 
   // accumulate new delta b-d-p,
-  i_deltas[inx] = (delta_t) payload;
+  i_deltas[inx] = ((long_delta_t) ((delta_t) payload))
+    << (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
 
   // mark delta b-d-p as arrived,
   #if SPINN_USE_COUNTER_SB == FALSE
@@ -316,25 +317,23 @@ void i_backprop_packet (uint key, uint payload)
 
     compute_in_back (inx);
     
-/* //#
-    //TODO: may need to saturate and cast the long deltas before sending
-    if (i_deltas[inx] >= (long_delta_t) LONG_DELTA_MAX)
+    // saturate and cast the long deltas before sending
+    if ((i_deltas[inx] >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT))
+         >= (delta_t) SPINN_DELTA_MAX)
     {
-      delta_tmp = (delta_t) DELTA_MAX;
+      delta_tmp = (delta_t) SPINN_DELTA_MAX;
     }
-    else if (i_deltas[inx] <= (long_delta_t) LONG_DELTA_MIN)
+    else if ((i_deltas[inx] >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT))
+              <= (delta_t) SPINN_DELTA_MIN)
     {
-      delta_tmp = (delta_t) DELTA_MIN;
+      delta_tmp = (delta_t) SPINN_DELTA_MIN;
     }
     else
     {
       // keep the correct implicit decimal point position
-      delta_tmp = (delta_t) (i_deltas[inx] >> (LONG_DELTA_SHIFT - DELTA_SHIFT));
+      delta_tmp = (delta_t) (i_deltas[inx]
+			     >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT));
     }
-*/
-
-    // casting to smaller size -- adjust the implicit decimal point position
-    delta_tmp = i_deltas[inx] >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
 
     // incorporate delta index to the packet key and send,
     while (!spin1_send_mc_packet ((bkpKey | inx), delta_tmp, WITH_PAYLOAD));

@@ -272,7 +272,7 @@ void tb_process (uint null0, uint null1)
     delta_t delta;
 
     // update output derivatives for non-output groups
-    //TODO: could avoid testiong on every iteration
+    //TODO: could avoid testing on every iteration
     if (!tcfg.output_grp)
     {
       // use received error computed in previous tick
@@ -962,10 +962,10 @@ void out_integr (uint inx)
   llong_activ_t output = last_output + ((dt * (new_output - last_output)) >> 16);
 
   // saturate the value computed and assign it to the output variable
-  if (output > (long long) SPINN_ACTIV_MAX)
+  if (output > (llong_activ_t) SPINN_ACTIV_MAX)
     // positive saturation
     t_outputs[inx] = (activation_t) SPINN_ACTIV_MAX;  
-  else if (output < (long long) SPINN_ACTIV_MIN_NEG)
+  else if (output < (llong_activ_t) SPINN_ACTIV_MIN_NEG)
     // negative saturation
     t_outputs[inx] = (activation_t) SPINN_ACTIV_MIN_NEG;
   else
@@ -1140,12 +1140,14 @@ void out_logistic_back (uint inx)
     io_printf (IO_BUF, "out_logistic_back\n");
   #endif
 
+  //NODE: may need to use a longer type and saturate!
   // compute error delta,
   // keep the correct implicit decimal point position
-    // 17.15 = (49.15 + 1.15) >> 15
-  t_deltas[inx] = (t_output_deriv[inx] * sigmoid_prime (t_nets[inx]))
-                      >> (SPINN_DERIV_SHIFT + SPINN_ACTIV_SHIFT 
-                           - SPINN_DELTA_SHIFT);
+  // s16.15 = (s48.15 * s0.15) >> 15
+  t_deltas[inx] = (delta_t) (((long_delta_t) t_output_deriv[inx]
+                    * (long_delta_t) sigmoid_prime (t_nets[inx]))
+                    >> (SPINN_DERIV_SHIFT + SPINN_ACTIV_SHIFT 
+                    - SPINN_DELTA_SHIFT));
 }
 // ------------------------------------------------------------------------
 
@@ -1159,12 +1161,11 @@ void out_integr_back (uint inx)
     io_printf (IO_BUF, "out_integr_back\n");
   #endif
 
-  // representation 49.15, with the topmost 48 bits set to 0
   llong_deriv_t last_output_deriv = t_last_integr_output_deriv[inx];
-  // representation 48.16, with the topmost 32 bits set to 0
+
   lfpreal dt = tcfg.out_integr_dt;
 
-  // 48.16 * 49.15 >> 16 = 49.15
+  // s48.15 = (s47.16 * s48.15) >> 16
   llong_deriv_t d = (dt * last_output_deriv) >> 16;
   last_output_deriv += t_output_deriv[inx] - d;
   t_output_deriv[inx] = d;

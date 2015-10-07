@@ -79,15 +79,13 @@ activation_t sigmoid (net_t input)
 
 
 //The sigmoid_prime routine computes the derivative of the sigmoid function
-//(without interpolation).
+//with interpolation.
 //the input parameter is a 5.27 fixed point 32-bit value. The returned output
 //is a 1.15 fixed point 16-bit value.
 //the output values are stored in a table with 256 elements. Since the function
 //is symmetric with respect to the y axis the values stored in the table are
 //only the ones related to x >= 0. The values for x < 0 are computed
 //as f(-x)
-
-//TODO: add interpolation step as in sigmoid_prime
 activation_t sigmoid_prime (net_t input)
 {
   #ifdef SPINN_SIGMD_ROUNDI

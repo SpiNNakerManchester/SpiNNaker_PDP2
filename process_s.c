@@ -302,25 +302,23 @@ void s_backprop_packet (uint key, uint payload)
   {
     error_t err_tmp;
 
-/* //#
-    //TODO: may need to saturate and cast the long errors before sending
-    if (s_errors[inx] >= (long_error_t) LONG_ERR_MAX)
+    err_tmp = s_errors[clr][inx];
+
+    //NOTE: may need to use long_error_t and saturate before sending
+/*    if (s_errors[inx] >= (long_error_t) SPINN_LONG_ERR_MAX)
     {
-      err_tmp = (error_t) ERROR_MAX;
+      err_tmp = (error_t) SPINN_ERROR_MAX;
     }
-    else if (s_errors[inx] <= (long_error_t) LONG_ERR_MIN)
+    else if (s_errors[inx] <= (long_error_t) SPINN_LONG_ERR_MIN)
     {
-      err_tmp = (error_t) ERROR_MIN;
+      err_tmp = (error_t) SPINN_ERROR_MIN;
     }
     else
     {
       // keep the correct implicit decimal point position
-      err_tmp = (error_t) (s_errors[inx] >> (LONG_ERR_SHIFT - ERROR_SHIFT));
-    }
-*/
+      err_tmp = (error_t) (s_errors[inx] >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT));
+    }*/
 
-    // casting to smaller size -- adjust the implicit decimal point position
-    err_tmp = s_errors[clr][inx];
 
     // incorporate error index to the packet key and send,
     while (!spin1_send_mc_packet ((bkpKey | inx), err_tmp, WITH_PAYLOAD));
