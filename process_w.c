@@ -61,6 +61,7 @@ extern weight_t     * * w_weights;     // connection weights block
 extern wchange_t    * * w_wchanges;    // accumulated weight changes
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
 extern delta_t        * w_deltas;      // error deltas for b-d-p
+extern delta_t	    * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
 extern uint             wf_procs;      // pointer to processing unit outputs
@@ -206,7 +207,23 @@ void wb_process (uint null0, uint null1)
                        >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT)
                      );
 
-      //TODO: need to compute "link derivative" here (see w_weight_deltas)
+      if (epoch == 0 && example == 0 && tick > 15 && inx == 1)
+      {
+        io_printf (IO_BUF, "w_link_deltas[%d][%d] for Tick %d BEFORE: %r\n", i, inx, tick, w_link_deltas[i][inx]);
+        io_printf (IO_BUF, "w_outputs[%d] for Tick %d: %r\n", i, tick, w_outputs[0][i]);
+        io_printf (IO_BUF, "w_deltas[%d] for Tick %d: %r\n", inx, tick, w_deltas[inx]);
+      }
+
+      //Compute "link derivative" by multiplying the output of the sending 
+      //unit by the error delta of the receiving unit
+      //s16.15 = (s0.15 * s16.15) >> 15
+      w_link_deltas[i][inx] += ((delta_t) w_outputs[0][i] * (delta_t) delta) >> SPINN_ACTIV_SHIFT;
+
+
+      if (epoch == 0 && example == 0 && tick > 15 && inx == 1)
+      {
+        io_printf (IO_BUF, "w_link_deltas[%d][%d] for Tick %d AFTER: %r\n", i, inx, tick, w_link_deltas[i][inx]);
+      }
 
       // check if done with all deltas
       if (wb_arrived == wcfg.b_all_arrived)
