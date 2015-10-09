@@ -60,6 +60,7 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 extern weight_t     * * w_weights;     // connection weights block
 extern wchange_t    * * w_wchanges;    // accumulated weight changes
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
+extern activation_t   * w_output_history;
 extern delta_t        * w_deltas;      // error deltas for b-d-p
 extern delta_t	    * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
@@ -200,6 +201,8 @@ void wb_process (uint null0, uint null1)
     // partially compute error dot products,
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
+      restore_outputs (i);
+
       //NOTE: may need to make w_errors a long_error_t type and saturate!
       // s16.15 = (s3.12 * s16.15) >> 12
       w_errors[i] += (error_t) (((long_error_t) w_weights[i][inx]
@@ -207,23 +210,11 @@ void wb_process (uint null0, uint null1)
                        >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT)
                      );
 
-      if (epoch == 0 && example == 0 && tick > 15 && inx == 1)
-      {
-        io_printf (IO_BUF, "w_link_deltas[%d][%d] for Tick %d BEFORE: %r\n", i, inx, tick, w_link_deltas[i][inx]);
-        io_printf (IO_BUF, "w_outputs[%d] for Tick %d: %r\n", i, tick, w_outputs[0][i]);
-        io_printf (IO_BUF, "w_deltas[%d] for Tick %d: %r\n", inx, tick, w_deltas[inx]);
-      }
-
       //Compute "link derivative" by multiplying the output of the sending 
       //unit by the error delta of the receiving unit
+      //NOTE: may need to make w_link_deltas a long_delta_t type and saturate!
       //s16.15 = (s0.15 * s16.15) >> 15
       w_link_deltas[i][inx] += ((delta_t) w_outputs[0][i] * (delta_t) delta) >> SPINN_ACTIV_SHIFT;
-
-
-      if (epoch == 0 && example == 0 && tick > 15 && inx == 1)
-      {
-        io_printf (IO_BUF, "w_link_deltas[%d][%d] for Tick %d AFTER: %r\n", i, inx, tick, w_link_deltas[i][inx]);
-      }
 
       // check if done with all deltas
       if (wb_arrived == wcfg.b_all_arrived)
@@ -684,5 +675,19 @@ void w_switch_to_bp (void)
 //#  #ifdef DEBUG
 //#    spk_sent++;
 //#  #endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// restores the output derivative for the specified unit and the 
+// current value of the global variable tick.
+// ------------------------------------------------------------------------
+void restore_outputs (uint inx)
+{
+  #ifdef TRACE
+    io_printf (IO_BUF, "restore_outputs\n");
+  #endif
+  w_outputs[0][inx] = w_output_history[(((tick-2) * wcfg.num_rows) + inx)];
 }
 // ------------------------------------------------------------------------
