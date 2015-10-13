@@ -160,8 +160,8 @@ int              t_max_target_unit; // unit with highest target
 activation_t     t_max_output;      // highest output value
 activation_t     t_max_target;      // highest target value
 
-llong_activ_t  * t_output_deriv;    // derivative of the output value
-llong_activ_t  * t_output_deriv_history;
+llong_deriv_t  * t_output_deriv;    // derivative of the output value
+llong_deriv_t  * t_output_deriv_history;
 delta_t        * t_deltas;
 activation_t   * t_target_history;
 // ------------------------------------------------------------------------

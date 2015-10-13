@@ -175,6 +175,13 @@ uint t_init (void)
     t_deltas[i] = 0;
   }
 
+  // initialize errors
+  for (i = 0; i < tcfg.num_outputs; i++)
+  {
+    t_errors[0][i] = 0;
+    t_errors[1][i] = 0;
+  }
+
   // check if the hard clamp is in use in the sequence of pipeline elements
   t_hard_clamp_en = FALSE;
   for (i = 0; i < tcfg.num_out_procs; i++)

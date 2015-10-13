@@ -270,16 +270,18 @@ void tb_process (uint null0, uint null1)
   {
     delta_t delta;
 
-    // update output derivatives for non-output groups
-    //TODO: could avoid testing on every iteration
-    if (!tcfg.output_grp)
+    if (tcfg.output_grp)
     {
-      // use received error computed in previous tick
-      t_output_deriv[inx] = t_errors[tb_procs][inx];
+      // output groups:
+      // restore output derivatives for the tick being processed
+      restore_output_deriv (inx);
     }
-
-    // restore output derivatives for the tick being processed
-    restore_output_deriv (inx);
+    else
+    {
+      // non-output groups:
+      // use received error computed in previous tick
+      t_output_deriv[inx] = (llong_deriv_t) t_errors[tb_procs][inx];
+    }
 
     compute_out_back (inx);
     
@@ -660,6 +662,15 @@ void t_switch_to_bp (void)
 
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
+
+  // initialize t_errors for next example
+  if (!tcfg.output_grp)
+  {
+    for (uint i = 0; i < tcfg.num_outputs; i++)
+    {
+      t_errors[tb_procs][i] = 0;
+    }
+  }
 
   // start processing in BACKPROP phase,
   //TODO: check!
