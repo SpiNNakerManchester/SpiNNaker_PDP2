@@ -767,13 +767,13 @@ void in_integr_back (uint inx)
     io_printf (IO_BUF, "in_integr_back\n");
   #endif
 
-  // representation 49.15, with the topmost 48 bits set to 0
+  // representation s36.27
   long_delta_t last_delta = i_last_integr_delta[inx];
-  // representation 48.16, with the topmost 32 bits set to 0
+  // representation s47.16
   lfpreal dt = icfg.in_integr_dt;
 
-  // 48.16 * 49.15 >> 16 = 49.15
-  long_delta_t d = (dt * last_delta) >> 16;
+  // s36.27 = (s47.16 * s36.27) >> 16
+  long_delta_t d = (dt * last_delta) >> SPINN_FPREAL_SHIFT;
   last_delta += i_deltas[inx] - d;
   i_deltas[inx] = d;
   

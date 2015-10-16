@@ -91,7 +91,8 @@ typedef long long long_delta_t;     // used for delta intermediate calc
 
 typedef short     weight_t;         // connection weight
 typedef int       long_weight_t;    // intermediate connection weight
-typedef int       wchange_t;        // accumulated connection weight change
+typedef int       wchange_t;        // connection weight change
+typedef long long long_wchange_t;   // intermediate connection weight change
 
 // weights are s3.12
 // long_weights are s19.12

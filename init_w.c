@@ -58,6 +58,7 @@ extern delta_t        * w_deltas;      // error deltas for b-d-p
 extern delta_t	    * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
+extern fpreal           w_delta_dt;    // scaling factor for link deltas
 extern uint             wf_procs;      // pointer to processing unit outputs
 extern uint             wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t     wf_arrived;    // keeps track of received unit outputs
@@ -261,6 +262,10 @@ uint w_init (void)
 
   // intialize tick
   tick = SPINN_W_INIT_TICK;
+
+  // intialize delta scaling factor
+  // s15.16
+  w_delta_dt = (1 << SPINN_FPREAL_SHIFT) / mlpc.ticks_per_int;
 
   // initialize pointers to received unit outputs
   wf_procs = 0;

@@ -1129,7 +1129,7 @@ void out_logistic_back (uint inx)
     io_printf (IO_BUF, "out_logistic_back\n");
   #endif
 
-  //NODE: may need to use a longer type and saturate!
+  //NOTE: may need to use a longer type and saturate!
   // compute error delta,
   // keep the correct implicit decimal point position
   // s16.15 = (s48.15 * s0.15) >> 15

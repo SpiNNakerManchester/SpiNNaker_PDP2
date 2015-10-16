@@ -73,6 +73,7 @@ delta_t	     * * w_link_deltas;     // computed link deltas
 error_t        * w_errors;          // computed errors next tick
 pkt_queue_t      w_delta_pkt_q;     // queue to hold received deltas
 activation_t   * w_output_history;  // history array for outputs
+fpreal           w_delta_dt;        // scaling factor for link deltas
 
 // FORWARD phase specific variables
 // (net b-d-p computation)

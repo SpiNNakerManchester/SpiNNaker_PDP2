@@ -38,7 +38,7 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; //# initial connection weights
+extern weight_t             *wt; // initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
@@ -65,6 +65,7 @@ extern delta_t        * w_deltas;      // error deltas for b-d-p
 extern delta_t	    * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
+extern fpreal           w_delta_dt;    // scaling factor for link deltas
 extern uint             wf_procs;      // pointer to processing unit outputs
 extern uint             wf_thrds_done; // sync. semaphore: comms, proc & stop
 extern uint             wf_sync_key;   // FORWARD processing can start
@@ -203,18 +204,20 @@ void wb_process (uint null0, uint null1)
     {
       restore_outputs (i);
 
+      //NOTE: may need to make w_link_deltas a long_delta_t type and saturate!
+      // compute link derivatives by multiplying the output of the sending 
+      // unit by the error delta of the receiving unit
+      // s16.15 = (s0.15 * s16.15) >> 15
+      w_link_deltas[i][inx] += (delta_t) (((long_delta_t) w_outputs[0][i]
+		                 * (long_delta_t) delta) >> SPINN_ACTIV_SHIFT
+                               );
+
       //NOTE: may need to make w_errors a long_error_t type and saturate!
       // s16.15 = (s3.12 * s16.15) >> 12
       w_errors[i] += (error_t) (((long_error_t) w_weights[i][inx]
                        * (long_error_t) delta)
                        >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT)
                      );
-
-      //Compute "link derivative" by multiplying the output of the sending 
-      //unit by the error delta of the receiving unit
-      //NOTE: may need to make w_link_deltas a long_delta_t type and saturate!
-      //s16.15 = (s0.15 * s16.15) >> 15
-      w_link_deltas[i][inx] += ((delta_t) w_outputs[0][i] * (delta_t) delta) >> SPINN_ACTIV_SHIFT;
 
       // check if done with all deltas
       if (wb_arrived == wcfg.b_all_arrived)
@@ -372,28 +375,27 @@ void w_weight_deltas (void)
   // compute weight changes
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
-    wchange_t temp = wcfg.learningRate * w_deltas[j];
-    
-    #ifdef DEBUG_VRB
-      io_printf (IO_BUF, "t = %10.7f (0x%08x)\n",
-                  SPINN_LCONV_TO_PRINT(temp,
-                                        (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT)
-                                      ),
-                  temp
-                );
-    #endif
-
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
       // never update weights that are 0! -- indicates no connection
       if (w_weights[i][j] != 0)
       {
+        // scale the link derivatives!
+        if (mlpc.net_type == SPINN_NET_CONT)
+        {
+          // s16.15 = (s16.15 * s15.16) >> 16
+          w_link_deltas[i][j] = (delta_t) (((long_delta_t) w_link_deltas[i][j]
+                                    * (long_delta_t) w_delta_dt)
+                                    >> SPINN_FPREAL_SHIFT);
+        }
+
         // keep the correct implicit decimal point position
-        //NOTE: use the correct outputs from FORWARD phase
-        w_wchanges[i][j] += (((long_error_t) temp *
-                              (long_error_t) w_outputs[wf_procs][i]  //#
-			     ) >> (2 * SPINN_ACTIV_SHIFT)
-                            );
+        // s3.12 = (s0.15 * s16.15) >> 19
+        w_wchanges[i][j] = (wchange_t) (((long_wchange_t) -wcfg.learningRate *
+					 (long_wchange_t) w_link_deltas[i][j])
+					>> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
+					    - SPINN_WEIGHT_SHIFT)
+	  );
       }
 
       #ifdef DEBUG_VRB
