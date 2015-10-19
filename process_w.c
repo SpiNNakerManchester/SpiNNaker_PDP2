@@ -682,14 +682,14 @@ void w_switch_to_bp (void)
 
 
 // ------------------------------------------------------------------------
-// restores the output derivative for the specified unit and the 
-// current value of the global variable tick.
+// restores the output of the specified unit for the 
+// previous value of the global variable tick.
 // ------------------------------------------------------------------------
 void restore_outputs (uint inx)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "restore_outputs\n");
   #endif
-  w_outputs[0][inx] = w_output_history[(((tick-2) * wcfg.num_rows) + inx)];
+  w_outputs[0][inx] = w_output_history[(((tick-1) * wcfg.num_rows) + inx)];
 }
 // ------------------------------------------------------------------------

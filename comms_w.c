@@ -246,7 +246,7 @@ void store_outputs (uint inx)
   #endif
 
   activation_t * src_ptr = w_outputs[wf_comms] + inx;
-  activation_t * dst_ptr = w_output_history + (((tick-1) * wcfg.num_rows) + inx);
+  activation_t * dst_ptr = w_output_history + ((tick * wcfg.num_rows) + inx);
 
   spin1_memcpy(dst_ptr, src_ptr, sizeof(activation_t));
 }
