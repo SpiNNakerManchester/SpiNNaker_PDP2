@@ -97,6 +97,7 @@ extern llong_deriv_t  * t_output_deriv;
 extern llong_deriv_t  * t_output_deriv_history;
 extern delta_t        * t_deltas;
 extern activation_t   * t_target_history;
+extern net_t          * t_net_history;
 extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
 // ------------------------------------------------------------------------
 
@@ -144,6 +145,10 @@ void tf_process (uint null0, uint null1)
 
     // store net for BACKPROP computation,
     t_nets[inx] = net;
+    if (mlpc.training)
+    {
+      store_nets (inx);
+    }
 
     // compute unit output,
     //TODO: need to make sure this is the same as Lens
@@ -282,6 +287,9 @@ void tb_process (uint null0, uint null1)
       // use received error computed in previous tick
       t_output_deriv[inx] = (llong_deriv_t) t_errors[tb_procs][inx];
     }
+
+    // restore outputs for the current tick
+    restore_nets (inx);
 
     compute_out_back (inx);
     
@@ -907,6 +915,39 @@ void restore_output_deriv (uint inx)
   t_output_deriv[inx] = t_output_deriv_history[(((tick-1) * tcfg.num_outputs) + inx)];
 }
 // ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// stores nets for the current tick
+// ------------------------------------------------------------------------
+void store_nets (uint inx)
+{
+  #ifdef TRACE_VRB
+    io_printf (IO_BUF, "store_nets\n");
+  #endif
+
+  net_t * src_ptr = t_nets + inx;
+  net_t * dst_ptr = t_net_history + (((tick-1) * tcfg.num_outputs) + inx);
+
+  spin1_memcpy(dst_ptr, src_ptr, sizeof(net_t));
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// restores the net for the specified unit and the previous value of the 
+// global variable tick.
+// ------------------------------------------------------------------------
+void restore_nets (uint inx)
+{
+  #ifdef TRACE
+    io_printf (IO_BUF, "restore_nets\n");
+  #endif
+
+  t_nets[inx] = t_net_history[(((tick-1) * tcfg.num_outputs) + inx)];
+}
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // compute the logistic function starting from the value received through the 
