@@ -597,7 +597,7 @@ void store_nets (uint inx)
   #endif
 
   long_net_t * src_ptr = i_nets + inx;
-  long_net_t * dst_ptr = i_net_history + (((tick-1) * icfg.num_nets) + inx);
+  long_net_t * dst_ptr = i_net_history + ((tick * icfg.num_nets) + inx);
 
   spin1_memcpy(dst_ptr, src_ptr, sizeof(long_net_t));
 }
@@ -614,7 +614,7 @@ void restore_nets (uint inx)
     io_printf (IO_BUF, "restore_nets\n");
   #endif
 
-  i_nets[inx] = i_net_history[(((tick-2) * icfg.num_nets) + inx)];
+  i_nets[inx] = i_net_history[(((tick-1) * icfg.num_nets) + inx)];
 }
 // ------------------------------------------------------------------------
 

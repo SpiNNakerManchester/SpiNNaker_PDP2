@@ -201,9 +201,9 @@ uint i_init (void)
           return return_value;
     }
 
-  // allocate memory in SDRAM for input history
-  // TODO: this need a condition on the requirement to have input history
-  // this needs to come from splens
+  // allocate memory in SDRAM for input history,
+  // TODO: this needs a condition on the requirement to have input history
+  // which needs to come from splens
   if ((i_net_history = ((long_net_t *)
           sark_xalloc (sv->sdram_heap,
                        icfg.num_nets * mlpc.global_max_ticks * sizeof(long_net_t),
@@ -212,6 +212,13 @@ uint i_init (void)
      )
   {
     return (SPINN_MEM_UNAVAIL);
+  }
+
+  // and initialise net history for tick 0.
+  //TODO: understand why the values for tick 0 are used!
+  for (uint i = 0; i < icfg.num_nets; i++)
+  {
+    i_net_history[i] = 0;
   }
 
   return (SPINN_NO_ERROR);

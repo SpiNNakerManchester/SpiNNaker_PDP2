@@ -896,7 +896,7 @@ void store_output_deriv (uint inx)
   #endif
 
   llong_deriv_t * src_ptr = t_output_deriv + inx;
-  llong_deriv_t * dst_ptr = t_output_deriv_history + (((tick-1) * tcfg.num_outputs) + inx);
+  llong_deriv_t * dst_ptr = t_output_deriv_history + ((tick * tcfg.num_outputs) + inx);
     
   spin1_memcpy(dst_ptr, src_ptr, sizeof(llong_deriv_t));
 }
@@ -912,7 +912,7 @@ void restore_output_deriv (uint inx)
   #ifdef TRACE
     io_printf (IO_BUF, "restore_output_deriv\n");
   #endif
-  t_output_deriv[inx] = t_output_deriv_history[(((tick-1) * tcfg.num_outputs) + inx)];
+  t_output_deriv[inx] = t_output_deriv_history[((tick * tcfg.num_outputs) + inx)];
 }
 // ------------------------------------------------------------------------
 
@@ -927,7 +927,7 @@ void store_nets (uint inx)
   #endif
 
   net_t * src_ptr = t_nets + inx;
-  net_t * dst_ptr = t_net_history + (((tick-1) * tcfg.num_outputs) + inx);
+  net_t * dst_ptr = t_net_history + ((tick * tcfg.num_outputs) + inx);
 
   spin1_memcpy(dst_ptr, src_ptr, sizeof(net_t));
 }
@@ -944,7 +944,7 @@ void restore_nets (uint inx)
     io_printf (IO_BUF, "restore_nets\n");
   #endif
 
-  t_nets[inx] = t_net_history[(((tick-1) * tcfg.num_outputs) + inx)];
+  t_nets[inx] = t_net_history[((tick * tcfg.num_outputs) + inx)];
 }
 // ------------------------------------------------------------------------
 
