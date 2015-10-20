@@ -278,8 +278,8 @@ void tb_process (uint null0, uint null1)
     if (tcfg.output_grp)
     {
       // output groups:
-      // restore output derivatives for the tick being processed
-      restore_output_deriv (inx);
+      // restore output derivative for the current tick
+      restore_output_deriv (inx, tick);
     }
     else
     {
@@ -289,7 +289,7 @@ void tb_process (uint null0, uint null1)
     }
 
     // restore outputs for the current tick
-    restore_nets (inx);
+    restore_nets (inx, tick);
 
     compute_out_back (inx);
     
@@ -849,17 +849,18 @@ void compute_out (uint inx)
       io_printf (IO_BUF, "compute output deriv\n");
     #endif
 
-    // if the error function to be called is not null compute the output derivative
+    // if the error function to be called is not null,
+    // compute the output derivative
     if (t_out_error[tcfg.error_function] != NULL)
     {
       t_out_error[tcfg.error_function] (inx);
     }
   }
 
-  // check if in training mode, and if so, store outputs, targets, and output derivatives
-  // TODO: for non-continuous networks, this needs to check the requirement to have these 
-  // histories saved, which needs to come from splens. For continuous networks, these histories
-  // are always required. 
+  // if in training mode store targets and output derivatives.
+  //TODO: for non-continuous networks, this needs to check the requirement
+  //TODO: to have these histories saved, which needs to come from splens.
+  //TODO: For continuous networks, these are always required. 
   if (mlpc.training)
   {
     store_targets (inx);
@@ -878,10 +879,7 @@ void store_targets (uint inx)
     io_printf (IO_BUF, "store_targets\n");
   #endif
 
-  activation_t * src_ptr = &tt[t_it_idx + inx];
-  activation_t * dst_ptr = t_target_history + (((tick-1) * tcfg.num_outputs) + inx);
-
-  spin1_memcpy(dst_ptr, src_ptr, sizeof(activation_t));
+  t_target_history[(tick * tcfg.num_outputs) + inx] = tt[t_it_idx + inx];
 }
 // ------------------------------------------------------------------------
 
@@ -895,24 +893,22 @@ void store_output_deriv (uint inx)
     io_printf (IO_BUF, "store_output_deriv\n");
   #endif
 
-  llong_deriv_t * src_ptr = t_output_deriv + inx;
-  llong_deriv_t * dst_ptr = t_output_deriv_history + ((tick * tcfg.num_outputs) + inx);
-    
-  spin1_memcpy(dst_ptr, src_ptr, sizeof(llong_deriv_t));
+  t_output_deriv_history[(tick * tcfg.num_outputs) + inx] = t_output_deriv[inx];
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// restores the output derivative for the specified unit and the 
-// current value of the global variable tick.
+// restores the output derivative of the specified unit for the requested tick
 // ------------------------------------------------------------------------
-void restore_output_deriv (uint inx)
+void restore_output_deriv (uint inx, uint tick)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "restore_output_deriv\n");
   #endif
-  t_output_deriv[inx] = t_output_deriv_history[((tick * tcfg.num_outputs) + inx)];
+
+  t_output_deriv[inx] = 
+    t_output_deriv_history[(tick * tcfg.num_outputs) + inx];
 }
 // ------------------------------------------------------------------------
 
@@ -926,19 +922,15 @@ void store_nets (uint inx)
     io_printf (IO_BUF, "store_nets\n");
   #endif
 
-  net_t * src_ptr = t_nets + inx;
-  net_t * dst_ptr = t_net_history + ((tick * tcfg.num_outputs) + inx);
-
-  spin1_memcpy(dst_ptr, src_ptr, sizeof(net_t));
+  t_net_history[(tick * tcfg.num_outputs) + inx] = t_nets[inx];
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// restores the net for the specified unit and the previous value of the 
-// global variable tick.
+// restores the net of the specified unit for the requested tick
 // ------------------------------------------------------------------------
-void restore_nets (uint inx)
+void restore_nets (uint inx, uint tick)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "restore_nets\n");

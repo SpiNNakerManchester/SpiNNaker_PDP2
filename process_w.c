@@ -61,7 +61,6 @@ extern weight_t     * * w_weights;     // connection weights block
 extern wchange_t    * * w_wchanges;    // accumulated weight changes
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
 extern activation_t   * w_output_history;
-extern delta_t        * w_deltas;      // error deltas for b-d-p
 extern delta_t	    * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
@@ -189,9 +188,6 @@ void wb_process (uint null0, uint null1)
     // get delta index: mask out phase, core and block data,
     inx &= SPINN_DELTA_MASK;
 
-    // store received error delta,
-    w_deltas[inx] = delta;
-
     // update scoreboard,
     #if SPINN_USE_COUNTER_SB == FALSE
       wb_arrived |= (1 << inx);
@@ -202,7 +198,9 @@ void wb_process (uint null0, uint null1)
     // partially compute error dot products,
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      restore_outputs (i);
+
+      // restores output for previous tick
+      restore_outputs (i, tick - 1);
 
       //NOTE: may need to make w_link_deltas a long_delta_t type and saturate!
       // compute link derivatives by multiplying the output of the sending 
@@ -296,6 +294,22 @@ void w_update_weights (void)
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
       {
+        // scale the link derivatives!
+        if (mlpc.net_type == SPINN_NET_CONT)
+        {
+          // s16.15 = (s16.15 * s15.16) >> 16
+          w_link_deltas[i][j] = (delta_t) (((long_delta_t) w_link_deltas[i][j]
+                                    * (long_delta_t) w_delta_dt)
+                                    >> SPINN_FPREAL_SHIFT);
+        }
+
+        // s3.12 = (s0.15 * s16.15) >> 19
+        w_wchanges[i][j] = (wchange_t) (((long_wchange_t) -wcfg.learningRate *
+					 (long_wchange_t) w_link_deltas[i][j])
+					>> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
+					    - SPINN_WEIGHT_SHIFT)
+	  );
+
         // compute new weight
         long_weight_t temp = (long_weight_t) w_weights[i][j]
                               + (long_weight_t) w_wchanges[i][j];
@@ -358,61 +372,6 @@ void w_update_weights (void)
 //##                  );
     }
   #endif
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// compute weight changes and store them in the w_wchanges matrix
-// to be applied afterwards, through the weight update routine
-// ------------------------------------------------------------------------
-void w_weight_deltas (void)
-{
-  #ifdef TRACE
-    io_printf (IO_BUF, "w_weight_deltas\n");
-  #endif
-  
-  // compute weight changes
-  for (uint j = 0; j < wcfg.num_cols; j++)
-  {
-    for (uint i = 0; i < wcfg.num_rows; i++)
-    {
-      // never update weights that are 0! -- indicates no connection
-      if (w_weights[i][j] != 0)
-      {
-        // scale the link derivatives!
-        if (mlpc.net_type == SPINN_NET_CONT)
-        {
-          // s16.15 = (s16.15 * s15.16) >> 16
-          w_link_deltas[i][j] = (delta_t) (((long_delta_t) w_link_deltas[i][j]
-                                    * (long_delta_t) w_delta_dt)
-                                    >> SPINN_FPREAL_SHIFT);
-        }
-
-        // keep the correct implicit decimal point position
-        // s3.12 = (s0.15 * s16.15) >> 19
-        w_wchanges[i][j] = (wchange_t) (((long_wchange_t) -wcfg.learningRate *
-					 (long_wchange_t) w_link_deltas[i][j])
-					>> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
-					    - SPINN_WEIGHT_SHIFT)
-	  );
-      }
-
-      #ifdef DEBUG_VRB
-        uint roff = wcfg.blk_row * wcfg.num_rows;
-        uint coff = wcfg.blk_col * wcfg.num_cols;
-        io_printf (IO_BUF,
-                    "[%2d][%2d] w = %10.7f c = %10.7f d = %10.7f\n",
-                    roff + i, coff + j,
-                    SPINN_CONV_TO_PRINT(w_weights[i][j],  SPINN_WEIGHT_SHIFT),
-                    SPINN_CONV_TO_PRINT(w_wchanges[i][j], SPINN_WEIGHT_SHIFT),
-                    SPINN_CONV_TO_PRINT(w_deltas[wb_procs][j],
-                                         SPINN_DELTA_SHIFT
-                                       )
-                  );
-      #endif
-    }
-  }
 }
 // ------------------------------------------------------------------------
 
@@ -482,10 +441,6 @@ void wb_advance_tick (uint null0, uint null1)
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)
   {
-    // compute weight deltas after last tick,
-    //TODO: should be called or scheduled?
-    //w_weight_deltas ();
-
     // initialize tick for next example
     tick = SPINN_W_INIT_TICK;
 
@@ -590,7 +545,6 @@ void w_advance_example (void)
     if (mlpc.training)
     {
       //TODO: should be called or scheduled?
-      w_weight_deltas ();
       w_update_weights ();
       
       #if WEIGHT_HISTORY == TRUE
@@ -682,14 +636,14 @@ void w_switch_to_bp (void)
 
 
 // ------------------------------------------------------------------------
-// restores the output of the specified unit for the 
-// previous value of the global variable tick.
+// restores the output of the specified unit for requested tick
 // ------------------------------------------------------------------------
-void restore_outputs (uint inx)
+void restore_outputs (uint inx, uint tick)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "restore_outputs\n");
   #endif
-  w_outputs[0][inx] = w_output_history[(((tick-1) * wcfg.num_rows) + inx)];
+
+  w_outputs[0][inx] = w_output_history[(tick * wcfg.num_rows) + inx];
 }
 // ------------------------------------------------------------------------

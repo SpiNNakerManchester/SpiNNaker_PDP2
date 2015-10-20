@@ -54,7 +54,6 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 extern weight_t     * * w_weights;     // connection weights block
 extern wchange_t    * * w_wchanges;    // accumulated weight changes
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern delta_t        * w_deltas;      // error deltas for b-d-p
 extern delta_t	    * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
@@ -133,24 +132,6 @@ uint w_init (void)
     }
   }
 
-  // allocate memory for link deltas
-  if ((w_link_deltas = ((delta_t * *)
-         spin1_malloc (wcfg.num_rows * sizeof(delta_t *)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  for (i = 0; i < wcfg.num_rows; i++)
-  {
-    if ((w_link_deltas[i] = ((delta_t *)
-           spin1_malloc (wcfg.num_cols * sizeof(delta_t)))) == NULL
-       )
-    {
-    return (SPINN_MEM_UNAVAIL);
-    }
-  }
-
   // allocate memory for weight changes
   if ((w_wchanges = ((wchange_t * *)
          spin1_malloc (wcfg.num_rows * sizeof(wchange_t *)))) == NULL
@@ -184,12 +165,22 @@ uint w_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for error deltas
-  if ((w_deltas = ((delta_t*)
-         spin1_malloc (wcfg.num_cols * sizeof(delta_t)))) == NULL
+  // allocate memory for link deltas
+  if ((w_link_deltas = ((delta_t * *)
+         spin1_malloc (wcfg.num_rows * sizeof(delta_t *)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
+  }
+
+  for (i = 0; i < wcfg.num_rows; i++)
+  {
+    if ((w_link_deltas[i] = ((delta_t *)
+           spin1_malloc (wcfg.num_cols * sizeof(delta_t)))) == NULL
+       )
+    {
+    return (SPINN_MEM_UNAVAIL);
+    }
   }
 
   // allocate memory for errors

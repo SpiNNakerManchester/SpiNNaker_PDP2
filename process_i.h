@@ -10,7 +10,7 @@ void  if_advance_event  (void);
 void  i_advance_example (void);
 
 void  store_nets         (uint inx);
-void  restore_nets	 (uint inx);
+void  restore_nets	 (uint inx, uint tick);
 
 void  compute_in         (uint inx);
 void  in_integr          (uint inx);

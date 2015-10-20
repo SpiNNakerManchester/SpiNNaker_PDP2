@@ -312,8 +312,8 @@ void i_backprop_packet (uint key, uint payload)
   {
     delta_t delta_tmp;
 
-    // restore outputs for the tick prior to the one being processed
-    restore_nets (inx);
+    // restore net for the previous tick
+    restore_nets (inx, tick -1);
 
     compute_in_back (inx);
     
@@ -596,25 +596,21 @@ void store_nets (uint inx)
     io_printf (IO_BUF, "store_nets\n");
   #endif
 
-  long_net_t * src_ptr = i_nets + inx;
-  long_net_t * dst_ptr = i_net_history + ((tick * icfg.num_nets) + inx);
-
-  spin1_memcpy(dst_ptr, src_ptr, sizeof(long_net_t));
+  i_net_history[(tick * icfg.num_nets) + inx] = i_nets[inx];
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// restores the net for the specified unit and the previous value of the 
-// global variable tick.
+// restores the net of the specified unit for the requested tick
 // ------------------------------------------------------------------------
-void restore_nets (uint inx)
+void restore_nets (uint inx, uint tick)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "restore_nets\n");
   #endif
 
-  i_nets[inx] = i_net_history[(((tick-1) * icfg.num_nets) + inx)];
+  i_nets[inx] = i_net_history[(tick * icfg.num_nets) + inx];
 }
 // ------------------------------------------------------------------------
 

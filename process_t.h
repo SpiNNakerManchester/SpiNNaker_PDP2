@@ -12,11 +12,11 @@ void  t_switch_to_bp    (void);
 void  tf_send_stop      (uint null0, uint null1);
 void  t_init_outputs    (uint null0, uint null1);
 
-void  store_targets	  (uint inx);
-void  store_output_deriv  (uint inx);
-void  restore_output_deriv (uint inx);
-void  store_nets          (uint inx);
-void  restore_nets        (uint inx);
+void  store_targets	   (uint inx);
+void  store_output_deriv   (uint inx);
+void  restore_output_deriv (uint inx, uint tick);
+void  store_nets           (uint inx);
+void  restore_nets         (uint inx, uint tick);
 
 void  compute_out         (uint inx);
 void  out_logistic        (uint inx);
