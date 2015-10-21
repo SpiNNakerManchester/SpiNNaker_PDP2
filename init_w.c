@@ -251,6 +251,12 @@ uint w_init (void)
     w_errors[i] = 0;
   }
 
+  // initialize output history for tick 0
+  for (uint i = 0; i < wcfg.num_rows; i++)
+  {
+    w_output_history[i] = 0;
+  }
+
   // intialize tick
   tick = SPINN_W_INIT_TICK;
 

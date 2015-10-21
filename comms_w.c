@@ -157,7 +157,10 @@ void w_forwardPacket (uint key, uint payload)
   w_outputs[wf_comms][inx] = (activation_t) payload;
 
   // store output for use in backprop phase,
-  store_outputs (inx);
+  if (tick > 0)
+  {
+    store_outputs (inx);
+  }
 
   // and update scoreboard,
   #if SPINN_USE_COUNTER_SB == FALSE
