@@ -310,33 +310,31 @@ void i_backprop_packet (uint key, uint payload)
   // is executed when a packet is received -- to be chekced
   if (ib_arrived[inx] == ib_all_arrived)
   {
-    delta_t delta_tmp;
-
     // restore net for the previous tick
     restore_nets (inx, tick -1);
 
     compute_in_back (inx);
-    
+
     // saturate and cast the long deltas before sending
-    if ((i_deltas[inx] >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT))
-         >= (delta_t) SPINN_DELTA_MAX)
+    long_delta_t delta_tmp = i_deltas[inx]
+                           >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
+    delta_t delta;
+
+    if (delta_tmp >= (long_delta_t) SPINN_DELTA_MAX)
     {
-      delta_tmp = (delta_t) SPINN_DELTA_MAX;
+      delta = (delta_t) SPINN_DELTA_MAX;
     }
-    else if ((i_deltas[inx] >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT))
-              <= (delta_t) SPINN_DELTA_MIN)
+    else if (delta_tmp <= (long_delta_t) SPINN_DELTA_MIN)
     {
-      delta_tmp = (delta_t) SPINN_DELTA_MIN;
+      delta = (delta_t) SPINN_DELTA_MIN;
     }
     else
     {
-      // keep the correct implicit decimal point position
-      delta_tmp = (delta_t) (i_deltas[inx]
-			     >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT));
+      delta = (delta_t) delta_tmp;
     }
 
     // incorporate delta index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | inx), delta_tmp, WITH_PAYLOAD));
+    while (!spin1_send_mc_packet ((bkpKey | inx), delta, WITH_PAYLOAD));
 
     #ifdef DEBUG
       pkt_sent++;
@@ -763,14 +761,18 @@ void in_integr_back (uint inx)
     io_printf (IO_BUF, "in_integr_back\n");
   #endif
 
-  // representation s36.27
+  // s36.27
   long_delta_t last_delta = i_last_integr_delta[inx];
-  // representation s47.16
+
+  // s47.16
   lfpreal dt = icfg.in_integr_dt;
 
   // s36.27 = (s47.16 * s36.27) >> 16
   long_delta_t d = (dt * last_delta) >> SPINN_FPREAL_SHIFT;
+
+  // s36.27 = s36.27 + s36.27 - s36.27
   last_delta += i_deltas[inx] - d;
+
   i_deltas[inx] = d;
   
   // store the integrator state for the next iteration

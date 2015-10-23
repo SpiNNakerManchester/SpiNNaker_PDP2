@@ -300,28 +300,27 @@ void s_backprop_packet (uint key, uint payload)
   //TODO: can use a configuration constant -- needs fixing
   if (sb_arrived[clr][inx] == sb_all_arrived)
   {
-    error_t err_tmp;
-
-    err_tmp = s_errors[clr][inx];
-
     //NOTE: may need to use long_error_t and saturate before sending
-/*    if (s_errors[inx] >= (long_error_t) SPINN_LONG_ERR_MAX)
+    error_t error = s_errors[clr][inx];
+
+/*    long_error_t err_tmp = s_errors[clr][inx]
+                              >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
+
+    if (err_tmp >= (long_error_t) SPINN_ERROR_MAX)
     {
-      err_tmp = (error_t) SPINN_ERROR_MAX;
+      error = (error_t) SPINN_ERROR_MAX;
     }
-    else if (s_errors[inx] <= (long_error_t) SPINN_LONG_ERR_MIN)
+    else if (err_tmp <= (long_error_t) SPINN_ERROR_MIN)
     {
-      err_tmp = (error_t) SPINN_ERROR_MIN;
+      error = (error_t) SPINN_ERROR_MIN;
     }
     else
     {
-      // keep the correct implicit decimal point position
-      err_tmp = (error_t) (s_errors[inx] >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT));
+      error = (error_t) err_tmp;
     }*/
 
-
     // incorporate error index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | inx), err_tmp, WITH_PAYLOAD));
+    while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
 
     #ifdef DEBUG
       pkt_sent++;

@@ -273,13 +273,14 @@ void tb_process (uint null0, uint null1)
   //TODO: this needs checking!
   for (uint inx = 0; inx < tcfg.num_outputs; inx++)
   {
-    delta_t delta;
-
     if (tcfg.output_grp)
     {
       // output groups:
       // restore output derivative for the current tick
       restore_output_deriv (inx, tick);
+
+      // inject error derivative!
+      t_output_deriv[inx] += (llong_deriv_t) t_errors[tb_procs][inx];
     }
     else
     {
@@ -293,7 +294,7 @@ void tb_process (uint null0, uint null1)
 
     compute_out_back (inx);
     
-    delta = t_deltas[inx];
+    delta_t delta = t_deltas[inx];
 
     // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
@@ -672,12 +673,9 @@ void t_switch_to_bp (void)
   phase = SPINN_BACKPROP;
 
   // initialize t_errors for next example
-  if (!tcfg.output_grp)
+  for (uint i = 0; i < tcfg.num_outputs; i++)
   {
-    for (uint i = 0; i < tcfg.num_outputs; i++)
-    {
-      t_errors[tb_procs][i] = 0;
-    }
+    t_errors[tb_procs][i] = 0;
   }
 
   // start processing in BACKPROP phase,
@@ -1185,10 +1183,10 @@ void out_integr_back (uint inx)
 
   llong_deriv_t last_output_deriv = t_last_integr_output_deriv[inx];
 
-  lfpreal dt = tcfg.out_integr_dt;
+  lfpreal dt = (lfpreal) tcfg.out_integr_dt;
 
   // s48.15 = (s47.16 * s48.15) >> 16
-  llong_deriv_t d = (dt * last_output_deriv) >> 16;
+  llong_deriv_t d = (dt * last_output_deriv) >> SPINN_FPREAL_SHIFT;
   last_output_deriv += t_output_deriv[inx] - d;
   t_output_deriv[inx] = d;
   
@@ -1308,9 +1306,8 @@ int init_out_integr ()
     io_printf (IO_BUF, "init_out_integr\n");
   #endif
 
-  int i;
-
   // allocate memory for integrator state
+  //NOTE: these variables are initialised in function init_outputs ()
   if ((t_last_integr_output = ((activation_t *)
        spin1_malloc (tcfg.num_outputs * sizeof(activation_t)))) == NULL
      )
@@ -1324,10 +1321,6 @@ int init_out_integr ()
   {
     return (SPINN_MEM_UNAVAIL);
   }
-
-  for (i = 0; i<tcfg.num_outputs; i++)
-    t_last_integr_output[i] = 0;
-    t_last_integr_output_deriv[i] = 0;
 
   return SPINN_NO_ERROR;
 }
