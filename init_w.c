@@ -52,9 +52,9 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // weight core variables
 // ------------------------------------------------------------------------
 extern weight_t     * * w_weights;     // connection weights block
-extern wchange_t    * * w_wchanges;    // accumulated weight changes
+extern long_wchange_t * * w_wchanges;    // accumulated weight changes
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern delta_t	    * * w_link_deltas; // computed link deltas
+extern long_delta_t * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
 extern fpreal           w_delta_dt;    // scaling factor for link deltas
@@ -133,8 +133,8 @@ uint w_init (void)
   }
 
   // allocate memory for weight changes
-  if ((w_wchanges = ((wchange_t * *)
-         spin1_malloc (wcfg.num_rows * sizeof(wchange_t *)))) == NULL
+  if ((w_wchanges = ((long_wchange_t * *)
+         spin1_malloc (wcfg.num_rows * sizeof(long_wchange_t *)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -142,8 +142,8 @@ uint w_init (void)
 
   for (i = 0; i < wcfg.num_rows; i++)
   {
-    if ((w_wchanges[i] = ((wchange_t *)
-           spin1_malloc (wcfg.num_cols * sizeof(wchange_t)))) == NULL
+    if ((w_wchanges[i] = ((long_wchange_t *)
+           spin1_malloc (wcfg.num_cols * sizeof(long_wchange_t)))) == NULL
        )
     {
     return (SPINN_MEM_UNAVAIL);
@@ -166,8 +166,8 @@ uint w_init (void)
   }
 
   // allocate memory for link deltas
-  if ((w_link_deltas = ((delta_t * *)
-         spin1_malloc (wcfg.num_rows * sizeof(delta_t *)))) == NULL
+  if ((w_link_deltas = ((long_delta_t * *)
+         spin1_malloc (wcfg.num_rows * sizeof(long_delta_t *)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -175,8 +175,8 @@ uint w_init (void)
 
   for (i = 0; i < wcfg.num_rows; i++)
   {
-    if ((w_link_deltas[i] = ((delta_t *)
-           spin1_malloc (wcfg.num_cols * sizeof(delta_t)))) == NULL
+    if ((w_link_deltas[i] = ((long_delta_t *)
+           spin1_malloc (wcfg.num_cols * sizeof(long_delta_t)))) == NULL
        )
     {
     return (SPINN_MEM_UNAVAIL);

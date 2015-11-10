@@ -58,10 +58,10 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // weight core variables
 // ------------------------------------------------------------------------
 extern weight_t     * * w_weights;     // connection weights block
-extern wchange_t    * * w_wchanges;    // accumulated weight changes
+extern long_wchange_t * * w_wchanges;    // accumulated weight changes
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
 extern activation_t   * w_output_history;
-extern delta_t	    * * w_link_deltas; // computed link deltas
+extern long_delta_t * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
 extern fpreal           w_delta_dt;    // scaling factor for link deltas
@@ -106,14 +106,15 @@ void wf_process (uint null0, uint null1)
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
-    //net_t is s4.27
+    // s8.23
     net_t net_part = 0;
 
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      //NOTE: may need to use long_nets for the dot-products and saturate!
-      // s4.27 = s0.15 * s3.12
-      net_part += ((net_t) w_outputs[wf_procs][i] * (net_t) w_weights[i][j]);
+      //NOTE: may need to use long_nets and saturate!
+      // s8.23 = s8.23 + ((s0.15 * s3.12) >> 4)
+      net_part += ((net_t) w_outputs[wf_procs][i] * (net_t) w_weights[i][j])
+                  >> (SPINN_ACTIV_SHIFT + SPINN_WEIGHT_SHIFT - SPINN_NET_SHIFT);
     }
 
     // incorporate net index to the packet key and send
@@ -199,22 +200,23 @@ void wb_process (uint null0, uint null1)
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
 
-      // restores output for previous tick
+      // restore output of previous tick,
       restore_outputs (i, tick - 1);
 
-      //NOTE: may need to make w_link_deltas a long_delta_t type and saturate!
-      // compute link derivatives by multiplying the output of the sending 
-      // unit by the error delta of the receiving unit
-      // s16.15 = (s0.15 * s16.15) >> 15
-      w_link_deltas[i][inx] += (delta_t) (((long_delta_t) w_outputs[0][i]
-		                 * (long_delta_t) delta) >> SPINN_ACTIV_SHIFT
-                               );
+      // compute link derivatives,
+      // s36.27 = (s0.15 * s16.23) >> 11
+      w_link_deltas[i][inx] += ((long_delta_t) w_outputs[0][i]
+                                 * (long_delta_t) delta)
+                                 >> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT 
+                                 - SPINN_LONG_DELTA_SHIFT);
 
       //NOTE: may need to make w_errors a long_error_t type and saturate!
-      // s16.15 = (s3.12 * s16.15) >> 12
+      // s16.15 = s16.15 + (s3.12 * s16.15) >> 12
+      // s16.15 = s16.15 + (s3.12 * s8.23) >> 20
       w_errors[i] += (error_t) (((long_error_t) w_weights[i][inx]
                        * (long_error_t) delta)
-                       >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT)
+                       >> (SPINN_WEIGHT_SHIFT + SPINN_DELTA_SHIFT
+                       - SPINN_ERROR_SHIFT)
                      );
 
       // check if done with all deltas
@@ -294,21 +296,29 @@ void w_update_weights (void)
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
       {
-        // scale the link derivatives!
+        // scale the link derivatives
         if (mlpc.net_type == SPINN_NET_CONT)
         {
-          // s16.15 = (s16.15 * s15.16) >> 16
-          w_link_deltas[i][j] = (delta_t) (((long_delta_t) w_link_deltas[i][j]
-                                    * (long_delta_t) w_delta_dt)
-                                    >> SPINN_FPREAL_SHIFT);
+          // s36.27 = (s36.27 * s15.16) >> 16
+          w_link_deltas[i][j] = (w_link_deltas[i][j]
+				 * (long_delta_t) w_delta_dt)
+                                 >> SPINN_FPREAL_SHIFT;
         }
 
-        // s3.12 = (s0.15 * s16.15) >> 19
-        w_wchanges[i][j] = (wchange_t) (((long_wchange_t) -wcfg.learningRate *
-					 (long_wchange_t) w_link_deltas[i][j])
-					>> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
-					    - SPINN_WEIGHT_SHIFT)
-	  );
+        // compute weight change,
+        // s51.12 = (s0.15 * s36.27) >> 30
+        long_wchange_t change_tmp = ((long_wchange_t) -wcfg.learningRate *
+                             (long_wchange_t) w_link_deltas[i][j]);
+
+        // round off,
+        change_tmp += (long_wchange_t) (1 << (SPINN_ACTIV_SHIFT
+                                        + SPINN_LONG_DELTA_SHIFT
+                                        - SPINN_WEIGHT_SHIFT - 1));
+
+        // and adjust decimal point position
+        w_wchanges[i][j] = change_tmp 
+                             >> (SPINN_ACTIV_SHIFT + SPINN_LONG_DELTA_SHIFT
+		             - SPINN_WEIGHT_SHIFT);
 
         // compute new weight
         long_weight_t temp = (long_weight_t) w_weights[i][j]
@@ -575,6 +585,7 @@ void w_advance_example (void)
           for (uint j = 0; j < wcfg.num_cols; j++)
           {
             w_wchanges[i][j] = 0;
+            w_link_deltas[i][j] = 0;
           }
         }
       }

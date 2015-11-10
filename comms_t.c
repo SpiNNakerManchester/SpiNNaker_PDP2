@@ -425,8 +425,16 @@ void send_outputs_to_host (uint cmd, uint tick)
   activation_t * my_data = (activation_t *) t_sdp_msg.data;
   for (uint i = 0; i < tcfg.num_outputs; i++)
   {
-    my_data[2 * i]     = t_outputs[i];
-    my_data[2 * i + 1] = tt[t_it_idx + i];
+    if (tick == 0)
+    {
+      my_data[2 * i]     = 0;
+      my_data[2 * i + 1] = 0;
+    }
+    else
+    {
+      my_data[2 * i]     = t_outputs[i];
+      my_data[2 * i + 1] = tt[t_it_idx + i];
+    }
   }
 
   // set message length,

@@ -172,6 +172,7 @@ void i_forward_packet (uint key, uint payload)
   uint inx = key & SPINN_NET_MASK;
 
   // accumulate new net b-d-p,
+  // s40.23
   i_nets[inx] = (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,

@@ -280,13 +280,15 @@ void tb_process (uint null0, uint null1)
       restore_output_deriv (inx, tick);
 
       // inject error derivative!
-      t_output_deriv[inx] += (llong_deriv_t) t_errors[tb_procs][inx];
+      t_output_deriv[inx] += ((llong_deriv_t) t_errors[tb_procs][inx])
+                               << (SPINN_LLONG_DERIV_SHIFT - SPINN_ERROR_SHIFT);
     }
     else
     {
       // non-output groups:
       // use received error computed in previous tick
-      t_output_deriv[inx] = (llong_deriv_t) t_errors[tb_procs][inx];
+      t_output_deriv[inx] = ((llong_deriv_t) t_errors[tb_procs][inx])
+                               << (SPINN_LLONG_DERIV_SHIFT - SPINN_ERROR_SHIFT);
     }
 
     // restore outputs for the current tick
@@ -964,33 +966,33 @@ void out_integr (uint inx)
     io_printf (IO_BUF, "out_integr\n");
   #endif
   
-  // representation 49.15, with the topmost 48 bits set to 0
+  // s0.15
   llong_activ_t last_output = t_last_integr_output[inx]; 
-  // representation 49.15, with the topmost 48 bits set to 0
+
+  // s0.15
   llong_activ_t new_output = t_outputs[inx];
-  // representation 48.16, with the topmost 32 bits set to 0
+
+  // s0.16
   lfpreal dt = tcfg.out_integr_dt;
   
-  // compute the output integration following Lens code
-  // representation: 
-  // 49.15 + ((48.16 * (49.15 - 49.15)) >> 16) = 
-  // = 49.15 + (48.16 * 49.15) >> 16 = 49.15 + 49.15 =
-  // = 49.15
-  // The values are unlikely to overflow, as the variables are extended to
-  // 64 bits for this purpose and the 32 or 48 topmost bits are set to 0 by the
-  // extension
-  llong_activ_t output = last_output + ((dt * (new_output - last_output)) >> 16);
+  // compute the of the output integrator and round off
+  // s48.15 = (s0.16 * (s0.15 - s0.15)) >> 16
+  llong_activ_t out_tmp = ((dt * (new_output - last_output))
+                            + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                            >> SPINN_FPREAL_SHIFT;
+
+  out_tmp += last_output;
 
   // saturate the value computed and assign it to the output variable
-  if (output > (llong_activ_t) SPINN_ACTIV_MAX)
+  if (out_tmp > (llong_activ_t) SPINN_ACTIV_MAX)
     // positive saturation
     t_outputs[inx] = (activation_t) SPINN_ACTIV_MAX;  
-  else if (output < (llong_activ_t) SPINN_ACTIV_MIN_NEG)
+  else if (out_tmp < (llong_activ_t) SPINN_ACTIV_MIN_NEG)
     // negative saturation
     t_outputs[inx] = (activation_t) SPINN_ACTIV_MIN_NEG;
   else
     // representation in 49.15 within the range (-1; 1) can be reduced to 1.15
-    t_outputs[inx] = (activation_t) output;
+    t_outputs[inx] = (activation_t) out_tmp;
   
   // store the integrator state for the next iteration
   t_last_integr_output[inx] = t_outputs[inx];
@@ -1160,14 +1162,20 @@ void out_logistic_back (uint inx)
     io_printf (IO_BUF, "out_logistic_back\n");
   #endif
 
-  //NOTE: may need to use a longer type and saturate!
   // compute error delta,
-  // keep the correct implicit decimal point position
-  // s16.15 = (s48.15 * s0.15) >> 15
-  t_deltas[inx] = (delta_t) (((long_delta_t) t_output_deriv[inx]
-                    * (long_delta_t) sigmoid_prime (t_nets[inx]))
-                    >> (SPINN_DERIV_SHIFT + SPINN_ACTIV_SHIFT 
-                    - SPINN_DELTA_SHIFT));
+  long_delta_t tmp = (long_delta_t) t_output_deriv[inx]
+                       * (long_delta_t) sigmoid_prime (t_nets[inx]);
+
+  // round off,
+  tmp += 1 << (SPINN_LLONG_DERIV_SHIFT + SPINN_ACTIV_SHIFT
+           - SPINN_DELTA_SHIFT - 1);
+
+  // compute error delta,
+  //! s16.15 = (s48.15 * s0.15) >> 15
+  // s8.23 = (s48.15 * s0.15) >> 7
+  //NOTE: may need to use a longer type and saturate!
+  t_deltas[inx] = (delta_t) (tmp >> (SPINN_LLONG_DERIV_SHIFT
+                              + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT));
 }
 // ------------------------------------------------------------------------
 
@@ -1563,7 +1571,7 @@ void error_cross_entropy (uint inx)
         // the left shift needs to be done before the division, as the
         // precision reduces with the division
         // representation: 49.15
-        t_output_deriv[inx] = (((llong_deriv_t) numerator << SPINN_DERIV_SHIFT) / (llong_deriv_t) denominator);
+        t_output_deriv[inx] = (((llong_deriv_t) numerator << SPINN_LLONG_DERIV_SHIFT) / (llong_deriv_t) denominator);
       }
     }
     // if the target is close to 1, then the cross entropy function simplifies:
@@ -1586,7 +1594,7 @@ void error_cross_entropy (uint inx)
         // the left shift needs to be done before the division, as the
         // precision reduces with the division
         // representation: 49.15
-        t_output_deriv[inx] = (((llong_deriv_t) numerator << SPINN_DERIV_SHIFT) / (llong_deriv_t) denominator);
+        t_output_deriv[inx] = (((llong_deriv_t) numerator << SPINN_LLONG_DERIV_SHIFT) / (llong_deriv_t) denominator);
       }
     }
     // otherwise compute the standard function
@@ -1598,7 +1606,7 @@ void error_cross_entropy (uint inx)
       // where the MAX value is the maximum representable value
       if (( ((llong_activ_t) t_outputs[inx] * (llong_activ_t) ((long_activ_t) SPINN_LONG_ACTIV_ONE - t_outputs[inx])) << (llong_activ_t) SPINN_ACTIV_SHIFT) <= (long_activ_t) SPINN_SMALL_VAL)
       {
-        t_output_deriv[inx] = ((((llong_deriv_t) SPINN_LONG_DERIV_MAX) * (llong_deriv_t)(t_outputs[inx] - tt[t_it_idx + inx])) >> SPINN_DERIV_SHIFT);
+        t_output_deriv[inx] = ((((llong_deriv_t) SPINN_LONG_DERIV_MAX) * (llong_deriv_t)(t_outputs[inx] - tt[t_it_idx + inx])) >> SPINN_ACTIV_SHIFT);
       }
       // otherwise compute the standard formula
       // (output - target) / (output * (1 - output))
@@ -1609,7 +1617,7 @@ void error_cross_entropy (uint inx)
         llong_deriv_t denominator = ((llong_deriv_t) t_outputs[inx] * (llong_deriv_t) (one - t_outputs[inx])) >> SPINN_DERIV_SHIFT; //representation: 49.15
         
         // representation: 49.15
-        t_output_deriv[inx] = (((llong_deriv_t) numerator << SPINN_DERIV_SHIFT) / (llong_deriv_t) denominator);
+        t_output_deriv[inx] = (((llong_deriv_t) numerator << SPINN_LLONG_DERIV_SHIFT) / (llong_deriv_t) denominator);
       }
     }
   }

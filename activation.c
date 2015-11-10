@@ -40,7 +40,6 @@ activation_t sigmoid (net_t input)
   // the input value is inside the range of the lookup table. The value needs
   // to be interpolated appropriately
   {
-    long_activ_t output;  // computed sigmoid output
     uchar x0;             // input bits to access LUT
     long_activ_t z;       // input remainder bits to do interpolation
     activation_t y0, y1;  // look-up values
@@ -57,7 +56,7 @@ activation_t sigmoid (net_t input)
       z  = (long_activ_t) (-temp) & (long_activ_t) SPINN_SIGMD_LUT_IMASK;
     }
 
-    y0 = sigmoid_lut[x0]; //value correspondent to the llokup table
+    y0 = sigmoid_lut[x0]; // value corresponding to the lookup table
 
     // if x0 is largest value in table -- interpolate with MAX value
     if (x0 == (SPINN_SIGMD_RES - 1))
@@ -65,9 +64,13 @@ activation_t sigmoid (net_t input)
     else
       y1 = sigmoid_lut[x0 + 1];
 
-    // interpolate (using long variables)
-    output = (long_activ_t) y0 +
-               (((long_activ_t) (y1 - y0) * z) >> SPINN_SIGMD_LUT_SHIFT);
+    // interpolate using long variables and round off
+    // s0.15 = ((s0.15 - s0.15) * s0.22) >> 22
+    long_activ_t out_tmp = (((long_activ_t) (y1 - y0) * z)
+                             + (long_activ_t) (1 << (SPINN_SIGMD_LUT_SHIFT - 1)))
+	                     >> SPINN_SIGMD_LUT_SHIFT;
+
+    activation_t output = y0 + (activation_t) out_tmp;
           
     // return the symmetric result for negative inputs!
     if (temp < 0)
@@ -182,7 +185,11 @@ net_t inv_sigmoid (activation_t input)
     temp = (long_net_t) y0
              + (((long_net_t) (input_adapted & SPINN_INVSIG_LUT_IMASK)
              * (long_net_t) (y1 - y0)) >> SPINN_INVSIG_LUT_SHIFT);
-        
+
+    //NOTE: need to adjust fixed-point position due to change in representation.
+    //TODO: re-work look-up table with new fixed-point position!
+    temp = temp >> 4;
+
     // saturate output -- should never be applied
     // no need to check for negative values!
     if (temp > (net_t) SPINN_SIGMD_MAX_INPUT)

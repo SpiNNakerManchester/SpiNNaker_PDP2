@@ -167,6 +167,7 @@ void s_forward_packet (uint key, uint payload)
   uint clr = ((key & SPINN_COLOUR_MASK) >> SPINN_COLOUR_SHIFT);
 
   // accumulate new net b-d-p,
+  // s40.23 = s40.23 + s8.23
   s_nets[clr][inx] += (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,
