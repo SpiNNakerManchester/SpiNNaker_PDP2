@@ -71,6 +71,7 @@ extern uchar            t_active;      // processing nets/errors from queue?
 extern uchar            t_sync_done;   // have expected sync packets arrived?
 extern activation_t   * t_last_integr_output;  //last integrator output value
 extern llong_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
+extern activation_t   * t_instant_outputs; // current output value stored for the backward pass
 extern activation_t   * t_out_hard_clamp_data; //values injected by hard clamps
 extern activation_t   * t_out_weak_clamp_data; //values injected by weak clamps
 extern uchar            t_hard_clamp_en;       //hard clamp output enabled
@@ -975,6 +976,10 @@ void out_integr (uint inx)
   // s0.16
   lfpreal dt = tcfg.out_integr_dt;
   
+
+  // store the output for the backward path
+  t_instant_outputs[((tick - 1) * tcfg.num_outputs) + inx] = t_outputs[inx];
+
   // compute the of the output integrator and round off
   // s48.15 = (s0.16 * (s0.15 - s0.15)) >> 16
   llong_activ_t out_tmp = ((dt * (new_output - last_output))
@@ -1163,19 +1168,21 @@ void out_logistic_back (uint inx)
   #endif
 
   // compute error delta,
+  // s36.27 = s36.27 * s0.15 * s0.15
   long_delta_t tmp = (long_delta_t) t_output_deriv[inx]
-                       * (long_delta_t) sigmoid_prime (t_nets[inx]);
+                       * t_outputs[inx] 
+                       * ((1 << SPINN_ACTIV_SHIFT) - t_outputs[inx]);
 
   // round off,
-  tmp += 1 << (SPINN_LLONG_DERIV_SHIFT + SPINN_ACTIV_SHIFT
-           - SPINN_DELTA_SHIFT - 1);
+  tmp += 1 << (SPINN_LLONG_DERIV_SHIFT + SPINN_ACTIV_SHIFT + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT - 1);
 
   // compute error delta,
   //! s16.15 = (s48.15 * s0.15) >> 15
   // s8.23 = (s48.15 * s0.15) >> 7
   //NOTE: may need to use a longer type and saturate!
   t_deltas[inx] = (delta_t) (tmp >> (SPINN_LLONG_DERIV_SHIFT
-                              + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT));
+                              + SPINN_ACTIV_SHIFT + SPINN_ACTIV_SHIFT 
+                              - SPINN_DELTA_SHIFT));
 }
 // ------------------------------------------------------------------------
 
@@ -1192,6 +1199,9 @@ void out_integr_back (uint inx)
   llong_deriv_t last_output_deriv = t_last_integr_output_deriv[inx];
 
   lfpreal dt = (lfpreal) tcfg.out_integr_dt;
+
+  // reset output to value stored during forward pass
+  t_outputs[inx] = t_instant_outputs[((tick - 1) * tcfg.num_outputs) + inx];
 
   // s48.15 = (s47.16 * s48.15) >> 16
   llong_deriv_t d = (dt * last_output_deriv) >> SPINN_FPREAL_SHIFT;
@@ -1325,6 +1335,13 @@ int init_out_integr ()
 
   if ((t_last_integr_output_deriv = ((llong_deriv_t *)
        spin1_malloc (tcfg.num_outputs * sizeof(llong_deriv_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((t_instant_outputs = ((activation_t *)
+       spin1_malloc (tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);

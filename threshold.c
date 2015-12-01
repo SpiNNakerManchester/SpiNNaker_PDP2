@@ -125,6 +125,7 @@ net_t          * t_nets;            // nets received from sum cores
 error_t        * t_errors[2];       // error banks: current and next tick
 activation_t   * t_last_integr_output;  //last integrator output value
 llong_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
+activation_t   * t_instant_outputs; // current output value stored for the backward pass
 activation_t   * t_out_hard_clamp_data; //values injected by hard clamps
 activation_t   * t_out_weak_clamp_data; //values injected by weak clamps
 uchar            t_hard_clamp_en;   //hard clamp output enabled

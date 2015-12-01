@@ -59,6 +59,7 @@ extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
 extern activation_t   * t_last_integr_output;   //last integrator output value
 extern llong_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
+extern activation_t   * t_instant_outputs; // current output value stored for the backward pass
 extern uchar            t_hard_clamp_en; //hard clamp output enabled
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example

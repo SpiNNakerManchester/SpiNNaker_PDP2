@@ -80,66 +80,6 @@ activation_t sigmoid (net_t input)
   }
 }
 
-
-//The sigmoid_prime routine computes the derivative of the sigmoid function
-//with interpolation.
-//the input parameter is a 5.27 fixed point 32-bit value. The returned output
-//is a 1.15 fixed point 16-bit value.
-//the output values are stored in a table with 256 elements. Since the function
-//is symmetric with respect to the y axis the values stored in the table are
-//only the ones related to x >= 0. The values for x < 0 are computed
-//as f(-x)
-activation_t sigmoid_prime (net_t input)
-{
-  #ifdef SPINN_SIGMD_ROUNDI
-    // round input
-    net_t temp = input + (net_t) (1 << (SPINN_SIGMD_LUT_SHIFT - 1));
-  #else
-    net_t temp = input;
-  #endif
-
-  // check if outside the LUT range
-  if ((temp >= (net_t) SPINN_SIGMD_MAX_INPUT)
-       || (temp <= (net_t) SPINN_SIGMD_MIN_INPUT)
-     )
-  {
-    return ((activation_t) SPINN_SIGMD_MIN_DERIV);
-  }
-  else
-  {
-    long_activ_t output;  // computed inverse sigmoid output
-    uchar x0;             // input bits to access LUT
-    long_activ_t z;       // input remainder bits to do interpolation
-    activation_t y0, y1;  // look-up values
-
-    // LUT contains only positive inputs
-    if (temp >= 0)
-    {
-      x0 = temp >> SPINN_SIGMD_LUT_SHIFT; //input value of the lookup table
-      z  = (long_activ_t) temp & (long_activ_t) SPINN_SIGMD_LUT_IMASK;
-    }
-    else
-    {
-      x0 = (-temp) >> SPINN_SIGMD_LUT_SHIFT; //input value of the lookup table
-      z  = (long_activ_t) (-temp) & (long_activ_t) SPINN_SIGMD_LUT_IMASK;
-    }
-
-    y0 = sigmoid_prime_lut[x0]; //value correspondant to lookup table
-
-    // if x0 is the largest value in the table -- interpolate with MAX value
-    if (x0 == (SPINN_SIGMD_RES - 1))
-      y1 = (activation_t) SPINN_ACTIV_MAX;
-    else
-      y1 = sigmoid_prime_lut[x0 + 1];
-
-    // interpolate (using long variables)
-    output = (long_activ_t) y0 + 
-               (((long_activ_t) (y1 - y0) * z) >> SPINN_SIGMD_LUT_SHIFT);
-
-    return (output);
-  }
-}
-
 //The inv_sigmoid routine computes the inverse of the sigmoid function with interpolation.
 //the input parameter is a 1.15 fixed point 16-bit value. The returned output
 //is a 5.27 fixed point 32-bit value.
