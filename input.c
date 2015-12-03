@@ -78,12 +78,12 @@ uint             *cm; // simulation core map
 chip_struct_t    *ct; // chip-specific data
 uchar            *dt; // core-specific data
 mc_table_entry_t *rt; // multicast routing table data
-weight_t         *wt; // initial connection weights
+short_weight_t   *wt; // initial connection weights
 mlp_set_t        *es; // example set data
 mlp_example_t    *ex; // example data
 mlp_event_t      *ev; // event data
-activation_t     *it; // example inputs
-activation_t     *tt; // example targets
+short_activ_t    *it; // example inputs
+short_activ_t    *tt; // example targets
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
@@ -202,7 +202,7 @@ uint init ()
   
   spin1_memcpy (&icfg, dt, sizeof(i_conf_t));
   
-  it = (activation_t *) icfg.inputs_addr;          // example inputs
+  it = (short_activ_t *) icfg.inputs_addr;         // example inputs
   tt = NULL;                                       // example targets
   
   // allocate memory and initialize variables,

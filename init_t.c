@@ -36,12 +36,12 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
+extern short_weight_t       *wt; // initial connection weights
 extern struct mlp_set       *es; // example set data
 extern struct mlp_example   *ex; // example data
 extern struct mlp_event     *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
+extern short_activ_t        *it; // example inputs
+extern short_activ_t        *tt; // example targets
 
 // ------------------------------------------------------------------------
 // network and core configurations
@@ -54,12 +54,12 @@ extern t_conf_t       tcfg;       // threshold core configuration parameters
 // ------------------------------------------------------------------------
 // threshold core variables
 // ------------------------------------------------------------------------
-extern activation_t   * t_outputs;     // current tick unit outputs
+extern short_activ_t  * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
-extern activation_t   * t_last_integr_output;   //last integrator output value
-extern llong_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
-extern activation_t   * t_instant_outputs; // current output value stored for the backward pass
+extern short_activ_t  * t_last_integr_output;   //last integrator output value
+extern long_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
+extern short_activ_t  * t_instant_outputs; // current output value stored for the backward pass
 extern uchar            t_hard_clamp_en; //hard clamp output enabled
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example
@@ -83,8 +83,8 @@ extern scoreboard_t     tb_arrived;    // keep track of expected errors
 extern uint             tb_thrds_done; // sync. semaphore: proc & stop
 extern int              t_max_output_unit; // unit with highest output
 extern int              t_max_target_unit; // unit with highest target
-extern activation_t     t_max_output;      // highest output value
-extern activation_t     t_max_target;      // highest target value
+extern short_activ_t    t_max_output;      // highest output value
+extern short_activ_t    t_max_target;      // highest target value
 // list of output pipeline procedures
 extern out_proc_t const  t_out_procs[SPINN_NUM_OUT_PROCS];
 // list of stop eval procedures
@@ -92,11 +92,11 @@ extern stop_crit_t const t_stop_procs[SPINN_NUM_STOP_PROCS];
 // list of initialization procedures for output pipeline
 extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
 // derivative of the output
-extern llong_deriv_t  * t_output_deriv;
+extern long_deriv_t  * t_output_deriv;
 // history arrays
-extern llong_deriv_t  * t_output_deriv_history;
+extern long_deriv_t  * t_output_deriv_history;
 extern delta_t        * t_deltas;
-extern activation_t   * t_target_history;
+extern short_activ_t  * t_target_history;
 extern net_t          * t_net_history;
 // ------------------------------------------------------------------------
 
@@ -127,16 +127,16 @@ uint t_init (void)
   }
 
   // allocate memory for outputs
-  if ((t_outputs = ((activation_t *)
-         spin1_malloc (tcfg.num_outputs * sizeof(activation_t)))) == NULL
+  if ((t_outputs = ((short_activ_t *)
+         spin1_malloc (tcfg.num_outputs * sizeof(short_activ_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   // allocate memory for output derivative (which is equal to error derivative)
-  if ((t_output_deriv = ((llong_deriv_t *)
-         spin1_malloc (tcfg.num_outputs * sizeof(llong_deriv_t)))) == NULL
+  if ((t_output_deriv = ((long_deriv_t *)
+         spin1_malloc (tcfg.num_outputs * sizeof(long_deriv_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -267,8 +267,8 @@ uint t_init (void)
     // variables for stop criterion computation
     t_max_output_unit = -1;
     t_max_target_unit = -1;
-    t_max_output = SPINN_ACTIV_MIN;
-    t_max_target = SPINN_ACTIV_MIN;
+    t_max_output = SPINN_SHORT_ACTIV_MIN;
+    t_max_target = SPINN_SHORT_ACTIV_MIN;
 
     // no need to wait for previous if first in chain
     if (tcfg.is_first_output_group)
@@ -373,9 +373,9 @@ uint t_init (void)
   // information needs to come from splens in the tcfg structure.
   
   // allocate memory in SDRAM for target history
-  if ((t_target_history = ((activation_t *)
+  if ((t_target_history = ((short_activ_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
+                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(short_activ_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -384,9 +384,9 @@ uint t_init (void)
   }
 
   // allocate memory in SDRAM for output derivative history
-  if ((t_output_deriv_history = ((llong_deriv_t *)
+  if ((t_output_deriv_history = ((long_deriv_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(llong_deriv_t),
+                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(long_deriv_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )

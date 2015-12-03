@@ -38,12 +38,12 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
+extern short_weight_t       *wt; // initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
+extern short_activ_t        *it; // example inputs
+extern short_activ_t        *tt; // example targets
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -57,10 +57,10 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // ------------------------------------------------------------------------
 // weight core variables
 // ------------------------------------------------------------------------
-extern weight_t     * * w_weights;     // connection weights block
+extern short_weight_t * * w_weights;     // connection weights block
 extern long_wchange_t * * w_wchanges;    // accumulated weight changes
-extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern activation_t   * w_output_history;
+extern short_activ_t  * w_outputs[2];  // unit outputs for b-d-p
+extern short_activ_t  * w_output_history;
 extern long_delta_t * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
@@ -283,14 +283,14 @@ void w_update_weights (void)
   #ifdef TRACE
     io_printf (IO_BUF, "w_update_weights\n");
   #endif
-  
+
   // update weights
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
       #ifdef DEBUG_VRB
-        weight_t old_weight = w_weights[i][j];
+        short_weight_t old_weight = w_weights[i][j];
       #endif
 
       // do not update weights that are 0 -- indicates no connection!
@@ -321,33 +321,33 @@ void w_update_weights (void)
 		             - SPINN_WEIGHT_SHIFT);
 
         // compute new weight
-        long_weight_t temp = (long_weight_t) w_weights[i][j]
-                              + (long_weight_t) w_wchanges[i][j];
+        weight_t temp = (weight_t) w_weights[i][j]
+                              + (weight_t) w_wchanges[i][j];
 
         // saturate new weight,
-        if (temp >= (long_weight_t) SPINN_WEIGHT_MAX)
+        if (temp >= (weight_t) SPINN_SHORT_WEIGHT_MAX)
         {
-          w_weights[i][j] = SPINN_WEIGHT_MAX;
+          w_weights[i][j] = SPINN_SHORT_WEIGHT_MAX;
         }
-        else if (temp <= (long_weight_t) SPINN_WEIGHT_MIN)
+        else if (temp <= (weight_t) SPINN_SHORT_WEIGHT_MIN)
         {
-          w_weights[i][j] = SPINN_WEIGHT_MIN;
+          w_weights[i][j] = SPINN_SHORT_WEIGHT_MIN;
         }
         // and avoid (new weight == 0) -- indicates no connection!
         else if (temp == 0)
         {
           if (w_weights[i][j] > 0)
           {
-            w_weights[i][j] = SPINN_WEIGHT_POS_DELTA;
+            w_weights[i][j] = SPINN_SHORT_WEIGHT_POS_DELTA;
           }
           else
           {
-            w_weights[i][j] = SPINN_WEIGHT_NEG_DELTA;
+            w_weights[i][j] = SPINN_SHORT_WEIGHT_NEG_DELTA;
           }
         }
         else
         {
-          w_weights[i][j] = (weight_t) temp;
+          w_weights[i][j] = (short_weight_t) temp;
         }
       }
 
@@ -378,7 +378,7 @@ void w_update_weights (void)
 //##                        + wcfg.blk_row * wcfg.num_rows + i) * mlpc.num_outs)
 //##                        + (wcfg.blk_col * wcfg.num_cols)],
 //##                   w_weights[i],
-//##                   wcfg.num_cols * sizeof(weight_t)
+//##                   wcfg.num_cols * sizeof(short_weight_t)
 //##                  );
     }
   #endif

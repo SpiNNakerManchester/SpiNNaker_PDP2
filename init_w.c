@@ -33,12 +33,12 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
+extern short_weight_t       *wt; // initial connection weights
 extern struct mlp_set       *es; // example set data
 extern struct mlp_example   *ex; // example data
 extern struct mlp_event     *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
+extern short_activ_t        *it; // example inputs
+extern short_activ_t        *tt; // example targets
 
 // ------------------------------------------------------------------------
 // network and core configurations
@@ -51,9 +51,9 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // ------------------------------------------------------------------------
 // weight core variables
 // ------------------------------------------------------------------------
-extern weight_t     * * w_weights;     // connection weights block
+extern short_weight_t * * w_weights;     // connection weights block
 extern long_wchange_t * * w_wchanges;    // accumulated weight changes
-extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
+extern short_activ_t  * w_outputs[2]; // unit outputs for b-d-p
 extern long_delta_t * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
@@ -67,7 +67,7 @@ extern uchar            wb_active;     // processing deltas from queue?
 extern scoreboard_t     wb_arrived;    // keeps track of received deltas
 extern uint             wb_sync_key;   // BACKPROP processing can start
 // history arrays
-extern activation_t   * w_output_history;
+extern short_activ_t  * w_output_history;
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -104,9 +104,9 @@ uint w_init (void)
   // information needs to come from splens in the tcfg structure.
 
   // allocate memory in SDRAM for output history
-  if ((w_output_history = ((activation_t *)
+  if ((w_output_history = ((short_activ_t *)
           sark_xalloc (sv->sdram_heap,
-                       wcfg.num_rows * mlpc.global_max_ticks * sizeof(activation_t),
+                       wcfg.num_rows * mlpc.global_max_ticks * sizeof(short_activ_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -115,8 +115,8 @@ uint w_init (void)
   }
 
   // allocate memory for weights
-  if ((w_weights = ((weight_t * *)
-         spin1_malloc (wcfg.num_rows * sizeof(weight_t *)))) == NULL
+  if ((w_weights = ((short_weight_t * *)
+         spin1_malloc (wcfg.num_rows * sizeof(short_weight_t *)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -124,8 +124,8 @@ uint w_init (void)
 
   for (i = 0; i < wcfg.num_rows; i++)
   {
-    if ((w_weights[i] = ((weight_t *)
-           spin1_malloc (wcfg.num_cols * sizeof(weight_t)))) == NULL
+    if ((w_weights[i] = ((short_weight_t *)
+           spin1_malloc (wcfg.num_cols * sizeof(short_weight_t)))) == NULL
        )
     {
     return (SPINN_MEM_UNAVAIL);
@@ -151,15 +151,15 @@ uint w_init (void)
   }
 
   // allocate memory for unit outputs
-  if ((w_outputs[0] = ((weight_t *)
-         spin1_malloc (wcfg.num_rows * sizeof(activation_t)))) == NULL
+  if ((w_outputs[0] = ((short_weight_t *)
+         spin1_malloc (wcfg.num_rows * sizeof(short_activ_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
-  if ((w_outputs[1] = ((activation_t *)
-         spin1_malloc (wcfg.num_rows * sizeof(activation_t)))) == NULL
+  if ((w_outputs[1] = ((short_activ_t *)
+         spin1_malloc (wcfg.num_rows * sizeof(short_activ_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -202,14 +202,14 @@ uint w_init (void)
 
 
   // initialize weights from SDRAM
-  wt = (weight_t *) wcfg.weights_struct_addr;  // initial connection weights
+  wt = (short_weight_t *) wcfg.weights_struct_addr;  // initial connection weights
 
   //NOTE: could use DMA
   for (i = 0; i < wcfg.num_rows; i++)
   {
     spin1_memcpy (w_weights[i],
                    &wt[i * wcfg.num_cols],
-                   wcfg.num_cols * sizeof(weight_t)
+                   wcfg.num_cols * sizeof(short_weight_t)
                  );
   }
 
@@ -222,7 +222,7 @@ uint w_init (void)
       spin1_memcpy (&wh[((wcfg.blk_row * wcfg.num_rows + i) * mlpc.num_outs)
                      + (wcfg.blk_col * wcfg.num_cols)],
                      w_weights[i],
-                     wcfg.num_cols * sizeof(weight_t)
+                     wcfg.num_cols * sizeof(short_weight_t)
                    );
     }
   #endif

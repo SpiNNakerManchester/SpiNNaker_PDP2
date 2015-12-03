@@ -34,12 +34,12 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; //# initial connection weights
+extern short_weight_t       *wt; //# initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
+extern short_activ_t         *it;// example inputs
+extern short_activ_t         *tt;// example targets
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -53,7 +53,7 @@ extern t_conf_t       tcfg;       // threshold core configuration parameters
 // ------------------------------------------------------------------------
 // threshold core variables
 // ------------------------------------------------------------------------
-extern activation_t   * t_outputs;     // current tick unit outputs
+extern short_activ_t  * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
 extern uint             t_it_idx;      // index into current inputs/targets
@@ -422,7 +422,7 @@ void send_outputs_to_host (uint cmd, uint tick)
   t_sdp_msg.arg3   = tick;
 
   // copy outputs and targets into msg buffer,
-  activation_t * my_data = (activation_t *) t_sdp_msg.data;
+  short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
   for (uint i = 0; i < tcfg.num_outputs; i++)
   {
     if (tick == 0)
@@ -438,7 +438,7 @@ void send_outputs_to_host (uint cmd, uint tick)
   }
 
   // set message length,
-  uint len = 2 * tcfg.num_outputs * sizeof(activation_t);
+  uint len = 2 * tcfg.num_outputs * sizeof(short_activ_t);
   t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message

@@ -44,12 +44,12 @@ uint             *cm; // simulation core map
 chip_struct_t    *ct; // chip-specific data
 uchar            *dt; // core-specific data
 mc_table_entry_t *rt; // multicast routing table data
-weight_t         *wt; // initial connection weights
+short_weight_t   *wt; // initial connection weights
 mlp_set_t        *es; // example set data
 mlp_example_t    *ex; // example data
 mlp_event_t      *ev; // event data
-activation_t     *it; // example inputs
-activation_t     *tt; // example targets
+short_activ_t    *it; // example inputs
+short_activ_t    *tt; // example targets
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
@@ -65,13 +65,13 @@ w_conf_t      wcfg;           // weight core configuration parameters
 // weight cores compute net and error block dot-products (b-d-p),
 // and weight updates.
 // ------------------------------------------------------------------------
-weight_t     * * w_weights;         // connection weights block
+short_weight_t * * w_weights;         // connection weights block
 long_wchange_t * * w_wchanges;        // accumulated weight changes
-activation_t   * w_outputs[2];      // unit outputs for b-d-p
+short_activ_t  * w_outputs[2];      // unit outputs for b-d-p
 long_delta_t * * w_link_deltas;     // computed link deltas
 error_t        * w_errors;          // computed errors next tick
 pkt_queue_t      w_delta_pkt_q;     // queue to hold received deltas
-activation_t   * w_output_history;  // history array for outputs
+short_activ_t  * w_output_history;  // history array for outputs
 fpreal           w_delta_dt;        // scaling factor for link deltas
 
 // FORWARD phase specific variables

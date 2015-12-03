@@ -1,8 +1,8 @@
 #ifndef __ACTIVATION_H__
 #define __ACTIVATION_H__
 
-activation_t sigmoid       (net_t input);
-activation_t sigmoid_prime (net_t input);
-net_t        inv_sigmoid   (activation_t input);
+short_activ_t sigmoid       (net_t input);
+short_activ_t sigmoid_prime (net_t input);
+net_t         inv_sigmoid   (short_activ_t input);
 
 #endif

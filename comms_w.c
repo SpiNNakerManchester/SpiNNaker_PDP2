@@ -38,8 +38,8 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // ------------------------------------------------------------------------
 // weight core variables
 // ------------------------------------------------------------------------
-extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern activation_t   * w_output_history; // history array for the outputs
+extern short_activ_t  * w_outputs[2];  // unit outputs for b-d-p
+extern short_activ_t  * w_output_history; // history array for the outputs
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
 extern uint             wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t     wf_arrived;    // keeps track of received unit outputs
@@ -154,7 +154,7 @@ void w_forwardPacket (uint key, uint payload)
   uint inx = key & SPINN_OUTPUT_MASK;
 
   // store received unit output,
-  w_outputs[wf_comms][inx] = (activation_t) payload;
+  w_outputs[wf_comms][inx] = (short_activ_t) payload;
 
   // store output for use in backprop phase,
   if (tick > 0)

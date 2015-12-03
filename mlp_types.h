@@ -3,54 +3,54 @@
 
 #include "mlp_params.h"
 
-typedef short     activation_t;     // unit output or activation
-typedef int       long_activ_t;     // intermediate unit output or activation
-typedef long long llong_activ_t;    // intermediate unit output or activation
+typedef short     short_activ_t;    // unit output or activation
+typedef int       activation_t;     // intermediate unit output or activation
+typedef long long long_activ_t;     // intermediate unit output or activation
 
-// activations are s0.15
+// short activations are s0.15
 #define SPINN_ACTIV_SHIFT        15
-#define SPINN_ACTIV_MAX          ((1 << SPINN_ACTIV_SHIFT) - 1)
-#define SPINN_ACTIV_MIN          0
+#define SPINN_SHORT_ACTIV_MAX    ((1 << SPINN_ACTIV_SHIFT) - 1)
+#define SPINN_SHORT_ACTIV_MIN    0
 // minimum negative value for an activation variable
-#define SPINN_ACTIV_MIN_NEG      (-1 * SPINN_ACTIV_MAX)
-#define SPINN_ACTIV_NaN          (-1 << SPINN_ACTIV_SHIFT)
+#define SPINN_SHORT_ACTIV_MIN_NEG      (-1 * SPINN_SHORT_ACTIV_MAX)
+#define SPINN_SHORT_ACTIV_NaN          (-1 << SPINN_ACTIV_SHIFT)
 
-// long activations are s16.15
-#define SPINN_LONG_ACTIV_MAX     INT_MAX
-#define SPINN_LONG_ACTIV_MIN     0
+// activations are s16.15
+#define SPINN_ACTIV_MAX          INT_MAX
+#define SPINN_ACTIV_MIN          0
 // minimum negative value for a long activation variable
-//~#define SPINN_LONG_ACTIV_MIN_NEG INT_MIN
+//~#define SPINN_ACTIV_MIN_NEG   INT_MIN
 // these values are set to compute the cross entropy error function
-#define SPINN_LONG_ACTIV_ONE     (1 << SPINN_ACTIV_SHIFT)
-//~#define SPINN_LONG_ACTIV_NEG_ONE (-1 << SPINN_ACTIV_SHIFT)
+#define SPINN_ACTIV_ONE          (1 << SPINN_ACTIV_SHIFT)
+//~#define SPINN_ACTIV_NEG_ONE   (-1 << SPINN_ACTIV_SHIFT)
 
-typedef short     derivative_t;   // input or output derivative
-typedef int       long_deriv_t;   // intermediate unit input or output derivative
-typedef long long llong_deriv_t;  // intermediate unit input or output derivative
+typedef short     short_deriv_t;  // input or output derivative
+typedef int       derivative_t;   // intermediate unit input or output derivative
+typedef long long long_deriv_t;   // intermediate unit input or output derivative
 
-// derivatives are s0.15
+// short derivatives are s0.15
 #define SPINN_DERIV_SHIFT        15
-#define SPINN_DERIV_MAX          ((1 << SPINN_DERIV_SHIFT) - 1)
-//~#define SPINN_DERIV_MIN          0
+#define SPINN_SHORT_DERIV_MAX         ((1 << SPINN_DERIV_SHIFT) - 1)
+//~#define SPINN_SHORT_DERIV_MIN          0
 // minimum negative value for an derivative variable
-#define SPINN_DERIV_MIN_NEG      (-1 * SPINN_DERIV_MAX)
-#define SPINN_DERIV_NaN          (-1 << SPINN_DERIV_SHIFT)
+#define SPINN_SHORT_DERIV_MIN_NEG     (-1 * SPINN_SHORT_DERIV_MAX)
+#define SPINN_SHORT_DERIV_NaN          (-1 << SPINN_DERIV_SHIFT)
 
-// long derivatives are s16.15
-#define SPINN_LONG_DERIV_MAX     INT_MAX
-#define SPINN_LONG_DERIV_MIN     0
+// derivatives are s16.15
+#define SPINN_DERIV_MAX          INT_MAX
+#define SPINN_DERIV_MIN          0
 // minimum negative value for a long derivative variable
-#define SPINN_LONG_DERIV_MIN_NEG INT_MIN
+#define SPINN_DERIV_MIN_NEG      INT_MIN
 // these values are set to compute the cross entropy error function
-#define SPINN_LONG_DERIV_ONE     (1 << SPINN_DERIV_SHIFT)
-#define SPINN_LONG_DERIV_NEG_ONE (-1 << SPINN_DERIV_SHIFT)
+#define SPINN_DERIV_ONE          (1 << SPINN_DERIV_SHIFT)
+#define SPINN_DERIV_NEG_ONE      (-1 << SPINN_DERIV_SHIFT)
 
-// long long derivative are s48.15
-#define SPINN_LLONG_DERIV_SHIFT  27
-//~#define SPINN_LLONG_DERIV_MAX    SPINN_LLONG_ACTIV_MAX
-//~#define SPINN_LLONG_DERIV_MIN    SPINN_LLONG_ACTIV_MIN
+// long derivatives are s36.27
+#define SPINN_LONG_DERIV_SHIFT  27
+//~#define SPINN_LONG_DERIV_MAX     SPINN_LONG_ACTIV_MAX
+//~#define SPINN_LONG_DERIV_MIN     SPINN_LONG_ACTIV_MIN
 // minimum negative value for a long long derivative variable
-//~#define SPINN_LLONG_DERIV_MIN_NEG  LLONG_MIN
+//~#define SPINN_LONG_DERIV_MIN_NEG   LONG_MIN
 
 typedef int       net_t;            // unit internal net (inputs dot-product)
 typedef long long long_net_t;       // used for net intermediate calc
@@ -94,19 +94,19 @@ typedef long long long_delta_t;     // used for delta intermediate calc
 //~#define SPINN_LONG_DELTA_MAX     SPINN_LONG_ERR_MAX
 //~#define SPINN_LONG_DELTA_MIN     SPINN_LONG_ERR_MIN
 
-typedef short     weight_t;         // connection weight
-typedef int       long_weight_t;    // intermediate connection weight
+typedef short     short_weight_t;   // connection weight
+typedef int       weight_t;         // intermediate connection weight
 typedef int       wchange_t;        // connection weight change
 typedef long long long_wchange_t;   // intermediate connection weight change
 
-// weights are s3.12
-// long_weights are s19.12
+// short_weights are s3.12
+// weights are s19.12
 // weight changes are s19.12
 #define SPINN_WEIGHT_SHIFT       12
-#define SPINN_WEIGHT_MAX         ((weight_t) ( 7 << SPINN_WEIGHT_SHIFT))
-#define SPINN_WEIGHT_MIN         ((weight_t) (-7 << SPINN_WEIGHT_SHIFT))
-#define SPINN_WEIGHT_POS_DELTA   ((weight_t)  1)
-#define SPINN_WEIGHT_NEG_DELTA   ((weight_t) -1)
+#define SPINN_SHORT_WEIGHT_MAX   ((short_weight_t) ( 7 << SPINN_WEIGHT_SHIFT))
+#define SPINN_SHORT_WEIGHT_MIN   ((short_weight_t) (-7 << SPINN_WEIGHT_SHIFT))
+#define SPINN_SHORT_WEIGHT_POS_DELTA ((short_weight_t)  1)
+#define SPINN_SHORT_WEIGHT_NEG_DELTA ((short_weight_t) -1)
 
 typedef int       fpreal;           // 32-bit fixed-point number
 typedef long long lfpreal;          // 64-bit fixed-point number
@@ -190,7 +190,7 @@ typedef struct w_conf               // weight core configuration
   uint         num_cols;            // columns in this core's block
   scoreboard_t f_all_arrived;       // all expected unit outputs
   scoreboard_t b_all_arrived;       // all expected error deltas
-  activation_t learningRate;        // network learning rate
+  short_activ_t learningRate;       // network learning rate
   uint         weights_struct_addr; // address in SDRAM for weight file
 } w_conf_t;
 // ------------------------------------------------------------------------
@@ -219,7 +219,7 @@ typedef struct s_conf    // sum core configuration
   fpreal       in_integr_dt;        // integration time const for input integr
   fpreal       soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
   net_t        initNets;            // initial value for unit nets
-  activation_t initOutput;          // initial value for unit outputs
+  short_activ_t initOutput;         // initial value for unit outputs
   uint         inputs_addr;         // address in SDRAM for inputs file
 } s_conf_t;
 // ------------------------------------------------------------------------
@@ -248,7 +248,7 @@ typedef struct i_conf               // sum core configuration
   fpreal       in_integr_dt;        // integration time const for input integr
   fpreal       soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
   net_t        initNets;            // initial value for unit nets
-  activation_t initOutput;          // initial value for unit outputs
+  short_activ_t initOutput;         // initial value for unit outputs
   uint         inputs_addr;         // address in SDRAM for inputs file
 } i_conf_t;
 // ------------------------------------------------------------------------
@@ -290,7 +290,7 @@ typedef struct t_conf    // threshold core configuration
   uint         num_out_procs;         // number of output comp procedures
   uint         procs_list[SPINN_NUM_OUT_PROCS];
   fpreal       weak_clamp_strength;   // Strength coeff for weak clamp fix 16.16
-  activation_t initOutput;            // initial value for unit outputs
+  short_activ_t initOutput;           // initial value for unit outputs
   error_t      group_criterion;       // convergence criterion value
   uchar        criterion_function;    // function to eval convergence criterion
   uchar        is_first_output_group; // is this the firso of the output groups

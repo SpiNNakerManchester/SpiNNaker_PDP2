@@ -100,12 +100,12 @@ uint             *cm; // simulation core map
 chip_struct_t    *ct; // chip-specific data
 uchar            *dt; // core-specific data
 mc_table_entry_t *rt; // multicast routing table data
-weight_t         *wt; // initial connection weights
+short_weight_t   *wt; // initial connection weights
 mlp_set_t        *es; // example set data
 mlp_example_t    *ex; // example data
 mlp_event_t      *ev; // event data
-activation_t     *it; // example inputs
-activation_t     *tt; // example targets
+short_activ_t    *it; // example inputs
+short_activ_t    *tt; // example targets
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
@@ -120,14 +120,14 @@ t_conf_t      tcfg;           // threshold core configuration parameters
 // ------------------------------------------------------------------------
 // threshold cores compute unit outputs and error deltas.
 // ------------------------------------------------------------------------
-activation_t   * t_outputs;         // current tick unit outputs
+short_activ_t  * t_outputs;         // current tick unit outputs
 net_t          * t_nets;            // nets received from sum cores
 error_t        * t_errors[2];       // error banks: current and next tick
-activation_t   * t_last_integr_output;  //last integrator output value
-llong_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
-activation_t   * t_instant_outputs; // current output value stored for the backward pass
-activation_t   * t_out_hard_clamp_data; //values injected by hard clamps
-activation_t   * t_out_weak_clamp_data; //values injected by weak clamps
+short_activ_t  * t_last_integr_output;  //last integrator output value
+long_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
+short_activ_t  * t_instant_outputs; // current output value stored for the backward pass
+short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
+short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
 uchar            t_hard_clamp_en;   //hard clamp output enabled
 uint             t_it_idx;          // index into current inputs/targets
 uint             t_tot_ticks;       // total ticks on current example
@@ -158,13 +158,13 @@ uint             tb_thrds_done;     // sync. semaphore: proc & stop
 
 int              t_max_output_unit; // unit with highest output
 int              t_max_target_unit; // unit with highest target
-activation_t     t_max_output;      // highest output value
-activation_t     t_max_target;      // highest target value
+short_activ_t    t_max_output;      // highest output value
+short_activ_t    t_max_target;      // highest target value
 
-llong_deriv_t  * t_output_deriv;    // derivative of the output value
-llong_deriv_t  * t_output_deriv_history;
+long_deriv_t  * t_output_deriv;    // derivative of the output value
+long_deriv_t  * t_output_deriv_history;
 delta_t        * t_deltas;
-activation_t   * t_target_history;
+short_activ_t  * t_target_history;
 net_t          * t_net_history;
 // ------------------------------------------------------------------------
 
@@ -244,8 +244,8 @@ uint init ()
 
   spin1_memcpy (&tcfg, dt, sizeof(t_conf_t));
 
-  it = (activation_t *) tcfg.inputs_addr;          // example inputs
-  tt = (activation_t *) tcfg.targets_addr;         // example targets
+  it = (short_activ_t *) tcfg.inputs_addr;         // example inputs
+  tt = (short_activ_t *) tcfg.targets_addr;        // example targets
 
   // allocate memory and initialize variables,
   rcode = t_init ();

@@ -39,12 +39,12 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; //# initial connection weights
+extern short_weight_t       *wt; //# initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
+extern short_activ_t        *it; // example inputs
+extern short_activ_t        *tt; // example targets
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -678,23 +678,23 @@ void in_soft_clamp (uint inx)
     io_printf (IO_BUF, "in_soft_clamp\n");
   #endif
 
-  llong_activ_t external_input = it[i_it_idx + inx]; // 49.15 repr.
+  long_activ_t external_input = it[i_it_idx + inx];  // 49.15 repr.
 
   // compute only if input is not NaN
-  if (external_input != (llong_activ_t) SPINN_ACTIV_NaN)
+  if (external_input != (long_activ_t) SPINN_SHORT_ACTIV_NaN)
   {
     lfpreal soft_clamp_strength = icfg.soft_clamp_strength; // 48.16 repr.
-    llong_activ_t init_output = icfg.initOutput;            // 49.15 repr.
+    long_activ_t init_output = icfg.initOutput;             // 49.15 repr.
   
     // computation of the soft clamp operator following Lens code
     // representation: 49.15 + (48.16 * (49.15 - 49.15) >> 16) = 49.15
-    llong_activ_t output = init_output
+    long_activ_t output = init_output
                              + ((soft_clamp_strength
                                  * (external_input - init_output))
                                    >> SPINN_FPREAL_SHIFT
                                );
   
-    i_nets[inx] += inv_sigmoid((activation_t) output);
+    i_nets[inx] += inv_sigmoid((short_activ_t) output);
   }
 }
 // ------------------------------------------------------------------------

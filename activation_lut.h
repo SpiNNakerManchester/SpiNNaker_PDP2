@@ -26,7 +26,7 @@
 // activation look-up tables
 // -----------------------
 // look-up table LOGISTIC function
-const activation_t sigmoid_lut[SPINN_SIGMD_RES] =
+const short_activ_t sigmoid_lut[SPINN_SIGMD_RES] =
 {
   0x4000, 0x40ff, 0x41ff, 0x42ff, 0x43fe, 0x44fd, 0x45fb, 0x46f8,
   0x47f5, 0x48f0, 0x49eb, 0x4ae4, 0x4bdc, 0x4cd2, 0x4dc7, 0x4ebb,
@@ -63,7 +63,7 @@ const activation_t sigmoid_lut[SPINN_SIGMD_RES] =
 };
 
 // look-up table LOGISTIC PRIME function
-const activation_t sigmoid_prime_lut[SPINN_SIGMD_RES] =
+const short_activ_t sigmoid_prime_lut[SPINN_SIGMD_RES] =
 {
   0x2000, 0x1ffe, 0x1ff8, 0x1fee, 0x1fe0, 0x1fce, 0x1fb8, 0x1f9e,
   0x1f81, 0x1f60, 0x1f3b, 0x1f12, 0x1ee6, 0x1eb7, 0x1e84, 0x1e4d,
