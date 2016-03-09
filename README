@@ -34,3 +34,13 @@ rand10x40).
 SpiNNaker reports the maximum.
 3.4 target values are not reported by lens during the grace period
 while SpiNNaker does it every tick.
+
+4. Discrepancy between the representation of the value of "1" in target 
+values and in the constant SPINN_ACTIV_ONE.  SPINN_ACTIV_ONE is actually 1,
+whilst the target values are 0.999969.  This was causing an error in the 
+routine error_cross_entropy, where there is a statement which compares the 
+target value with this constant. Due to the discrepancy, the comparison is
+failing every time, even when it should not do, and thus the computation is
+incorrect.  I have created a temporary fix for this problem by setting
+SPINN_ACTIV_ONE to 134217727 (which once shifted, produces a value of 0.999969).
+A more satisfactory resolution to this problem is required.

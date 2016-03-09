@@ -22,7 +22,10 @@ typedef long long long_activ_t;     // intermediate unit output or activation
 // minimum negative value for a long activation variable
 //~#define SPINN_ACTIV_MIN_NEG   INT_MIN
 // these values are set to compute the cross entropy error function
-#define SPINN_ACTIV_ONE          (1 << SPINN_ACTIV_SHIFT)
+// SPINN_ACTIV_ONE is temporarily changed to 134211727 as once shifted, this gives a value of
+// 0.999969, which is the same as the "1" value used for targets.
+//#define SPINN_ACTIV_ONE          (1 << SPINN_ACTIV_SHIFT)
+#define SPINN_ACTIV_ONE          134217727
 //~#define SPINN_ACTIV_NEG_ONE   (-1 << SPINN_ACTIV_SHIFT)
 
 typedef short     short_deriv_t;  // input or output derivative
