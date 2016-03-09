@@ -53,7 +53,7 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // ------------------------------------------------------------------------
 extern short_weight_t * * w_weights;     // connection weights block
 extern long_wchange_t * * w_wchanges;    // accumulated weight changes
-extern short_activ_t  * w_outputs[2]; // unit outputs for b-d-p
+extern activation_t   * w_outputs[2]; // unit outputs for b-d-p
 extern long_delta_t * * w_link_deltas; // computed link deltas
 extern error_t        * w_errors;      // computed errors next tick
 extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
@@ -67,7 +67,7 @@ extern uchar            wb_active;     // processing deltas from queue?
 extern scoreboard_t     wb_arrived;    // keeps track of received deltas
 extern uint             wb_sync_key;   // BACKPROP processing can start
 // history arrays
-extern short_activ_t  * w_output_history;
+extern activation_t   * w_output_history;
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -104,9 +104,9 @@ uint w_init (void)
   // information needs to come from splens in the tcfg structure.
 
   // allocate memory in SDRAM for output history
-  if ((w_output_history = ((short_activ_t *)
+  if ((w_output_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       wcfg.num_rows * mlpc.global_max_ticks * sizeof(short_activ_t),
+                       wcfg.num_rows * mlpc.global_max_ticks * sizeof(activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -151,15 +151,15 @@ uint w_init (void)
   }
 
   // allocate memory for unit outputs
-  if ((w_outputs[0] = ((short_weight_t *)
-         spin1_malloc (wcfg.num_rows * sizeof(short_activ_t)))) == NULL
+  if ((w_outputs[0] = ((activation_t *)
+         spin1_malloc (wcfg.num_rows * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
-  if ((w_outputs[1] = ((short_activ_t *)
-         spin1_malloc (wcfg.num_rows * sizeof(short_activ_t)))) == NULL
+  if ((w_outputs[1] = ((activation_t *)
+         spin1_malloc (wcfg.num_rows * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);

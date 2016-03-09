@@ -8,14 +8,15 @@ typedef int       activation_t;     // intermediate unit output or activation
 typedef long long long_activ_t;     // intermediate unit output or activation
 
 // short activations are s0.15
-#define SPINN_ACTIV_SHIFT        15
-#define SPINN_SHORT_ACTIV_MAX    ((1 << SPINN_ACTIV_SHIFT) - 1)
+#define SPINN_SHORT_ACTIV_SHIFT  15
+#define SPINN_SHORT_ACTIV_MAX    ((1 << SPINN_SHORT_ACTIV_SHIFT) - 1)
 #define SPINN_SHORT_ACTIV_MIN    0
 // minimum negative value for an activation variable
 #define SPINN_SHORT_ACTIV_MIN_NEG      (-1 * SPINN_SHORT_ACTIV_MAX)
-#define SPINN_SHORT_ACTIV_NaN          (-1 << SPINN_ACTIV_SHIFT)
+#define SPINN_SHORT_ACTIV_NaN          (-1 << SPINN_SHORT_ACTIV_SHIFT)
 
-// activations are s16.15
+// activations are s4.27
+#define SPINN_ACTIV_SHIFT        27
 #define SPINN_ACTIV_MAX          INT_MAX
 #define SPINN_ACTIV_MIN          0
 // minimum negative value for a long activation variable

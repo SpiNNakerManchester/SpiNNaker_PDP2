@@ -54,12 +54,12 @@ extern t_conf_t       tcfg;       // threshold core configuration parameters
 // ------------------------------------------------------------------------
 // threshold core variables
 // ------------------------------------------------------------------------
-extern short_activ_t  * t_outputs;     // current tick unit outputs
+extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
-extern short_activ_t  * t_last_integr_output;   //last integrator output value
-extern long_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
-extern short_activ_t  * t_instant_outputs; // current output value stored for the backward pass
+extern activation_t   * t_last_integr_output;   //last integrator output value
+extern long_deriv_t   * t_last_integr_output_deriv; //last integrator output deriv value
+extern activation_t   * t_instant_outputs; // current output value stored for the backward pass
 extern uchar            t_hard_clamp_en; //hard clamp output enabled
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example
@@ -83,8 +83,8 @@ extern scoreboard_t     tb_arrived;    // keep track of expected errors
 extern uint             tb_thrds_done; // sync. semaphore: proc & stop
 extern int              t_max_output_unit; // unit with highest output
 extern int              t_max_target_unit; // unit with highest target
-extern short_activ_t    t_max_output;      // highest output value
-extern short_activ_t    t_max_target;      // highest target value
+extern activation_t     t_max_output;      // highest output value
+extern activation_t     t_max_target;      // highest target value
 // list of output pipeline procedures
 extern out_proc_t const  t_out_procs[SPINN_NUM_OUT_PROCS];
 // list of stop eval procedures
@@ -127,8 +127,8 @@ uint t_init (void)
   }
 
   // allocate memory for outputs
-  if ((t_outputs = ((short_activ_t *)
-         spin1_malloc (tcfg.num_outputs * sizeof(short_activ_t)))) == NULL
+  if ((t_outputs = ((activation_t *)
+         spin1_malloc (tcfg.num_outputs * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -267,8 +267,8 @@ uint t_init (void)
     // variables for stop criterion computation
     t_max_output_unit = -1;
     t_max_target_unit = -1;
-    t_max_output = SPINN_SHORT_ACTIV_MIN;
-    t_max_target = SPINN_SHORT_ACTIV_MIN;
+    t_max_output = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
+    t_max_target = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
 
     // no need to wait for previous if first in chain
     if (tcfg.is_first_output_group)

@@ -120,12 +120,12 @@ t_conf_t      tcfg;           // threshold core configuration parameters
 // ------------------------------------------------------------------------
 // threshold cores compute unit outputs and error deltas.
 // ------------------------------------------------------------------------
-short_activ_t  * t_outputs;         // current tick unit outputs
+activation_t   * t_outputs;         // current tick unit outputs
 net_t          * t_nets;            // nets received from sum cores
 error_t        * t_errors[2];       // error banks: current and next tick
-short_activ_t  * t_last_integr_output;  //last integrator output value
-long_deriv_t  * t_last_integr_output_deriv; //last integrator output deriv value
-short_activ_t  * t_instant_outputs; // current output value stored for the backward pass
+activation_t  * t_last_integr_output;  //last integrator output value
+long_deriv_t   * t_last_integr_output_deriv; //last integrator output deriv value
+activation_t   * t_instant_outputs; // current output value stored for the backward pass
 short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
 uchar            t_hard_clamp_en;   //hard clamp output enabled
@@ -158,8 +158,8 @@ uint             tb_thrds_done;     // sync. semaphore: proc & stop
 
 int              t_max_output_unit; // unit with highest output
 int              t_max_target_unit; // unit with highest target
-short_activ_t    t_max_output;      // highest output value
-short_activ_t    t_max_target;      // highest target value
+activation_t     t_max_output;      // highest output value
+activation_t     t_max_target;      // highest target value
 
 long_deriv_t  * t_output_deriv;    // derivative of the output value
 long_deriv_t  * t_output_deriv_history;

@@ -53,7 +53,7 @@ extern t_conf_t       tcfg;       // threshold core configuration parameters
 // ------------------------------------------------------------------------
 // threshold core variables
 // ------------------------------------------------------------------------
-extern short_activ_t  * t_outputs;     // current tick unit outputs
+extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
 extern uint             t_it_idx;      // index into current inputs/targets
@@ -432,7 +432,7 @@ void send_outputs_to_host (uint cmd, uint tick)
     }
     else
     {
-      my_data[2 * i]     = t_outputs[i];
+      my_data[2 * i]     = (short_activ_t) (t_outputs[i] >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
       my_data[2 * i + 1] = tt[t_it_idx + i];
     }
   }

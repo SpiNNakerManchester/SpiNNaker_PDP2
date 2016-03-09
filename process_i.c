@@ -687,14 +687,14 @@ void in_soft_clamp (uint inx)
     long_activ_t init_output = icfg.initOutput;             // 49.15 repr.
   
     // computation of the soft clamp operator following Lens code
-    // representation: 49.15 + (48.16 * (49.15 - 49.15) >> 16) = 49.15
+    // representation: 36.27 + (48.16 * (49.15 - 49.15) >> (16 - 12)) = 36.27
     long_activ_t output = init_output
                              + ((soft_clamp_strength
                                  * (external_input - init_output))
-                                   >> SPINN_FPREAL_SHIFT
+                                   >>  (SPINN_FPREAL_SHIFT - SPINN_ACTIV_SHIFT + SPINN_SHORT_ACTIV_SHIFT)
                                );
   
-    i_nets[inx] += inv_sigmoid((short_activ_t) output);
+    i_nets[inx] += inv_sigmoid((short_activ_t) (output << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)));
   }
 }
 // ------------------------------------------------------------------------

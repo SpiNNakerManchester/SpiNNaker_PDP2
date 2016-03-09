@@ -18,7 +18,7 @@
 //as 1 - f(-x)
 //The interpolation is computed linearly using the lowest set of bits of the
 //input value
-short_activ_t sigmoid (net_t input)
+activation_t sigmoid (net_t input)
 {
   #ifdef SPINN_SIGMD_ROUNDI
     // round input
@@ -30,11 +30,11 @@ short_activ_t sigmoid (net_t input)
   // check if outside the LUT range
   if (temp >= (net_t) SPINN_SIGMD_MAX_INPUT)
   {
-    return ((short_activ_t) SPINN_SHORT_ACTIV_MAX);
+    return ((activation_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)));
   }
   else if (temp <= (net_t) SPINN_SIGMD_MIN_INPUT)
   {
-    return ((short_activ_t) SPINN_SHORT_ACTIV_MIN);
+    return ((activation_t) (SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)));
   }
   else
   // the input value is inside the range of the lookup table. The value needs
@@ -42,7 +42,7 @@ short_activ_t sigmoid (net_t input)
   {
     uchar x0;             // input bits to access LUT
     activation_t z;       // input remainder bits to do interpolation
-    short_activ_t y0, y1; // look-up values
+    activation_t y0, y1; // look-up values
 
     // LUT contains only positive inputs
     if (temp >= 0)
@@ -60,21 +60,33 @@ short_activ_t sigmoid (net_t input)
 
     // if x0 is largest value in table -- interpolate with MAX value
     if (x0 == (SPINN_SIGMD_RES - 1))
-      y1 = (short_activ_t) SPINN_SHORT_ACTIV_MAX;
+      y1 = ((activation_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)));
     else
       y1 = sigmoid_lut[x0 + 1];
 
     // interpolate using long variables and round off
     // s0.15 = ((s0.15 - s0.15) * s0.22) >> 22
-    activation_t out_tmp = (((activation_t) (y1 - y0) * z)
-                             + (activation_t) (1 << (SPINN_SIGMD_LUT_SHIFT - 1)))
+    long_activ_t out_tmp = (((long_activ_t) (y1 - y0) * z)
+                             + (long_activ_t) (1 << (SPINN_SIGMD_LUT_SHIFT - 1)))
 	                     >> SPINN_SIGMD_LUT_SHIFT;
 
-    short_activ_t output = y0 + (short_activ_t) out_tmp;
+    long_activ_t out_tmp2 = y0 + (long_activ_t) out_tmp;
+
+    // saturate the value computed and assign it to the output variable
+    activation_t output;
+    if (out_tmp2 > (long_activ_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
+      // positive saturation
+      output = (activation_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+    else if (out_tmp2 < (long_activ_t) (SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
+      // negative saturation
+      output = (activation_t) (SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+    else
+      // representation in 36.27 within the range (-1; 1) can be reduced to 4.27
+      output = (activation_t) out_tmp2;
           
     // return the symmetric result for negative inputs!
     if (temp < 0)
-      return ((short_activ_t) (1 << SPINN_ACTIV_SHIFT) - output);
+      return ((activation_t) (1 << SPINN_ACTIV_SHIFT) - output);
     else
       return (output);
   }
@@ -89,20 +101,20 @@ short_activ_t sigmoid (net_t input)
 //are computed as -f(ABS(x - 1))
 //The interpolation is computed linearly using the lowest set of bits of the
 //input value
-net_t inv_sigmoid (short_activ_t input)
+net_t inv_sigmoid (activation_t input)
 {
   // check if outside the LUT range
-  if (input >= (short_activ_t) SPINN_SHORT_ACTIV_MAX)
+  if (input >= (activation_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
   {
     return ((net_t) SPINN_SIGMD_MAX_INPUT);
   }
-  else if (input <= (short_activ_t) SPINN_SHORT_ACTIV_MIN)
+  else if (input <= (activation_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
   {
     return ((net_t) SPINN_SIGMD_MIN_INPUT);
   }
   else // evaluate logistic inverse function
   {
-    short_activ_t input_adapted; //input value for the lookup table
+    activation_t input_adapted; //input value for the lookup table
     long_net_t temp; //variable for interpolation
     uchar x0; //first input value for interpolation
     net_t y0, y1; //output values for interpolation
@@ -136,7 +148,7 @@ net_t inv_sigmoid (short_activ_t input)
       temp = (net_t) SPINN_SIGMD_MAX_INPUT;
 
     // if input < 0.5 return symmetric value
-    if (input < (1 << (SPINN_ACTIV_SHIFT - 1)))
+    if (input < (1 << (SPINN_SHORT_ACTIV_SHIFT - 1)))
       return (-temp);
     else
       return (temp);
