@@ -62,6 +62,7 @@ extern t_conf_t   tcfg;           // threshold core configuration parameters
 // threshold core variables
 // ------------------------------------------------------------------------
 extern activation_t   * t_outputs;     // current tick unit outputs
+extern activation_t   * t_output_history; // history array for outputs
 extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
 extern uint             t_it_idx;      // index into current inputs/targets
@@ -156,6 +157,11 @@ void tf_process (uint null0, uint null1)
     compute_out (inx);
 
     activation_t activation = (activation_t) t_outputs[inx];
+
+    if (mlpc.training)
+    {
+      store_outputs (inx);
+    }
 
     // incorporate output index into packet key and send to next stage,
     while (!spin1_send_mc_packet ((fwdKey | inx),
@@ -298,6 +304,8 @@ void tb_process (uint null0, uint null1)
     compute_out_back (inx);
     
     delta_t delta = t_deltas[inx];
+
+    restore_outputs (inx, tick - 1);
 
     // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
@@ -941,6 +949,31 @@ void restore_nets (uint inx, uint tick)
 }
 // ------------------------------------------------------------------------
 
+// ------------------------------------------------------------------------
+// stores outputs for the current tick
+// ------------------------------------------------------------------------
+void store_outputs (uint inx)
+{
+  #ifdef TRACE_VRB
+    io_print (IO_BUF, "store_outputs\n");
+  #endif
+
+  t_output_history[(tick * tcfg.num_outputs) + inx] = t_outputs[inx];
+}
+// ------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------
+// restores the output of the specified unit for the requested tick
+// ------------------------------------------------------------------------
+void restore_outputs (uint inx, uint tick)
+{
+  #ifdef TRACE
+    io_printf (IO_BUF, "restore_outputs\n");
+  #endif
+
+  t_outputs[inx] = t_output_history[((tick * tcfg.num_outputs) + inx)];
+}
+// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // compute the logistic function starting from the value received through the 

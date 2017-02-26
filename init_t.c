@@ -98,6 +98,7 @@ extern long_deriv_t  * t_output_deriv_history;
 extern delta_t        * t_deltas;
 extern short_activ_t  * t_target_history;
 extern net_t          * t_net_history;
+extern activation_t   * t_output_history;
 // ------------------------------------------------------------------------
 
 
@@ -398,6 +399,17 @@ uint t_init (void)
   if ((t_net_history = ((net_t *)
           sark_xalloc (sv->sdram_heap,
                        tcfg.num_outputs * mlpc.global_max_ticks * sizeof(net_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate memory in SDRAM for output history
+  if ((t_output_history = ((activation_t *)
+          sark_xalloc (sv->sdram_heap,
+                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )

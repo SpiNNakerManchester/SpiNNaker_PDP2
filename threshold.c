@@ -166,6 +166,7 @@ long_deriv_t  * t_output_deriv_history;
 delta_t        * t_deltas;
 short_activ_t  * t_target_history;
 net_t          * t_net_history;
+activation_t   * t_output_history;
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

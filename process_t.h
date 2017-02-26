@@ -17,6 +17,8 @@ void  store_output_deriv   (uint inx);
 void  restore_output_deriv (uint inx, uint tick);
 void  store_nets           (uint inx);
 void  restore_nets         (uint inx, uint tick);
+void  store_outputs        (uint inx);
+void  restore_outputs      (uint inx, uint tick);
 
 void  compute_out         (uint inx);
 void  out_logistic        (uint inx);
