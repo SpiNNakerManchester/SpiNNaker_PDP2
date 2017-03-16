@@ -104,7 +104,7 @@ long_delta_t   * i_init_delta;      // deltas computed in initial tick
 pkt_queue_t      i_pkt_queue;       // queue to hold received b-d-ps
 uchar            i_active;          // processing b-d-ps from queue?
 
-long_net_t     * i_last_integr_output;  //last integrator output value
+long_net_t     * i_last_integr_net; //last integrator output value
 long_delta_t   * i_last_integr_delta; //last integrator delta value
 
 uint             i_it_idx;          // index into current inputs/targets

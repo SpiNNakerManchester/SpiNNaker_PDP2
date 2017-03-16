@@ -72,7 +72,7 @@ extern scoreboard_t     ib_all_arrived;// all deltas have arrived in tick
 extern scoreboard_t   * ib_arrived;    // keep track of expected delta b-d-p
 extern scoreboard_t     ib_done;       // current tick delta computation done
 //#extern uint             ib_thrds_done; // sync. semaphore: proc & stop
-extern long_net_t     * i_last_integr_output; //last integrator output value
+extern long_net_t     * i_last_integr_net; //last integrator output value
 extern long_delta_t   * i_last_integr_delta; //last integrator delta value
 // list of input pipeline procedures
 extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
@@ -545,7 +545,7 @@ void i_advance_example (void)
   if (icfg.in_integr_en)
     for (uint i = 0; i < icfg.num_nets; i++)
     {
-      i_last_integr_output[i] = (long_net_t) icfg.initNets;
+      i_last_integr_net[i] = (long_net_t) icfg.initNets;
       i_last_integr_delta[i] = 0;
     }
 }
@@ -623,29 +623,29 @@ void in_integr (uint inx)
     io_printf (IO_BUF, "in_integr\n");
   #endif
   
-  // representation: 37.27 in a 64 bit variable with the topmost 32 bits set to 0
-  long_net_t last_output = i_last_integr_output[inx];
-  // representation: 37.27 in a 64 bit variable with the topmost 32 bits set to 0
-  long_net_t desired_output = i_nets[inx];
-  // representation: 48.16 in a 64 bit variable with the topmost 32 bits set to 0
+  // representation: s40.23 in a 64 bit variable
+  long_net_t last_net = i_last_integr_net[inx];
+  // representation: s40.23 in a 64 bit variable
+  long_net_t desired_net = i_nets[inx];
+  // representation: 48.16 in a 64 bit variable
   long long  dt = icfg.in_integr_dt;
   
-  // compute the new value of the output as indicated by lens
-  // representation: 37.27 + (48.16 * ( 37.27 - 37.27) >> 16) = 37.27
+  // compute the new value of the net as indicated by lens
+  // representation: 40.23 + (48.16 * ( 40.23 - 40.23) >> 16) = 40.23
   // all the variables are expanded to 64 bits to avoid overflows and wrap-around
-  long_net_t output = last_output + (dt * (desired_output - last_output) >> 16);
+  long_net_t net = last_net + (dt * (desired_net - last_net) >> 16);
 
   // saturate the value computed and assign it to the nets variable
   // to be used in the next stage of computation
-  if (output > (long_net_t) SPINN_NET_MAX)
+  if (net > (long_net_t) SPINN_NET_MAX)
     i_nets[inx] = (long_net_t) SPINN_NET_MAX;
-  else if (output < (long_net_t) SPINN_NET_MIN)
+  else if (net < (long_net_t) SPINN_NET_MIN)
     i_nets[inx] = (long_net_t) SPINN_NET_MIN;
   else
-    i_nets[inx] = (long_net_t) output;
+    i_nets[inx] = (long_net_t) net;
   
   // store the outcome of the computation for the next tick
-  i_last_integr_output[inx] = i_nets[inx];
+  i_last_integr_net[inx] = i_nets[inx];
 }
 // ------------------------------------------------------------------------
 
@@ -807,7 +807,7 @@ int init_in_integr ()
   int i;
 
   // allocate the memory for the integrator state variable for outputs
-  if ((i_last_integr_output = ((long_net_t *)
+  if ((i_last_integr_net = ((long_net_t *)
          spin1_malloc (icfg.num_nets * sizeof(long_net_t)))) == NULL
        )
   {
@@ -825,7 +825,7 @@ int init_in_integr ()
   // reset the memory of the integrator state variable
   for (i = 0; i<icfg.num_nets; i++)
   {
-    i_last_integr_output[i] = (long_net_t) icfg.initNets;
+    i_last_integr_net[i] = (long_net_t) icfg.initNets;
     i_last_integr_delta[i] = 0;
   }
 

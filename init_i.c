@@ -65,7 +65,7 @@ extern scoreboard_t     ib_all_arrived;// all deltas have arrived in tick
 extern scoreboard_t   * ib_arrived;    // keep track of expected delta b-d-p
 extern scoreboard_t     ib_done;       // current tick delta computation done
 //#extern uint             ib_thrds_done; // sync. semaphore: proc & stop
-extern long_net_t     * i_last_integr_output;   //last integrator output value
+extern long_net_t     * i_last_integr_net;   //last integrator output value
 extern long_delta_t   * i_last_integr_delta; //last integrator delta value
 //list of input pipeline procedures
 extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
