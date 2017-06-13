@@ -44,12 +44,12 @@ uint             *cm; // simulation core map
 chip_struct_t    *ct; // chip-specific data
 uchar            *dt; // core-specific data
 mc_table_entry_t *rt; // multicast routing table data
-short_weight_t   *wt; // initial connection weights
+weight_t         *wt; // initial connection weights
 mlp_set_t        *es; // example set data
 mlp_example_t    *ex; // example data
 mlp_event_t      *ev; // event data
-short_activ_t    *it; // example inputs
-short_activ_t    *tt; // example targets
+activation_t     *it; // example inputs
+activation_t     *tt; // example targets
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
@@ -65,7 +65,7 @@ w_conf_t      wcfg;           // weight core configuration parameters
 // weight cores compute net and error block dot-products (b-d-p),
 // and weight updates.
 // ------------------------------------------------------------------------
-short_weight_t * * w_weights;         // connection weights block
+weight_t       * * w_weights;         // connection weights block
 long_wchange_t * * w_wchanges;        // accumulated weight changes
 activation_t   * w_outputs[2];      // unit outputs for b-d-p
 long_delta_t * * w_link_deltas;     // computed link deltas

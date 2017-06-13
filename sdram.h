@@ -13,7 +13,7 @@ static global_conf_t      * const gt = (global_conf_t *)
 //TODO: should be a run-time option, not a compile-time one!
 #if SPINN_WEIGHT_HISTORY == TRUE
   // weight history
-  static short_weight_t         * const wh = (short_weight_t *)
+  static weight_t         * const wh = (weight_t *)
                                      (SPINN_SDRAM_BASE + SPINN_WUPD_OFFSET);
 #endif
 

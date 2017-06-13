@@ -19,13 +19,11 @@ typedef long long long_activ_t;     // intermediate unit output or activation
 #define SPINN_ACTIV_SHIFT        27
 #define SPINN_ACTIV_MAX          INT_MAX
 #define SPINN_ACTIV_MIN          0
+#define SPINN_ACTIV_NaN          (-1 << SPINN_ACTIV_SHIFT)
 // minimum negative value for a long activation variable
 //~#define SPINN_ACTIV_MIN_NEG   INT_MIN
 // these values are set to compute the cross entropy error function
-// SPINN_ACTIV_ONE is temporarily changed to 134211727 as once shifted, this gives a value of
-// 0.999969, which is the same as the "1" value used for targets.
-//#define SPINN_ACTIV_ONE          (1 << SPINN_ACTIV_SHIFT)
-#define SPINN_ACTIV_ONE          134217727
+#define SPINN_ACTIV_ONE          (1 << SPINN_ACTIV_SHIFT)
 //~#define SPINN_ACTIV_NEG_ONE   (-1 << SPINN_ACTIV_SHIFT)
 
 typedef short     short_deriv_t;  // input or output derivative
@@ -98,19 +96,20 @@ typedef long long long_delta_t;     // used for delta intermediate calc
 //~#define SPINN_LONG_DELTA_MAX     SPINN_LONG_ERR_MAX
 //~#define SPINN_LONG_DELTA_MIN     SPINN_LONG_ERR_MIN
 
-typedef short     short_weight_t;   // connection weight
-typedef int       weight_t;         // intermediate connection weight
+// weights are s16.15
+// long weights are s48.15
+// weight changes are s16.15
+// long weight changes are s48.15
+typedef int       weight_t;         // connection weight
+typedef long long long_weight_t;    // intermediate conntection weight
 typedef int       wchange_t;        // connection weight change
 typedef long long long_wchange_t;   // intermediate connection weight change
 
-// short_weights are s3.12
-// weights are s19.12
-// weight changes are s19.12
-#define SPINN_WEIGHT_SHIFT       12
-#define SPINN_SHORT_WEIGHT_MAX   ((short_weight_t) ( 7 << SPINN_WEIGHT_SHIFT))
-#define SPINN_SHORT_WEIGHT_MIN   ((short_weight_t) (-7 << SPINN_WEIGHT_SHIFT))
-#define SPINN_SHORT_WEIGHT_POS_DELTA ((short_weight_t)  1)
-#define SPINN_SHORT_WEIGHT_NEG_DELTA ((short_weight_t) -1)
+#define SPINN_WEIGHT_SHIFT     15
+#define SPINN_WEIGHT_MAX       ((weight_t)  (0xffff << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_MIN       ((weight_t) -(0xffff << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_POS_DELTA ((weight_t)  1)
+#define SPINN_WEIGHT_NEG_DELTA ((weight_t) -1)
 
 typedef int       fpreal;           // 32-bit fixed-point number
 typedef long long lfpreal;          // 64-bit fixed-point number

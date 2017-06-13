@@ -38,12 +38,12 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern short_weight_t       *wt; //# initial connection weights
+extern weight_t             *wt; // initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
-extern short_activ_t        *it; // example inputs
-extern short_activ_t        *tt; // example targets
+extern activation_t         *it; // example inputs
+extern activation_t         *tt; // example targets
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

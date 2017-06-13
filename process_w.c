@@ -38,12 +38,12 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern short_weight_t       *wt; // initial connection weights
+extern weight_t             *wt; // initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
-extern short_activ_t        *it; // example inputs
-extern short_activ_t        *tt; // example targets
+extern activation_t         *it; // example inputs
+extern activation_t        *tt; // example targets
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -57,7 +57,7 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // ------------------------------------------------------------------------
 // weight core variables
 // ------------------------------------------------------------------------
-extern short_weight_t * * w_weights;     // connection weights block
+extern weight_t       * * w_weights;     // connection weights block
 extern long_wchange_t * * w_wchanges;    // accumulated weight changes
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
 extern activation_t   * w_output_history;
@@ -111,6 +111,11 @@ void wf_process (uint null0, uint null1)
 
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
+      if (epoch == 0 && example == 0 && j == 0)
+      {
+        io_printf (IO_BUF, "Epoch %d, Example %d, Tick %d, w_outputs[%d]: ", epoch, example, tick, i);
+        io_printf (IO_BUF, "%r\n", (w_outputs[wf_procs][i] >> 12));
+      }
       // s40.23 = s40.23 + ((s4.27 * s3.12) >> 16)
       net_part_tmp += (((long_net_t) w_outputs[wf_procs][i] * (long_net_t) w_weights[i][j])
                   >> (SPINN_ACTIV_SHIFT + SPINN_WEIGHT_SHIFT - SPINN_NET_SHIFT));
@@ -301,7 +306,7 @@ void w_update_weights (void)
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
       #ifdef DEBUG_VRB
-        short_weight_t old_weight = w_weights[i][j];
+        weight_t old_weight = w_weights[i][j];
       #endif
 
       // do not update weights that are 0 -- indicates no connection!
@@ -332,33 +337,33 @@ void w_update_weights (void)
 		             - SPINN_WEIGHT_SHIFT);
 
         // compute new weight
-        weight_t temp = (weight_t) w_weights[i][j]
-                              + (weight_t) w_wchanges[i][j];
+        long_weight_t temp = (long_weight_t) w_weights[i][j]
+                              + (long_weight_t) w_wchanges[i][j];
 
         // saturate new weight,
-        if (temp >= (weight_t) SPINN_SHORT_WEIGHT_MAX)
+        if (temp >= (long_weight_t) SPINN_WEIGHT_MAX)
         {
-          w_weights[i][j] = SPINN_SHORT_WEIGHT_MAX;
+          w_weights[i][j] = SPINN_WEIGHT_MAX;
         }
-        else if (temp <= (weight_t) SPINN_SHORT_WEIGHT_MIN)
+        else if (temp <= (long_weight_t) SPINN_WEIGHT_MIN)
         {
-          w_weights[i][j] = SPINN_SHORT_WEIGHT_MIN;
+          w_weights[i][j] = SPINN_WEIGHT_MIN;
         }
         // and avoid (new weight == 0) -- indicates no connection!
         else if (temp == 0)
         {
           if (w_weights[i][j] > 0)
           {
-            w_weights[i][j] = SPINN_SHORT_WEIGHT_POS_DELTA;
+            w_weights[i][j] = SPINN_WEIGHT_POS_DELTA;
           }
           else
           {
-            w_weights[i][j] = SPINN_SHORT_WEIGHT_NEG_DELTA;
+            w_weights[i][j] = SPINN_WEIGHT_NEG_DELTA;
           }
         }
         else
         {
-          w_weights[i][j] = (short_weight_t) temp;
+          w_weights[i][j] = (weight_t) temp;
         }
       }
 
@@ -389,7 +394,7 @@ void w_update_weights (void)
 //##                        + wcfg.blk_row * wcfg.num_rows + i) * mlpc.num_outs)
 //##                        + (wcfg.blk_col * wcfg.num_cols)],
 //##                   w_weights[i],
-//##                   wcfg.num_cols * sizeof(short_weight_t)
+//##                   wcfg.num_cols * sizeof(weight_t)
 //##                  );
     }
   #endif

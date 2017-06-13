@@ -42,12 +42,12 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern short_weight_t       *wt; //# initial connection weights
+extern weight_t             *wt; // initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
-extern short_activ_t        *it; // example inputs
-extern short_activ_t        *tt; // example targets
+extern activation_t         *it; // example inputs
+extern activation_t         *tt; // example targets
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -98,7 +98,7 @@ extern out_error_t const t_out_error[SPINN_NUM_ERROR_PROCS];
 extern long_deriv_t  * t_output_deriv;
 extern long_deriv_t  * t_output_deriv_history;
 extern delta_t        * t_deltas;
-extern short_activ_t  * t_target_history;
+extern activation_t   * t_target_history;
 extern net_t          * t_net_history;
 extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
 // ------------------------------------------------------------------------
@@ -787,7 +787,16 @@ void t_init_outputs (uint null0, uint null1)
     // TODO: need to verify initInput with Lens    
     // NOTE: The following code follows the output of Lens 2.63:
     // initialise the output value of the units
-    t_outputs[i] = (tcfg.initOutput << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+
+    // hack to force the initial output value of the bias unit to be 1 rather 0.999969
+    if (tcfg.initOutput == 32767)
+    {
+      t_outputs[i] = SPINN_ACTIV_ONE;
+    }
+    else
+    { 
+      t_outputs[i] = (tcfg.initOutput << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+    }
     
     // if the output integrator is used
     // reset the array of the last values
@@ -1051,10 +1060,10 @@ void out_hard_clamp (uint inx)
   #endif
 
   // compute only if input is not NaN
-  if (it[t_it_idx + inx] != SPINN_SHORT_ACTIV_NaN)
+  if (it[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
     // assign the value coming from the event
-    t_outputs[inx] = it[t_it_idx + inx] << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
+    t_outputs[inx] = it[t_it_idx + inx];
   }
 
   // TODO: if training, store the injected value in SDRAM. This memory area needs
@@ -1072,8 +1081,7 @@ void out_hard_clamp (uint inx)
 
 // ------------------------------------------------------------------------
 // compute the bias clamp. This clamp is used only by the bias group, and sets
-// the output value to a constant maximum output value (which is close to 1
-// on spinnaker, and 1 in lens
+// the output value to a constant maximum output value of 1
 // ------------------------------------------------------------------------
 void out_bias (uint inx)
 {
@@ -1081,8 +1089,8 @@ void out_bias (uint inx)
     io_printf (IO_BUF, "out_bias\n");
   #endif
 
-  // set output value to SPINN_SHORT_ACTIV_MAX (close to 1)
-  t_outputs[inx] = (activation_t) SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
+  // set output value to 1
+  t_outputs[inx] = SPINN_ACTIV_ONE;
 }
 // ------------------------------------------------------------------------
 
@@ -1132,7 +1140,7 @@ void out_weak_clamp (uint inx)
   long_activ_t external_input = it[t_it_idx + inx];         // 49.15 repr.
 
   // compute only if input is not NaN
-  if (external_input != (long_activ_t) SPINN_SHORT_ACTIV_NaN)
+  if (external_input != (long_activ_t) SPINN_ACTIV_NaN)
   {
     lfpreal weak_clamp_strength = tcfg.weak_clamp_strength; // 48.16 repr.
     long_activ_t output_value = t_outputs[inx];             // s36.27 repr.
@@ -1217,6 +1225,7 @@ void out_logistic_back (uint inx)
   // round off,
   tmp2 += 1 << (SPINN_LONG_DERIV_SHIFT + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT - 1);
 
+  // s8.23 = s36.27 >> (27 + 27 - 23) 
   t_deltas[inx] = (delta_t) (tmp2 >> (SPINN_LONG_DERIV_SHIFT
                               + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT));
 }
@@ -1239,7 +1248,7 @@ void out_integr_back (uint inx)
   // reset output to value stored during forward pass
   t_outputs[inx] = t_instant_outputs[((tick - 1) * tcfg.num_outputs) + inx];
 
-  // s48.15 = (s47.16 * s48.15) >> 16
+  // s36.27 = (s47.16 * s36.27) >> 16
   long_deriv_t d = (dt * last_output_deriv) >> SPINN_FPREAL_SHIFT;
   last_output_deriv += t_output_deriv[inx] - d;
   t_output_deriv[inx] = d;
@@ -1465,9 +1474,9 @@ void std_stop_crit (uint inx)
   #endif
 
   // evaluate only if target is not NaN
-  if (tt[t_it_idx + inx] != SPINN_SHORT_ACTIV_NaN)
+  if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-    error_t error = ABS (t_outputs[inx] - (tt[t_it_idx + inx] << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)));
+    error_t error = ABS (t_outputs[inx] - tt[t_it_idx + inx]);
     
     // Correction to fixed point arithmetic: tcfg.group_criterion is assumed
     // to be in a format with 15 decimal bits, but appears to have 16, making
@@ -1507,7 +1516,7 @@ void max_stop_crit (uint inx)
   #endif
 
   // evaluate only if target is not NaN
-  if (tt[t_it_idx + inx] != SPINN_SHORT_ACTIV_NaN)
+  if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
     if (t_outputs[inx] > t_max_output)
     {
@@ -1515,9 +1524,9 @@ void max_stop_crit (uint inx)
       t_max_output_unit = inx;
     }
 
-    if ((tt[t_it_idx + inx] << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)) > t_max_target)
+    if (tt[t_it_idx + inx] > t_max_target)
     {
-      t_max_target = (tt[t_it_idx + inx] << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+      t_max_target = tt[t_it_idx + inx];
       t_max_target_unit = inx;
     }
 
@@ -1549,8 +1558,8 @@ void error_squared (uint inx)
     io_printf (IO_BUF, "error_squared\n");
   #endif
 
-  if (tt[t_it_idx + inx] != SPINN_SHORT_ACTIV_NaN)
-    t_output_deriv[inx] = ((long_deriv_t) t_outputs[inx] - (long_deriv_t) (tt[t_it_idx + inx]) << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT + 1));
+  if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
+    t_output_deriv[inx] = ((long_deriv_t) t_outputs[inx] - (long_deriv_t) tt[t_it_idx + inx]);
   else
     t_output_deriv[inx] = 0;
 }
@@ -1602,7 +1611,7 @@ void error_cross_entropy (uint inx)
   #endif
 
   // if the target is defined, compute the output derivative, otherwise set it to 0
-  if (tt[t_it_idx + inx] != SPINN_SHORT_ACTIV_NaN)
+  if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
     // if the target is 0, then the cross entropy function simplifies in
     // 1 / (1 - output)
@@ -1623,13 +1632,13 @@ void error_cross_entropy (uint inx)
   
         // the left shift needs to be done before the division, as the
         // precision reduces with the division
-        // representation: 49.15
+        // representation: s36.27
         t_output_deriv[inx] = (((long_deriv_t) numerator << SPINN_LONG_DERIV_SHIFT) / (long_deriv_t) denominator);
       }
     }
     // if the target is close to 1, then the cross entropy function simplifies:
     // -1 / output
-    else if (tt[t_it_idx + inx] == ((activation_t) SPINN_ACTIV_ONE >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
+    else if (tt[t_it_idx + inx] == ((activation_t) SPINN_ACTIV_ONE))
     {
       // if the output value is close to 0, then the cross entropy function
       // shows a discontinuity, and the output value is set to the minimum
@@ -1646,7 +1655,7 @@ void error_cross_entropy (uint inx)
 
         // the left shift needs to be done before the division, as the
         // precision reduces with the division
-        // representation: 49.15
+        // representation: s36.27
         t_output_deriv[inx] = (((long_deriv_t) numerator << SPINN_LONG_DERIV_SHIFT) / (long_deriv_t) denominator);
       }
     }
@@ -1659,17 +1668,17 @@ void error_cross_entropy (uint inx)
       // where the MAX value is the maximum representable value
       if (( ((long_activ_t) t_outputs[inx] * (long_activ_t) ((activation_t) SPINN_ACTIV_ONE - t_outputs[inx])) << (long_activ_t) SPINN_ACTIV_SHIFT) <= (activation_t) SPINN_SMALL_VAL << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT))
       {
-        t_output_deriv[inx] = ((((long_deriv_t) SPINN_DERIV_MAX) * (long_deriv_t)(t_outputs[inx] - (tt[t_it_idx + inx] << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))) >> SPINN_ACTIV_SHIFT);
+        t_output_deriv[inx] = ((((long_deriv_t) SPINN_DERIV_MAX) * (long_deriv_t)(t_outputs[inx] - tt[t_it_idx + inx])) >> SPINN_ACTIV_SHIFT);
       }
       // otherwise compute the standard formula
       // (output - target) / (output * (1 - output))
       else
       {
-        derivative_t numerator = ((derivative_t) (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)) - (derivative_t) tt[t_it_idx + inx]); //representation: 17.15
+        derivative_t numerator = ((derivative_t) (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)) - (derivative_t) (tt[t_it_idx + inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT))); //representation: 17.15
         derivative_t one = (derivative_t) SPINN_DERIV_ONE; //representation: 17.15
         long_deriv_t denominator = ((long_deriv_t) t_outputs[inx] * (long_deriv_t) (one - (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)))) >> SPINN_ACTIV_SHIFT; //representation: 49.15
         
-        // representation: 49.15
+        // representation: s36.27
         t_output_deriv[inx] = (((long_deriv_t) numerator << SPINN_LONG_DERIV_SHIFT) / (long_deriv_t) denominator);
       }
     }
