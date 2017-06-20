@@ -441,7 +441,6 @@ void send_outputs_to_host (uint cmd, uint tick)
       {
         my_data[2 * i + 1] = (short_activ_t) (tt[t_it_idx + i] >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
       }
-      io_printf (IO_BUF, "%r\n", (my_data[2 * i + 1] >> 12));
     }
   }
 

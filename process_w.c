@@ -111,11 +111,6 @@ void wf_process (uint null0, uint null1)
 
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      if (epoch == 0 && example == 0 && j == 0)
-      {
-        io_printf (IO_BUF, "Epoch %d, Example %d, Tick %d, w_outputs[%d]: ", epoch, example, tick, i);
-        io_printf (IO_BUF, "%r\n", (w_outputs[wf_procs][i] >> 12));
-      }
       // s40.23 = s40.23 + ((s4.27 * s3.12) >> 16)
       net_part_tmp += (((long_net_t) w_outputs[wf_procs][i] * (long_net_t) w_weights[i][j])
                   >> (SPINN_ACTIV_SHIFT + SPINN_WEIGHT_SHIFT - SPINN_NET_SHIFT));
