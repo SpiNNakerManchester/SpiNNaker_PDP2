@@ -15,8 +15,8 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
-extern uint fwdKey;               // 32-bit packet ID for forward passes
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint coreType;             // weight, sum or threshold
@@ -51,22 +51,23 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // ------------------------------------------------------------------------
 // weight core variables
 // ------------------------------------------------------------------------
-extern weight_t     * * w_weights;     // connection weights block
-extern wchange_t    * * w_wchanges;    // accumulated weight changes
-extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern delta_t        * w_deltas[2];   // error deltas for b-d-p
+extern weight_t       * * w_weights;     // connection weights block
+extern long_wchange_t * * w_wchanges;    // accumulated weight changes
+extern activation_t   * w_outputs[2]; // unit outputs for b-d-p
+extern long_delta_t * * w_link_deltas; // computed link deltas
+extern error_t        * w_errors;      // computed errors next tick
+extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
+extern fpreal           w_delta_dt;    // scaling factor for link deltas
 extern uint             wf_procs;      // pointer to processing unit outputs
 extern uint             wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t     wf_arrived;    // keeps track of received unit outputs
 extern uint             wf_thrds_done; // sync. semaphore: comms, proc & stop
 extern uint             wf_sync_key;   // FORWARD processing can start
-extern uint             wb_procs;      // pointer to processing deltas
-extern uint             wb_comms;      // pointer to receiving deltas
+extern uchar            wb_active;     // processing deltas from queue?
 extern scoreboard_t     wb_arrived;    // keeps track of received deltas
-extern uchar            wb_comms_done; // all expected deltas arrived
-extern uchar            wb_procs_done; // current tick error b-d-ps done
-//#extern uint             wb_thrds_done; // sync. semaphore: comms, proc & stop
 extern uint             wb_sync_key;   // BACKPROP processing can start
+// history arrays
+extern activation_t   * w_output_history;
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -76,12 +77,12 @@ extern uint             wb_sync_key;   // BACKPROP processing can start
   extern uint pkt_sent;  // total packets sent
   extern uint sent_fwd;  // packets sent in FORWARD phase
 #endif
+// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// code
+// allocate memory and initialize variables
 // ------------------------------------------------------------------------
- 
 uint w_init (void)
 {
   uint i, j;
@@ -94,6 +95,24 @@ uint w_init (void)
                 wcfg.num_cols
               );
   #endif
+
+  // TODO: the following memory allocation is to be used to store
+  // the history of any of these sets of values. When training
+  // continuous networks, these histories always need to be saved.
+  // For non-continuous networks, they only need to be stored if the 
+  // backpropTicks field of the network is greater than one. This
+  // information needs to come from splens in the tcfg structure.
+
+  // allocate memory in SDRAM for output history
+  if ((w_output_history = ((activation_t *)
+          sark_xalloc (sv->sdram_heap,
+                       wcfg.num_rows * mlpc.global_max_ticks * sizeof(activation_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
 
   // allocate memory for weights
   if ((w_weights = ((weight_t * *)
@@ -114,8 +133,8 @@ uint w_init (void)
   }
 
   // allocate memory for weight changes
-  if ((w_wchanges = ((wchange_t * *)
-         spin1_malloc (wcfg.num_rows * sizeof(wchange_t *)))) == NULL
+  if ((w_wchanges = ((long_wchange_t * *)
+         spin1_malloc (wcfg.num_rows * sizeof(long_wchange_t *)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -123,8 +142,8 @@ uint w_init (void)
 
   for (i = 0; i < wcfg.num_rows; i++)
   {
-    if ((w_wchanges[i] = ((wchange_t *)
-           spin1_malloc (wcfg.num_cols * sizeof(wchange_t)))) == NULL
+    if ((w_wchanges[i] = ((long_wchange_t *)
+           spin1_malloc (wcfg.num_cols * sizeof(long_wchange_t)))) == NULL
        )
     {
     return (SPINN_MEM_UNAVAIL);
@@ -132,7 +151,7 @@ uint w_init (void)
   }
 
   // allocate memory for unit outputs
-  if ((w_outputs[0] = ((weight_t *)
+  if ((w_outputs[0] = ((activation_t *)
          spin1_malloc (wcfg.num_rows * sizeof(activation_t)))) == NULL
      )
   {
@@ -146,20 +165,41 @@ uint w_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for error deltas
-  if ((w_deltas[0] = ((delta_t*)
-         spin1_malloc (wcfg.num_cols * sizeof(delta_t)))) == NULL
+  // allocate memory for link deltas
+  if ((w_link_deltas = ((long_delta_t * *)
+         spin1_malloc (wcfg.num_rows * sizeof(long_delta_t *)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
-  if ((w_deltas[1] = ((delta_t *)
-         spin1_malloc (wcfg.num_cols * sizeof(delta_t)))) == NULL
+  for (i = 0; i < wcfg.num_rows; i++)
+  {
+    if ((w_link_deltas[i] = ((long_delta_t *)
+           spin1_malloc (wcfg.num_cols * sizeof(long_delta_t)))) == NULL
+       )
+    {
+    return (SPINN_MEM_UNAVAIL);
+    }
+  }
+
+  // allocate memory for errors
+  if ((w_errors = ((error_t*)
+         spin1_malloc (wcfg.num_rows * sizeof(delta_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
+
+  // allocate memory for packet queue
+  if ((w_delta_pkt_q.queue = ((packet_t *)
+         spin1_malloc (SPINN_WEIGHT_PQ_LEN * sizeof(packet_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+
 
   // initialize weights from SDRAM
   wt = (weight_t *) wcfg.weights_struct_addr;  // initial connection weights
@@ -187,6 +227,15 @@ uint w_init (void)
     }
   #endif
 
+  // initialize link deltas
+  for (uint i = 0; i < wcfg.num_rows; i++)
+  {
+    for (uint j = 0; j < wcfg.num_cols; j++)
+    {
+      w_link_deltas[i][j] = 0;
+    }
+  }
+
   // initialize weight changes
   for (i = 0; i < wcfg.num_rows; i++)
   {
@@ -196,22 +245,34 @@ uint w_init (void)
     }
   }
 
-  // intialize tick
+  // initialize error dot products
+  for (uint i = 0; i < wcfg.num_rows; i++)
+  {
+    w_errors[i] = 0;
+  }
+
+  // initialize output history for tick 0
+  for (uint i = 0; i < wcfg.num_rows; i++)
+  {
+    w_output_history[i] = 0;
+  }
+
+  // initialize tick
   tick = SPINN_W_INIT_TICK;
 
-  // initialize pointers to received unit outputs and error deltas
+  // initialize delta scaling factor
+  // s15.16
+  w_delta_dt = (1 << SPINN_FPREAL_SHIFT) / mlpc.ticks_per_int;
+
+  // initialize pointers to received unit outputs
   wf_procs = 0;
   wf_comms = 1;
-  wb_procs = 0;
-  wb_comms = 1;
 
-  // initialize synchronization flags
-  wb_comms_done = FALSE;
-  // no processing in tick 0 -- just wait for initial error deltas
-  wb_procs_done = TRUE;
-  
   // initialize synchronization semaphores
   wf_thrds_done = 0; // just wait for initial unit outputs
+
+  // initialize processing thread flag
+  wb_active = FALSE;
 
   // initialize arrival scoreboards
   wf_arrived = 0;
@@ -230,3 +291,4 @@ uint w_init (void)
 
   return (SPINN_NO_ERROR);
 }
+// ------------------------------------------------------------------------

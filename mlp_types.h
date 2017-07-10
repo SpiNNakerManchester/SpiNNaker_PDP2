@@ -3,104 +3,127 @@
 
 #include "mlp_params.h"
 
-typedef short     activation_t;     // unit output or activation (16 bit)
-typedef int       long_activ_t;     // intermediate unit output or activation (32 bit)
-typedef long long llong_activ_t;    // intermediate unit output or activation (64 bit)
+typedef short     short_activ_t;    // unit output or activation
+typedef int       activation_t;     // intermediate unit output or activation
+typedef long long long_activ_t;     // intermediate unit output or activation
 
-// activations are 16-bit quantities with 15 decimal bits
-#define SPINN_ACTIV_SHIFT        15
-#define SPINN_ACTIV_MAX          ((1 << SPINN_ACTIV_SHIFT) - 1)
+// short activations are s0.15
+#define SPINN_SHORT_ACTIV_SHIFT  15
+#define SPINN_SHORT_ACTIV_MAX    ((1 << SPINN_SHORT_ACTIV_SHIFT) - 1)
+#define SPINN_SHORT_ACTIV_MIN    0
+// minimum negative value for an activation variable
+#define SPINN_SHORT_ACTIV_MIN_NEG      (-1 * SPINN_SHORT_ACTIV_MAX)
+#define SPINN_SHORT_ACTIV_NaN          (-1 << SPINN_SHORT_ACTIV_SHIFT)
+
+// activations are s4.27
+#define SPINN_ACTIV_SHIFT        27
+#define SPINN_ACTIV_MAX          INT_MAX
 #define SPINN_ACTIV_MIN          0
-//minimum negative value for an activation variable
-#define SPINN_ACTIV_MIN_NEG      (-1 * SPINN_ACTIV_MAX)
 #define SPINN_ACTIV_NaN          (-1 << SPINN_ACTIV_SHIFT)
-// long activations are 32-bit quantities with 15 decimal bits
-#define SPINN_LONG_ACTIV_MAX     INT_MAX
-#define SPINN_LONG_ACTIV_MIN     0
-//minimum negative value for a long activation variable
-#define SPINN_LONG_ACTIV_MIN_NEG INT_MIN
-//long long activations are 64-bit quantities with 15 decimal bits
-#define SPINN_LLONG_ACTIV_MAX    LLONG_MAX
-#define SPINN_LLONG_ACTIV_MIN    0
-//minimum negative value for a long long activation variable
-#define SPINN_LLONG_ACTIV_MIN_NEG  LLONG_MIN
-//these values are set to compute the cross entropy error function
-#define SPINN_LONG_ACTIV_ONE     (1 << SPINN_ACTIV_SHIFT)
-#define SPINN_LONG_ACTIV_NEG_ONE (-1 << SPINN_ACTIV_SHIFT)
+// minimum negative value for a long activation variable
+//~#define SPINN_ACTIV_MIN_NEG   INT_MIN
+// these values are set to compute the cross entropy error function
+#define SPINN_ACTIV_ONE          (1 << SPINN_ACTIV_SHIFT)
+//~#define SPINN_ACTIV_NEG_ONE   (-1 << SPINN_ACTIV_SHIFT)
 
+typedef short     short_deriv_t;  // input or output derivative
+typedef int       derivative_t;   // intermediate unit input or output derivative
+typedef long long long_deriv_t;   // intermediate unit input or output derivative
 
-typedef short     derivative_t;     // input or output derivative (16 bit)
-typedef int       long_deriv_t;     // intermediate unit input or output derivative (32 bit)
-typedef long long llong_deriv_t;    // intermediate unit input or output derivative (64 bit)
+// short derivatives are s0.15
+#define SPINN_DERIV_SHIFT        15
+#define SPINN_SHORT_DERIV_MAX         ((1 << SPINN_DERIV_SHIFT) - 1)
+//~#define SPINN_SHORT_DERIV_MIN          0
+// minimum negative value for an derivative variable
+#define SPINN_SHORT_DERIV_MIN_NEG     (-1 * SPINN_SHORT_DERIV_MAX)
+#define SPINN_SHORT_DERIV_NaN          (-1 << SPINN_DERIV_SHIFT)
 
-// derivatives are 16-bit quantities with 15 decimal bits
-#define SPINN_DERIV_SHIFT        SPINN_ACTIV_SHIFT
-#define SPINN_DERIV_MAX          SPINN_ACTIV_MAX
-#define SPINN_DERIV_MIN          SPINN_ACTIV_MIN
-//minimum negative value for an derivative variable
-#define SPINN_DERIV_MIN_NEG      SPINN_ACTIV_MIN_NEG
-#define SPINN_DERIV_NaN          SPINN_ACTIV_NaN
-// long derivatives are 32-bit quantities with 15 decimal bits
-#define SPINN_LONG_DERIV_MAX     SPINN_LONG_ACTIV_MAX
-#define SPINN_LONG_DERIV_MIN     SPINN_LONG_ACTIV_MIN
-//minimum negative value for a long derivative variable
-#define SPINN_LONG_DERIV_MIN_NEG SPINN_LONG_ACTIV_MIN_NEG
-//long long derivative are 64-bit quantities with 15 decimal bits
-#define SPINN_LLONG_DERIV_MAX    SPINN_LLONG_ACTIV_MAX
-#define SPINN_LLONG_DERIV_MIN    SPINN_LLONG_ACTIV_MIN
-//minimum negative value for a long long derivative variable
-#define SPINN_LLONG_DERIV_MIN_NEG  SPINN_LLONG_ACTIV_MIN_NEG
-//these values are set to compute the cross entropy error function
-#define SPINN_LONG_DERIV_ONE     SPINN_LONG_ACTIV_ONE
-#define SPINN_LONG_DERIV_NEG_ONE SPINN_LONG_ACTIV_NEG_ONE
+// derivatives are s16.15
+#define SPINN_DERIV_MAX          INT_MAX
+#define SPINN_DERIV_MIN          0
+// minimum negative value for a long derivative variable
+#define SPINN_DERIV_MIN_NEG      INT_MIN
+// these values are set to compute the cross entropy error function
+#define SPINN_DERIV_ONE          (1 << SPINN_DERIV_SHIFT)
+#define SPINN_DERIV_NEG_ONE      (-1 << SPINN_DERIV_SHIFT)
 
-typedef int       net_t;            // unit internal net (inputs ot-product)
+// long derivatives are s36.27
+#define SPINN_LONG_DERIV_SHIFT  27
+//~#define SPINN_LONG_DERIV_MAX     SPINN_LONG_ACTIV_MAX
+//~#define SPINN_LONG_DERIV_MIN     SPINN_LONG_ACTIV_MIN
+// minimum negative value for a long long derivative variable
+//~#define SPINN_LONG_DERIV_MIN_NEG   LONG_MIN
+
+typedef int       net_t;            // unit internal net (inputs dot-product)
 typedef long long long_net_t;       // used for net intermediate calc
 
 //TODO: set these values correctly!
-// nets are 32-bit quantities with 27 decimal bits
-#define SPINN_NET_SHIFT          (SPINN_WEIGHT_SHIFT + SPINN_ACTIV_SHIFT)
-#define SPINN_NET_MAX            ( 15.0 * (1 << SPINN_NET_SHIFT))
-#define SPINN_NET_MIN            (-15.0 * (1 << SPINN_NET_SHIFT))
+// nets are s8.23
+#define SPINN_NET_SHIFT          23
+#define SPINN_NET_MAX            ( 255.0 * (1 << SPINN_NET_SHIFT))
+#define SPINN_NET_MIN            (-255.0 * (1 << SPINN_NET_SHIFT))
+
+// long nets are s40.23
 
 typedef int       error_t;          // unit output error
 typedef long long long_error_t;     // used for error intermediate calc
-typedef int       delta_t;          // error derivative
-//#typedef long long long_delta_t;
 
 //TODO: set these values correctly!
-// errors are 32-bit quantities with 15 decimal bits
-#define SPINN_ERROR_SHIFT        SPINN_ACTIV_SHIFT
-#define SPINN_ERROR_MAX          ( 0.5 * (1 << SPINN_ERROR_SHIFT))
-#define SPINN_ERROR_MIN          (-0.5 * (1 << SPINN_ERROR_SHIFT))
-// intermediate error computations use longer types!
-#define SPINN_LONG_ERR_SHIFT     (SPINN_WEIGHT_SHIFT + SPINN_DELTA_SHIFT)
-#define SPINN_LONG_ERR_MAX       ( 0.5 * (1 << SPINN_LONG_ERR_SHIFT))
-#define SPINN_LONG_ERR_MIN       (-0.5 * (1 << SPINN_LONG_ERR_SHIFT))
-//deltas are 32-bit quantities with 15 decimal bits
-#define SPINN_DELTA_SHIFT        SPINN_ERROR_SHIFT
+// errors are s16.15
+#define SPINN_ERROR_SHIFT        15
+#define SPINN_ERROR_MAX          (  0xffff * (1 << SPINN_ERROR_SHIFT))
+#define SPINN_ERROR_MIN          (-(0xffff * (1 << SPINN_ERROR_SHIFT)))
 
-typedef short     weight_t;         // connection weight
-typedef int       wchange_t;        // accumulated connection weight change
+// long errors are s36.27
+#define SPINN_LONG_ERR_SHIFT     27
+//~#define SPINN_LONG_ERR_MAX       (  0xffff * (1 << SPINN_LONG_ERR_SHIFT))
+//~#define SPINN_LONG_ERR_MIN       (-(0xffff * (1 << SPINN_LONG_ERR_SHIFT)))
 
-// weights are 16-bit quantities with 12 decimal bits
-#define SPINN_WEIGHT_SHIFT       12
-#define SPINN_WEIGHT_MAX         ((weight_t) ( 7 << SPINN_WEIGHT_SHIFT))
-#define SPINN_WEIGHT_MIN         ((weight_t) (-7 << SPINN_WEIGHT_SHIFT))
-#define SPINN_WEIGHT_POS_DELTA   ((weight_t)  1)
-#define SPINN_WEIGHT_NEG_DELTA   ((weight_t) -1)
+typedef int       delta_t;          // input derivative
+typedef long long long_delta_t;     // used for delta intermediate calc
+
+// deltas are s16.15
+//!#define SPINN_DELTA_SHIFT        15
+//!#define SPINN_DELTA_MAX          (  0xffff * (1 << SPINN_DELTA_SHIFT))
+//!#define SPINN_DELTA_MIN          (-(0xffff * (1 << SPINN_DELTA_SHIFT)))
+// deltas are s8.23
+#define SPINN_DELTA_SHIFT        23
+#define SPINN_DELTA_MAX          (  0xff * (1 << SPINN_DELTA_SHIFT))
+#define SPINN_DELTA_MIN          (-(0xff * (1 << SPINN_DELTA_SHIFT)))
+
+// long_deltas are s36.27
+#define SPINN_LONG_DELTA_SHIFT   27
+//~#define SPINN_LONG_DELTA_MAX     SPINN_LONG_ERR_MAX
+//~#define SPINN_LONG_DELTA_MIN     SPINN_LONG_ERR_MIN
+
+// weights are s16.15
+// long weights are s48.15
+// weight changes are s16.15
+// long weight changes are s48.15
+typedef int       weight_t;         // connection weight
+typedef long long long_weight_t;    // intermediate conntection weight
+typedef int       wchange_t;        // connection weight change
+typedef long long long_wchange_t;   // intermediate connection weight change
+
+#define SPINN_WEIGHT_SHIFT     15
+#define SPINN_WEIGHT_MAX       ((weight_t)  (0xffff << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_MIN       ((weight_t) -(0xffff << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_POS_DELTA ((weight_t)  1)
+#define SPINN_WEIGHT_NEG_DELTA ((weight_t) -1)
+
+typedef int       fpreal;           // 32-bit fixed-point number
+typedef long long lfpreal;          // 64-bit fixed-point number
+
+//NOTE: may be a good idea to change to s16.15 for compatibility!
+// fixed-point reals are s15.16
+// long fixed-point reals are s47.16
+#define SPINN_FPREAL_SHIFT       16
+#define SPINN_FP_NaN             (-1 << SPINN_FPREAL_SHIFT)
+#define SPINN_SMALL_VAL          1
 
 typedef uint      scoreboard_t;     // keep track of received items
 
 typedef uchar     proc_phase_t;     // phase (FORWARD or BACKPROP)
-
-typedef int       fpreal;           // int as 16.16 fixed-point number
-typedef long long lfpreal;          // int as 48.16 fixed-point number
-
-#define SPINN_FPREAL_SHIFT       16
-//#define SPINN_FP_NaN             0xffff0000
-#define SPINN_FP_NaN             (-1 << SPINN_FPREAL_SHIFT)
-#define SPINN_SMALL_VAL          1
 
 
 // ------------------------------------------------------------------------
@@ -170,7 +193,7 @@ typedef struct w_conf               // weight core configuration
   uint         num_cols;            // columns in this core's block
   scoreboard_t f_all_arrived;       // all expected unit outputs
   scoreboard_t b_all_arrived;       // all expected error deltas
-  activation_t learningRate;        // network learning rate
+  short_activ_t learningRate;       // network learning rate
   uint         weights_struct_addr; // address in SDRAM for weight file
 } w_conf_t;
 // ------------------------------------------------------------------------
@@ -199,7 +222,7 @@ typedef struct s_conf    // sum core configuration
   fpreal       in_integr_dt;        // integration time const for input integr
   fpreal       soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
   net_t        initNets;            // initial value for unit nets
-  activation_t initOutput;          // initial value for unit outputs
+  short_activ_t initOutput;         // initial value for unit outputs
   uint         inputs_addr;         // address in SDRAM for inputs file
 } s_conf_t;
 // ------------------------------------------------------------------------
@@ -217,7 +240,7 @@ typedef struct i_conf               // sum core configuration
   uchar        input_grp;           // is this an INPUT group?
   uint         num_nets;            // this core's number of unit nets
   uint         net_blk;             // this core's net block
-  uint         error_blk;           // this core's error block
+  uint         delta_blk;           // this core's delta block
   scoreboard_t f_all_arrived;       // all expected unit output b-d-ps
   scoreboard_t f_all_done;          // all unit outputs
   scoreboard_t b_all_arrived;       // all expected error d-b-ps
@@ -228,7 +251,7 @@ typedef struct i_conf               // sum core configuration
   fpreal       in_integr_dt;        // integration time const for input integr
   fpreal       soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
   net_t        initNets;            // initial value for unit nets
-  activation_t initOutput;          // initial value for unit outputs
+  short_activ_t initOutput;         // initial value for unit outputs
   uint         inputs_addr;         // address in SDRAM for inputs file
 } i_conf_t;
 // ------------------------------------------------------------------------
@@ -270,13 +293,13 @@ typedef struct t_conf    // threshold core configuration
   uint         num_out_procs;         // number of output comp procedures
   uint         procs_list[SPINN_NUM_OUT_PROCS];
   fpreal       weak_clamp_strength;   // Strength coeff for weak clamp fix 16.16
-  activation_t initOutput;            // initial value for unit outputs
+  short_activ_t initOutput;           // initial value for unit outputs
   error_t      group_criterion;       // convergence criterion value
   uchar        criterion_function;    // function to eval convergence criterion
   uchar        is_first_output_group; // is this the firso of the output groups
   uchar        is_last_output_group;  // is this the last of the output groups
   uchar        error_function;        // is the error function id to be used for
-                                      // backprop
+                                      // BACKPROP
   uint         group_id;              // ID of the group
   uint         subgroup_id;           // ID of the subgroup
   uint         total_subgroups;       // total number of subgroups
@@ -342,7 +365,7 @@ typedef struct mlp_event {
 typedef void (*out_proc_t) (uint);   // output comp procedures
 
 
-typedef void (*out_proc_back_t) (uint);   // backward output comp procedures
+typedef void (*out_proc_back_t) (uint);   // BACKPROP output comp procedures
 
 
 typedef int  (*out_proc_init_t) (void);    // input initialization procedures
@@ -351,7 +374,7 @@ typedef int  (*out_proc_init_t) (void);    // input initialization procedures
 typedef void (*in_proc_t) (uint);    // input (net) comp procedures
 
 
-typedef void (*in_proc_back_t) (uint);    // backward input (net) comp procedures
+typedef void (*in_proc_back_t) (uint);    // BACKPROP input (net) comp procedures
 
 
 typedef int  (*in_proc_init_t) (void);    // input initialization procedures

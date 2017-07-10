@@ -17,8 +17,8 @@
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for forward passes
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -39,7 +39,7 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; //# initial connection weights
+extern weight_t             *wt; // initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
@@ -59,20 +59,21 @@ extern i_conf_t   icfg;           // input core configuration parameters
 // input core variables
 // ------------------------------------------------------------------------
 extern long_net_t     * i_nets;        // unit nets computed in current tick
-extern long_error_t   * i_errors;      // errors computed in current tick
-extern long_error_t   * i_init_err;    // errors computed in first tick
+extern long_delta_t   * i_deltas;      // deltas computed in current tick
+extern long_delta_t   * i_init_delta;  // deltas computed in first tick
 extern pkt_queue_t      i_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            i_active;      // processing b-d-ps from queue?
 extern uint             i_it_idx;      // index into current inputs/targets
 extern scoreboard_t   * if_arrived;    // keep track of expected net b-d-p
 extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_done; // sync. semaphore: proc & stop
-extern long_error_t   * ib_init_error; // initial error value for every tick
+extern long_delta_t   * ib_init_delta; // initial delta value for every tick
 extern scoreboard_t     ib_all_arrived;// all deltas have arrived in tick
-extern scoreboard_t   * ib_arrived;    // keep track of expected error b-d-p
-extern scoreboard_t     ib_done;       // current tick error computation done
+extern scoreboard_t   * ib_arrived;    // keep track of expected delta b-d-p
+extern scoreboard_t     ib_done;       // current tick delta computation done
 //#extern uint             ib_thrds_done; // sync. semaphore: proc & stop
-extern long_net_t     * i_last_integr_output;   //last integrator output value
+extern long_net_t     * i_last_integr_net; //last integrator output value
+extern long_delta_t   * i_last_integr_delta; //last integrator delta value
 // list of input pipeline procedures
 extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
 extern in_proc_back_t const  i_in_back_procs[SPINN_NUM_IN_PROCS];
@@ -97,15 +98,18 @@ extern long_net_t     * i_net_history; //sdram pointer where to store input hist
   extern uint wght_ups;  // number of weight updates done
   extern uint tot_tick;  // total number of ticks executed
 #endif
+// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// code
+// process queued packets until queue empty
 // ------------------------------------------------------------------------
-
-// process a multicast packet received by an input core
 void i_process (uint null0, uint null1)
 {  
+  #ifdef TRACE
+    io_printf (IO_BUF, "i_process\n");
+  #endif
+  
   // process packet queue
   // access queue with interrupts disabled
   uint cpsr = spin1_int_disable ();
@@ -122,16 +126,14 @@ void i_process (uint null0, uint null1)
     spin1_mode_restore (cpsr);
 
     // and check packet phase and process accordingly
-    if (((key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT) == SPINN_FORWARD)
+    uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
+    if (ph == SPINN_FORWARD)
     {
       // process FORWARD phase packet
       #ifdef DEBUG
         recv_fwd++;
         if (phase != SPINN_FORWARD)
-        {
-          io_printf (IO_BUF, "i_process wrong phase - phase: BACKPROP, packet: FORWARD\n");
           wrng_phs++;
-        }
       #endif
 
       i_forward_packet (key, payload);
@@ -142,10 +144,7 @@ void i_process (uint null0, uint null1)
       #ifdef DEBUG
         recv_bkp++;
         if (phase != SPINN_BACKPROP)
-        {
-          io_printf (IO_BUF, "i_process wrong phase - phase: FORWARD, packet: BACKPROP\n");
           wrng_phs++;
-        }
       #endif
 
       i_backprop_packet (key, payload);
@@ -161,14 +160,19 @@ void i_process (uint null0, uint null1)
   // restore interrupts and leave
   spin1_mode_restore (cpsr);
 }
+// ------------------------------------------------------------------------
 
-// process a forward multicast packet received by an input core
+
+// ------------------------------------------------------------------------
+// process FORWARD phase: apply input pipeline elements
+// ------------------------------------------------------------------------
 void i_forward_packet (uint key, uint payload)
 {
   // get net index: mask out block, phase and colour data,
   uint inx = key & SPINN_NET_MASK;
 
   // accumulate new net b-d-p,
+  // s40.23
   i_nets[inx] = (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,
@@ -264,19 +268,24 @@ void i_forward_packet (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// process a received backpropagation packet
+
+// ------------------------------------------------------------------------
+// process BACKPROP phase: apply BACKPROP input pipeline elements
+// ------------------------------------------------------------------------
 void i_backprop_packet (uint key, uint payload)
 {
-  // get error index: mask out block, phase and colour data,
-  uint inx = key & SPINN_ERROR_MASK;
+  // get delta index: mask out block, phase and colour data,
+  uint inx = key & SPINN_DELTA_MASK;
 
-  // accumulate new error b-d-p,
-  i_errors[inx] = (error_t) payload;
+  // accumulate new delta b-d-p,
+  i_deltas[inx] = ((long_delta_t) ((delta_t) payload))
+    << (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
 
-  // mark error b-d-p as arrived,
+  // mark delta b-d-p as arrived,
   #if SPINN_USE_COUNTER_SB == FALSE
-    // get error block: mask out phase, colour and net index data
+    // get delta block: mask out phase, colour and net index data
     uint blk = (key & SPINN_BLK_C_MASK) >> SPINN_BLK_C_SHIFT;
   
     // check if already marked -- problem,
@@ -295,39 +304,38 @@ void i_backprop_packet (uint key, uint payload)
     ib_arrived[inx]++;
   #endif
 
-  // and check if error complete to send to next stage
+  // and check if delta complete to send to next stage
   // TODO: can use a configuration constant -- needs fixing
   // this core always receives packets from a single S core. Therefore the
   // ib_all_arrived will always be 1, and the if lose meaning: this routine
   // is executed when a packet is received -- to be chekced
   if (ib_arrived[inx] == ib_all_arrived)
   {
-    error_t err_tmp;
+    // restore net for the previous tick
+    restore_nets (inx, tick -1);
 
     compute_in_back (inx);
-    
-/* //#
-    //TODO: may need to saturate and cast the long errors before sending
-    if (i_errors[inx] >= (long_error_t) LONG_ERR_MAX)
+
+    // saturate and cast the long deltas before sending
+    long_delta_t delta_tmp = i_deltas[inx]
+                           >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
+    delta_t delta;
+
+    if (delta_tmp >= (long_delta_t) SPINN_DELTA_MAX)
     {
-      err_tmp = (error_t) ERROR_MAX;
+      delta = (delta_t) SPINN_DELTA_MAX;
     }
-    else if (i_errors[inx] <= (long_error_t) LONG_ERR_MIN)
+    else if (delta_tmp <= (long_delta_t) SPINN_DELTA_MIN)
     {
-      err_tmp = (error_t) ERROR_MIN;
+      delta = (delta_t) SPINN_DELTA_MIN;
     }
     else
     {
-      // keep the correct implicit decimal point position
-      err_tmp = (error_t) (i_errors[inx] >> (LONG_ERR_SHIFT - ERROR_SHIFT));
+      delta = (delta_t) delta_tmp;
     }
-*/
 
-    // casting to smaller size -- adjust the implicit decimal point position
-    err_tmp = i_errors[inx] >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
-
-    // incorporate error index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | inx), err_tmp, WITH_PAYLOAD));
+    // incorporate delta index to the packet key and send,
+    while (!spin1_send_mc_packet ((bkpKey | inx), delta, WITH_PAYLOAD));
 
     #ifdef DEBUG
       pkt_sent++;
@@ -335,17 +343,17 @@ void i_backprop_packet (uint key, uint payload)
     #endif
 
     // prepare for next tick,
-    i_errors[inx] = 0;
+    i_deltas[inx] = 0;
     ib_arrived[inx] = 0;
 
-    // mark error as done,
+    // mark delta as done,
     #if SPINN_USE_COUNTER_SB == FALSE
       ib_done |= (1 << inx);
     #else
       ib_done++;
     #endif
 
-    // and check if all errors done
+    // and check if all deltas done
     if (ib_done == icfg.b_all_done)
     {
       // advance tick
@@ -354,11 +362,19 @@ void i_backprop_packet (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: the tick has been completed, move forward to the next tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: the tick has been completed, move FORWARD to the next tick
 // updating the indexes to the events/examples as required
+// ------------------------------------------------------------------------
 void if_advance_tick (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "if_advance_tick\n");
+  #endif
+  
   // prepare for next tick,
   if_done = 0;
 
@@ -375,24 +391,46 @@ void if_advance_tick (uint null0, uint null1)
   {
     // if not done increment tick
     tick++;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// backward pass: the tick has been completed, move forward to the next tick
+
+// ------------------------------------------------------------------------
+// BACKPROP phase: the tick has been completed, move FORWARD to the next tick
 // updating the indexes to the events/examples as required
+// ------------------------------------------------------------------------
 void ib_advance_tick (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "ib_advance_tick\n");
+  #endif
+  
   // prepare for next tick,
   ib_done = 0;
 
   #ifdef DEBUG
     tot_tick++;
+  #endif
+
+  #ifdef DEBUG_VRB
     io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
   #endif
 
   // and check if end of BACKPROP phase
-  if (tick == SPINN_I_INIT_TICK)
+  if (tick == SPINN_IB_END_TICK)
   {
+    // initialize the tick count
+    tick = SPINN_I_INIT_TICK;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "w_switch_to_fw\n");
+    #endif
+  
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
 
@@ -403,12 +441,24 @@ void ib_advance_tick (uint null0, uint null1)
   {
     // if not done decrement tick
     tick--;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "ib_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the event at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the event at the end of a simulation tick
+// ------------------------------------------------------------------------
 void if_advance_event (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "if_advance_event\n");
+  #endif
+  
   // check if done with events
   if (++evt >= num_events)
   {
@@ -417,6 +467,11 @@ void if_advance_event (void)
     {
       // if training, save number of ticks
       num_ticks = tick;
+
+      #ifdef TRACE
+        io_printf (IO_BUF, "w_switch_to_bp\n");
+      #endif
+  
       // then do BACKPROP phase
       phase = SPINN_BACKPROP;
     }
@@ -432,7 +487,7 @@ void if_advance_event (void)
   {
     // if input or output group update input/target index
     // TODO: to check if the target value is required in I cores
-    // for the backward pass, otherwise remove the condition for the
+    // for the BACKPROP phase, otherwise remove the condition for the
     // output group
     if (icfg.input_grp || icfg.output_grp)
     {
@@ -443,10 +498,18 @@ void if_advance_event (void)
     tick++;
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the example at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the example at the end of a simulation tick
+// ------------------------------------------------------------------------
 void i_advance_example (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "i_advance_example\n");
+  #endif
+  
   // check if done with examples
   if (++example >= mlpc.num_examples)
   {
@@ -471,7 +534,7 @@ void i_advance_example (void)
   
   // if input or output group initialize new event input/target index
   //TODO: check if the target value is required in I cores
-  // for the backward pass, otherwise remove the condition for the
+  // for the BACKPROP phase, otherwise remove the condition for the
   // output group
   if (icfg.input_grp || icfg.output_grp)
   {
@@ -481,14 +544,26 @@ void i_advance_example (void)
   // if the input integrator is used reset the array of last values
   if (icfg.in_integr_en)
     for (uint i = 0; i < icfg.num_nets; i++)
-      i_last_integr_output[i] = (long_net_t) icfg.initNets;
+    {
+      i_last_integr_net[i] = (long_net_t) icfg.initNets;
+      i_last_integr_delta[i] = 0;
+    }
 }
+// ------------------------------------------------------------------------
 
-// routine which calls all the elements of the input pipeline, as they have been
+
+// ------------------------------------------------------------------------
+// FORWARD phase:
+// call the elements in the input pipeline, as they have been
 // specified through splens
+// ------------------------------------------------------------------------
 void compute_in (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
+    io_printf (IO_BUF, "compute_in\n");
+  #endif
+
+  #ifdef DEBUG_VRB
     char* group;
     group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_nets == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
@@ -499,65 +574,80 @@ void compute_in (uint inx)
     i_in_procs[icfg.procs_list[i]] (inx);
   }
 
-#if SPINN_STORE_INPUT == 1
-  store_nets(inx); //see note for the routine itself
-#endif
+  // check if in training mode, and if so, store nets
+  // TODO: for non-continuous networks, this needs to check the requirement to have these 
+  // histories saved, which needs to come from splens. For continuous networks, these histories
+  // are always required. 
+  if (mlpc.training)
+  {
+    store_nets(inx);
+  }
 }
+// ------------------------------------------------------------------------
 
-// the following routine needs to be called in case lens is set to store the
-// history of input values. This boolean needs to be retrieved from splens
-// stored in the configuration data for each of the groups (in the icfg
-// structure) and used here to perform the operation if required
-// every time this routine is called, is needs to store only the information
-// related to the unit inx
 
+// ------------------------------------------------------------------------
+// stores nets for the current tick
+// ------------------------------------------------------------------------
 void store_nets (uint inx)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "in_soft_clamp_back\n");
+  #ifdef TRACE_VRB
+    io_printf (IO_BUF, "store_nets\n");
   #endif
 
-  // FIXME: The memcopy operation copies every time the whole set of net values
-  // even though only the value related ot the unit inx has been updated
-/*
-  long_net_t * src_ptr = i_nets;
-  long_net_t * dst_ptr = i_input_history + tick * icfg.num_nets;
-
-  spin1_memcpy(dst_ptr, src_ptr, icfg.num_nets * sizeof(long_net_t));
-*/
+  i_net_history[(tick * icfg.num_nets) + inx] = i_nets[inx];
 }
+// ------------------------------------------------------------------------
 
-//input integrator element
+
+// ------------------------------------------------------------------------
+// restores the net of the specified unit for the requested tick
+// ------------------------------------------------------------------------
+void restore_nets (uint inx, uint tick)
+{
+  #ifdef TRACE
+    io_printf (IO_BUF, "restore_nets\n");
+  #endif
+
+  i_nets[inx] = i_net_history[(tick * icfg.num_nets) + inx];
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// input integrator element
+// ------------------------------------------------------------------------
 void in_integr (uint inx)
 {  
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_integr\n");
   #endif
   
-  // representation: 37.27 in a 64 bit variable with the topmost 32 bits set to 0
-  long_net_t last_output = i_last_integr_output[inx];
-  // representation: 37.27 in a 64 bit variable with the topmost 32 bits set to 0
-  long_net_t desired_output = i_nets[inx];
-  // representation: 48.16 in a 64 bit variable with the topmost 32 bits set to 0
+  // representation: s40.23 in a 64 bit variable
+  long_net_t last_net = i_last_integr_net[inx];
+  // representation: s40.23 in a 64 bit variable
+  long_net_t desired_net = i_nets[inx];
+  // representation: 48.16 in a 64 bit variable
   long long  dt = icfg.in_integr_dt;
   
-  // compute the new value of the output as indicated by lens
-  // representation: 37.27 + (48.16 * ( 37.27 - 37.27) >> 16) = 37.27
+  // compute the new value of the net as indicated by lens
+  // representation: 40.23 + (48.16 * ( 40.23 - 40.23) >> 16) = 40.23
   // all the variables are expanded to 64 bits to avoid overflows and wrap-around
-  long_net_t output = last_output + (dt * (desired_output - last_output) >> 16);
+  long_net_t net = last_net + (dt * (desired_net - last_net) >> 16);
 
   // saturate the value computed and assign it to the nets variable
   // to be used in the next stage of computation
-  if (output > (long_net_t) SPINN_NET_MAX)
+  if (net > (long_net_t) SPINN_NET_MAX)
     i_nets[inx] = (long_net_t) SPINN_NET_MAX;
-  else if (output < (long_net_t) SPINN_NET_MIN)
+  else if (net < (long_net_t) SPINN_NET_MIN)
     i_nets[inx] = (long_net_t) SPINN_NET_MIN;
   else
-    i_nets[inx] = (long_net_t) output;
+    i_nets[inx] = (long_net_t) net;
   
   // store the outcome of the computation for the next tick
-  i_last_integr_output[inx] = i_nets[inx];
+  i_last_integr_net[inx] = i_nets[inx];
 }
+// ------------------------------------------------------------------------
 
 
 /******************************************************************************/
@@ -578,32 +668,36 @@ void in_integr (uint inx)
 /*  LENS code end                                                             */
 /******************************************************************************/
 
+
+// ------------------------------------------------------------------------
 //soft clamp element
+// ------------------------------------------------------------------------
 void in_soft_clamp (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_soft_clamp\n");
   #endif
 
-  llong_activ_t external_input = it[i_it_idx + inx]; // 49.15 repr.
+  long_activ_t external_input = it[i_it_idx + inx];  // 49.15 repr.
 
   // compute only if input is not NaN
-  if (external_input != (llong_activ_t) SPINN_ACTIV_NaN)
+  if (external_input != (long_activ_t) SPINN_SHORT_ACTIV_NaN)
   {
     lfpreal soft_clamp_strength = icfg.soft_clamp_strength; // 48.16 repr.
-    llong_activ_t init_output = icfg.initOutput;            // 49.15 repr.
+    long_activ_t init_output = icfg.initOutput;             // 49.15 repr.
   
     // computation of the soft clamp operator following Lens code
-    // representation: 49.15 + (48.16 * (49.15 - 49.15) >> 16) = 49.15
-    llong_activ_t output = init_output
+    // representation: 36.27 + (48.16 * (49.15 - 49.15) >> (16 - 12)) = 36.27
+    long_activ_t output = init_output
                              + ((soft_clamp_strength
                                  * (external_input - init_output))
-                                   >> SPINN_FPREAL_SHIFT
+                                   >>  (SPINN_FPREAL_SHIFT - SPINN_ACTIV_SHIFT + SPINN_SHORT_ACTIV_SHIFT)
                                );
   
-    i_nets[inx] += inv_sigmoid((activation_t) output);
+    i_nets[inx] += inv_sigmoid((short_activ_t) (output << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)));
   }
 }
+// ------------------------------------------------------------------------
 
 
 /******************************************************************************/
@@ -627,11 +721,18 @@ void in_soft_clamp (uint inx)
 /*  LENS code end                                                             */
 /******************************************************************************/
 
-// routine which computes the backpropagation pass of the computation of the
+
+// ------------------------------------------------------------------------
+// routine which computes the BACKPROP phase of the computation of the
 // input elements pipeline
+// ------------------------------------------------------------------------
 void compute_in_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
+    io_printf (IO_BUF, "compute_in_back\n");
+  #endif
+
+  #ifdef DEBUG_VRB
     char* group;
     group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_nets == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
@@ -649,37 +750,73 @@ void compute_in_back (uint inx)
         i_in_back_procs[icfg.procs_list[i]] (inx);
     }
 }
+// ------------------------------------------------------------------------
 
-// TODO: fill this with the data path as descrbed in lens
+
+// ------------------------------------------------------------------------
+// compute the input integration operation for the backprop
+// ------------------------------------------------------------------------
 void in_integr_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_integr_back\n");
   #endif
-}
 
+  // s36.27
+  long_delta_t last_delta = i_last_integr_delta[inx];
+
+  // s47.16
+  lfpreal dt = icfg.in_integr_dt;
+
+  // s36.27 = (s47.16 * s36.27) >> 16
+  long_delta_t d = (dt * last_delta) >> SPINN_FPREAL_SHIFT;
+
+  // s36.27 = s36.27 + s36.27 - s36.27
+  last_delta += i_deltas[inx] - d;
+
+  i_deltas[inx] = d;
+  
+  // store the integrator state for the next iteration
+  i_last_integr_delta[inx] = last_delta;
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 /* There is no softClampInputBack in Lens*/
 /*
 void in_soft_clamp_back (uint inx)
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "in_soft_clamp_back\n");
   #endif
 }
 */
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // initialization of the input intergrator state
+// ------------------------------------------------------------------------
 int init_in_integr ()
 {
-  #ifdef TRACE
+  #ifdef TRACE_VRB
     io_printf (IO_BUF, "init_in_integr\n");
   #endif
   
   int i;
 
-  // allocate the memory for the integrator state variable
-  if ((i_last_integr_output = ((long_net_t *)
+  // allocate the memory for the integrator state variable for outputs
+  if ((i_last_integr_net = ((long_net_t *)
          spin1_malloc (icfg.num_nets * sizeof(long_net_t)))) == NULL
+       )
+  {
+      return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate the memory for the integrator state variable for deltas
+  if ((i_last_integr_delta = ((long_delta_t *)
+         spin1_malloc (icfg.num_nets * sizeof(long_delta_t)))) == NULL
        )
   {
       return (SPINN_MEM_UNAVAIL);
@@ -687,7 +824,11 @@ int init_in_integr ()
 
   // reset the memory of the integrator state variable
   for (i = 0; i<icfg.num_nets; i++)
-      i_last_integr_output[i] = (long_net_t) icfg.initNets;
+  {
+    i_last_integr_net[i] = (long_net_t) icfg.initNets;
+    i_last_integr_delta[i] = 0;
+  }
 
   return SPINN_NO_ERROR;
 }
+// ------------------------------------------------------------------------

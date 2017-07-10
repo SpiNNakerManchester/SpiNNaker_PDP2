@@ -16,7 +16,7 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreKey;              // 21-bit core packet ID
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -60,18 +60,18 @@ extern uint             sf_thrds_done; // sync. semaphore: proc & stop
   extern uint wrng_tck;  // FORWARD packets received in wrong tick
   extern uint wrng_btk;  // BACKPROP packets received in wrong tick
 #endif
-
-// ------------------------------------------------------------------------
-// code
 // ------------------------------------------------------------------------
 
-// callback routine for a multicast packet received
+
+// ------------------------------------------------------------------------
+// process received packets (stop, FORWARD and BACKPROP types)
+// ------------------------------------------------------------------------
 void s_receivePacket (uint key, uint payload)
 {
   // check if stop packet
   if ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY)
   {
-    // sync packet received
+    // stop packet received
     #ifdef DEBUG
       stp_recv++;
     #endif
@@ -97,34 +97,35 @@ void s_receivePacket (uint key, uint payload)
       // if not done report processing thread done
       sf_thrds_done -= 1;
     }
-
-    return;
-  }
-
-  #ifdef DEBUG
-    pkt_recv++;
-  #endif
-
-  // check if space in packet queue,
-  uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
-
-  if (new_tail == s_pkt_queue.head)
-  {
-    // if queue full exit and report failure
-    spin1_kill (SPINN_QUEUE_FULL);
   }
   else
   {
-    // if not full queue packet,
-    s_pkt_queue.queue[s_pkt_queue.tail].key = key;
-    s_pkt_queue.queue[s_pkt_queue.tail].payload = payload;
-    s_pkt_queue.tail = new_tail;
+    #ifdef DEBUG
+      pkt_recv++;
+    #endif
 
-    // and schedule processing thread -- if not active already
-    if (!s_active)
+    // check if space in packet queue,
+    uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
+
+    if (new_tail == s_pkt_queue.head)
     {
-      s_active = TRUE;
-      spin1_schedule_callback (s_process, NULL, NULL, SPINN_S_PROCESS_P);
+      // if queue full exit and report failure
+      spin1_kill (SPINN_QUEUE_FULL);
+    }
+    else
+    {
+      // if not full queue packet,
+      s_pkt_queue.queue[s_pkt_queue.tail].key = key;
+      s_pkt_queue.queue[s_pkt_queue.tail].payload = payload;
+      s_pkt_queue.tail = new_tail;
+
+      // and schedule processing thread -- if not active already
+      if (!s_active)
+      {
+        s_active = TRUE;
+        spin1_schedule_callback (s_process, NULL, NULL, SPINN_S_PROCESS_P);
+      }
     }
   }
 }
+// ------------------------------------------------------------------------

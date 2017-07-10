@@ -312,7 +312,7 @@ activation.o: activation.c activation.h mlp_types.h mlp_params.h
 # Tidy and cleaning dependencies
 
 tidy:
-	$(RM) $(OBJECTS_I) $(OBJECTS_S) $(OBJECTS_T) $(OBJECTS_W) input.elf sum.elf threshold.elf weight.elf $(APP).txt *~
+	$(RM) $(OBJECTS_I) $(OBJECTS_S) $(OBJECTS_T) $(OBJECTS_W) input.elf sum.elf threshold.elf weight.elf input.txt sum.txt threshold.txt weight.txt *~
 
 clean: tidy
 	$(RM) input.aplx sum.aplx threshold.aplx weight.aplx

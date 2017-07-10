@@ -16,7 +16,7 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreKey;              // 21-bit core packet ID
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -60,12 +60,12 @@ extern uint             if_thrds_done; // sync. semaphore: proc & stop
   extern uint wrng_tck;  // FORWARD packets received in wrong tick
   extern uint wrng_btk;  // BACKPROP packets received in wrong tick
 #endif
-
-// ------------------------------------------------------------------------
-// code
 // ------------------------------------------------------------------------
 
-// callback routine for a multicast packet received
+
+// ------------------------------------------------------------------------
+// process received packets (stop, FORWARD and BACKPROP types)
+// ------------------------------------------------------------------------
 void i_receivePacket (uint key, uint payload)
 {
   // check if stop packet
@@ -128,3 +128,4 @@ void i_receivePacket (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------

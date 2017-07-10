@@ -16,7 +16,7 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreKey;              // 21-bit core packet ID
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -34,7 +34,7 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; //# initial connection weights
+extern weight_t             *wt; // initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
@@ -55,11 +55,10 @@ extern t_conf_t       tcfg;       // threshold core configuration parameters
 // ------------------------------------------------------------------------
 extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
-extern error_t        * t_errors;      // current tick errors
+extern error_t        * t_errors[2];   // error banks: current and next tick
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example
 extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
-extern pkt_queue_t      t_err_pkt_q;   // queue to hold received errors
 extern uchar            t_active;      // processing nets/errors from queue?
 extern scoreboard_t     t_sync_arr;    // keep track of expected sync packets
 extern uchar            t_sync_done;   // have expected sync packets arrived?
@@ -72,7 +71,9 @@ extern uchar            tf_stop_init;  // sync. semaphore: stop daisy chain
 extern uchar            tf_stop_done;  // sync. semaphore: stop daisy chain
 extern stop_crit_t      tf_stop_func;  // stop evaluation function
 extern uint             tf_stop_key;   // stop criterion packet key
-//#extern uint             tb_thrds_done; // sync. semaphore: proc & stop
+extern uint             tb_comms;      // pointer to receiving errors
+extern scoreboard_t     tb_arrived;    // keep track of expected errors
+extern uint             tb_thrds_done; // sync. semaphore: proc & stop
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -92,92 +93,40 @@ extern uint             tf_stop_key;   // stop criterion packet key
   extern uint wrng_tck;  // FORWARD packets received in wrong tick
   extern uint wrng_btk;  // BACKPROP packets received in wrong tick
 #endif
-
-// ------------------------------------------------------------------------
-// code
 // ------------------------------------------------------------------------
 
-// callback routine for a multicast packet received
+
+// ------------------------------------------------------------------------
+// process received packets (stop, chain, sync, FORWARD and BACKPROP types)
+// ------------------------------------------------------------------------
 void t_receivePacket (uint key, uint payload)
 {
   // get packet phase
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
+  // packet is stop type
+  uint stop = ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY);
+
+  // packet is chain type
+  uint chain = ((key & SPINN_STOP_MASK) == SPINN_STPF_KEY);
+
+  // packet is sync type
+  uint sync = key & SPINN_SYNC_MASK;
+
   // check packet type
-  if ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY)
+  if (stop)
   {
-    #ifdef DEBUG
-      stp_recv++;
-    #endif
-
-    // STOP decision arrived
-    tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
-
-    #ifdef DEBUG_VRB
-      io_printf (IO_BUF, "sc:%x\n", tick_stop);
-    #endif
-
-    // check if all threads done
-    if (tf_thrds_done == 0)
-    {
-      // initialize semaphore
-      tf_thrds_done = tf_thrds_init;
-
-      // and advance tick
-      spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_T_TICK_P);
-    }
-    else
-    {
-      // if not done report processing thread done
-      tf_thrds_done -= 1;
-    }
+    // stop final decision packet
+    t_stopPacket (key, payload);
   }
-  else if ((key & SPINN_STOP_MASK) == SPINN_STPF_KEY)
+  else if (chain)
   {
-    #ifdef DEBUG
-      stp_recv++;
-    #endif
-
-    // STOP daisy chain partial decision arrived
-    if (tf_stop_done == 0)
-    {
-      // initialize semaphore,
-      tf_stop_done = tf_stop_init;
-
-      // send stop criterion packet,
-      spin1_schedule_callback (tf_send_stop, NULL, NULL, SPINN_SEND_STOP_P);
-
-      // and check if all threads done -- last group does not get a decision!
-      if (tcfg.is_last_output_group)
-      {
-        if (tf_thrds_done == 0)
-        {
-          // initialize semaphore,
-          tf_thrds_done = tf_thrds_init;
-    
-          // and advance tick
-          spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_T_TICK_P);
-        }
-        else
-        {
-          // if not done report stop thread done
-          tf_thrds_done -= 1;
-        }
-      }
-    }
-    else
-    {
-      // if not done report processing thread done
-      tf_stop_done -= 1;
-    }
+    // stop decision chain packet
+    t_chainPacket (key, payload);
   }
-  else if (key & SPINN_SYNC_MASK)
+  else if (sync)
   {
-    // sync packet received
-    #ifdef DEBUG
-      spk_recv++;
-    #endif
-
+    // tick synchronization packet
     t_syncPacket (key, ph);
   }
   else if (ph == SPINN_FORWARD)
@@ -191,74 +140,97 @@ void t_receivePacket (uint key, uint payload)
     t_backpropPacket (key, payload);
   }
 }
+// ------------------------------------------------------------------------
 
-// routine processing a forward multicast packet
-void t_forwardPacket (uint key, uint payload)
+
+// ------------------------------------------------------------------------
+// process a stop final decision packet
+// ------------------------------------------------------------------------
+void t_stopPacket (uint key, uint payload)
 {
   #ifdef DEBUG
-    pkt_recv++;
+    stp_recv++;
   #endif
 
-  // check if space in FORWARD packet queue,
-  uint new_tail = (t_net_pkt_q.tail + 1) % SPINN_PKT_QUEUE_LEN;
+  // STOP decision arrived
+  tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
 
-  if (new_tail == t_net_pkt_q.head)
+  #ifdef DEBUG_VRB
+    io_printf (IO_BUF, "sc:%x\n", tick_stop);
+  #endif
+
+  // check if all threads done
+  if (tf_thrds_done == 0)
   {
-    // if queue full exit and report failure
-    spin1_kill (SPINN_QUEUE_FULL);
+    // initialize semaphore
+    tf_thrds_done = tf_thrds_init;
+
+    // and advance tick
+    spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
   }
   else
   {
-    // if not full queue packet,
-    t_net_pkt_q.queue[t_net_pkt_q.tail].key = key;
-    t_net_pkt_q.queue[t_net_pkt_q.tail].payload = payload;
-    t_net_pkt_q.tail = new_tail;
-  
-    // and schedule processing thread 
-    // if in FORWARD phase and not active already
-    if ((phase == SPINN_FORWARD) && (!t_active))
-    {
-      t_active = TRUE;
-      spin1_schedule_callback (tf_process, NULL, NULL, SPINN_TF_PROCESS_P);
-    }
+    // if not done report processing thread done
+    tf_thrds_done -= 1;
   }
 }
+// ------------------------------------------------------------------------
 
-// routine processing a backward multicast packet
-void t_backpropPacket (uint key, uint payload)
+
+// ------------------------------------------------------------------------
+// process a stop decision chain packet
+// ------------------------------------------------------------------------
+void t_chainPacket (uint key, uint payload)
 {
   #ifdef DEBUG
-    pkt_recv++;
+    stp_recv++;
   #endif
 
-  // check if space in BACKPROP packet queue,
-  uint new_tail = (t_err_pkt_q.tail + 1) % SPINN_PKT_QUEUE_LEN;
-
-  if (new_tail == t_err_pkt_q.head)
+  // STOP daisy chain partial decision arrived
+  if (tf_stop_done == 0)
   {
-    // if queue full exit and report failure
-    spin1_kill (SPINN_QUEUE_FULL);
+    // initialize semaphore,
+    tf_stop_done = tf_stop_init;
+
+    // send stop criterion packet,
+    spin1_schedule_callback (tf_send_stop, NULL, NULL, SPINN_SEND_STOP_P);
+
+    // and check if all threads done -- last group does not get a decision!
+    if (tcfg.is_last_output_group)
+    {
+      if (tf_thrds_done == 0)
+      {
+        // initialize semaphore,
+        tf_thrds_done = tf_thrds_init;
+  
+        // and advance tick
+        spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
+      }
+      else
+      {
+        // if not done report stop thread done
+        tf_thrds_done -= 1;
+      }
+    }
   }
   else
   {
-    // if not full queue packet,
-    t_err_pkt_q.queue[t_err_pkt_q.tail].key = key;
-    t_err_pkt_q.queue[t_err_pkt_q.tail].payload = payload;
-    t_err_pkt_q.tail = new_tail;
-  
-    // and schedule processing thread 
-    // if in BACKPROP phase and not active already
-    if ((phase == SPINN_BACKPROP) && (!t_active))
-    {
-      t_active = TRUE;
-      spin1_schedule_callback (tb_process, NULL, NULL, SPINN_TB_PROCESS_P);
-    }
+    // if not done report processing thread done
+    tf_stop_done -= 1;
   }
 }
+// ------------------------------------------------------------------------
 
-// routine processing a sync multicast packet
+
+// ------------------------------------------------------------------------
+// process a sync packet
+// ------------------------------------------------------------------------
 void t_syncPacket (uint key, uint ph)
 {
+  #ifdef DEBUG
+    spk_recv++;
+  #endif
+
   if (ph == SPINN_FORWARD)
   {
     // keep track of arrived blocks,
@@ -281,7 +253,9 @@ void t_syncPacket (uint key, uint ph)
       if (phase == SPINN_FORWARD)
       {
         // schedule sending of unit outputs
-        spin1_schedule_callback (t_init_outputs, 0, 0, SPINN_T_INIT_OUT_P);
+        spin1_schedule_callback (t_init_outputs,
+                                  NULL, NULL, SPINN_T_INIT_OUT_P
+                                );
 
         // and, if required, send outputs to host
         if (tcfg.write_out)
@@ -298,6 +272,7 @@ void t_syncPacket (uint key, uint ph)
       }
     }
   }
+/*  //TODO: not using BACKPROP synchronization packets
   else
   {
     // keep track of arrived blocks,
@@ -320,7 +295,7 @@ void t_syncPacket (uint key, uint ph)
       if (phase == SPINN_BACKPROP)
       {
         // schedule sending of deltas
-        spin1_schedule_callback (t_init_deltas, 0, 0, SPINN_SEND_DELTAS_P);
+        //#spin1_schedule_callback (t_init_deltas, NULL, NULL, SPINN_SEND_DELTAS_P);
       }
       else 
       { 
@@ -328,11 +303,112 @@ void t_syncPacket (uint key, uint ph)
         t_sync_done = TRUE;
       }
     }
+    }*/
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// enqueue FORWARD phase packet for later processing
+// ------------------------------------------------------------------------
+void t_forwardPacket (uint key, uint payload)
+{
+  #ifdef DEBUG
+    pkt_recv++;
+    recv_fwd++;
+    if (phase == SPINN_BACKPROP)
+      wrng_phs++;
+  #endif
+
+  // check if space in FORWARD packet queue,
+  uint new_tail = (t_net_pkt_q.tail + 1) % SPINN_THLD_PQ_LEN;
+
+  if (new_tail == t_net_pkt_q.head)
+  {
+    // if queue full exit and report failure
+    spin1_kill (SPINN_QUEUE_FULL);
+  }
+  else
+  {
+    // if not full queue packet,
+    t_net_pkt_q.queue[t_net_pkt_q.tail].key = key;
+    t_net_pkt_q.queue[t_net_pkt_q.tail].payload = payload;
+    t_net_pkt_q.tail = new_tail;
+  
+    // and schedule processing thread 
+    // if in FORWARD phase and not active already
+    //TODO: need to check phase?
+    if ((phase == SPINN_FORWARD) && (!t_active))
+    {
+      t_active = TRUE;
+      spin1_schedule_callback (tf_process, NULL, NULL, SPINN_TF_PROCESS_P);
+    }
   }
 }
+// ------------------------------------------------------------------------
 
-// this routine sends the relevant data to the host through an SDP message
+
+// ------------------------------------------------------------------------
+// process a BACKPROP phase packet
+// ------------------------------------------------------------------------
+void t_backpropPacket (uint key, uint payload)
+{
+  #ifdef DEBUG
+    pkt_recv++;
+    recv_bkp++;
+    if (phase == SPINN_FORWARD)
+      wrng_phs++;
+  #endif
+
+  // get error index: mask out phase, core and block data,
+  uint inx = key & SPINN_ERROR_MASK;
+
+  // store received error,
+  t_errors[tb_comms][inx] = (error_t) payload;
+
+  // and update scoreboard,
+  #if SPINN_USE_COUNTER_SB == FALSE
+    tb_arrived |= (1 << inx);
+  #else
+    tb_arrived++;
+  #endif
+    
+  // if all expected errors have arrived may move to next tick
+  if (tb_arrived == tcfg.b_all_arrived)
+  {
+    // initialize arrival scoreboard for next tick,
+    tb_arrived = 0;
+
+    // update pointer to received errors,
+    tb_comms = 1 - tb_comms;
+
+    // and check if other threads are done,
+    if (tb_thrds_done == 0)
+    {
+      // if done initialize synchronization semaphore,
+      tb_thrds_done = 1;
+
+      // and advance tick
+      #ifdef TRACE_VRB
+        io_printf (IO_BUF, "tbpkt scheduling tb_advance_tick\n");
+      #endif
+
+      spin1_schedule_callback (tb_advance_tick, NULL, NULL, SPINN_TB_TICK_P);
+    }
+    else
+    {
+      // if not done report comms thread done
+      tb_thrds_done -= 1;
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// send relevant data to host using SDP messages
 // TODO: all outputs may not fit in one SDP message!
+// ------------------------------------------------------------------------
 void send_outputs_to_host (uint cmd, uint tick)
 {
   int le;
@@ -346,26 +422,45 @@ void send_outputs_to_host (uint cmd, uint tick)
   t_sdp_msg.arg3   = tick;
 
   // copy outputs and targets into msg buffer,
-  activation_t * my_data = (activation_t *) t_sdp_msg.data;
+  short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
   for (uint i = 0; i < tcfg.num_outputs; i++)
   {
-    my_data[2 * i]     = t_outputs[i];
-    my_data[2 * i + 1] = tt[t_it_idx + i];
+    if (tick == 0)
+    {
+      my_data[2 * i]     = 0;
+      my_data[2 * i + 1] = 0;
+    }
+    else
+    {
+      my_data[2 * i]     = (short_activ_t) (t_outputs[i] >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+      if (tt[t_it_idx + i] == SPINN_ACTIV_ONE)
+      {
+        my_data[2 * i + 1] = SPINN_SHORT_ACTIV_MAX;
+      }
+      else
+      {
+        my_data[2 * i + 1] = (short_activ_t) (tt[t_it_idx + i] >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+      }
+    }
   }
 
   // set message length,
-  uint len = 2 * tcfg.num_outputs * sizeof(activation_t);
+  uint len = 2 * tcfg.num_outputs * sizeof(short_activ_t);
   t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message
   while (!spin1_send_sdp_msg (&t_sdp_msg, SPINN_SDP_TMOUT))
     io_printf (IO_STD, "sdp!\n");
 }
+// ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
 // send an sdp packet to the host with information related to
 // various parameters of the simulation: id of the output group sending the
 // data, number of output units, number of units writing outputs an dnumber of
 // ticks of simulation
+// ------------------------------------------------------------------------
 void send_info_to_host (uint null0, uint null1)
 {
   // send initial info to host
@@ -389,3 +484,4 @@ void send_info_to_host (uint null0, uint null1)
               );
   #endif
 }
+// ------------------------------------------------------------------------
