@@ -17,8 +17,8 @@
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for forward passes
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -38,7 +38,7 @@ extern chip_struct_t        *ct; // chip-specific data
 extern uint                 *cm; // simulation core map
 extern uchar                *dt; // core-specific data
 extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; //# initial connection weights
+extern weight_t             *wt; // initial connection weights
 extern mlp_set_t            *es; // example set data
 extern mlp_example_t        *ex; // example data
 extern mlp_event_t          *ev; // event data
@@ -58,7 +58,7 @@ extern s_conf_t   scfg;           // sum core configuration parameters
 // sum core variables
 // ------------------------------------------------------------------------
 extern long_net_t     * s_nets[2];     // unit nets computed in current tick
-extern long_error_t   * s_errors[2];   // errors computed in current tick
+extern error_t        * s_errors[2];   // errors computed in current tick
 extern long_error_t   * s_init_err[2]; // errors computed in first tick
 extern pkt_queue_t      s_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            s_active;      // processing b-d-ps from queue?
@@ -90,16 +90,18 @@ extern scoreboard_t     sb_done;       // current tick error computation done
   extern uint wght_ups;  // number of weight updates done
   extern uint tot_tick;  // total number of ticks executed
 #endif
+// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// code
+// process queued packets until queue empty
 // ------------------------------------------------------------------------
-
-// process a multicast packet received by a sum core
 void s_process (uint null0, uint null1)
 {
-  
+  #ifdef TRACE
+    io_printf (IO_BUF, "s_process\n");
+  #endif
+
   // process packet queue
   // access queue with interrupts disabled
   uint cpsr = spin1_int_disable ();
@@ -116,12 +118,14 @@ void s_process (uint null0, uint null1)
     spin1_mode_restore (cpsr);
 
     // and check packet phase and process accordingly
-    if (((key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT) == SPINN_FORWARD)
+    uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
+    if (ph == SPINN_FORWARD)
     {
       // process FORWARD phase packet
       #ifdef DEBUG
         recv_fwd++;
-        if (phase != SPINN_FORWARD) wrng_phs++;
+        if (phase != SPINN_FORWARD)
+          wrng_phs++;
       #endif
 
       s_forward_packet (key, payload);
@@ -131,7 +135,8 @@ void s_process (uint null0, uint null1)
       // process BACKPROP phase packet
       #ifdef DEBUG
         recv_bkp++;
-        if (phase != SPINN_BACKPROP) wrng_phs++;
+        if (phase != SPINN_BACKPROP)
+          wrng_phs++;
       #endif
 
       s_backprop_packet (key, payload);
@@ -147,8 +152,12 @@ void s_process (uint null0, uint null1)
   // restore interrupts and leave
   spin1_mode_restore (cpsr);
 }
+// ------------------------------------------------------------------------
 
-// process a forward multicast packet received by a sum core
+
+// ------------------------------------------------------------------------
+// process FORWARD phase: accumulate dot products to produce nets
+// ------------------------------------------------------------------------
 void s_forward_packet (uint key, uint payload)
 {
   // get net index: mask out block, phase and colour data,
@@ -158,6 +167,7 @@ void s_forward_packet (uint key, uint payload)
   uint clr = ((key & SPINN_COLOUR_MASK) >> SPINN_COLOUR_SHIFT);
 
   // accumulate new net b-d-p,
+  // s40.23 = s40.23 + s8.23
   s_nets[clr][inx] += (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,
@@ -175,7 +185,7 @@ void s_forward_packet (uint key, uint payload)
       }
     #endif
 
-      // mark it
+    // mark it
     sf_arrived[clr][inx] |= (1 << blk);
   #else
     sf_arrived[clr][inx]++;
@@ -249,8 +259,12 @@ void s_forward_packet (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// process a multicast backward packet received by a sum core
+
+// ------------------------------------------------------------------------
+// process BACKPROP phase: accumulate dot products to produce errors
+// ------------------------------------------------------------------------
 void s_backprop_packet (uint key, uint payload)
 {
   // get error index: mask out block, phase and colour data,
@@ -287,30 +301,27 @@ void s_backprop_packet (uint key, uint payload)
   //TODO: can use a configuration constant -- needs fixing
   if (sb_arrived[clr][inx] == sb_all_arrived)
   {
-    error_t err_tmp;
+    //NOTE: may need to use long_error_t and saturate before sending
+    error_t error = s_errors[clr][inx];
 
-/* //#
-    //TODO: may need to saturate and cast the long errors before sending
-    if (s_errors[inx] >= (long_error_t) LONG_ERR_MAX)
+/*    long_error_t err_tmp = s_errors[clr][inx]
+                              >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
+
+    if (err_tmp >= (long_error_t) SPINN_ERROR_MAX)
     {
-      err_tmp = (error_t) ERROR_MAX;
+      error = (error_t) SPINN_ERROR_MAX;
     }
-    else if (s_errors[inx] <= (long_error_t) LONG_ERR_MIN)
+    else if (err_tmp <= (long_error_t) SPINN_ERROR_MIN)
     {
-      err_tmp = (error_t) ERROR_MIN;
+      error = (error_t) SPINN_ERROR_MIN;
     }
     else
     {
-      // keep the correct implicit decimal point position
-      err_tmp = (error_t) (s_errors[inx] >> (LONG_ERR_SHIFT - ERROR_SHIFT));
-    }
-*/
-
-    // casting to smaller size -- adjust the implicit decimal point position
-    err_tmp = s_errors[clr][inx] >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
+      error = (error_t) err_tmp;
+    }*/
 
     // incorporate error index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | inx), err_tmp, WITH_PAYLOAD));
+    while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
 
     #ifdef DEBUG
       pkt_sent++;
@@ -337,11 +348,19 @@ void s_backprop_packet (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: once the processing is completed and all the units have been
+
+// ------------------------------------------------------------------------
+// FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
+// ------------------------------------------------------------------------
 void sf_advance_tick (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "sf_advance_tick\n");
+  #endif
+  
   // prepare for next tick,
   sf_done = 0;
 
@@ -358,13 +377,25 @@ void sf_advance_tick (uint null0, uint null1)
   {
     // if not done increment tick
     tick++;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// backward pass: once the processing is completed and all the units have been
+
+// ------------------------------------------------------------------------
+// BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
+// ------------------------------------------------------------------------
 void sb_advance_tick (uint null0, uint null1)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "sb_advance_tick\n");
+  #endif
+  
   // prepare for next tick,
   sb_done = 0;
 
@@ -373,8 +404,15 @@ void sb_advance_tick (uint null0, uint null1)
   #endif
 
   // and check if end of BACKPROP phase
-  if (tick == SPINN_S_INIT_TICK)
+  if (tick == SPINN_SB_END_TICK)
   {
+    // initialize the tick count
+    tick = SPINN_S_INIT_TICK;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "w_switch_to_fw\n");
+    #endif
+  
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
 
@@ -385,28 +423,46 @@ void sb_advance_tick (uint null0, uint null1)
   {
     // if not done decrement tick
     tick--;
+
+    #ifdef TRACE
+      io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
+    #endif
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the event at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the event at the end of a simulation tick
+// ------------------------------------------------------------------------
 void sf_advance_event (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "sf_advance_event\n");
+  #endif
+  
   // check if done with events
   if (++evt >= num_events)
   {
     // and check if in training mode
     if (mlpc.training)
     {   
-      // if training, save number of ticks
+      // if training save number of ticks,
       num_ticks = tick;
-      // then do BACKPROP phase
+
+      #ifdef TRACE
+        io_printf (IO_BUF, "w_switch_to_bp\n");
+      #endif
+  
+      // and do BACKPROP phase
       phase = SPINN_BACKPROP;
     }
     else
     {
-      // if not training, initialize ticks for the next example
+      // if not training initialize ticks,
       tick = SPINN_S_INIT_TICK;
-      // then move to next example
+
+      // and move to next example
       s_advance_example ();
     }
   }
@@ -416,10 +472,18 @@ void sf_advance_event (void)
     tick++;
   }
 }
+// ------------------------------------------------------------------------
 
-// forward pass: update the example at the end of a simulation tick
+
+// ------------------------------------------------------------------------
+// FORWARD phase: update the example at the end of a simulation tick
+// ------------------------------------------------------------------------
 void s_advance_example (void)
 {
+  #ifdef TRACE
+    io_printf (IO_BUF, "s_advance_example\n");
+  #endif
+  
   // check if done with examples
   if (++example >= mlpc.num_examples)
   {
@@ -441,3 +505,4 @@ void s_advance_example (void)
   evt = 0;
   num_events = ex[example].num_events;
 }
+// ------------------------------------------------------------------------

@@ -15,8 +15,8 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
-extern uint fwdKey;               // 32-bit packet ID for forward passes
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint coreType;             // weight, sum or threshold
@@ -73,12 +73,12 @@ extern scoreboard_t     sb_done;       // current tick error computation done
   extern uint pkt_sent;  // total packets sent
   extern uint sent_fwd;  // packets sent in FORWARD phase
 #endif
+// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// code
+// allocate memory and initialize variables
 // ------------------------------------------------------------------------
- 
 uint s_init (void)
 {
   uint i;
@@ -113,7 +113,8 @@ uint s_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  //allocate memory for the first tick of errors in backpropagation
+  // allocate memory for the first tick of errors in BACKPROP phase
+  //TODO: is this necessary? -- not used anywhere
   if ((s_init_err[0] = ((long_error_t *)
          spin1_malloc (scfg.num_nets * sizeof(long_error_t)))) == NULL
      )
@@ -121,6 +122,7 @@ uint s_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
+  //TODO: is this necessary? -- not used anywhere
   if ((s_init_err[1] = ((long_error_t *)
          spin1_malloc (scfg.num_nets * sizeof(long_error_t)))) == NULL
      )
@@ -210,3 +212,4 @@ uint s_init (void)
   
   return (SPINN_NO_ERROR);
 }
+// ------------------------------------------------------------------------

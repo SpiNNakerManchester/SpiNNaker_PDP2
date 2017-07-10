@@ -16,7 +16,7 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreKey;              // 21-bit core packet ID
-extern uint bkpKey;               // 32-bit packet ID for backprop passes
+extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 extern uint stpKey;               // 32-bit packet ID for stop criterion
 
 extern uint         epoch;        // current training iteration
@@ -39,15 +39,12 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 // weight core variables
 // ------------------------------------------------------------------------
 extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern delta_t        * w_deltas[2];   // error deltas for b-d-p
+extern activation_t   * w_output_history; // history array for the outputs
+extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
 extern uint             wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t     wf_arrived;    // keeps track of received unit outputs
 extern uint             wf_thrds_done; // sync. semaphore: comms, proc & stop
-extern uint             wb_comms;      // pointer to receiving deltas
-extern scoreboard_t     wb_arrived;    // keeps track of received deltas
-extern uchar            wb_comms_done; // all expected deltas arrived
-extern uchar            wb_procs_done; // current tick error b-d-ps done
-//#extern uint             wb_thrds_done; // sync. semaphore: comms, proc & stop
+extern uchar            wb_active;     // processing deltas from queue?
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -67,53 +64,25 @@ extern uchar            wb_procs_done; // current tick error b-d-ps done
   extern uint wrng_tck;  // FORWARD packets received in wrong tick
   extern uint wrng_btk;  // BACKPROP packets received in wrong tick
 #endif
-
-// ------------------------------------------------------------------------
-// code
 // ------------------------------------------------------------------------
 
-// callback routine for a multicast packet received
+
+// ------------------------------------------------------------------------
+// process received packets (stop, FORWARD and BACKPROP types)
+// ------------------------------------------------------------------------
 void w_receivePacket (uint key, uint payload)
 {
   // get packet phase
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
+  // check if packet is stop type
+  uint stop = ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY);
+
   // check packet type
-  if ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY)
+  if (stop)
   {
-    // stop packet received
-    #ifdef DEBUG
-      stp_recv++;
-    #endif
-
-    // STOP decision arrived
-    tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
-
-    #ifdef DEBUG_VRB
-      io_printf (IO_BUF, "sc:%x\n", tick_stop);
-    #endif
-
-    // check if all threads done
-    if (wf_thrds_done == 0)
-    {
-      // if done initialize synchronization semaphore,
-//##      if (tick_stop)
-//##        wf_thrds_done = 0;  // no processing and no stop in tick 0 
-//##      else
-        wf_thrds_done = 2;
-
-      // and advance tick
-      #ifdef TRACE
-        io_printf (IO_BUF, "wrp scheduling wf_advance_tick\n");
-      #endif
-
-      spin1_schedule_callback (wf_advance_tick, NULL, NULL, SPINN_WF_TICK_P);
-    }
-    else
-    {
-      // if not done report stop thread done
-      wf_thrds_done -= 1;
-    }
+    // stop packet
+    w_stopPacket (key, payload);
   }
   else if (ph == SPINN_FORWARD)
   {
@@ -126,8 +95,52 @@ void w_receivePacket (uint key, uint payload)
     w_backpropPacket (key, payload);
   }
 }
+// ------------------------------------------------------------------------
 
-// routine to process a forward multicast packet received
+
+// ------------------------------------------------------------------------
+// process a stop packet
+// ------------------------------------------------------------------------
+void w_stopPacket (uint key, uint payload)
+{
+  #ifdef DEBUG
+    stp_recv++;
+    if (phase == SPINN_BACKPROP)
+      wrng_phs++;
+  #endif
+
+  // STOP decision arrived
+  tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
+
+  #ifdef DEBUG_VRB
+    io_printf (IO_BUF, "sc:%x\n", tick_stop);
+  #endif
+
+  // check if all threads done
+  if (wf_thrds_done == 0)
+  {
+    // if done initialize synchronization semaphore,
+    wf_thrds_done = 2;
+
+    // and advance tick
+    #ifdef TRACE_VRB
+      io_printf (IO_BUF, "wrp scheduling wf_advance_tick\n");
+    #endif
+
+    spin1_schedule_callback (wf_advance_tick, NULL, NULL, SPINN_WF_TICK_P);
+  }
+  else
+  {
+    // if not done report stop thread done
+    wf_thrds_done -= 1;
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a FORWARD phase packet
+// ------------------------------------------------------------------------
 void w_forwardPacket (uint key, uint payload)
 {
   #ifdef DEBUG
@@ -135,13 +148,19 @@ void w_forwardPacket (uint key, uint payload)
     recv_fwd++;
     if (phase == SPINN_BACKPROP)
       wrng_phs++;
-  #endif
+  #endif 
 
   // get output index: mask out phase, core and block data,
   uint inx = key & SPINN_OUTPUT_MASK;
 
   // store received unit output,
   w_outputs[wf_comms][inx] = (activation_t) payload;
+
+  // store output for use in backprop phase,
+  if (tick > 0)
+  {
+    store_outputs (inx);
+  }
 
   // and update scoreboard,
   #if SPINN_USE_COUNTER_SB == FALSE
@@ -163,13 +182,10 @@ void w_forwardPacket (uint key, uint payload)
     if (wf_thrds_done == 0)
     {
       // if done initialize synchronization semaphore,
-//##      if (tick_stop)
-//##        wf_thrds_done = 0;  // no processing and no stop in tick 0 
-//##      else
-        wf_thrds_done = 2;
+      wf_thrds_done = 2;
 
       // and advance tick
-      #ifdef TRACE
+      #ifdef TRACE_VRB
         io_printf (IO_BUF, "wfpkt scheduling wf_advance_tick\n");
       #endif
 
@@ -182,61 +198,57 @@ void w_forwardPacket (uint key, uint payload)
     }
   }
 }
+// ------------------------------------------------------------------------
 
-// routine to process a backward multicast packet received
+
+// ------------------------------------------------------------------------
+// enqueue BACKPROP phase packet for later processing
+// ------------------------------------------------------------------------
 void w_backpropPacket (uint key, uint payload)
 {
   #ifdef DEBUG
     pkt_recv++;
     recv_bkp++;
-    if (phase == SPINN_FORWARD) wrng_phs++;
-    if (wb_comms_done)
-    {
-      wrng_btk++;
-      spin1_kill (SPINN_UNXPD_PKT);
-      return;
-    }
+    if (phase == SPINN_FORWARD)
+      wrng_phs++;
   #endif
 
-  // get delta index: mask out phase, core and block data,
-  uint inx = key & SPINN_DELTA_MASK;
+  // check if space in packet queue,
+  uint new_tail = (w_delta_pkt_q.tail + 1) % SPINN_WEIGHT_PQ_LEN;
 
-  // store received error delta,
-  w_deltas[wb_comms][inx] = (delta_t) payload;
-
-  // and update scoreboard,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    wb_arrived |= (1 << inx);
-  #else
-    wb_arrived++;
-  #endif
-
-  // if all expected inputs have arrived may move to next tick
-  if (wb_arrived == wcfg.b_all_arrived)
+  if (new_tail == w_delta_pkt_q.head)
   {
-    // initialize arrival scoreboard for next tick,
-    wb_arrived = 0;
+    // if queue full exit and report failure
+    spin1_kill (SPINN_QUEUE_FULL);
+  }
+  else
+  {
+    // if not full queue packet,
+    w_delta_pkt_q.queue[w_delta_pkt_q.tail].key = key;
+    w_delta_pkt_q.queue[w_delta_pkt_q.tail].payload = payload;
+    w_delta_pkt_q.tail = new_tail;
 
-    // update pointer to received deltas,
-    wb_comms = 1 - wb_comms;
-
-    // and check synchronization with processing thread
-    if (wb_procs_done)
+    // and schedule processing thread -- if not active already
+    //TODO: need to check phase?
+    if (!wb_active)
     {
-      // if done clear procs synchronization flag,
-      wb_procs_done = FALSE;
-
-      // and advance tick
-      #ifdef TRACE
-        io_printf (IO_BUF, "wbpkt scheduling wb_advance_tick\n");
-      #endif
-
-      spin1_schedule_callback (wb_advance_tick, NULL, NULL, SPINN_WB_TICK_P);
-    }
-    else
-    {
-      // if not done report comms thread done
-      wb_comms_done = TRUE;
+      wb_active = TRUE;
+      spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);
     }
   }
 }
+// ------------------------------------------------------------------------+
+
+
+// ------------------------------------------------------------------------
+// stores the outputs received for the current tick
+// ------------------------------------------------------------------------
+void store_outputs (uint inx)
+{
+  #ifdef TRACE
+    io_printf (IO_BUF, "store_outputs\n");
+  #endif
+
+  w_output_history[(tick * wcfg.num_rows) + inx] = w_outputs[wf_comms][inx];
+}
+// ------------------------------------------------------------------------

@@ -8,9 +8,11 @@ style. There is no particular order or structure to the file.
 
 Fixed-point representation
 --------------------------
-1. Weights (s3.12 representation) are outside the current [-7.0, 7.0]
-range in some examples. Check if we need to extend the range and use a
-different representation.
+1. Weights have now been changed to s16.15 representation, which allows
+for much greater precision, and also for the handling of much larger
+weights.  Previously, with the s3.12 representation, weights in some
+examples exceeded the [-7.0, 7.0) range.  Hopefully this is no longer
+an issue.
 2. With large weights, partial nets (s4.27 representation) can get
 outside the [-16.0, 16.0) range. May need to use a longer type and
 saturate. This may also be the case for error deltas in backprop.
@@ -37,3 +39,30 @@ rand10x40).
 SpiNNaker reports the maximum.
 4. target values are not reported by lens during the grace period
 while SpiNNaker does it every tick.
+
+PACMAN Changes
+--------------
+In order to change weight representations from s3.12 to s16.15,
+changes to pacman were required.  Therefore the correct pacman code
+is required to be able to run this branch of PDP2.
+
+Consequences
+------------
+The changes to pacman for the weight representation had the fortunate
+side effect of changing inputs and targets from 16-bit to 32-bit numbers,
+meaning that a value of 1 can now be properly represented (instead of
+0.999969, as previously.  This required the addition of 2 minor "hacks" to
+make things consistent:
+
+1. The initOutput value for the bias units is still 0.999969.  This has
+therefore been corrected within the code at the point at which initial outputs
+are loaded into `t_outputs`, as I have been unable to ascertain the value of 
+0.999969 is being picked up from.
+2. Targets are now 32 bit values, rather than 16 bit values, but `output_mon_lens`
+expects them to be loaded into the array `my_data` as 16 bit values.  When cast
+to 16 bit values, a target of 1 becomes -1 because the 16 bit activation is s0.15.
+This was not previously a problem because a true 1 was never actually represented,
+0.999969 was used instead.  Therefore the code at this point now checks whether
+the target is 1, and if so, loads the value `SPINN_SHORT_ACTIV_MAX` (0.999969)
+into the array.  `output_mon_lens` is then able to handle this as before, and 
+outputs a target value of 1.
