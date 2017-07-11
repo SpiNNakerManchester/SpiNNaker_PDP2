@@ -18,6 +18,7 @@
 *.pdf
 *.tab
 *.sv
+*.dat
 **/build
 **/application_generated_data_files
 **/reports/
