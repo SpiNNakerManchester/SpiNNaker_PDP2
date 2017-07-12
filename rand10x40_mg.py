@@ -20,7 +20,7 @@ logger = logging.getLogger (__name__)
 # Set up the simulation
 g.setup ()
 
-#------v- group 2 -v------
+#------v- bias layer (group 2) -v------
 # instantiate group 2 cores and place them appropriately
 wv2_0 = WeightVertex    (group=2, chip_x=0, chip_y=0, core=1)
 wv2_1 = WeightVertex    (group=2, chip_x=0, chip_y=0, core=2)
@@ -38,10 +38,10 @@ g.add_machine_vertex_instance (wv2_3)
 g.add_machine_vertex_instance (sv2)
 g.add_machine_vertex_instance (iv2)
 g.add_machine_vertex_instance (tv2)
-#------^- group 2 -^------
+#------^- bias layer (group 2) -^------
 
 
-#------v- group 3 -v------
+#------v- input layer (group 3) -v------
 # instantiate group 3 cores and place them appropriately
 wv3_0 = WeightVertex    (group=3, chip_x=0, chip_y=0, core=8)
 wv3_1 = WeightVertex    (group=3, chip_x=0, chip_y=0, core=9)
@@ -59,10 +59,10 @@ g.add_machine_vertex_instance (wv3_3)
 g.add_machine_vertex_instance (sv3)
 g.add_machine_vertex_instance (iv3)
 g.add_machine_vertex_instance (tv3)
-#------^- group 3 -^------
+#------^- input layer (group 3) -^------
 
 
-#------v- group 4 -v------
+#------v- hidden layer (group 4) -v------
 # instantiate group 4 cores and place them appropriately
 wv4_0 = WeightVertex    (group=4, chip_x=0, chip_y=0, core=15)
 wv4_1 = WeightVertex    (group=4, chip_x=0, chip_y=0, core=16)
@@ -80,10 +80,10 @@ g.add_machine_vertex_instance (wv4_3)
 g.add_machine_vertex_instance (sv4)
 g.add_machine_vertex_instance (iv4)
 g.add_machine_vertex_instance (tv4)
-#------^- group 4 -^------
+#------^- hidden layer (group 4) -^------
 
 
-#------v- group 5 -v------
+#------v- output layer (group 5) -v------
 # instantiate group 5 cores and place them appropriately
 wv5_0 = WeightVertex    (group=5, chip_x=0, chip_y=1, core=6)
 wv5_1 = WeightVertex    (group=5, chip_x=0, chip_y=1, core=7)
@@ -101,9 +101,9 @@ g.add_machine_vertex_instance (wv5_3)
 g.add_machine_vertex_instance (sv5)
 g.add_machine_vertex_instance (iv5)
 g.add_machine_vertex_instance (tv5)
-#------^- group 5 -^------
+#------^- output layer (group 5) -^------
 
-# Run the simulation for a second
+# Run the simulation
 g.run (None)
 
 # close the machine

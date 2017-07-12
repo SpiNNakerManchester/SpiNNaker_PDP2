@@ -6,10 +6,8 @@ from data_specification.enums.data_type import DataType
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.decorators.overrides import overrides
 from pacman.model.resources.resource_container import ResourceContainer
-from pacman.model.resources.dtcm_resource import DTCMResource
 from pacman.model.resources.sdram_resource import SDRAMResource
-from pacman.model.resources.cpu_cycles_per_tick_resource \
-    import CPUCyclesPerTickResource
+from pacman.model.resources.iptag_resource import IPtagResource
 from pacman.model.constraints.placer_constraints\
     .placer_chip_and_core_constraint import PlacerChipAndCoreConstraint
 
@@ -117,10 +115,11 @@ class ThresholdVertex(
     def resources_required (self):
 
         resources = ResourceContainer (
-            dtcm=DTCMResource (0),
-            sdram=SDRAMResource (self._sdram_usage),
-            cpu_cycles=CPUCyclesPerTickResource (0),
-            iptags=[], reverse_iptags=[])
+            sdram = SDRAMResource (self._sdram_usage),
+            iptags = [IPtagResource (ip_address = "localhost",
+                                    port = 17896,
+                                    strip_sdp = False)]
+            )
         return resources
 
     @overrides (AbstractHasAssociatedBinary.get_binary_file_name)

@@ -94,7 +94,6 @@ extern long_deriv_t   * t_output_deriv;
 // history arrays
 extern long_deriv_t   * t_output_deriv_history;
 extern delta_t        * t_deltas;
-//lap extern short_activ_t  * t_target_history;
 extern activation_t   * t_target_history;
 extern net_t          * t_net_history;
 extern activation_t   * t_output_history;
