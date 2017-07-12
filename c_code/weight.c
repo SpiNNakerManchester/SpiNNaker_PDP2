@@ -6,7 +6,6 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "sdram.h"
 
 #include "init_w.h"
 #include "comms_w.h"

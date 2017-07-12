@@ -9,6 +9,14 @@ from weight_vertex    import WeightVertex
 
 logger = logging.getLogger (__name__)
 
+#-----------------------------------------------------------
+# rand10x40
+#
+# hard-coded implementation of the machine graph
+# for Lens' example rand10x40.
+#
+#-----------------------------------------------------------
+
 # Set up the simulation
 g.setup ()
 
@@ -94,7 +102,6 @@ g.add_machine_vertex_instance (sv5)
 g.add_machine_vertex_instance (iv5)
 g.add_machine_vertex_instance (tv5)
 #------^- group 5 -^------
-
 
 # Run the simulation for a second
 g.run (None)

@@ -4,7 +4,6 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "sdram.h"
 
 #include "comms_t.h"
 #include "process_t.h"
@@ -91,11 +90,12 @@ extern stop_crit_t const t_stop_procs[SPINN_NUM_STOP_PROCS];
 // list of initialization procedures for output pipeline
 extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
 // derivative of the output
-extern long_deriv_t  * t_output_deriv;
+extern long_deriv_t   * t_output_deriv;
 // history arrays
-extern long_deriv_t  * t_output_deriv_history;
+extern long_deriv_t   * t_output_deriv_history;
 extern delta_t        * t_deltas;
-extern short_activ_t  * t_target_history;
+//lap extern short_activ_t  * t_target_history;
+extern activation_t   * t_target_history;
 extern net_t          * t_net_history;
 extern activation_t   * t_output_history;
 // ------------------------------------------------------------------------
@@ -373,9 +373,9 @@ uint t_init (void)
   // information needs to come from splens in the tcfg structure.
 
   // allocate memory in SDRAM for target history
-  if ((t_target_history = ((short_activ_t *)
+  if ((t_target_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(short_activ_t),
+                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )

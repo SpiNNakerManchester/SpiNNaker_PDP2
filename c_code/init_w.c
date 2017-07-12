@@ -4,7 +4,6 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "sdram.h"
 
 #include "comms_w.h"
 
@@ -213,17 +212,7 @@ uint w_init (void)
   }
 
   #ifdef WEIGHT_TRACE
-    // dump weights to SDRAM for record keeping
-    //NOTE: could use DMA
-    //TODO: need to recompute indices!
-    for (i = 0; i < wcfg.num_rows; i++)
-    {
-      spin1_memcpy (&wh[((wcfg.blk_row * wcfg.num_rows + i) * mlpc.num_outs)
-                     + (wcfg.blk_col * wcfg.num_cols)],
-                     w_weights[i],
-                     wcfg.num_cols * sizeof(weight_t)
-                   );
-    }
+    //TODO: dump weights to SDRAM for record keeping
   #endif
 
   // initialize link deltas

@@ -5,7 +5,6 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
-#include "sdram.h"
 
 #include "init_w.h"
 #include "comms_w.h"
@@ -379,19 +378,7 @@ void w_update_weights (void)
   }
 
   #if SPINN_WEIGHT_HISTORY == TRUE
-    // dump weights to SDRAM for record keeping
-    //TODO: broken -- needs fixing!
-    //TODO: works only if examples have a single event
-    for (uint i = 0; i < wcfg.num_rows; i++)
-    {
-      //NOTE: could use DMA
-//##      spin1_memcpy(&wh[(((example + 1) * mlpc.num_outs
-//##                        + wcfg.blk_row * wcfg.num_rows + i) * mlpc.num_outs)
-//##                        + (wcfg.blk_col * wcfg.num_cols)],
-//##                   w_weights[i],
-//##                   wcfg.num_cols * sizeof(weight_t)
-//##                  );
-    }
+    //TODO: dump weights to SDRAM for record keeping
   #endif
 }
 // ------------------------------------------------------------------------

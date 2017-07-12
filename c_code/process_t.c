@@ -5,7 +5,6 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
-#include "sdram.h"
 
 #include "init_t.h"
 #include "comms_t.h"
@@ -368,18 +367,8 @@ void tf_advance_tick (uint null0, uint null1)
   // initialize scoreboard for next tick,
   tf_arrived = 0;
 
-  // dump outputs to SDRAM for record keeping,
   #if SPINN_OUTPUT_HISTORY == TRUE
-    //TODO: works only if examples have a single event
-    //NOTE: could keep a pointer to current offset
-    //NOTE: could use DMA
-//###    spin1_memcpy(&oh[(((example * max_ticks) + tick) * mlpc.num_outs)
-//###                     +
-//###                     tcfg.output_offset
-//###                    ],
-//###                 t_outputs,
-//###                 tcfg.num_outputs * sizeof(short_activ_t)
-//###                );
+    //TODO: dump outputs to SDRAM for record keeping,
   #endif
 
   // if requested report outputs to host,
