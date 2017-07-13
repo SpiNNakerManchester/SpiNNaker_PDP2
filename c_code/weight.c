@@ -166,6 +166,10 @@ uint init ()
   io_printf (IO_BUF, "f_all_arrived: %u\n", wcfg.f_all_arrived);
   io_printf (IO_BUF, "b_all_arrived: %u\n", wcfg.b_all_arrived);
 
+  // initial connection weights
+  wt = (weight_t *) data_specification_get_region
+		  (WEIGHTS, data_address);
+
   // inputs are not used by weight cores
   it = NULL;
 

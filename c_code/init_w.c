@@ -200,8 +200,6 @@ uint w_init (void)
 
 
   // initialize weights from SDRAM
-  wt = (weight_t *) wcfg.weights_struct_addr;  // initial connection weights
-
   //NOTE: could use DMA
   for (i = 0; i < wcfg.num_rows; i++)
   {
