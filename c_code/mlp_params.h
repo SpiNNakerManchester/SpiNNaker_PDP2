@@ -122,9 +122,6 @@
 // ------------------------------------------------------------------------
 // multicast packet routing keys and masks
 // ------------------------------------------------------------------------
-// NOTE: key bits[15:10] must be different from 111111
-//       to comply with system reserved key space!
-// ------------------------------------------------------------------------
 #define SPINN_BLK_R_MASK     0xff000000
 #define SPINN_BLK_C_MASK     0x00ff0000
 #define SPINN_SUM_B_MASK     0x00ff0000

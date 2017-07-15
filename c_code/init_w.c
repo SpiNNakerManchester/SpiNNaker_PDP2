@@ -14,11 +14,11 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
+
+extern uint coreType;             // weight, sum, input or threshold
+
 extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
 extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint coreType;             // weight, sum or threshold
 
 extern uint         example;      // current example in epoch
 extern uint         num_events;   // number of events in current example
@@ -30,7 +30,8 @@ extern uint         tick;         // current tick in phase
 
 extern chip_struct_t        *ct; // chip-specific data
 extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
+//lap extern mc_table_entry_t     *rt; // multicast routing table data
+extern uint                 *rt; // multicast routing keys data
 extern weight_t             *wt; // initial connection weights
 extern struct mlp_set       *es; // example set data
 extern struct mlp_example   *ex; // example data
@@ -266,14 +267,18 @@ uint w_init (void)
 
   // initialize packet keys
   //NOTE: colour is initialized to 0.
-  uint block_key = SPINN_BR_KEY(wcfg.blk_row) | SPINN_BC_KEY(wcfg.blk_col);
-  uint base_key = block_key | SPINN_CORETYPE_KEY;
+//lap   uint block_key = SPINN_BR_KEY(wcfg.blk_row) | SPINN_BC_KEY(wcfg.blk_col);
+//lap   uint base_key = block_key | SPINN_CORETYPE_KEY;
 
-  fwdKey = base_key | SPINN_PHASE_KEY(SPINN_FORWARD);
-  bkpKey = base_key | SPINN_PHASE_KEY(SPINN_BACKPROP);
+//lap  fwdKey = base_key | SPINN_PHASE_KEY(SPINN_FORWARD);
+//lap  bkpKey = base_key | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
-  wf_sync_key = block_key | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
-  wb_sync_key = block_key | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
+//lap  wf_sync_key = block_key | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
+//lap  wb_sync_key = block_key | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  wf_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
+  wb_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
   return (SPINN_NO_ERROR);
 }

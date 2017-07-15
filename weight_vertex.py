@@ -3,6 +3,8 @@ import os
 
 from data_specification.enums.data_type import DataType
 
+from pacman.executor.injection_decorator import inject_items
+
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.decorators.overrides import overrides
 from pacman.model.resources.resource_container import ResourceContainer
@@ -10,8 +12,6 @@ from pacman.model.resources.dtcm_resource import DTCMResource
 from pacman.model.resources.sdram_resource import SDRAMResource
 from pacman.model.resources.cpu_cycles_per_tick_resource \
     import CPUCyclesPerTickResource
-from pacman.model.constraints.placer_constraints\
-    .placer_chip_and_core_constraint import PlacerChipAndCoreConstraint
 
 from spinn_front_end_common.utilities.utility_objs.executable_start_type \
     import ExecutableStartType
@@ -20,6 +20,9 @@ from spinn_front_end_common.abstract_models.abstract_has_associated_binary \
 from spinn_front_end_common.abstract_models\
     .abstract_generates_data_specification \
     import AbstractGeneratesDataSpecification
+from spinn_front_end_common.abstract_models\
+    .abstract_provides_n_keys_for_partition \
+    import AbstractProvidesNKeysForPartition
 
 from mlp_regions import MLPRegions
 
@@ -27,16 +30,25 @@ from mlp_regions import MLPRegions
 class WeightVertex(
         MachineVertex,
         AbstractHasAssociatedBinary,
+        AbstractProvidesNKeysForPartition,
         AbstractGeneratesDataSpecification):
     """ A vertex to implement an MLP input core
     """
 
-    def __init__(self, group=None, chip_x=None,
-                 chip_y=None, core=None):
+    def __init__(self, group = None, frm_grp = None,
+                 chip_x = None, chip_y = None, core = None):
         """
         """
 
-        MachineVertex.__init__(self, label="MLP weight Node")
+        MachineVertex.__init__(self, label =\
+                               "w{}_{} core".format (group, frm_grp))
+
+        # forward and backprop link partition names
+        self._fwd_link = "fwd_w{}_{}".format (group, frm_grp)
+        self._bkp_link = "bkp_w{}_{}".format (group, frm_grp)
+        self._fds_link = "fds_w{}_{}".format (group, frm_grp)
+
+        self._n_keys = 65536
 
         # binary, configuration and data files
         self._aplxFile = "binaries/weight.aplx"
@@ -50,11 +62,7 @@ class WeightVertex(
         self._weightsFile = "data/weights_{}_{}_{}.dat".format (chip_x, chip_y, core)
         self._routingFile = "data/routingtbl_{}_{}.dat".format (chip_x, chip_y)
 
-        # place the vertex correctly
-        self.add_constraint (PlacerChipAndCoreConstraint (chip_x, chip_y, core))
-
-        # The number of bytes for the parameters
-
+        # size in bytes of the data in the regions
         self._N_GLOBAL_CONFIGURATION_BYTES = \
             os.path.getsize (self._globalFile) \
             if os.path.isfile (self._globalFile) \
@@ -95,10 +103,7 @@ class WeightVertex(
             if os.path.isfile (self._weightsFile) \
             else 0
 
-        self._N_ROUTING_BYTES = \
-            os.path.getsize (self._routingFile) \
-            if os.path.isfile (self._routingFile) \
-            else 0
+        self._N_KEY_BYTES = 16
 
         self._sdram_usage = (
             self._N_GLOBAL_CONFIGURATION_BYTES + \
@@ -109,8 +114,20 @@ class WeightVertex(
             self._N_EXAMPLES_BYTES + \
             self._N_EVENTS_BYTES + \
             self._N_WEIGHTS_BYTES + \
-            self._N_ROUTING_BYTES
+            self._N_KEY_BYTES
         )
+
+    @property
+    def fwd_link (self):
+        return self._fwd_link
+
+    @property
+    def bkp_link (self):
+        return self._bkp_link
+
+    @property
+    def fds_link (self):
+        return self._fds_link
 
     @property
     @overrides (MachineVertex.resources_required)
@@ -131,10 +148,17 @@ class WeightVertex(
     def get_binary_start_type (self):
         return ExecutableStartType.SYNC
 
-    @overrides(
-        AbstractGeneratesDataSpecification.generate_data_specification)
+    @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
+    def get_n_keys_for_partition(self, partition, graph_mapper):
+        return self._n_keys
+
+    @inject_items ({
+        "routing_info": "MemoryRoutingInfos"})
+    @overrides (
+        AbstractGeneratesDataSpecification.generate_data_specification,
+        additional_arguments=["routing_info"])
     def generate_data_specification (
-            self, spec, placement):
+            self, spec, placement, routing_info):
 
         if os.path.isfile (self._globalFile):
             # Reserve and write the global configuration region
@@ -142,7 +166,7 @@ class WeightVertex(
                 MLPRegions.GLOBAL.value,
                 self._N_GLOBAL_CONFIGURATION_BYTES)
 
-            spec.switch_write_focus(MLPRegions.GLOBAL.value)
+            spec.switch_write_focus (MLPRegions.GLOBAL.value)
 
             # open the global configuration file
             global_file = open (self._globalFile, "rb")
@@ -157,7 +181,7 @@ class WeightVertex(
             spec.reserve_memory_region (
                 MLPRegions.CHIP.value, self._N_CHIP_CONFIGURATION_BYTES)
 
-            spec.switch_write_focus(MLPRegions.CHIP.value)
+            spec.switch_write_focus (MLPRegions.CHIP.value)
 
             # open the chip configuration file
             chip_file = open (self._chipFile, "rb")
@@ -172,7 +196,7 @@ class WeightVertex(
             spec.reserve_memory_region (
                 MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
 
-            spec.switch_write_focus(MLPRegions.CORE.value)
+            spec.switch_write_focus (MLPRegions.CORE.value)
 
             # open the core configuration file
             core_file = open (self._coreFile, "rb")
@@ -188,7 +212,7 @@ class WeightVertex(
                 MLPRegions.INPUTS.value,
                 self._N_INPUTS_CONFIGURATION_BYTES)
 
-            spec.switch_write_focus(MLPRegions.INPUTS.value)
+            spec.switch_write_focus (MLPRegions.INPUTS.value)
 
             # open input data file
             inputs_file = open (self._inputsFile, "rb")
@@ -204,7 +228,7 @@ class WeightVertex(
                 MLPRegions.EXAMPLE_SET.value,
                 self._N_EXAMPLE_SET_BYTES)
 
-            spec.switch_write_focus(MLPRegions.EXAMPLE_SET.value)
+            spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
 
             # open the example set file
             ex_set_file = open (self._exSetFile, "rb")
@@ -220,7 +244,7 @@ class WeightVertex(
                 MLPRegions.EXAMPLES.value,
                 self._N_EXAMPLES_BYTES)
 
-            spec.switch_write_focus(MLPRegions.EXAMPLES.value)
+            spec.switch_write_focus (MLPRegions.EXAMPLES.value)
 
             # open the examples file
             examples_file = open (self._examplesFile, "rb")
@@ -236,7 +260,7 @@ class WeightVertex(
                 MLPRegions.EVENTS.value,
                 self._N_EVENTS_BYTES)
 
-            spec.switch_write_focus(MLPRegions.EVENTS.value)
+            spec.switch_write_focus (MLPRegions.EVENTS.value)
 
             # open the events file
             ev_file = open (self._eventsFile, "rb")
@@ -252,7 +276,7 @@ class WeightVertex(
                 MLPRegions.WEIGHTS.value,
                 self._N_WEIGHTS_BYTES)
 
-            spec.switch_write_focus(MLPRegions.WEIGHTS.value)
+            spec.switch_write_focus (MLPRegions.WEIGHTS.value)
 
             # open the weights file
             routes_file = open (self._weightsFile, "rb")
@@ -262,21 +286,20 @@ class WeightVertex(
             for byte in wc:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
-        if os.path.isfile (self._routingFile):
-            # Reserve and write the routing region
-            spec.reserve_memory_region (
-                MLPRegions.ROUTING.value,
-                self._N_ROUTING_BYTES)
+        # Reserve and write the routing region
+        spec.reserve_memory_region (
+            MLPRegions.ROUTING.value, self._N_KEY_BYTES)
 
-            spec.switch_write_focus(MLPRegions.ROUTING.value)
+        spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-            # open the routing file
-            routes_file = open (self._routingFile, "rb")
-
-            # read the data into a numpy array and put in spec
-            rt = np.fromfile (routes_file, np.uint8)
-            for byte in rt:
-                spec.write_value (byte, data_type=DataType.UINT8)
+        # write link keys (fwd, bkp, fds, stp)
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self._fwd_link), data_type = DataType.UINT32)
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self._bkp_link), data_type = DataType.UINT32)
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self._fds_link), data_type = DataType.UINT32)
+        spec.write_value (0, data_type = DataType.UINT32)
 
         # End the specification
         spec.end_specification ()

@@ -16,11 +16,11 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
+
+extern uint coreType;             // weight, sum, input or threshold
+
 extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
 extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint coreType;             // weight, sum or threshold
 
 extern uint         example;      // current example in epoch
 extern uint         num_events;   // number of events in current example
@@ -33,7 +33,8 @@ extern uint         ev_tick;      // current tick in event
 
 extern chip_struct_t        *ct; // chip-specific data
 extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
+//lapextern mc_table_entry_t     *rt; // multicast routing table data
+extern uint                 *rt; // multicast routing keys data
 extern weight_t             *wt; // initial connection weights
 extern struct mlp_set       *es; // example set data
 extern struct mlp_example   *ex; // example data
@@ -284,12 +285,14 @@ uint t_init (void)
     if (tcfg.is_last_output_group)
     {
       // "broadcast" key
-      tf_stop_key = SPINN_STPR_KEY | SPINN_TB_KEY(tcfg.output_blk);
+//lap      tf_stop_key = SPINN_STPR_KEY | SPINN_TB_KEY(tcfg.output_blk);
+      tf_stop_key = rt[STP] | SPINN_STPR_KEY;
     }
     else
     {
       // "daisy chain" key
-      tf_stop_key = SPINN_STPF_KEY | SPINN_TB_KEY(tcfg.output_blk);
+//lap      tf_stop_key = SPINN_STPF_KEY | SPINN_TB_KEY(tcfg.output_blk);
+      tf_stop_key = rt[STP] | SPINN_STPF_KEY;
     }
   }
 
@@ -352,11 +355,12 @@ uint t_init (void)
 
   // initialize packet keys
   //NOTE: colour is initialized to 0
-  fwdKey = SPINN_TB_KEY(tcfg.output_blk) | SPINN_CORETYPE_KEY
-             | SPINN_PHASE_KEY(SPINN_FORWARD);
-
-  bkpKey = SPINN_TB_KEY(tcfg.delta_blk)  | SPINN_CORETYPE_KEY
-             | SPINN_PHASE_KEY(SPINN_BACKPROP);
+//lap  fwdKey = SPINN_TB_KEY(tcfg.output_blk) | SPINN_CORETYPE_KEY
+//lap             | SPINN_PHASE_KEY(SPINN_FORWARD);
+//lap  bkpKey = SPINN_TB_KEY(tcfg.delta_blk)  | SPINN_CORETYPE_KEY
+//lap             | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  fwdKey = rt[FWD] | SPINN_CORETYPE_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
+  bkpKey = rt[BKP] | SPINN_CORETYPE_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
   // if input or output group initialize event input/target index
   if (tcfg.input_grp || tcfg.output_grp)

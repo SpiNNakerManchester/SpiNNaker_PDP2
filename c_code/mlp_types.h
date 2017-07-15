@@ -16,6 +16,13 @@ enum MLPRegions {
 	ROUTING
 };
 
+enum MLPKeys {
+	FWD,
+	BKP,
+	FDS,
+	STP
+};
+
 typedef short     short_activ_t;    // unit output or activation
 typedef int       activation_t;     // intermediate unit output or activation
 typedef long long long_activ_t;     // intermediate unit output or activation

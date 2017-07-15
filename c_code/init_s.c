@@ -14,11 +14,11 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
+
+extern uint coreType;             // weight, sum, input or threshold
+
 extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
 extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint coreType;             // weight, sum or threshold
 
 extern uint         example;      // current example in epoch
 extern uint         num_events;   // number of events in current example
@@ -30,7 +30,8 @@ extern uint         tick;         // current tick in phase
 
 extern chip_struct_t        *ct; // chip-specific data
 extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
+//extern mc_table_entry_t     *rt; // multicast routing table data
+extern uint                 *rt; // multicast routing keys data
 extern weight_t             *wt; // initial connection weights
 extern struct mlp_set       *es; // example set data
 extern struct mlp_example   *ex; // example data
@@ -203,9 +204,13 @@ uint s_init (void)
 
   // initialize packet keys
   //NOTE: colour is initialized to 0.
-  fwdKey = SPINN_SB_KEY(scfg.net_blk)   | SPINN_CORETYPE_KEY
+//lap  fwdKey = SPINN_SB_KEY(scfg.net_blk)   | SPINN_CORETYPE_KEY
+//lap             | SPINN_PHASE_KEY(SPINN_FORWARD);
+//lap  bkpKey = SPINN_SB_KEY(scfg.error_blk) | SPINN_CORETYPE_KEY
+//lap             | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  fwdKey = rt[FWD] | SPINN_CORETYPE_KEY
              | SPINN_PHASE_KEY(SPINN_FORWARD);
-  bkpKey = SPINN_SB_KEY(scfg.error_blk) | SPINN_CORETYPE_KEY
+  bkpKey = rt[BKP] | SPINN_CORETYPE_KEY
              | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
   return (SPINN_NO_ERROR);

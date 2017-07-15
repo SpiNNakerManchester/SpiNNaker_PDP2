@@ -54,11 +54,11 @@ in_proc_init_t const
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 uint coreIndex;            // coreID - 1 (convenient for array indexing)
+
+uint coreType;             // weight, sum, input or threshold
+
 uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-uint stpKey;               // 32-bit packet ID for stop criterion
-
-uint coreType;             // weight, sum or threshold
 
 uint         epoch;        // current training iteration
 uint         example;      // current example in epoch
@@ -78,7 +78,8 @@ uchar        tick_stop;    // current tick stop decision
 global_conf_t    *gt; // global configuration data
 chip_struct_t    *ct; // chip-specific data
 uchar            *dt; // core-specific data
-mc_table_entry_t *rt; // multicast routing table data
+//mc_table_entry_t *rt; // multicast routing table data
+uint             *rt; // multicast routing keys data
 weight_t         *wt; // initial connection weights
 mlp_set_t        *es; // example set data
 mlp_example_t    *ex; // example data
@@ -157,9 +158,6 @@ uint init ()
 {
   io_printf (IO_BUF, "input\n");
 
-  // return code
-  uint rcode = SPINN_NO_ERROR;
-
   // read the data specification header
   address_t data_address = data_specification_get_data_address ();
   if (!data_specification_read_header (data_address)) {
@@ -186,7 +184,7 @@ uint init ()
 
   // fail if wrong type of core
   if (coreType != SPINN_INPUT_PROC)
-    return SPINN_CORE_TYPE_ERROR;
+    return (SPINN_CORE_TYPE_ERROR);
 
   // core configuration
   dt = (uchar *) data_specification_get_region
@@ -217,12 +215,9 @@ uint init ()
   ev = (struct mlp_event *) data_specification_get_region
 		  (EVENTS, data_address);
 
-  // initialize global stop criteron packet key
-  stpKey = SPINN_STPR_KEY;
-
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "sk = 0x%08x\n", stpKey);
-  #endif
+  // routing keys
+  rt = (uint *) data_specification_get_region
+		  (ROUTING, data_address);
 
   // initialize epoch, example and event counters
   //TODO: alternative algorithms for chosing example order!
@@ -237,43 +232,8 @@ uint init ()
   num_events = ex[example].num_events;
   event_idx  = ex[example].ev_idx;
 
-  // allocate memory and initialize variables,
-  rcode = i_init ();
-
-  // if init went well fill routing table -- only 1 core needs to do it
-  if (leadAp && (rcode == SPINN_NO_ERROR))
-  {
-	// pointer to ROUTING region
-	address_t route_tbl = data_specification_get_region (ROUTING, data_address);
-
-    // first word is length!
-	uint rt_length = *route_tbl;
-
-    // check if length is consistent with configuration data
-    if (rt_length != ccfg.num_rt_entries)
-        io_printf (IO_BUF,
-                    "Warning: routing table size mismatch - ccfg: %d, rt: %d\n",
-                    ccfg.num_rt_entries, rt_length
-                  );
-
-    // pointer to actual multicast routing table data
-	rt = (mc_table_entry_t *) (route_tbl + 1);
-
-    // allocate space in routing table
-    uint e = rtr_alloc (ccfg.num_rt_entries); // allocate router entries
-    if (e == 0)
-      rt_error (RTE_ABORT);
-
-    // fill the routing tables with the values from the configuration files
-    for (uint i = 0; i < ccfg.num_rt_entries; i++)
-    {
-      rtr_mc_set (e + i,
-                   rt[i].key,
-                   rt[i].mask,
-                   rt[i].route
-                 );
-    }
-  }
+  // allocate memory and initialize variables
+  uint rcode = i_init ();
 
   return (rcode);
 }

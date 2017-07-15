@@ -692,7 +692,7 @@ void t_switch_to_bp (void)
 // in the FORWARD phase the convergence critieron may require the simulation to
 // stop before the maximum time is reached. This routine sends a broadcast
 // message to communicate the final decision if the criterion has been reached
-// across all the output groups to all the cores in teh simulation
+// across all the output groups to all the cores in the simulation
 // ------------------------------------------------------------------------
 void tf_send_stop (uint null0, uint null1)
 {
