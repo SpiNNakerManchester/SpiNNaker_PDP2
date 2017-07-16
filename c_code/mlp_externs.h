@@ -5,9 +5,6 @@
 // global variables
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
-extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
-
-extern uint coreType;             // weight, sum, input or threshold
 
 extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
 extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase

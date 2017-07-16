@@ -20,9 +20,6 @@
 // ------------------------------------------------------------------------
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
-uint coreIndex;            // coreID - 1 (convenient for array indexing)
-
-uint coreType;             // weight, sum, input or threshold
 
 uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
@@ -145,13 +142,6 @@ uint init ()
   // initialize chip-specific configuration from SDRAM
   spin1_memcpy(&ccfg, ct, sizeof(chip_struct_t));
 
-  // initialize core configuration according to core function
-  coreType = ccfg.core_type[coreIndex];
-
-  // fail if wrong type of core
-  if (coreType != SPINN_WEIGHT_PROC)
-    return (SPINN_CORE_TYPE_ERROR);
-
   // core configuration
   dt = (uchar *) data_specification_get_region
 		  (CORE, data_address);
@@ -262,39 +252,6 @@ void done (uint ec)
       #endif
 
       break;
-
-    // in case the chip configuration data structure defines the core to be of a
-    // different type than this executable, throw an error
-    case SPINN_CORE_TYPE_ERROR:
-
-      switch (coreType)
-      {
-        case SPINN_WEIGHT_PROC:
-          io_printf (IO_BUF, "error in the core type - executable: %c core, structure: W type\n", SPINN_EXEC_TYPE);
-          break;
-
-        case SPINN_SUM_PROC:
-          io_printf (IO_BUF, "error in the core type - executable: %c core, structure: S type\n", SPINN_EXEC_TYPE);
-          break;
-
-        case SPINN_INPUT_PROC:
-          io_printf (IO_BUF, "error in the core type - executable: %c core, structure: I type\n", SPINN_EXEC_TYPE);
-          break;
-
-        case SPINN_THRESHOLD_PROC:
-          io_printf (IO_BUF, "error in the core type - executable: %c core, structure: T type\n", SPINN_EXEC_TYPE);
-          break;
-
-        case SPINN_UNUSED_PROC:
-          io_printf (IO_BUF, "error in the core type - executable: %c core, but the core should be unused\n", SPINN_EXEC_TYPE);
-          break;
-
-        default:
-          io_printf (IO_BUF, "error in the core type - executable: %c core, but chip structure has an invalid entry: %d\n", SPINN_EXEC_TYPE, coreType);
-          break;
-      }
-
-      break;
   }
 
   // report diagnostics
@@ -341,7 +298,6 @@ void c_main ()
   // get this core's IDs,
   chipID = spin1_get_chip_id();
   coreID = spin1_get_core_id();
-  coreIndex = coreID - 1; // used to access arrays!
 
   // initialize application,
   uint exit_code = init ();

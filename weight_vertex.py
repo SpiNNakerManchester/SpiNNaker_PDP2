@@ -36,7 +36,7 @@ class WeightVertex(
     """
 
     def __init__(self, group = None, frm_grp = None,
-                 chip_x = None, chip_y = None, core = None):
+                 file_x = None, file_y = None, file_c = None):
         """
         """
 
@@ -53,14 +53,14 @@ class WeightVertex(
         # binary, configuration and data files
         self._aplxFile = "binaries/weight.aplx"
         self._globalFile = "data/global_conf.dat"
-        self._chipFile = "data/chip_conf_{}_{}.dat".format(chip_x, chip_y)
-        self._coreFile = "data/w_conf_{}_{}_{}.dat".format (chip_x, chip_y, core)
+        self._chipFile = "data/chip_conf_{}_{}.dat".format (file_x, file_y)
+        self._coreFile = "data/w_conf_{}_{}_{}.dat".format (file_x, file_y, file_c)
         self._inputsFile = "data/inputs_{}.dat".format (group)
         self._exSetFile = "data/example_set.dat"
         self._examplesFile = "data/examples.dat"
         self._eventsFile = "data/events.dat"
-        self._weightsFile = "data/weights_{}_{}_{}.dat".format (chip_x, chip_y, core)
-        self._routingFile = "data/routingtbl_{}_{}.dat".format (chip_x, chip_y)
+        self._weightsFile = "data/weights_{}_{}_{}.dat".format (file_x, file_y, file_c)
+        self._routingFile = "data/routingtbl_{}_{}.dat".format (file_x, file_y)
 
         # size in bytes of the data in the regions
         self._N_GLOBAL_CONFIGURATION_BYTES = \

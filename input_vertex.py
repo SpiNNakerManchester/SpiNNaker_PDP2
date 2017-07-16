@@ -35,8 +35,8 @@ class InputVertex(
     """ A vertex to implement an MLP input core
     """
 
-    def __init__(self, group=None, chip_x=None,
-                 chip_y=None, core=None):
+    def __init__(self, group=None, file_x=None,
+                 file_y=None, file_c=None):
         """
         """
 
@@ -52,13 +52,13 @@ class InputVertex(
         # binary, configuration and data files
         self._aplxFile = "binaries/input.aplx"
         self._globalFile = "data/global_conf.dat"
-        self._chipFile = "data/chip_conf_{}_{}.dat".format(chip_x, chip_y)
-        self._coreFile = "data/i_conf_{}_{}_{}.dat".format (chip_x, chip_y, core)
+        self._chipFile = "data/chip_conf_{}_{}.dat".format(file_x, file_y)
+        self._coreFile = "data/i_conf_{}_{}_{}.dat".format (file_x, file_y, file_c)
         self._inputsFile = "data/inputs_{}.dat".format (group)
         self._exSetFile = "data/example_set.dat"
         self._examplesFile = "data/examples.dat"
         self._eventsFile = "data/events.dat"
-        self._routingFile = "data/routingtbl_{}_{}.dat".format (chip_x, chip_y)
+        self._routingFile = "data/routingtbl_{}_{}.dat".format (file_x, file_y)
 
         # size in bytes of the data in the regions
         self._N_GLOBAL_CONFIGURATION_BYTES = \

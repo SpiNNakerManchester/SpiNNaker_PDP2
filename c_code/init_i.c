@@ -99,8 +99,8 @@ uint i_init (void)
 
   // initialize packet keys
   //NOTE: colour is initialized to 0.
-  fwdKey = rt[FWD] | SPINN_CORETYPE_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
-  bkpKey = rt[BKP] | SPINN_CORETYPE_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
   // if input or output group initialize event input/target index
   if (icfg.input_grp || icfg.output_grp)
