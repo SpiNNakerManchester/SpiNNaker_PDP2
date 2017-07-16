@@ -5,6 +5,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
+#include "mlp_externs.h"
 
 #include "init_i.h"
 #include "comms_i.h"
@@ -12,92 +13,6 @@
 #include "activation.h"
 
 // set of routines to be used by I core to process data
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint         epoch;        // current training iteration
-extern uint         example;      // current example in epoch
-extern uint         evt;          // current event in example
-extern uint         num_events;   // number of events in current example
-extern uint         event_idx;    // index into current event
-extern proc_phase_t phase;        // FORWARD or BACKPROP
-extern uint         num_ticks;    // number of ticks in current event
-extern uint         tick;         // current tick in phase
-extern uchar        tick_stop;    // current tick stop decision
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// configuration structures (SDRAM)
-// ------------------------------------------------------------------------
-extern chip_struct_t        *ct; // chip-specific data
-extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
-extern mlp_set_t            *es; // example set data
-extern mlp_example_t        *ex; // example data
-extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern i_conf_t   icfg;           // input core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// input core variables
-// ------------------------------------------------------------------------
-extern long_net_t     * i_nets;        // unit nets computed in current tick
-extern long_delta_t   * i_deltas;      // deltas computed in current tick
-extern long_delta_t   * i_init_delta;  // deltas computed in first tick
-extern pkt_queue_t      i_pkt_queue;   // queue to hold received b-d-ps
-extern uchar            i_active;      // processing b-d-ps from queue?
-extern uint             i_it_idx;      // index into current inputs/targets
-extern scoreboard_t   * if_arrived;    // keep track of expected net b-d-p
-extern scoreboard_t     if_done;       // current tick net computation done
-extern uint             if_thrds_done; // sync. semaphore: proc & stop
-extern long_delta_t   * ib_init_delta; // initial delta value for every tick
-extern scoreboard_t     ib_all_arrived;// all deltas have arrived in tick
-extern scoreboard_t   * ib_arrived;    // keep track of expected delta b-d-p
-extern scoreboard_t     ib_done;       // current tick delta computation done
-//#extern uint             ib_thrds_done; // sync. semaphore: proc & stop
-extern long_net_t     * i_last_integr_net; //last integrator output value
-extern long_delta_t   * i_last_integr_delta; //last integrator delta value
-// list of input pipeline procedures
-extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
-extern in_proc_back_t const  i_in_back_procs[SPINN_NUM_IN_PROCS];
-extern long_net_t     * i_net_history; //sdram pointer where to store input history
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-  extern uint sent_bkp;  // packets sent in BACKPROP phase
-  extern uint pkt_recv;  // total packets received
-  extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received in BACKPROP phase
-  extern uint spk_sent;  // sync packets sent
-  extern uint spk_recv;  // sync packets received
-  extern uint stp_sent;  // stop packets sent
-  extern uint stp_recv;  // stop packets received
-  extern uint wrng_phs;  // packets received in wrong phase
-  extern uint wght_ups;  // number of weight updates done
-  extern uint tot_tick;  // total number of ticks executed
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // process queued packets until queue empty
@@ -390,7 +305,7 @@ void if_advance_tick (uint null0, uint null1)
     // if not done increment tick
     tick++;
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
     #endif
   }
@@ -440,7 +355,7 @@ void ib_advance_tick (uint null0, uint null1)
     // if not done decrement tick
     tick--;
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "ib_tick: %d/%d\n", tick, tot_tick);
     #endif
   }

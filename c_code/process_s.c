@@ -5,6 +5,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
+#include "mlp_externs.h"
 
 #include "init_s.h"
 #include "comms_s.h"
@@ -12,85 +13,6 @@
 #include "activation.h"
 
 // set of routines to be used by S core to process data
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint         epoch;        // current training iteration
-extern uint         example;      // current example in epoch
-extern uint         evt;          // current event in example
-extern uint         num_events;   // number of events in current example
-extern proc_phase_t phase;        // FORWARD or BACKPROP
-extern uint         num_ticks;    // number of ticks in current event
-extern uint         tick;         // current tick in phase
-extern uchar        tick_stop;    // current tick stop decision
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// configuration structures (SDRAM)
-// ------------------------------------------------------------------------
-extern chip_struct_t        *ct; // chip-specific data
-extern uint                 *cm; // simulation core map
-extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
-extern mlp_set_t            *es; // example set data
-extern mlp_example_t        *ex; // example data
-extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern s_conf_t   scfg;           // sum core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// sum core variables
-// ------------------------------------------------------------------------
-extern long_net_t     * s_nets[2];     // unit nets computed in current tick
-extern error_t        * s_errors[2];   // errors computed in current tick
-extern long_error_t   * s_init_err[2]; // errors computed in first tick
-extern pkt_queue_t      s_pkt_queue;   // queue to hold received b-d-ps
-extern uchar            s_active;      // processing b-d-ps from queue?
-extern scoreboard_t   * sf_arrived[2]; // keep track of expected net b-d-p
-extern scoreboard_t     sf_done;       // current tick net computation done
-extern uint             sf_thrds_done; // sync. semaphore: proc & stop
-extern long_error_t   * sb_init_error; // initial error value for every tick
-extern scoreboard_t     sb_all_arrived;// all deltas have arrived in tick
-extern scoreboard_t   * sb_arrived[2]; // keep track of expected error b-d-p
-extern scoreboard_t     sb_done;       // current tick error computation done
-//#extern uint             sb_thrds_done; // sync. semaphore: proc & stop
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-  extern uint sent_bkp;  // packets sent in BACKPROP phase
-  extern uint pkt_recv;  // total packets received
-  extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received in BACKPROP phase
-  extern uint spk_sent;  // sync packets sent
-  extern uint spk_recv;  // sync packets received
-  extern uint stp_sent;  // stop packets sent
-  extern uint stp_recv;  // stop packets received
-  extern uint wrng_phs;  // packets received in wrong phase
-  extern uint wght_ups;  // number of weight updates done
-  extern uint tot_tick;  // total number of ticks executed
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // process queued packets until queue empty
@@ -377,7 +299,7 @@ void sf_advance_tick (uint null0, uint null1)
     // if not done increment tick
     tick++;
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
     #endif
   }
@@ -423,7 +345,7 @@ void sb_advance_tick (uint null0, uint null1)
     // if not done decrement tick
     tick--;
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
     #endif
   }

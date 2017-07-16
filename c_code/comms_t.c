@@ -4,96 +4,12 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_externs.h"
 
 #include "comms_t.h"
 #include "process_t.h"
 
 // this files contains the communication routines used by T cores
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint coreID;               // 5-bit virtual core ID
-extern uint coreKey;              // 21-bit core packet ID
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint         epoch;        // current training iteration
-extern uint         example;      // current example in epoch
-extern uint         evt;          // current event in example
-extern uint         num_ticks;    // number of ticks in current event
-extern proc_phase_t phase;        // FORWARD or BACKPROP
-extern uint         tick;         // current tick in phase
-extern uchar        tick_stop;    // current tick stop decision
-
-// ------------------------------------------------------------------------
-// configuration structures (SDRAM)
-// ------------------------------------------------------------------------
-extern chip_struct_t        *ct; // chip-specific data
-extern uint                 *cm; // simulation core map
-extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
-extern mlp_set_t            *es; // example set data
-extern mlp_example_t        *ex; // example data
-extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern t_conf_t       tcfg;       // threshold core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// threshold core variables
-// ------------------------------------------------------------------------
-extern activation_t   * t_outputs;     // current tick unit outputs
-extern net_t          * t_nets;        // nets received from sum cores
-extern error_t        * t_errors[2];   // error banks: current and next tick
-extern uint             t_it_idx;      // index into current inputs/targets
-extern uint             t_tot_ticks;   // total ticks on current example
-extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
-extern uchar            t_active;      // processing nets/errors from queue?
-extern scoreboard_t     t_sync_arr;    // keep track of expected sync packets
-extern uchar            t_sync_done;   // have expected sync packets arrived?
-extern sdp_msg_t        t_sdp_msg;     // SDP message buffer for host comms.
-extern uint             tf_thrds_init; // sync. semaphore initial value
-extern uint             tf_thrds_done; // sync. semaphore: proc & stop
-extern uchar            tf_stop_prev;  // previous group stop criterion met?
-extern uchar            tf_stop_crit;  // stop criterion met?
-extern uchar            tf_stop_init;  // sync. semaphore: stop daisy chain
-extern uchar            tf_stop_done;  // sync. semaphore: stop daisy chain
-extern stop_crit_t      tf_stop_func;  // stop evaluation function
-extern uint             tf_stop_key;   // stop criterion packet key
-extern uint             tb_comms;      // pointer to receiving errors
-extern scoreboard_t     tb_arrived;    // keep track of expected errors
-extern uint             tb_thrds_done; // sync. semaphore: proc & stop
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_bkp;  // packets sent in BACKPROP phase
-  extern uint pkt_recv;  // total packets received
-  extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received in BACKPROP phase
-  extern uint spk_sent;  // sync packets sent
-  extern uint spk_recv;  // sync packets received
-  extern uint stp_sent;  // stop packets sent
-  extern uint stp_recv;  // stop packets received
-  extern uint wrng_phs;  // packets received in wrong phase
-  extern uint wrng_tck;  // FORWARD packets received in wrong tick
-  extern uint wrng_btk;  // BACKPROP packets received in wrong tick
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // process received packets (stop, chain, sync, FORWARD and BACKPROP types)

@@ -5,6 +5,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
+#include "mlp_externs.h"
 
 #include "init_t.h"
 #include "comms_t.h"
@@ -12,114 +13,6 @@
 #include "activation.h"
 
 // set of routines to be used by T core to process data
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for FORWARD phasees
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phasees
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint         epoch;        // current training iteration
-extern uint         example;      // current example in epoch
-extern uint         evt;          // current event in example
-extern uint         num_events;   // number of events in current example
-extern uint         event_idx;    // index into current event
-extern proc_phase_t phase;        // FORWARD or BACKPROP
-extern uint         num_ticks;    // number of ticks in current event
-extern uint         max_ticks;    // maximum number of ticks in current event
-extern uint         min_ticks;    // minimum number of ticks in current event
-extern uint         tick;         // current tick in phase
-extern uint         ev_tick;      // current tick in event
-extern uchar        tick_stop;    // current tick stop decision
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// configuration structures (SDRAM)
-// ------------------------------------------------------------------------
-extern chip_struct_t        *ct; // chip-specific data
-extern uint                 *cm; // simulation core map
-extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
-extern mlp_set_t            *es; // example set data
-extern mlp_example_t        *ex; // example data
-extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern t_conf_t   tcfg;           // threshold core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// threshold core variables
-// ------------------------------------------------------------------------
-extern activation_t   * t_outputs;     // current tick unit outputs
-extern activation_t   * t_output_history; // history array for outputs
-extern net_t          * t_nets;        // nets received from sum cores
-extern error_t        * t_errors[2];   // error banks: current and next tick
-extern uint             t_it_idx;      // index into current inputs/targets
-extern uint             t_tot_ticks;   // total ticks on current example
-extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
-extern uchar            t_active;      // processing nets/errors from queue?
-extern uchar            t_sync_done;   // have expected sync packets arrived?
-extern activation_t   * t_last_integr_output;  //last integrator output value
-extern long_deriv_t   * t_last_integr_output_deriv; //last integrator output deriv value
-extern activation_t   * t_instant_outputs; // current output value stored for the backward pass
-extern short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
-extern short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
-extern uchar            t_hard_clamp_en;       //hard clamp output enabled
-extern scoreboard_t     tf_arrived;    // keep track of expected nets
-extern uint             tf_thrds_init; // sync. semaphore initial value
-extern uint             tf_thrds_done; // sync. semaphore: proc & stop
-extern uchar            tf_stop_prev;  // previous group stop criterion met?
-extern uchar            tf_stop_crit;  // stop criterion met?
-extern uchar            tf_stop_init;  // sync. semaphore: stop daisy chain
-extern uchar            tf_stop_done;  // sync. semaphore: stop daisy chain
-extern stop_crit_t      tf_stop_func;  // stop evaluation function
-extern uint             tf_stop_key;   // stop criterion packet key
-extern uint             tb_procs;      // pointer to processing errors
-extern scoreboard_t     tb_arrived;    // keep track of expected errors
-extern uint             tb_thrds_done; // sync. semaphore: proc & stop
-extern int              t_max_output_unit; // unit with highest output
-extern int              t_max_target_unit; // unit with highest target
-extern activation_t     t_max_output;      // highest output value
-extern activation_t     t_max_target;      // highest target value
-// list of output pipeline procedures
-extern out_proc_t const t_out_procs[SPINN_NUM_OUT_PROCS];
-extern out_error_t const t_out_error[SPINN_NUM_ERROR_PROCS];
-extern long_deriv_t  * t_output_deriv;
-extern long_deriv_t  * t_output_deriv_history;
-extern delta_t        * t_deltas;
-extern activation_t   * t_target_history;
-extern net_t          * t_net_history;
-extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-  extern uint sent_bkp;  // packets sent in BACKPROP phase
-  extern uint pkt_recv;  // total packets received
-  extern uint spk_sent;  // sync packets sent
-  extern uint spk_recv;  // sync packets received
-  extern uint stp_sent;  // stop packets sent
-  extern uint stp_recv;  // stop packets received
-  extern uint wrng_phs;  // packets received in wrong phase
-  extern uint wght_ups;  // number of weight updates done
-  extern uint tot_tick;  // total number of ticks executed
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // process FORWARD phase: compute outputs
@@ -404,7 +297,7 @@ void tf_advance_tick (uint null0, uint null1)
     tick++;
     ev_tick++;
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "tf_tick: %d/%d\n", tick, tot_tick);
     #endif
   }
@@ -455,7 +348,7 @@ void tb_advance_tick (uint null0, uint null1)
     // and trigger computation
     spin1_schedule_callback (tb_process, NULL, NULL, SPINN_TB_PROCESS_P);
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
     #endif
   }

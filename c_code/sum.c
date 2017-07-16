@@ -6,6 +6,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_externs.h"
 
 #include "init_s.h"
 #include "comms_s.h"
@@ -44,7 +45,6 @@ uchar        tick_stop;    // current tick stop decision
 global_conf_t    *gt; // global configuration data
 chip_struct_t    *ct; // chip-specific data
 uchar            *dt; // core-specific data
-//lap mc_table_entry_t *rt; // multicast routing table data
 uint             *rt; // multicast routing keys data
 weight_t         *wt; // initial connection weights
 mlp_set_t        *es; // example set data

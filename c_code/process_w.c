@@ -5,6 +5,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
+#include "mlp_externs.h"
 
 #include "init_w.h"
 #include "comms_w.h"
@@ -12,86 +13,6 @@
 #include "activation.h"
 
 // set of routines to be used by W core to process data
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint         epoch;        // current training iteration
-extern uint         example;      // current example in epoch
-extern uint         evt;          // current event in example
-extern uint         num_events;   // number of events in current example
-extern proc_phase_t phase;        // FORWARD or BACKPROP
-extern uint         num_ticks;    // number of ticks in current event
-extern uint         tick;         // current tick in phase
-extern uchar        tick_stop;    // current tick stop decision
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// configuration structures (SDRAM)
-// ------------------------------------------------------------------------
-extern chip_struct_t        *ct; // chip-specific data
-extern uint                 *cm; // simulation core map
-extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
-extern mlp_set_t            *es; // example set data
-extern mlp_example_t        *ex; // example data
-extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t        *tt; // example targets
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern w_conf_t       wcfg;       // weight core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// weight core variables
-// ------------------------------------------------------------------------
-extern weight_t       * * w_weights;     // connection weights block
-extern long_wchange_t * * w_wchanges;    // accumulated weight changes
-extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern activation_t   * w_output_history;
-extern long_delta_t * * w_link_deltas; // computed link deltas
-extern error_t        * w_errors;      // computed errors next tick
-extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
-extern fpreal           w_delta_dt;    // scaling factor for link deltas
-extern uint             wf_procs;      // pointer to processing unit outputs
-extern uint             wf_thrds_done; // sync. semaphore: comms, proc & stop
-extern uint             wf_sync_key;   // FORWARD processing can start
-extern uchar            wb_active;     // processing deltas from queue?
-extern scoreboard_t     wb_arrived;    // keeps track of received deltas
-extern uint             wb_sync_key;   // BACKPROP processing can start
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-  extern uint sent_bkp;  // packets sent in BACKPROP phase
-  extern uint pkt_recv;  // total packets received
-  extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received in BACKPROP phase
-  extern uint spk_sent;  // sync packets sent
-  extern uint spk_recv;  // sync packets received
-  extern uint stp_sent;  // stop packets sent
-  extern uint stp_recv;  // stop packets received
-  extern uint wrng_phs;  // packets received in wrong phase
-  extern uint wght_ups;  // number of weight updates done
-  extern uint tot_tick;  // total number of ticks executed
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // process FORWARD phase: compute partial dot products (output * weight)
@@ -417,7 +338,7 @@ void wf_advance_tick (uint null0, uint null1)
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "wf_tick: %d/%d\n", tick, tot_tick);
     #endif
   }
@@ -467,7 +388,7 @@ void wb_advance_tick (uint null0, uint null1)
     // and trigger computation
     spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "wb_tick: %d/%d\n", tick, tot_tick);
     #endif
   }

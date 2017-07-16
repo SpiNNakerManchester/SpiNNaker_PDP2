@@ -4,112 +4,13 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_externs.h"
 
 #include "comms_t.h"
 #include "process_t.h"
 
 // this files contains the initialization routine for T cores
 // the first routine of the mlp run-time code is scheduled to be executed here
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint coreID;               // 5-bit virtual core ID
-extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
-
-extern uint coreType;             // weight, sum, input or threshold
-
-extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-
-extern uint         example;      // current example in epoch
-extern uint         num_events;   // number of events in current example
-extern uint         event_idx;    // index into current event
-extern uint         num_ticks;    // number of ticks in current event
-extern uint         max_ticks;    // maximum number of ticks in current event
-extern uint         min_ticks;    // minimum number of ticks in current event
-extern uint         tick;         // current tick in phase
-extern uint         ev_tick;      // current tick in event
-
-extern chip_struct_t        *ct; // chip-specific data
-extern uchar                *dt; // core-specific data
-//lapextern mc_table_entry_t     *rt; // multicast routing table data
-extern uint                 *rt; // multicast routing keys data
-extern weight_t             *wt; // initial connection weights
-extern struct mlp_set       *es; // example set data
-extern struct mlp_example   *ex; // example data
-extern struct mlp_event     *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern t_conf_t       tcfg;       // threshold core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// threshold core variables
-// ------------------------------------------------------------------------
-extern activation_t   * t_outputs;     // current tick unit outputs
-extern net_t          * t_nets;        // nets received from sum cores
-extern error_t        * t_errors[2];   // error banks: current and next tick
-extern activation_t   * t_last_integr_output;   //last integrator output value
-extern long_deriv_t   * t_last_integr_output_deriv; //last integrator output deriv value
-extern activation_t   * t_instant_outputs; // current output value stored for the backward pass
-extern uchar            t_hard_clamp_en; //hard clamp output enabled
-extern uint             t_it_idx;      // index into current inputs/targets
-extern uint             t_tot_ticks;   // total ticks on current example
-extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
-extern uchar            t_active;      // processing nets/errors from queue?
-extern scoreboard_t     t_sync_arr;    // keep track of expected sync packets
-extern uchar            t_sync_done;   // have expected sync packets arrived?
-extern sdp_msg_t        t_sdp_msg;     // SDP message buffer for host comms.
-extern scoreboard_t     tf_arrived;    // keep track of expected nets
-extern uint             tf_thrds_init; // sync. semaphore initial value
-extern uint             tf_thrds_done; // sync. semaphore: proc & stop
-extern uchar            tf_stop_prev;  // previous group stop criterion met?
-extern uchar            tf_stop_crit;  // stop criterion met?
-extern uchar            tf_stop_init;  // sync. semaphore: stop daisy chain
-extern uchar            tf_stop_done;  // sync. semaphore: stop daisy chain
-extern stop_crit_t      tf_stop_func;  // stop evaluation function
-extern uint             tf_stop_key;   // stop criterion packet key
-extern uint             tb_procs;      // pointer to processing errors
-extern uint             tb_comms;      // pointer to receiving errors
-extern scoreboard_t     tb_arrived;    // keep track of expected errors
-extern uint             tb_thrds_done; // sync. semaphore: proc & stop
-extern int              t_max_output_unit; // unit with highest output
-extern int              t_max_target_unit; // unit with highest target
-extern activation_t     t_max_output;      // highest output value
-extern activation_t     t_max_target;      // highest target value
-// list of output pipeline procedures
-extern out_proc_t const  t_out_procs[SPINN_NUM_OUT_PROCS];
-// list of stop eval procedures
-extern stop_crit_t const t_stop_procs[SPINN_NUM_STOP_PROCS];
-// list of initialization procedures for output pipeline
-extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
-// derivative of the output
-extern long_deriv_t   * t_output_deriv;
-// history arrays
-extern long_deriv_t   * t_output_deriv_history;
-extern delta_t        * t_deltas;
-extern activation_t   * t_target_history;
-extern net_t          * t_net_history;
-extern activation_t   * t_output_history;
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // allocate memory and initialize variables
@@ -285,13 +186,11 @@ uint t_init (void)
     if (tcfg.is_last_output_group)
     {
       // "broadcast" key
-//lap      tf_stop_key = SPINN_STPR_KEY | SPINN_TB_KEY(tcfg.output_blk);
       tf_stop_key = rt[STP] | SPINN_STPR_KEY;
     }
     else
     {
       // "daisy chain" key
-//lap      tf_stop_key = SPINN_STPF_KEY | SPINN_TB_KEY(tcfg.output_blk);
       tf_stop_key = rt[STP] | SPINN_STPF_KEY;
     }
   }
@@ -355,10 +254,6 @@ uint t_init (void)
 
   // initialize packet keys
   //NOTE: colour is initialized to 0
-//lap  fwdKey = SPINN_TB_KEY(tcfg.output_blk) | SPINN_CORETYPE_KEY
-//lap             | SPINN_PHASE_KEY(SPINN_FORWARD);
-//lap  bkpKey = SPINN_TB_KEY(tcfg.delta_blk)  | SPINN_CORETYPE_KEY
-//lap             | SPINN_PHASE_KEY(SPINN_BACKPROP);
   fwdKey = rt[FWD] | SPINN_CORETYPE_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_CORETYPE_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
@@ -378,7 +273,7 @@ uint t_init (void)
   // allocate memory in SDRAM for target history
   if ((t_target_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
+                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof (activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -389,7 +284,7 @@ uint t_init (void)
   // allocate memory in SDRAM for output derivative history
   if ((t_output_deriv_history = ((long_deriv_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(long_deriv_t),
+                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof (long_deriv_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -400,7 +295,7 @@ uint t_init (void)
   // allocate memory in SDRAM for net history
   if ((t_net_history = ((net_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(net_t),
+                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof (net_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -411,7 +306,7 @@ uint t_init (void)
   // allocate memory in SDRAM for output history
   if ((t_output_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t),
+                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof (activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )

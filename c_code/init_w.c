@@ -4,80 +4,11 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_externs.h"
 
 #include "comms_w.h"
 
 // this files contains the initialization routine for W cores
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint coreID;               // 5-bit virtual core ID
-extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
-
-extern uint coreType;             // weight, sum, input or threshold
-
-extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-
-extern uint         example;      // current example in epoch
-extern uint         num_events;   // number of events in current example
-extern uint         event_idx;    // index into current event
-extern uint         num_ticks;    // number of ticks in current event
-extern uint         max_ticks;    // maximum number of ticks in current event
-extern uint         min_ticks;    // minimum number of ticks in current event
-extern uint         tick;         // current tick in phase
-
-extern chip_struct_t        *ct; // chip-specific data
-extern uchar                *dt; // core-specific data
-//lap extern mc_table_entry_t     *rt; // multicast routing table data
-extern uint                 *rt; // multicast routing keys data
-extern weight_t             *wt; // initial connection weights
-extern struct mlp_set       *es; // example set data
-extern struct mlp_example   *ex; // example data
-extern struct mlp_event     *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern w_conf_t       wcfg;       // weight core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// weight core variables
-// ------------------------------------------------------------------------
-extern weight_t       * * w_weights;     // connection weights block
-extern long_wchange_t * * w_wchanges;    // accumulated weight changes
-extern activation_t     * w_outputs[2]; // unit outputs for b-d-p
-extern long_delta_t   * * w_link_deltas; // computed link deltas
-extern error_t          * w_errors;      // computed errors next tick
-extern pkt_queue_t        w_delta_pkt_q; // queue to hold received deltas
-extern fpreal             w_delta_dt;    // scaling factor for link deltas
-extern uint               wf_procs;      // pointer to processing unit outputs
-extern uint               wf_comms;      // pointer to receiving unit outputs
-extern scoreboard_t       wf_arrived;    // keeps track of received unit outputs
-extern uint               wf_thrds_done; // sync. semaphore: comms, proc & stop
-extern uint               wf_sync_key;   // FORWARD processing can start
-extern uchar              wb_active;     // processing deltas from queue?
-extern scoreboard_t       wb_arrived;    // keeps track of received deltas
-extern uint               wb_sync_key;   // BACKPROP processing can start
-// history arrays
-extern activation_t     * w_output_history;
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // allocate memory and initialize variables
@@ -267,16 +198,9 @@ uint w_init (void)
 
   // initialize packet keys
   //NOTE: colour is initialized to 0.
-//lap   uint block_key = SPINN_BR_KEY(wcfg.blk_row) | SPINN_BC_KEY(wcfg.blk_col);
-//lap   uint base_key = block_key | SPINN_CORETYPE_KEY;
-
-//lap  fwdKey = base_key | SPINN_PHASE_KEY(SPINN_FORWARD);
-//lap  bkpKey = base_key | SPINN_PHASE_KEY(SPINN_BACKPROP);
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
-//lap  wf_sync_key = block_key | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
-//lap  wb_sync_key = block_key | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
   wf_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
   wb_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 

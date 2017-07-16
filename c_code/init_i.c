@@ -4,84 +4,11 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_externs.h"
 
 #include "comms_i.h"
 
 // this files contains the initialization routine for I cores
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint coreID;               // 5-bit virtual core ID
-extern uint coreIndex;            // coreID - 1 (convenient for array indexing)
-
-extern uint coreType;             // weight, sum, input or threshold
-
-extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-
-extern uint         example;      // current example in epoch
-extern uint         num_events;   // number of events in current example
-extern uint         event_idx;    // index into current event
-extern uint         num_ticks;    // number of ticks in current event
-extern uint         max_ticks;    // maximum number of ticks in current event
-extern uint         min_ticks;    // minimum number of ticks in current event
-extern uint         tick;         // current tick in phase
-
-extern chip_struct_t        *ct; // chip-specific data
-extern uchar                *dt; // core-specific data
-//extern mc_table_entry_t     *rt; // multicast routing table data
-extern uint                 *rt; // multicast routing keys data
-extern weight_t             *wt; // initial connection weights
-extern struct mlp_set       *es; // example set data
-extern struct mlp_example   *ex; // example data
-extern struct mlp_event     *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern i_conf_t       icfg;       // input core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// input core variables
-// ------------------------------------------------------------------------
-extern long_net_t     * i_nets;        // unit nets computed in current tick
-extern long_delta_t   * i_deltas;      // deltas computed in current tick
-extern long_delta_t   * i_init_delta;  // deltas computed in first tick
-extern pkt_queue_t      i_pkt_queue;   // queue to hold received b-d-ps
-extern uchar            i_active;      // processing b-d-ps from queue?
-extern uint             i_it_idx;      // index into current inputs/targets
-extern scoreboard_t   * if_arrived;    // keep track of expected net b-d-p
-extern scoreboard_t     if_done;       // current tick net computation done
-extern uint             if_thrds_done; // sync. semaphore: proc & stop
-extern long_delta_t   * ib_init_delta; // initial delta value for every tick
-extern scoreboard_t     ib_all_arrived;// all deltas have arrived in tick
-extern scoreboard_t   * ib_arrived;    // keep track of expected delta b-d-p
-extern scoreboard_t     ib_done;       // current tick delta computation done
-//#extern uint             ib_thrds_done; // sync. semaphore: proc & stop
-extern long_net_t     * i_last_integr_net;   //last integrator output value
-extern long_delta_t   * i_last_integr_delta; //last integrator delta value
-//list of input pipeline procedures
-extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
-//list of initialization procedures for input pipeline
-extern in_proc_init_t const  i_init_in_procs[SPINN_NUM_IN_PROCS];
-extern long_net_t      * i_net_history; //sdram pointer where to store input history
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // allocate memory and initialize variables
@@ -172,10 +99,6 @@ uint i_init (void)
 
   // initialize packet keys
   //NOTE: colour is initialized to 0.
-//lap  fwdKey = SPINN_SB_KEY(icfg.net_blk)   | SPINN_CORETYPE_KEY
-//lap             | SPINN_PHASE_KEY(SPINN_FORWARD);
-//lap  bkpKey = SPINN_SB_KEY(icfg.delta_blk) | SPINN_CORETYPE_KEY
-//lap             | SPINN_PHASE_KEY(SPINN_BACKPROP);
   fwdKey = rt[FWD] | SPINN_CORETYPE_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_CORETYPE_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 

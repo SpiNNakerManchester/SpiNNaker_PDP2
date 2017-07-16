@@ -6,6 +6,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_externs.h"
 
 #include "init_t.h"
 #include "comms_t.h"
@@ -100,7 +101,6 @@ uchar        tick_stop;    // current tick stop decision
 global_conf_t    *gt; // global configuration data
 chip_struct_t    *ct; // chip-specific data
 uchar            *dt; // core-specific data
-//lap mc_table_entry_t *rt; // multicast routing table data
 uint             *rt; // multicast routing keys data
 weight_t         *wt; // initial connection weights
 mlp_set_t        *es; // example set data
@@ -125,7 +125,7 @@ t_conf_t      tcfg;           // threshold core configuration parameters
 activation_t   * t_outputs;         // current tick unit outputs
 net_t          * t_nets;            // nets received from sum cores
 error_t        * t_errors[2];       // error banks: current and next tick
-activation_t  * t_last_integr_output;  //last integrator output value
+activation_t   * t_last_integr_output;  //last integrator output value
 long_deriv_t   * t_last_integr_output_deriv; //last integrator output deriv value
 activation_t   * t_instant_outputs; // current output value stored for the backward pass
 short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
@@ -163,12 +163,12 @@ int              t_max_target_unit; // unit with highest target
 activation_t     t_max_output;      // highest output value
 activation_t     t_max_target;      // highest target value
 
-long_deriv_t  * t_output_deriv;    // derivative of the output value
-long_deriv_t  * t_output_deriv_history;
+long_deriv_t   * t_output_deriv;    // derivative of the output value
 delta_t        * t_deltas;
-short_activ_t  * t_target_history;
 net_t          * t_net_history;
 activation_t   * t_output_history;
+activation_t   * t_target_history;
+long_deriv_t   * t_output_deriv_history;
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
