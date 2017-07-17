@@ -4,8 +4,7 @@
 #include "mlp_params.h"
 
 enum MLPRegions {
-	GLOBAL,
-	CHIP,
+	NETWORK,
 	CORE,
 	INPUTS,
 	TARGETS,
@@ -147,42 +146,19 @@ typedef uchar     proc_phase_t;     // phase (FORWARD or BACKPROP)
 
 
 // ------------------------------------------------------------------------
-// global (network-wide) configuration
+// network configuration
 // ------------------------------------------------------------------------
-typedef struct global_conf      // MLP configuration
+typedef struct network_conf     // MLP network configuration
 {
-  // neural net configuration parameters
   uchar net_type;               // type of neural net
   uchar training;               // training or testing mode?
   uint  num_epochs;             // number of epochs to run
   uint  num_examples;           // number of examples per epoch
   uint  ticks_per_int;          // number of ticks per interval
-  uint  max_unit_outs;          // max. number of outputs in a group
-  uint  num_chips;              // number of chips in the simulation
-  uint  timeout;                // in case something goes wrong
-  uint  chip_struct_addr;       // address in SDRAM for core map
   uint  global_max_ticks;       // max number of ticks across all the examples
-} global_conf_t;
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// chip-wide configuration
-// ------------------------------------------------------------------------
-typedef struct chip_struct      // chip specific information
-{
-  // SpiNNaker configuration parameters
-  uchar core_type[SPINN_NUM_CORES_CHIP];
-  uint  conf_size;              // largest configuration data size
-  uint  num_rt_entries;         // number of routing table entries
   uint  num_write_blks;         // number of groups that write outputs
-  uint  cm_struct_addr;         // address in SDRAM for core map
-  uint  core_struct_addr[SPINN_NUM_CORES_CHIP]; // addr in SDRAM for core data
-  uint  rt_struct_addr;         // address in SDRAM for router data
-  uint  example_set_addr;       // address in SDRAM for example set file
-  uint  examples_addr;          // address in SDRAM for examples file
-  uint  events_addr;            // address in SDRAM for events file
-} chip_struct_t;
+  uint  timeout;                // in case something goes wrong
+} network_conf_t;
 // ------------------------------------------------------------------------
 
 

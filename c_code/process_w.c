@@ -228,7 +228,7 @@ void w_update_weights (void)
       if (w_weights[i][j] != 0)
       {
         // scale the link derivatives
-        if (mlpc.net_type == SPINN_NET_CONT)
+        if (ncfg.net_type == SPINN_NET_CONT)
         {
           // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
@@ -422,7 +422,7 @@ void wf_advance_event (void)
     tick_stop = FALSE;
 
     // and check if in training mode
-    if (mlpc.training)
+    if (ncfg.training)
     {
       // if training, save number of ticks
       num_ticks = tick;
@@ -468,10 +468,10 @@ void w_advance_example (void)
   #endif
 
   // check if done with examples
-  if (++example >= mlpc.num_examples)
+  if (++example >= ncfg.num_examples)
   {
     // if training update weights at end of epoch
-    if (mlpc.training)
+    if (ncfg.training)
     {
       //TODO: should be called or scheduled?
       w_update_weights ();
@@ -484,7 +484,7 @@ void w_advance_example (void)
     }
 
     // check if done with epochs
-    if (++epoch >= mlpc.num_epochs)
+    if (++epoch >= ncfg.num_epochs)
     {
       // if done then finish
       spin1_exit (SPINN_NO_ERROR);
@@ -497,7 +497,7 @@ void w_advance_example (void)
 
       // and, if training, initialize weight changes
       //TODO: find a better place for this operation
-      if (mlpc.training)
+      if (ncfg.training)
       {
         for (uint i = 0; i < wcfg.num_rows; i++)
         {

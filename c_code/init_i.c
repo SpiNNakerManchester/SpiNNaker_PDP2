@@ -130,7 +130,7 @@ uint i_init (void)
   // which needs to come from splens
   if ((i_net_history = ((long_net_t *)
           sark_xalloc (sv->sdram_heap,
-                       icfg.num_nets * mlpc.global_max_ticks * sizeof(long_net_t),
+                       icfg.num_nets * ncfg.global_max_ticks * sizeof(long_net_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )

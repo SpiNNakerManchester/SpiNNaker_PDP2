@@ -4,6 +4,7 @@ import spinnaker_graph_front_end as g
 
 from pacman.model.graphs.machine import MachineEdge
 
+from mlp_network      import MLPNetwork, MLPTypes
 from input_vertex     import InputVertex
 from sum_vertex       import SumVertex
 from threshold_vertex import ThresholdVertex
@@ -22,15 +23,33 @@ logger = logging.getLogger (__name__)
 # Set up the simulation
 g.setup ()
 
+# instantiate MLP network
+rand10x40 = MLPNetwork (
+    net_type = MLPTypes.CONT.value,
+    training=1,
+    num_epochs=1,
+    num_examples=40,
+    ticks_per_int=5,
+    global_max_ticks=21,
+    num_write_blks=1
+    )
+
 #------v- bias layer (group 2) -v------
 # instantiate group 2 cores and place them appropriately
-wv2_2 = WeightVertex    (group = 2, frm_grp = 2, file_x=0, file_y=0, file_c=1)
-wv2_3 = WeightVertex    (group = 2, frm_grp = 3, file_x=0, file_y=0, file_c=2)
-wv2_4 = WeightVertex    (group = 2, frm_grp = 4, file_x=0, file_y=0, file_c=3)
-wv2_5 = WeightVertex    (group = 2, frm_grp = 5, file_x=0, file_y=0, file_c=4)
-sv2   = SumVertex       (group = 2, file_x=0, file_y=0, file_c=5)
-iv2   = InputVertex     (group = 2, file_x=0, file_y=0, file_c=6)
-tv2   = ThresholdVertex (group = 2, file_x=0, file_y=0, file_c=7)
+wv2_2 = WeightVertex    (rand10x40, group = 2, frm_grp = 2,
+                         file_x=0, file_y=0, file_c=1)
+wv2_3 = WeightVertex    (rand10x40, group = 2, frm_grp = 3,
+                         file_x=0, file_y=0, file_c=2)
+wv2_4 = WeightVertex    (rand10x40, group = 2, frm_grp = 4,
+                         file_x=0, file_y=0, file_c=3)
+wv2_5 = WeightVertex    (rand10x40, group = 2, frm_grp = 5,
+                         file_x=0, file_y=0, file_c=4)
+sv2   = SumVertex       (rand10x40, group = 2,
+                         file_x=0, file_y=0, file_c=5)
+iv2   = InputVertex     (rand10x40, group = 2,
+                         file_x=0, file_y=0, file_c=6)
+tv2   = ThresholdVertex (rand10x40, group = 2,
+                         file_x=0, file_y=0, file_c=7)
 
 # add group 2 vertices to graph
 g.add_machine_vertex_instance (wv2_2)
@@ -45,13 +64,20 @@ g.add_machine_vertex_instance (tv2)
 
 #------v- input layer (group 3) -v------
 # instantiate group 3 cores and place them appropriately
-wv3_2 = WeightVertex    (group = 3, frm_grp = 2, file_x=0, file_y=0, file_c=8)
-wv3_3 = WeightVertex    (group = 3, frm_grp = 3, file_x=0, file_y=0, file_c=9)
-wv3_4 = WeightVertex    (group = 3, frm_grp = 4, file_x=0, file_y=0, file_c=10)
-wv3_5 = WeightVertex    (group = 3, frm_grp = 5, file_x=0, file_y=0, file_c=11)
-sv3   = SumVertex       (group = 3, file_x=0, file_y=0, file_c=12)
-iv3   = InputVertex     (group = 3, file_x=0, file_y=0, file_c=13)
-tv3   = ThresholdVertex (group = 3, file_x=0, file_y=0, file_c=14)
+wv3_2 = WeightVertex    (rand10x40, group = 3, frm_grp = 2,
+                         file_x=0, file_y=0, file_c=8)
+wv3_3 = WeightVertex    (rand10x40, group = 3, frm_grp = 3,
+                         file_x=0, file_y=0, file_c=9)
+wv3_4 = WeightVertex    (rand10x40, group = 3, frm_grp = 4,
+                         file_x=0, file_y=0, file_c=10)
+wv3_5 = WeightVertex    (rand10x40, group = 3, frm_grp = 5,
+                         file_x=0, file_y=0, file_c=11)
+sv3   = SumVertex       (rand10x40, group = 3,
+                         file_x=0, file_y=0, file_c=12)
+iv3   = InputVertex     (rand10x40, group = 3,
+                         file_x=0, file_y=0, file_c=13)
+tv3   = ThresholdVertex (rand10x40, group = 3,
+                         file_x=0, file_y=0, file_c=14)
 
 # add group 3 vertices to graph
 g.add_machine_vertex_instance (wv3_2)
@@ -66,13 +92,20 @@ g.add_machine_vertex_instance (tv3)
 
 #------v- hidden layer (group 4) -v------
 # instantiate group 4 cores and place them appropriately
-wv4_2 = WeightVertex    (group = 4, frm_grp = 2, file_x=0, file_y=0, file_c=15)
-wv4_3 = WeightVertex    (group = 4, frm_grp = 3, file_x=0, file_y=0, file_c=16)
-wv4_4 = WeightVertex    (group = 4, frm_grp = 4, file_x=0, file_y=1, file_c=1)
-wv4_5 = WeightVertex    (group = 4, frm_grp = 5, file_x=0, file_y=1, file_c=2)
-sv4   = SumVertex       (group = 4, file_x=0, file_y=1, file_c=3)
-iv4   = InputVertex     (group = 4, file_x=0, file_y=1, file_c=4)
-tv4   = ThresholdVertex (group = 4, file_x=0, file_y=1, file_c=5)
+wv4_2 = WeightVertex    (rand10x40, group = 4, frm_grp = 2,
+                         file_x=0, file_y=0, file_c=15)
+wv4_3 = WeightVertex    (rand10x40, group = 4, frm_grp = 3,
+                         file_x=0, file_y=0, file_c=16)
+wv4_4 = WeightVertex    (rand10x40, group = 4, frm_grp = 4,
+                         file_x=0, file_y=1, file_c=1)
+wv4_5 = WeightVertex    (rand10x40, group = 4, frm_grp = 5,
+                         file_x=0, file_y=1, file_c=2)
+sv4   = SumVertex       (rand10x40, group = 4,
+                         file_x=0, file_y=1, file_c=3)
+iv4   = InputVertex     (rand10x40, group = 4,
+                         file_x=0, file_y=1, file_c=4)
+tv4   = ThresholdVertex (rand10x40, group = 4,
+                         file_x=0, file_y=1, file_c=5)
 
 # add group 4 vertices to graph
 g.add_machine_vertex_instance (wv4_2)
@@ -87,13 +120,20 @@ g.add_machine_vertex_instance (tv4)
 
 #------v- output layer (group 5) -v------
 # instantiate group 5 cores and place them appropriately
-wv5_2 = WeightVertex    (group = 5, frm_grp = 2, file_x=0, file_y=1, file_c=6)
-wv5_3 = WeightVertex    (group = 5, frm_grp = 3, file_x=0, file_y=1, file_c=7)
-wv5_4 = WeightVertex    (group = 5, frm_grp = 4, file_x=0, file_y=1, file_c=8)
-wv5_5 = WeightVertex    (group = 5, frm_grp = 5, file_x=0, file_y=1, file_c=9)
-sv5   = SumVertex       (group = 5, file_x=0, file_y=1, file_c=10)
-iv5   = InputVertex     (group = 5, file_x=0, file_y=1, file_c=11)
-tv5   = ThresholdVertex (group = 5, file_x=0, file_y=1, file_c=12)
+wv5_2 = WeightVertex    (rand10x40, group = 5, frm_grp = 2,
+                         file_x=0, file_y=1, file_c=6)
+wv5_3 = WeightVertex    (rand10x40, group = 5, frm_grp = 3,
+                         file_x=0, file_y=1, file_c=7)
+wv5_4 = WeightVertex    (rand10x40, group = 5, frm_grp = 4,
+                         file_x=0, file_y=1, file_c=8)
+wv5_5 = WeightVertex    (rand10x40, group = 5, frm_grp = 5,
+                         file_x=0, file_y=1, file_c=9)
+sv5   = SumVertex       (rand10x40, group = 5,
+                         file_x=0, file_y=1, file_c=10)
+iv5   = InputVertex     (rand10x40, group = 5,
+                         file_x=0, file_y=1, file_c=11)
+tv5   = ThresholdVertex (rand10x40, group = 5,
+                         file_x=0, file_y=1, file_c=12)
 
 # add group 5 vertices to graph
 g.add_machine_vertex_instance (wv5_2)

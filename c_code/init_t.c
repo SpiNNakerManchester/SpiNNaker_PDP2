@@ -129,17 +129,17 @@ uint t_init (void)
   {
     // get max number of ticks for first event
     if (ev[event_idx].max_time != SPINN_FP_NaN)
-      max_ticks = (ev[event_idx].max_time * mlpc.ticks_per_int)
+      max_ticks = (ev[event_idx].max_time * ncfg.ticks_per_int)
                     >> SPINN_FPREAL_SHIFT;
     else
-      max_ticks = (es->max_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      max_ticks = (es->max_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
 
     // get min number of ticks for first event
     if (ev[event_idx].min_time != SPINN_FP_NaN)
-      min_ticks = (ev[event_idx].min_time * mlpc.ticks_per_int)
+      min_ticks = (ev[event_idx].min_time * ncfg.ticks_per_int)
                     >> SPINN_FPREAL_SHIFT;
     else
-      min_ticks = (es->min_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      min_ticks = (es->min_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
   }
 
   // initialize pointers to received errors
@@ -238,12 +238,12 @@ uint t_init (void)
       // update number of ticks for new event
       if (ev[event_idx + i].max_time != SPINN_FP_NaN)
       {
-        t_tot_ticks += (ev[event_idx + i].max_time * mlpc.ticks_per_int)
+        t_tot_ticks += (ev[event_idx + i].max_time * ncfg.ticks_per_int)
                          >> SPINN_FPREAL_SHIFT;
       }
       else
       {
-        t_tot_ticks += (es->max_time * mlpc.ticks_per_int)
+        t_tot_ticks += (es->max_time * ncfg.ticks_per_int)
                          >> SPINN_FPREAL_SHIFT;
       }
     }
@@ -273,7 +273,7 @@ uint t_init (void)
   // allocate memory in SDRAM for target history
   if ((t_target_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof (activation_t),
+                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof (activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -284,7 +284,7 @@ uint t_init (void)
   // allocate memory in SDRAM for output derivative history
   if ((t_output_deriv_history = ((long_deriv_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof (long_deriv_t),
+                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof (long_deriv_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -295,7 +295,7 @@ uint t_init (void)
   // allocate memory in SDRAM for net history
   if ((t_net_history = ((net_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof (net_t),
+                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof (net_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -306,7 +306,7 @@ uint t_init (void)
   // allocate memory in SDRAM for output history
   if ((t_output_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof (activation_t),
+                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof (activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )

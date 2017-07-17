@@ -36,7 +36,7 @@ uint w_init (void)
   // allocate memory in SDRAM for output history
   if ((w_output_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       wcfg.num_rows * mlpc.global_max_ticks * sizeof(activation_t),
+                       wcfg.num_rows * ncfg.global_max_ticks * sizeof(activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -180,7 +180,7 @@ uint w_init (void)
 
   // initialize delta scaling factor
   // s15.16
-  w_delta_dt = (1 << SPINN_FPREAL_SHIFT) / mlpc.ticks_per_int;
+  w_delta_dt = (1 << SPINN_FPREAL_SHIFT) / ncfg.ticks_per_int;
 
   // initialize pointers to received unit outputs
   wf_procs = 0;

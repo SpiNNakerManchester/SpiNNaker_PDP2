@@ -376,7 +376,7 @@ void if_advance_event (void)
   if (++evt >= num_events)
   {
     // and check if in training mode
-    if (mlpc.training)
+    if (ncfg.training)
     {
       // if training, save number of ticks
       num_ticks = tick;
@@ -424,10 +424,10 @@ void i_advance_example (void)
   #endif
 
   // check if done with examples
-  if (++example >= mlpc.num_examples)
+  if (++example >= ncfg.num_examples)
   {
     // check if done with epochs
-    if (++epoch >= mlpc.num_epochs)
+    if (++epoch >= ncfg.num_epochs)
     {
       // done
       spin1_exit (SPINN_NO_ERROR);
@@ -491,7 +491,7 @@ void compute_in (uint inx)
   // TODO: for non-continuous networks, this needs to check the requirement to have these
   // histories saved, which needs to come from splens. For continuous networks, these histories
   // are always required.
-  if (mlpc.training)
+  if (ncfg.training)
   {
     store_nets(inx);
   }

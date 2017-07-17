@@ -39,7 +39,7 @@ void tf_process (uint null0, uint null1)
 
     // store net for BACKPROP computation,
     t_nets[inx] = net;
-    if (mlpc.training)
+    if (ncfg.training)
     {
       store_nets (inx);
     }
@@ -50,7 +50,7 @@ void tf_process (uint null0, uint null1)
 
     activation_t activation = (activation_t) t_outputs[inx];
 
-    if (mlpc.training)
+    if (ncfg.training)
     {
       store_outputs (inx);
     }
@@ -268,8 +268,8 @@ void tf_advance_tick (uint null0, uint null1)
   if (tcfg.write_out)
   {
     // is this the last report?
-    if ((epoch    == (mlpc.num_epochs - 1))
-         && (example == (mlpc.num_examples - 1))
+    if ((epoch    == (ncfg.num_epochs - 1))
+         && (example == (ncfg.num_examples - 1))
          && (evt     == (num_events - 1))
          && (tick_stop)
        )
@@ -369,7 +369,7 @@ void tf_advance_event (void)
   if (++evt >= num_events)
   {
     // check if in training mode
-    if (mlpc.training)
+    if (ncfg.training)
     {
       // if training, save the number of ticks
       num_ticks = tick;
@@ -401,17 +401,17 @@ void tf_advance_event (void)
       {
         // maximum
         if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
-          max_ticks = (ev[event_idx + evt].max_time * mlpc.ticks_per_int)
+          max_ticks = (ev[event_idx + evt].max_time * ncfg.ticks_per_int)
             >> SPINN_FPREAL_SHIFT;
         else
-          max_ticks = (es->max_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+          max_ticks = (es->max_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
 
         // minimum
         if (ev[event_idx + evt].min_time != SPINN_FP_NaN)
-          min_ticks = (ev[event_idx + evt].min_time * mlpc.ticks_per_int)
+          min_ticks = (ev[event_idx + evt].min_time * ncfg.ticks_per_int)
             >> SPINN_FPREAL_SHIFT;
         else
-          min_ticks = (es->min_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+          min_ticks = (es->min_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
       }
     }
 
@@ -436,10 +436,10 @@ void t_advance_example (void)
 
   // check if done with examples
   //TODO: alternative algorithms for chosing example order!
-  if (++example >= mlpc.num_examples)
+  if (++example >= ncfg.num_examples)
   {
     // check if done with epochs
-    if (++epoch >= mlpc.num_epochs)
+    if (++epoch >= ncfg.num_epochs)
     {
       // done
       spin1_exit (SPINN_NO_ERROR);
@@ -468,17 +468,17 @@ void t_advance_example (void)
   {
     // maximum
     if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
-      max_ticks = (ev[event_idx + evt].max_time * mlpc.ticks_per_int)
+      max_ticks = (ev[event_idx + evt].max_time * ncfg.ticks_per_int)
         >> SPINN_FPREAL_SHIFT;
     else
-      max_ticks = (es->max_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      max_ticks = (es->max_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
 
     // minimum
     if (ev[event_idx + evt].min_time != SPINN_FP_NaN)
-      min_ticks = (ev[event_idx + evt].min_time * mlpc.ticks_per_int)
+      min_ticks = (ev[event_idx + evt].min_time * ncfg.ticks_per_int)
         >> SPINN_FPREAL_SHIFT;
     else
-      min_ticks = (es->min_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      min_ticks = (es->min_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
   }
 
   // check if ready to send initial unit outputs,
@@ -743,7 +743,7 @@ void compute_out (uint inx)
 
   // if the network is set for training, then compute the output derivative
   // using the appropriate function as set by splens
-  if (mlpc.training && tcfg.output_grp)
+  if (ncfg.training && tcfg.output_grp)
   {
     #ifdef TRACE_VRB
       io_printf (IO_BUF, "compute output deriv\n");
@@ -761,7 +761,7 @@ void compute_out (uint inx)
   //TODO: for non-continuous networks, this needs to check the requirement
   //TODO: to have these histories saved, which needs to come from splens.
   //TODO: For continuous networks, these are always required.
-  if (mlpc.training)
+  if (ncfg.training)
   {
     store_targets (inx);
     store_output_deriv (inx);
@@ -951,7 +951,7 @@ void out_hard_clamp (uint inx)
   // TODO: if training, store the injected value in SDRAM. This memory area needs
   // to be allocated during initialization
 /*
-  if (mlpc.training)
+  if (ncfg.training)
   {
     short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_outputs;
     tmp[inx] = t_outputs[inx];
@@ -1011,7 +1011,7 @@ void out_weak_clamp (uint inx)
   // TODO: if training, store the injected value in SDRAM. This memory area needs
   // to be allocated during initialization
 /*
-  if (mlpc.training)
+  if (ncfg.training)
   {
     //store previous value of t_output for BACKPROP computation
     short_activ_t * tmp = t_out_weak_clamp_data + tick * tcfg.num_outputs;
@@ -1268,7 +1268,7 @@ int init_out_integr ()
   }
 
   if ((t_instant_outputs = ((activation_t *)
-       spin1_malloc (tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t)))) == NULL
+       spin1_malloc (tcfg.num_outputs * ncfg.global_max_ticks * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -1290,12 +1290,12 @@ int init_out_hard_clamp ()
   #endif
 
 /*
-  if (mlpc.training)
+  if (ncfg.training)
   {
     // allocate memory for outputs
     if ((t_out_hard_clamp_data = ((short_activ_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(short_activ_t),
+                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof(short_activ_t),
                        0, ALLOC_LOCK)
                        )) == NULL
        )
@@ -1323,12 +1323,12 @@ int init_out_weak_clamp ()
   #endif
 
 /*
-  if (mlpc.training)
+  if (ncfg.training)
   {
     // allocate memory for outputs
     if ((t_out_weak_clamp_data = ((short_activ_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(short_activ_t),
+                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof(short_activ_t),
                        0, ALLOC_LOCK)
                        )) == NULL
        )

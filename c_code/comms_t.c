@@ -383,7 +383,7 @@ void send_info_to_host (uint null0, uint null1)
   t_sdp_msg.cmd_rc = SPINN_HOST_INFO;
   t_sdp_msg.seq    = tcfg.write_blk;
   t_sdp_msg.arg1   = tcfg.num_outputs;
-  t_sdp_msg.arg2   = ccfg.num_write_blks;
+  t_sdp_msg.arg2   = ncfg.num_write_blks;
   t_sdp_msg.arg3   = t_tot_ticks + 1;
 
   // set message length,
@@ -394,7 +394,7 @@ void send_info_to_host (uint null0, uint null1)
 
   #ifdef DEBUG_VRB
     io_printf (IO_BUF, "sent info to host: nb:%d wb:%d no:%d tt:%d\n",
-                ccfg.num_write_blks, tcfg.write_blk,
+                ncfg.num_write_blks, tcfg.write_blk,
                 tcfg.num_outputs, t_tot_ticks
               );
   #endif

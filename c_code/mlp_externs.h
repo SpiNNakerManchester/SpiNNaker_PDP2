@@ -22,8 +22,6 @@ extern uchar        tick_stop;    // current tick stop decision
 extern uint         ev_tick;      // current tick in event
 extern proc_phase_t phase;        // FORWARD or BACKPROP
 
-extern chip_struct_t        *ct; // chip-specific data
-extern uchar                *dt; // core-specific data
 extern uint                 *rt; // multicast routing keys data
 extern weight_t             *wt; // initial connection weights
 extern struct mlp_set       *es; // example set data
@@ -35,8 +33,7 @@ extern activation_t         *tt; // example targets
 // ------------------------------------------------------------------------
 // network and core configurations
 // ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
+extern network_conf_t ncfg;       // network-wide configuration parameters
 extern w_conf_t       wcfg;       // weight core configuration parameters
 extern s_conf_t       scfg;       // sum core configuration parameters
 extern i_conf_t       icfg;       // input core configuration parameters

@@ -1,20 +1,19 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
+// graph-front-end
 #include <data_specification.h>
 
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "mlp_externs.h"
+#include "mlp_externs.h"  // allows compiler to check extern types!
 
 #include "init_t.h"
 #include "comms_t.h"
 #include "process_t.h"
 
-#define SPINN_EXEC_TYPE 'T'
-
-// main methods for the T core
+// main methods for the threshold core
 
 // ------------------------------------------------------------------------
 // global "constants"
@@ -93,11 +92,8 @@ uint         ev_tick;      // current tick in event
 uchar        tick_stop;    // current tick stop decision
 
 // ------------------------------------------------------------------------
-// configuration structures (SDRAM)
+// data structures in regions of SDRAM
 // ------------------------------------------------------------------------
-global_conf_t    *gt; // global configuration data
-chip_struct_t    *ct; // chip-specific data
-uchar            *dt; // core-specific data
 uint             *rt; // multicast routing keys data
 weight_t         *wt; // initial connection weights
 mlp_set_t        *es; // example set data
@@ -109,9 +105,8 @@ activation_t     *tt; // example targets
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
 // ------------------------------------------------------------------------
-global_conf_t mlpc;           // network-wide configuration parameters
-chip_struct_t ccfg;           // chip configuration parameters
-t_conf_t      tcfg;           // threshold core configuration parameters
+network_conf_t ncfg;           // network-wide configuration parameters
+t_conf_t       tcfg;           // threshold core configuration parameters
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -205,23 +200,14 @@ uint init ()
   }
 
   // get addresses of all SDRAM regions
-  // global configuration
-  gt = (global_conf_t *) data_specification_get_region
-		  (GLOBAL, data_address);
+  // network configuration address
+  address_t nt = data_specification_get_region (NETWORK, data_address);
 
   // initialize network configuration from SDRAM
-  spin1_memcpy (&mlpc, gt, sizeof(global_conf_t));
+  spin1_memcpy (&ncfg, nt, sizeof(network_conf_t));
 
-  // chip configuration
-  ct = (chip_struct_t *) data_specification_get_region
-		  (CHIP, data_address);
-
-  // initialize chip-specific configuration from SDRAM
-  spin1_memcpy(&ccfg, ct, sizeof(chip_struct_t));
-
-  // core configuration
-  dt = (uchar *) data_specification_get_region
-		  (CORE, data_address);
+  // core configuration address
+  address_t dt = data_specification_get_region (CORE, data_address);
 
   // initialize core-specific configuration from SDRAM
   spin1_memcpy (&tcfg, dt, sizeof(t_conf_t));
@@ -287,11 +273,6 @@ void done (uint ec)
 
       break;
 
-    case SPINN_UKNOWN_TYPE:
-      io_printf (IO_BUF, "unknown core type\n");
-
-      break;
-
     case SPINN_QUEUE_FULL:
       io_printf (IO_BUF, "packet queue full\n");
 
@@ -353,7 +334,7 @@ void done (uint ec)
 // ------------------------------------------------------------------------
 void timeout (uint ticks, uint null)
 {
-  if (ticks == mlpc.timeout)
+  if (ticks == ncfg.timeout)
   {
     // exit and report timeout
     spin1_exit (SPINN_TIMEOUT_EXIT);

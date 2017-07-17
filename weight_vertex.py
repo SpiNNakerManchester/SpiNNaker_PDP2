@@ -35,13 +35,16 @@ class WeightVertex(
     """ A vertex to implement an MLP input core
     """
 
-    def __init__(self, group = None, frm_grp = None,
-                 file_x = None, file_y = None, file_c = None):
+    def __init__(self, network=None, group = None,
+                 frm_grp = None, file_x = None, file_y = None, file_c = None):
         """
         """
 
         MachineVertex.__init__(self, label =\
                                "w{}_{} core".format (group, frm_grp))
+
+        # MLP network
+        self._network = network
 
         # forward and backprop link partition names
         self._fwd_link = "fwd_w{}_{}".format (group, frm_grp)
@@ -52,8 +55,6 @@ class WeightVertex(
 
         # binary, configuration and data files
         self._aplxFile = "binaries/weight.aplx"
-        self._globalFile = "data/global_conf.dat"
-        self._chipFile = "data/chip_conf_{}_{}.dat".format (file_x, file_y)
         self._coreFile = "data/w_conf_{}_{}_{}.dat".format (file_x, file_y, file_c)
         self._inputsFile = "data/inputs_{}.dat".format (group)
         self._exSetFile = "data/example_set.dat"
@@ -63,15 +64,8 @@ class WeightVertex(
         self._routingFile = "data/routingtbl_{}_{}.dat".format (file_x, file_y)
 
         # size in bytes of the data in the regions
-        self._N_GLOBAL_CONFIGURATION_BYTES = \
-            os.path.getsize (self._globalFile) \
-            if os.path.isfile (self._globalFile) \
-            else 0
-
-        self._N_CHIP_CONFIGURATION_BYTES = \
-            os.path.getsize (self._chipFile) \
-            if os.path.isfile (self._chipFile) \
-            else 0
+        self._N_NETWORK_CONFIGURATION_BYTES = \
+            len ((self._network).config)
 
         self._N_CORE_CONFIGURATION_BYTES = \
             os.path.getsize (self._coreFile) \
@@ -106,8 +100,7 @@ class WeightVertex(
         self._N_KEY_BYTES = 16
 
         self._sdram_usage = (
-            self._N_GLOBAL_CONFIGURATION_BYTES + \
-            self._N_CHIP_CONFIGURATION_BYTES + \
+            self._N_NETWORK_CONFIGURATION_BYTES + \
             self._N_CORE_CONFIGURATION_BYTES + \
             self._N_INPUTS_CONFIGURATION_BYTES + \
             self._N_EXAMPLE_SET_BYTES + \
@@ -160,39 +153,19 @@ class WeightVertex(
     def generate_data_specification (
             self, spec, placement, routing_info):
 
-        if os.path.isfile (self._globalFile):
-            # Reserve and write the global configuration region
-            spec.reserve_memory_region (
-                MLPRegions.GLOBAL.value,
-                self._N_GLOBAL_CONFIGURATION_BYTES)
+        # Reserve and write the network configuration region
+        spec.reserve_memory_region (
+            MLPRegions.NETWORK.value,
+            self._N_NETWORK_CONFIGURATION_BYTES)
 
-            spec.switch_write_focus (MLPRegions.GLOBAL.value)
+        spec.switch_write_focus (MLPRegions.NETWORK.value)
 
-            # open the global configuration file
-            global_file = open (self._globalFile, "rb")
+        # write the network configuration into spec
+        for c in (self._network).config:
+            spec.write_value (ord (c), data_type=DataType.UINT8)
 
-            # read the data into a numpy array and put it in spec
-            gc = np.fromfile (global_file, np.uint8)
-            for byte in gc:
-                spec.write_value (byte, data_type=DataType.UINT8)
-
-        if os.path.isfile (self._chipFile):
-            # Reserve and write the chip configuration region
-            spec.reserve_memory_region (
-                MLPRegions.CHIP.value, self._N_CHIP_CONFIGURATION_BYTES)
-
-            spec.switch_write_focus (MLPRegions.CHIP.value)
-
-            # open the chip configuration file
-            chip_file = open (self._chipFile, "rb")
-
-            # read the data into a numpy array and put it in spec
-            cc = np.fromfile (chip_file, np.uint8)
-            for byte in cc:
-                spec.write_value (byte, data_type=DataType.UINT8)
-
+        # Reserve and write the core configuration region
         if os.path.isfile (self._coreFile):
-            # Reserve and write the core configuration region
             spec.reserve_memory_region (
                 MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
 
@@ -206,8 +179,8 @@ class WeightVertex(
             for byte in pc:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
+        # Reserve and write the input data region
         if os.path.isfile (self._inputsFile):
-            # Reserve and write the input data region
             spec.reserve_memory_region (
                 MLPRegions.INPUTS.value,
                 self._N_INPUTS_CONFIGURATION_BYTES)
@@ -222,8 +195,8 @@ class WeightVertex(
             for byte in ic:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
+        # Reserve and write the example set region
         if os.path.isfile (self._exSetFile):
-            # Reserve and write the example set region
             spec.reserve_memory_region (
                 MLPRegions.EXAMPLE_SET.value,
                 self._N_EXAMPLE_SET_BYTES)
@@ -238,8 +211,8 @@ class WeightVertex(
             for byte in es:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
+        # Reserve and write the examples region
         if os.path.isfile (self._examplesFile):
-            # Reserve and write the examples region
             spec.reserve_memory_region (
                 MLPRegions.EXAMPLES.value,
                 self._N_EXAMPLES_BYTES)
@@ -254,8 +227,8 @@ class WeightVertex(
             for byte in ex:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
+        # Reserve and write the events region
         if os.path.isfile (self._eventsFile):
-            # Reserve and write the events region
             spec.reserve_memory_region (
                 MLPRegions.EVENTS.value,
                 self._N_EVENTS_BYTES)
@@ -270,8 +243,8 @@ class WeightVertex(
             for byte in ev:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
+        # Reserve and write the weights region
         if os.path.isfile (self._weightsFile):
-            # Reserve and write the weights region
             spec.reserve_memory_region (
                 MLPRegions.WEIGHTS.value,
                 self._N_WEIGHTS_BYTES)
