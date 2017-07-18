@@ -38,13 +38,8 @@ uchar        tick_stop;    // current tick stop decision
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
-uint             *rt; // multicast routing keys data
-weight_t         *wt; // initial connection weights
-mlp_set_t        *es; // example set data
 mlp_example_t    *ex; // example data
-mlp_event_t      *ev; // event data
-activation_t     *it; // example inputs
-activation_t     *tt; // example targets
+uint             *rt; // multicast routing keys data
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
@@ -58,23 +53,21 @@ s_conf_t       scfg;           // sum core configuration parameters
 // ------------------------------------------------------------------------
 // sum cores compute unit nets and errors (acummulate b-d-ps).
 // ------------------------------------------------------------------------
-long_net_t     * s_nets[2];         // unit nets computed in current tick
-long_error_t   * s_errors[2];       // errors computed in current tick
-long_error_t   * s_init_err[2];     // errors computed in initial tick
+long_net_t     * s_nets;            // unit nets computed in current tick
+long_error_t   * s_errors;          // errors computed in current tick
 pkt_queue_t      s_pkt_queue;       // queue to hold received b-d-ps
 uchar            s_active;          // processing b-d-ps from queue?
 
 // FORWARD phase specific
 // (net computation)
-scoreboard_t   * sf_arrived[2];     // keep track of expected net b-d-p
+scoreboard_t   * sf_arrived;        // keep track of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
 uint             sf_thrds_done;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
 // (error computation)
 long_error_t   * sb_init_error;     // initial error value for every tick
-scoreboard_t     sb_all_arrived;    // all deltas have arrived in tick
-scoreboard_t   * sb_arrived[2];     // keep track of expected error b-d-p
+scoreboard_t   * sb_arrived;        // keep track of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
 //#uint             sb_thrds_done;     // sync. semaphore: proc & stop
 // ------------------------------------------------------------------------
@@ -120,32 +113,17 @@ uint init ()
   address_t nt = data_specification_get_region (NETWORK, data_address);
 
   // initialize network configuration from SDRAM
-  spin1_memcpy (&ncfg, nt, sizeof(network_conf_t));
+  spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
 
   // core configuration address
   address_t dt = data_specification_get_region (CORE, data_address);
 
   // initialize core-specific configuration from SDRAM
-  spin1_memcpy (&scfg, dt, sizeof(s_conf_t));
-
-  // example inputs
-  it = (activation_t *) data_specification_get_region
-		  (INPUTS, data_address);
-
-  // targets are not used by input cores
-  tt = NULL;
-
-  // example set
-  es = (struct mlp_set *) data_specification_get_region
-		  (EXAMPLE_SET, data_address);
+  spin1_memcpy (&scfg, dt, sizeof (s_conf_t));
 
   // examples
   ex = (struct mlp_example *) data_specification_get_region
 		  (EXAMPLES, data_address);
-
-  // events
-  ev = (struct mlp_event *) data_specification_get_region
-		  (EVENTS, data_address);
 
   // routing keys
   rt = (uint *) data_specification_get_region
@@ -177,9 +155,6 @@ uint init ()
 // ------------------------------------------------------------------------
 void done (uint ec)
 {
-  // skew execution to avoid tubotron congestion
-  spin1_delay_us (SPINN_SKEW_DELAY);  //@delay
-
   // report problems -- if any
   switch (ec)
   {

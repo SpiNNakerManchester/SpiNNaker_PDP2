@@ -73,8 +73,24 @@ class MLPNetwork():
 
     @property
     def config (self):
-        # pack: standard sizes, little-endian byte-order,
-        # explicit padding
+        """ returns a packed string that corresponds to
+            (C struct) network_conf in mlp_types.h:
+
+            typedef struct network_conf
+            {
+              uchar net_type;
+              uchar training;
+              uint  num_epochs;
+              uint  num_examples;
+              uint  ticks_per_int;
+              uint  global_max_ticks;
+              uint  num_write_blks;
+              uint  timeout;
+            } network_conf_t;
+
+            pack: standard sizes, little-endian byte-order,
+            explicit padding
+        """
         return struct.pack("<2B2x6I",
                            self._net_type,
                            self._training,

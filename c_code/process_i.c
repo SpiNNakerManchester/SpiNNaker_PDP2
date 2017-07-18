@@ -84,100 +84,71 @@ void i_forward_packet (uint key, uint payload)
   // get net index: mask out block, phase and colour data,
   uint inx = key & SPINN_NET_MASK;
 
-  // accumulate new net b-d-p,
+  // store received net to be processed,
   // s40.23
   i_nets[inx] = (long_net_t) ((net_t) payload);
 
-  // mark net b-d-p as arrived,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    // get net block: mask out phase, colour and net index data
-    uint blk = (key & SPINN_BLK_R_MASK) >> SPINN_BLK_R_SHIFT;
+  net_t net_tmp;
 
-    // check if already marked -- problem,
-    #ifdef DEBUG
-      if (if_arrived[inx] & (1 << blk))
-      {
-        io_printf (IO_BUF, "!c:%u b:%u k:%u a:0x%08x\n",
-                    blk, inx, sf_arrived[inx]
-                  );
-      }
-    #endif
+  // compute unit input,
+  // TODO: need to make sure this is the same as Lens
+  compute_in (inx);
 
-      // mark it
-    if_arrived[inx] |= (1 << blk);
-  #else
-    if_arrived[inx]++;
+  // saturate and cast the long nets before sending,
+  if (i_nets[inx] >= (long_net_t) SPINN_NET_MAX)
+  {
+    net_tmp = (net_t) SPINN_NET_MAX;
+  }
+  else if (i_nets[inx] <= (long_net_t) SPINN_NET_MIN)
+  {
+    net_tmp = (net_t) SPINN_NET_MIN;
+  }
+  else
+  {
+    net_tmp = (net_t) i_nets[inx];
+  }
+
+  // incorporate net index to the packet key and send,
+  while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
+
+  #ifdef DEBUG
+    pkt_sent++;
+    sent_fwd++;
   #endif
 
-  // and check if dot product complete to compute net
-  if (if_arrived[inx] == icfg.f_all_arrived)
+  // mark net as done,
+  #if SPINN_USE_COUNTER_SB == FALSE
+    if_done |= (1 << inx);
+  #else
+    if_done++;
+  #endif
+
+  // and check if all nets done
+  if (if_done == icfg.num_nets)
   {
-    net_t net_tmp;
+    // access synchronization semaphore with interrupts disabled
+    uint cpsr = spin1_int_disable ();
 
-    // compute unit input,
-    // TODO: need to make sure this is the same as Lens
-    compute_in (inx);
+    // check if all threads done
+    if (if_thrds_done == 0)
+    {
+      // if done initialize semaphore,
+      if_thrds_done = 1;
 
-    // saturate and cast the long nets before sending,
-    if (i_nets[inx] >= (long_net_t) SPINN_NET_MAX)
-    {
-      net_tmp = (net_t) SPINN_NET_MAX;
-    }
-    else if (i_nets[inx] <= (long_net_t) SPINN_NET_MIN)
-    {
-      net_tmp = (net_t) SPINN_NET_MIN;
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // and advance tick
+      //TODO: check if need to schedule or can simply call
+      if_advance_tick (NULL, NULL);
     }
     else
     {
-      net_tmp = (net_t) i_nets[inx];
-    }
+      // if not done report processing thread done,
+      if_thrds_done -= 1;
 
-    // incorporate net index to the packet key and send,
-    while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_fwd++;
-    #endif
-
-    // prepare for next tick,
-    i_nets[inx] = 0;
-    if_arrived[inx] = 0;
-
-    // mark net as done,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      if_done |= (1 << inx);
-    #else
-      if_done++;
-    #endif
-
-    // and check if all nets done
-    if (if_done == icfg.f_all_done)
-    {
-      // access synchronization semaphore with interrupts disabled
-      uint cpsr = spin1_int_disable ();
-
-      // check if all threads done
-      if (if_thrds_done == 0)
-      {
-        // if done initialize semaphore,
-        if_thrds_done = 1;
-
-        // restore interrupts after flag access,
-        spin1_mode_restore (cpsr);
-
-        // and advance tick
-        //TODO: check if need to schedule or can simply call
-        if_advance_tick (NULL, NULL);
-      }
-      else
-      {
-        // if not done report processing thread done,
-        if_thrds_done -= 1;
-
-        // and restore interrupts after flag access
-        spin1_mode_restore (cpsr);
-      }
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
     }
   }
 }
@@ -192,87 +163,55 @@ void i_backprop_packet (uint key, uint payload)
   // get delta index: mask out block, phase and colour data,
   uint inx = key & SPINN_DELTA_MASK;
 
-  // accumulate new delta b-d-p,
+  // store received delta to be processed,
+  // s36.27 = s8.23 << (27 -23)
   i_deltas[inx] = ((long_delta_t) ((delta_t) payload))
     << (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
 
-  // mark delta b-d-p as arrived,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    // get delta block: mask out phase, colour and net index data
-    uint blk = (key & SPINN_BLK_C_MASK) >> SPINN_BLK_C_SHIFT;
+  // restore net for the previous tick
+  restore_nets (inx, tick - 1);
 
-    // check if already marked -- problem,
-    #ifdef DEBUG
-      if (ib_arrived[inx] & (1 << blk))
-      {
-        io_printf (IO_BUF, "!c:%u b:%u k:%u a:0x%08x\n",
-                blk, inx, ib_arrived[inx]
-                  );
-      }
-    #endif
+  compute_in_back (inx);
 
-      // mark it
-    ib_arrived[inx] |= (1 << blk);
-  #else
-    ib_arrived[inx]++;
+  // saturate and cast the long deltas before sending
+  long_delta_t delta_tmp = i_deltas[inx]
+                         >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
+  delta_t delta;
+
+  if (delta_tmp >= (long_delta_t) SPINN_DELTA_MAX)
+  {
+    delta = (delta_t) SPINN_DELTA_MAX;
+  }
+  else if (delta_tmp <= (long_delta_t) SPINN_DELTA_MIN)
+  {
+    delta = (delta_t) SPINN_DELTA_MIN;
+  }
+  else
+  {
+    delta = (delta_t) delta_tmp;
+  }
+
+  // incorporate delta index to the packet key and send,
+  while (!spin1_send_mc_packet ((bkpKey | inx), delta, WITH_PAYLOAD));
+
+  #ifdef DEBUG
+    pkt_sent++;
+    sent_bkp++;
   #endif
 
-  // and check if delta complete to send to next stage
-  // TODO: can use a configuration constant -- needs fixing
-  // this core always receives packets from a single S core. Therefore the
-  // ib_all_arrived will always be 1, and the if lose meaning: this routine
-  // is executed when a packet is received -- to be chekced
-  if (ib_arrived[inx] == ib_all_arrived)
+  // mark delta as done,
+  #if SPINN_USE_COUNTER_SB == FALSE
+    ib_done |= (1 << inx);
+  #else
+    ib_done++;
+  #endif
+
+  // and check if all deltas done
+  if (ib_done == icfg.num_nets)
   {
-    // restore net for the previous tick
-    restore_nets (inx, tick -1);
-
-    compute_in_back (inx);
-
-    // saturate and cast the long deltas before sending
-    long_delta_t delta_tmp = i_deltas[inx]
-                           >> (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
-    delta_t delta;
-
-    if (delta_tmp >= (long_delta_t) SPINN_DELTA_MAX)
-    {
-      delta = (delta_t) SPINN_DELTA_MAX;
-    }
-    else if (delta_tmp <= (long_delta_t) SPINN_DELTA_MIN)
-    {
-      delta = (delta_t) SPINN_DELTA_MIN;
-    }
-    else
-    {
-      delta = (delta_t) delta_tmp;
-    }
-
-    // incorporate delta index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | inx), delta, WITH_PAYLOAD));
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_bkp++;
-    #endif
-
-    // prepare for next tick,
-    i_deltas[inx] = 0;
-    ib_arrived[inx] = 0;
-
-    // mark delta as done,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      ib_done |= (1 << inx);
-    #else
-      ib_done++;
-    #endif
-
-    // and check if all deltas done
-    if (ib_done == icfg.b_all_done)
-    {
-      // advance tick
-      //TODO: check if need to schedule or can simply call
-      ib_advance_tick (NULL, NULL);
-    }
+    // advance tick
+    //TODO: check if need to schedule or can simply call
+    ib_advance_tick (NULL, NULL);
   }
 }
 // ------------------------------------------------------------------------
@@ -563,25 +502,6 @@ void in_integr (uint inx)
 // ------------------------------------------------------------------------
 
 
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
- * Lens computation of the input integrator function
- *
- * static void integrateInput(Group G, GroupProc P) {
- *   real dt = Net->dt * G->dtScale, *lastInput = P->unitData;
- *   FOR_EACH_UNIT2(G, {
- *     lastInput[u] += dt * U->dtScale * (U->input - lastInput[u]);
- *     U->input = lastInput[u];
- *   });
- * }
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
-
-
 // ------------------------------------------------------------------------
 //soft clamp element
 // ------------------------------------------------------------------------
@@ -611,28 +531,6 @@ void in_soft_clamp (uint inx)
   }
 }
 // ------------------------------------------------------------------------
-
-
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
- * Lens computation of the soft clamp
- * static void softClampInput(Group G, GroupProc P) {
- *   real initOutput = chooseValue(G->initOutput, Net->initOutput),
- *     gain = chooseValue(G->gain, Net->gain),
- *     strength = chooseValue(G->clampStrength, Net->clampStrength), val;
- *   FOR_EACH_UNIT(G, {
- *     if (!isNaN(U->externalInput)) {
- *       val = initOutput + strength * (U->externalInput - initOutput);
- *       U->input += INV_SIGMOID(val, gain);
- *     }
- *   });
- * }
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
 
 
 // ------------------------------------------------------------------------

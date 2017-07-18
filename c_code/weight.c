@@ -38,13 +38,9 @@ uchar        tick_stop;    // current tick stop decision
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
-uint             *rt; // multicast routing keys data
 weight_t         *wt; // initial connection weights
-mlp_set_t        *es; // example set data
 mlp_example_t    *ex; // example data
-mlp_event_t      *ev; // event data
-activation_t     *it; // example inputs
-activation_t     *tt; // example targets
+uint             *rt; // multicast routing keys data
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
@@ -139,23 +135,9 @@ uint init ()
   wt = (weight_t *) data_specification_get_region
 		  (WEIGHTS, data_address);
 
-  // inputs are not used by weight cores
-  it = NULL;
-
-  // targets are not used by weight cores
-  tt = NULL;
-
-  // example set
-  es = (struct mlp_set *) data_specification_get_region
-		  (EXAMPLE_SET, data_address);
-
   // examples
   ex = (struct mlp_example *) data_specification_get_region
 		  (EXAMPLES, data_address);
-
-  // events
-  ev = (struct mlp_event *) data_specification_get_region
-		  (EVENTS, data_address);
 
   // routing keys
   rt = (uint *) data_specification_get_region
@@ -187,9 +169,6 @@ uint init ()
 // ------------------------------------------------------------------------
 void done (uint ec)
 {
-  // skew execution to avoid tubotron congestion
-  spin1_delay_us (SPINN_SKEW_DELAY);  //@delay
-
   // report problems -- if any
   switch (ec)
   {

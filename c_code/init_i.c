@@ -50,42 +50,13 @@ uint i_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for received net b-d-ps scoreboards
-  if ((if_arrived = ((scoreboard_t *)
-          spin1_malloc (icfg.num_nets * sizeof(scoreboard_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  // allocate memory for received delta b-d-ps scoreboards
-  if ((ib_arrived = ((scoreboard_t *)
-          spin1_malloc (icfg.num_nets * sizeof(scoreboard_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
   // intialize tick
   //NOTE: input cores do not have a tick 0
   tick = SPINN_I_INIT_TICK;
 
-  // initialize nets, deltas and scoreboards
-  for (i = 0; i < icfg.num_nets; i++)
-  {
-    i_nets[i] = 0;
-    i_deltas[i] = 0;
-    if_arrived[i] = 0;
-    ib_arrived[i] = 0;
-  }
+  // initialize scoreboards
   if_done = 0;
   ib_done = 0;
-
-  #if SPLIT_ARR == TRUE
-    ib_all_arrived = icfg.b_init_arrived + icfg.b_next_arrived; //#
-  #else
-    ib_all_arrived = icfg.b_all_arrived;
-  #endif
 
   // initialize synchronization semaphores
   if_thrds_done = 1;

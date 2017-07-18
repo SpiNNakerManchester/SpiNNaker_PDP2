@@ -72,13 +72,10 @@ uchar        tick_stop;    // current tick stop decision
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
-uint             *rt; // multicast routing keys data
-weight_t         *wt; // initial connection weights
-mlp_set_t        *es; // example set data
 mlp_example_t    *ex; // example data
 mlp_event_t      *ev; // event data
 activation_t     *it; // example inputs
-activation_t     *tt; // example targets
+uint             *rt; // multicast routing keys data
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
@@ -95,7 +92,7 @@ i_conf_t       icfg;           // input core configuration parameters
 long_net_t     * i_nets;            // unit nets computed in current tick
 long_delta_t   * i_deltas;          // deltas computed in current tick
 long_delta_t   * i_init_delta;      // deltas computed in initial tick
-pkt_queue_t      i_pkt_queue;       // queue to hold received b-d-ps
+pkt_queue_t      i_pkt_queue;       // queue to hold received nets/deltas
 uchar            i_active;          // processing b-d-ps from queue?
 
 long_net_t     * i_last_integr_net; //last integrator output value
@@ -105,15 +102,12 @@ uint             i_it_idx;          // index into current inputs/targets
 
 // FORWARD phase specific
 // (net processing)
-scoreboard_t   * if_arrived;        // keep track of expected net b-d-p
 scoreboard_t     if_done;           // current tick net computation done
 uint             if_thrds_done;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
 // (delta processing)
 long_delta_t   * ib_init_delta;     // initial delta value for every tick
-scoreboard_t     ib_all_arrived;    // all deltas have arrived in tick
-scoreboard_t   * ib_arrived;        // keep track of expected delta b-d-p
 scoreboard_t     ib_done;           // current tick delta computation done
 //#uint             ib_thrds_done;     // sync. semaphore: proc & stop
 
@@ -161,13 +155,13 @@ uint init ()
   address_t nt = data_specification_get_region (NETWORK, data_address);
 
   // initialize network configuration from SDRAM
-  spin1_memcpy (&ncfg, nt, sizeof(network_conf_t));
+  spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
 
   // core configuration address
   address_t dt = data_specification_get_region (CORE, data_address);
 
   // initialize core-specific configuration from SDRAM
-  spin1_memcpy (&icfg, dt, sizeof(i_conf_t));
+  spin1_memcpy (&icfg, dt, sizeof (i_conf_t));
 
   // inputs iff this core receives inputs from examples file
   if (icfg.input_grp)
@@ -175,13 +169,6 @@ uint init ()
 	  it = (activation_t *) data_specification_get_region
 		  (INPUTS, data_address);
   }
-
-  // targets are not used by input cores
-  tt = NULL;
-
-  // example set
-  es = (struct mlp_set *) data_specification_get_region
-		  (EXAMPLE_SET, data_address);
 
   // examples
   ex = (struct mlp_example *) data_specification_get_region
@@ -221,9 +208,6 @@ uint init ()
 // ------------------------------------------------------------------------
 void done (uint ec)
 {
-  // skew execution to avoid tubotron congestion
-  spin1_delay_us (SPINN_SKEW_DELAY);  //@delay
-
   // report problems -- if any
   switch (ec)
   {
@@ -254,13 +238,6 @@ void done (uint ec)
 
       #ifdef DEBUG_VRB
         io_printf (IO_BUF, "(fd:%08x bd:%08x)\n", if_done, ib_done);
-
-        for (uint i = 0; i < icfg.num_nets; i++)
-        {
-          io_printf (IO_BUF, "(fa:%08x ba:%08x)\n",
-                      if_arrived[i], ib_arrived[i]
-                    );
-        }
       #endif
 
       break;

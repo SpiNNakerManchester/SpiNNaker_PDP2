@@ -65,17 +65,15 @@ extern activation_t     * w_output_history;
 // ------------------------------------------------------------------------
 // sum core variables
 // ------------------------------------------------------------------------
-extern long_net_t     * s_nets[2];     // unit nets computed in current tick
-extern long_error_t   * s_errors[2];   // errors computed in current tick
-extern long_error_t   * s_init_err[2]; // errors computed in first tick
+extern long_net_t     * s_nets;        // unit nets computed in current tick
+extern long_error_t   * s_errors;      // errors computed in current tick
 extern pkt_queue_t      s_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            s_active;      // processing b-d-ps from queue?
-extern scoreboard_t   * sf_arrived[2]; // keep track of expected net b-d-p
+extern scoreboard_t   * sf_arrived;    // keep track of expected net b-d-p
 extern scoreboard_t     sf_done;       // current tick net computation done
 extern uint             sf_thrds_done; // sync. semaphore: proc & stop
 extern long_error_t   * sb_init_error; // initial error value for every tick
-extern scoreboard_t     sb_all_arrived;// all deltas have arrived in tick
-extern scoreboard_t   * sb_arrived[2]; // keep track of expected error b-d-p
+extern scoreboard_t   * sb_arrived;    // keep track of expected error b-d-p
 extern scoreboard_t     sb_done;       // current tick error computation done
 //#extern uint             sb_thrds_done; // sync. semaphore: proc & stop
 // ------------------------------------------------------------------------
@@ -86,15 +84,12 @@ extern scoreboard_t     sb_done;       // current tick error computation done
 extern long_net_t     * i_nets;        // unit nets computed in current tick
 extern long_delta_t   * i_deltas;      // deltas computed in current tick
 extern long_delta_t   * i_init_delta;  // deltas computed in first tick
-extern pkt_queue_t      i_pkt_queue;   // queue to hold received b-d-ps
+extern pkt_queue_t      i_pkt_queue;   // queue to hold received nets/deltas
 extern uchar            i_active;      // processing b-d-ps from queue?
 extern uint             i_it_idx;      // index into current inputs/targets
-extern scoreboard_t   * if_arrived;    // keep track of expected net b-d-p
 extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_done; // sync. semaphore: proc & stop
 extern long_delta_t   * ib_init_delta; // initial delta value for every tick
-extern scoreboard_t     ib_all_arrived;// all deltas have arrived in tick
-extern scoreboard_t   * ib_arrived;    // keep track of expected delta b-d-p
 extern scoreboard_t     ib_done;       // current tick delta computation done
 //#extern uint             ib_thrds_done; // sync. semaphore: proc & stop
 extern long_net_t     * i_last_integr_net;   //last integrator output value

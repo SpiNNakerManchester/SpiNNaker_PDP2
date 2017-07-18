@@ -18,14 +18,7 @@ uint s_init (void)
   uint i;
 
   // allocate memory for nets
-  if ((s_nets[0] = ((long_net_t *)
-         spin1_malloc (scfg.num_nets * sizeof(long_net_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((s_nets[1] = ((long_net_t *)
+  if ((s_nets = ((long_net_t *)
          spin1_malloc (scfg.num_nets * sizeof(long_net_t)))) == NULL
      )
   {
@@ -33,31 +26,7 @@ uint s_init (void)
   }
 
   // allocate memory for errors
-  if ((s_errors[0] = ((long_error_t *)
-         spin1_malloc (scfg.num_nets * sizeof(long_error_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((s_errors[1] = ((long_error_t *)
-         spin1_malloc (scfg.num_nets * sizeof(long_error_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  // allocate memory for the first tick of errors in BACKPROP phase
-  //TODO: is this necessary? -- not used anywhere
-  if ((s_init_err[0] = ((long_error_t *)
-         spin1_malloc (scfg.num_nets * sizeof(long_error_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  //TODO: is this necessary? -- not used anywhere
-  if ((s_init_err[1] = ((long_error_t *)
+  if ((s_errors = ((long_error_t *)
          spin1_malloc (scfg.num_nets * sizeof(long_error_t)))) == NULL
      )
   {
@@ -73,14 +42,7 @@ uint s_init (void)
   }
 
   // allocate memory for received net b-d-ps scoreboards
-  if ((sf_arrived[0] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_nets * sizeof(scoreboard_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((sf_arrived[1] = ((scoreboard_t *)
+  if ((sf_arrived = ((scoreboard_t *)
           spin1_malloc (scfg.num_nets * sizeof(scoreboard_t)))) == NULL
      )
   {
@@ -88,14 +50,7 @@ uint s_init (void)
   }
 
   // allocate memory for received error b-d-ps scoreboards
-  if ((sb_arrived[0] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_nets * sizeof(scoreboard_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((sb_arrived[1] = ((scoreboard_t *)
+  if ((sb_arrived = ((scoreboard_t *)
           spin1_malloc (scfg.num_nets * sizeof(scoreboard_t)))) == NULL
      )
   {
@@ -109,23 +64,13 @@ uint s_init (void)
   // initialize nets, errors and scoreboards
   for (i = 0; i < scfg.num_nets; i++)
   {
-    s_nets[0][i] = 0;
-    s_nets[1][i] = 0;
-    s_errors[0][i] = 0;
-    s_errors[1][i] = 0;
-    sf_arrived[0][i] = 0;
-    sf_arrived[1][i] = 0;
-    sb_arrived[0][i] = 0;
-    sb_arrived[1][i] = 0;
+    s_nets[i] = 0;
+    s_errors[i] = 0;
+    sf_arrived[i] = 0;
+    sb_arrived[i] = 0;
   }
   sf_done = 0;
   sb_done = 0;
-
-  #if SPLIT_ARR == TRUE
-    sb_all_arrived = scfg.b_init_arrived + scfg.b_next_arrived; //#
-  #else
-    sb_all_arrived = scfg.b_all_arrived;
-  #endif
 
   // initialize synchronization semaphores
   sf_thrds_done = 1;

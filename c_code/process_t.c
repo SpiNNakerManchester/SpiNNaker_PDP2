@@ -645,26 +645,6 @@ void t_init_outputs (uint null0, uint null1)
     // Lens has two ways of initialise the output value, as defined in Lens 2.63
     // and Lens 2.64, and the two ways are not compatible
 
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-//NOTE: The following code follows modification MOD009 of Lens version 2.64:
-/******************************************************************************/
-/*  MOD009: (09/10/05) (i) Bug fix for continuous network(courtesy Dave Plaut)*/
-/******************************************************************************/
-// it has been commented out as per e-mail interchange with Stephen Welbourne on 20th Sep 2013
-// the lens code as per MOD009 is the following, from: void resetOutputs(Group G) in act.c in Lens
-//
-//  if (!G->inputProcs || G->outputType & HARD_CLAMP) {
-//    FOR_EACH_UNIT2(G, U->output = O[u] = (isNaN(U->externalInput) ? initOutput : U->externalInput));
-//  } else {
-//    FOR_EACH_UNIT2(G, U->output = O[u] = initOutput);
-//  }
-//
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
-
     // use initial values,
     // TODO: need to verify initInput with Lens
     // NOTE: The following code follows the output of Lens 2.63:
@@ -977,27 +957,6 @@ void out_bias (uint inx)
 // ------------------------------------------------------------------------
 
 
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
- * Lens computation of the weak clamp operator
- *
- * static void weakClampOutput(Group G, GroupProc P) {
- *   real *originalOutput = P->unitHistoryData[HISTORY_INDEX(Net->currentTick)],
- *     strength = chooseValue(G->clampStrength, Net->clampStrength);
- *   FOR_EACH_UNIT2(G, {
- *     originalOutput[u] = U->output;
- *     if (!isNaN(U->externalInput))
- *       U->output += strength * (U->externalInput - U->output);
- *   });
- * }
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
-
-
 // ------------------------------------------------------------------------
 // compute the weak clamp, as defined by lens, and store the injected value, if
 // the network needs training
@@ -1141,25 +1100,6 @@ void out_integr_back (uint inx)
 // ------------------------------------------------------------------------
 
 
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
-static void hardClampOutputBack(Group G, GroupProc P) {
-  printf ("hardClampOutputBack\n");
-  int tick = HISTORY_INDEX(Net->currentTick);
-  real *externalInputHistory = P->unitHistoryData[tick];
-  FOR_EACH_UNIT2(G, {
-    if (!isNaN(externalInputHistory[u]))
-      U->inputDeriv = 0.0;
-  });
-}
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
-
-
 // ------------------------------------------------------------------------
 // TODO: BACKPROP phase for the hard clamp - this is a stub
 // ------------------------------------------------------------------------
@@ -1179,26 +1119,6 @@ void out_hard_clamp_back (uint inx)
 // ------------------------------------------------------------------------
 
 
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
-static void weakClampOutputBack(Group G, GroupProc P) {
-  real *originalOutput = P->unitHistoryData[HISTORY_INDEX(Net->currentTick)],
-    scale = 1.0 - chooseValue(G->clampStrength, Net->clampStrength);
-  FOR_EACH_UNIT2(G, {
-    if (U->output != originalOutput[u]) {
-      U->output = originalOutput[u];
-      U->outputDeriv *= scale;
-    }
-  });
-}
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
-
-
 // ------------------------------------------------------------------------
 // TODO: BACKPROP phase for the weak clamp - for the moment is a stub
 // ------------------------------------------------------------------------
@@ -1209,20 +1129,6 @@ void out_weak_clamp_back (uint inx)
   #endif
 }
 // ------------------------------------------------------------------------
-
-
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
-static void biasClampOutputBack(Group G, GroupProc P) {
-  printf ("biasClampOutputBack\n");
-  FOR_EACH_UNIT(G, U->inputDeriv = 0.0);
-}
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
 
 
 // ------------------------------------------------------------------------
@@ -1446,36 +1352,6 @@ void error_squared (uint inx)
     t_output_deriv[inx] = 0;
 }
 // ------------------------------------------------------------------------
-
-
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
-#define SMALL_VAL ((double) 1e-8)
-#define LARGE_VAL ((double) (SPINN_ACTIV_MAX >> SPINN_ACTIV_SHIFT)+1)
-
-#define SIMPLE_CED(y, d)\
-     ((((real) (y)*(1.0-(y))) <= SMALL_VAL) ?\
-     (((real) (y)-(d)) * LARGE_VAL) :\
-       (((real) (y)-(d))/((real) (y)*(1.0-(y)))))
-
-#define CED_ZERO_TARGET(y)\
-     (((real) (1.0-(y)) <= SMALL_VAL) ? LARGE_VAL :\
-     ((real) 1.0/(1.0-(y))))
-
-#define CED_ONE_TARGET(y)\
-     (((real) (y) <= SMALL_VAL) ? -LARGE_VAL :\
-     ((real) -1.0/(y)))
-
-#define CROSS_ENTROPY_DERIV(y, d)\
-     (((real) (d) == 0.0) ? CED_ZERO_TARGET(y) :\
-       (((real) (d) == 1.0) ? CED_ONE_TARGET(y) :\
-     SIMPLE_CED(y, d)))
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
 
 
 // ------------------------------------------------------------------------

@@ -332,9 +332,6 @@ void wf_advance_tick (uint null0, uint null1)
       tot_tick++;
     #endif
 
-    // change packet key colour,
-    fwdKey ^= SPINN_COLOUR_KEY;
-
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
 
@@ -363,9 +360,6 @@ void wb_advance_tick (uint null0, uint null1)
   #ifdef DEBUG_VRB
     io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
   #endif
-
-  // change packet key colour,
-  bkpKey ^= SPINN_COLOUR_KEY;
 
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)
@@ -447,9 +441,6 @@ void wf_advance_event (void)
     #ifdef DEBUG
       tot_tick++;
     #endif
-
-    // change packet key colour,
-    fwdKey ^= SPINN_COLOUR_KEY;
 
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);

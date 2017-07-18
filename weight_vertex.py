@@ -56,12 +56,8 @@ class WeightVertex(
         # binary, configuration and data files
         self._aplxFile = "binaries/weight.aplx"
         self._coreFile = "data/w_conf_{}_{}_{}.dat".format (file_x, file_y, file_c)
-        self._inputsFile = "data/inputs_{}.dat".format (group)
-        self._exSetFile = "data/example_set.dat"
         self._examplesFile = "data/examples.dat"
-        self._eventsFile = "data/events.dat"
         self._weightsFile = "data/weights_{}_{}_{}.dat".format (file_x, file_y, file_c)
-        self._routingFile = "data/routingtbl_{}_{}.dat".format (file_x, file_y)
 
         # size in bytes of the data in the regions
         self._N_NETWORK_CONFIGURATION_BYTES = \
@@ -72,24 +68,9 @@ class WeightVertex(
             if os.path.isfile (self._coreFile) \
             else 0
 
-        self._N_INPUTS_CONFIGURATION_BYTES = \
-            os.path.getsize (self._inputsFile) \
-            if os.path.isfile (self._inputsFile) \
-            else 0
-
-        self._N_EXAMPLE_SET_BYTES = \
-            os.path.getsize (self._exSetFile) \
-            if os.path.isfile (self._exSetFile) \
-            else 0
-
         self._N_EXAMPLES_BYTES = \
             os.path.getsize (self._examplesFile) \
             if os.path.isfile (self._examplesFile) \
-            else 0
-
-        self._N_EVENTS_BYTES = \
-            os.path.getsize (self._eventsFile) \
-            if os.path.isfile (self._eventsFile) \
             else 0
 
         self._N_WEIGHTS_BYTES = \
@@ -102,10 +83,7 @@ class WeightVertex(
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
             self._N_CORE_CONFIGURATION_BYTES + \
-            self._N_INPUTS_CONFIGURATION_BYTES + \
-            self._N_EXAMPLE_SET_BYTES + \
             self._N_EXAMPLES_BYTES + \
-            self._N_EVENTS_BYTES + \
             self._N_WEIGHTS_BYTES + \
             self._N_KEY_BYTES
         )
@@ -179,38 +157,6 @@ class WeightVertex(
             for byte in pc:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
-        # Reserve and write the input data region
-        if os.path.isfile (self._inputsFile):
-            spec.reserve_memory_region (
-                MLPRegions.INPUTS.value,
-                self._N_INPUTS_CONFIGURATION_BYTES)
-
-            spec.switch_write_focus (MLPRegions.INPUTS.value)
-
-            # open input data file
-            inputs_file = open (self._inputsFile, "rb")
-
-            # read the data into a numpy array and put in spec
-            ic = np.fromfile (inputs_file, np.uint8)
-            for byte in ic:
-                spec.write_value (byte, data_type=DataType.UINT8)
-
-        # Reserve and write the example set region
-        if os.path.isfile (self._exSetFile):
-            spec.reserve_memory_region (
-                MLPRegions.EXAMPLE_SET.value,
-                self._N_EXAMPLE_SET_BYTES)
-
-            spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
-
-            # open the example set file
-            ex_set_file = open (self._exSetFile, "rb")
-
-            # read the data into a numpy array and put in spec
-            es = np.fromfile (ex_set_file, np.uint8)
-            for byte in es:
-                spec.write_value (byte, data_type=DataType.UINT8)
-
         # Reserve and write the examples region
         if os.path.isfile (self._examplesFile):
             spec.reserve_memory_region (
@@ -225,22 +171,6 @@ class WeightVertex(
             # read the data into a numpy array and put in spec
             ex = np.fromfile (examples_file, np.uint8)
             for byte in ex:
-                spec.write_value (byte, data_type=DataType.UINT8)
-
-        # Reserve and write the events region
-        if os.path.isfile (self._eventsFile):
-            spec.reserve_memory_region (
-                MLPRegions.EVENTS.value,
-                self._N_EVENTS_BYTES)
-
-            spec.switch_write_focus (MLPRegions.EVENTS.value)
-
-            # open the events file
-            ev_file = open (self._eventsFile, "rb")
-
-            # read the data into a numpy array and put in spec
-            ev = np.fromfile (ev_file, np.uint8)
-            for byte in ev:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
         # Reserve and write the weights region

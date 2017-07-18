@@ -201,26 +201,11 @@ typedef struct w_conf               // weight core configuration
 // sum cores accumulate acummulate b-d-ps sent by weight cores and
 // compute unit nets (FORWARD phase) and errors (BACKPROP phase)
 // ------------------------------------------------------------------------
-typedef struct s_conf    // sum core configuration
+typedef struct s_conf               // sum core configuration
 {
-  uchar        output_grp;          // is this an OUTPUT group?
-  uchar        input_grp;           // is this an INPUT group?
   uint         num_nets;            // this core's number of unit nets
-  uint         net_blk;             // this core's net block
-  uint         error_blk;           // this core's error block
-  scoreboard_t f_all_arrived;       // all expected unit output b-d-ps
-  scoreboard_t f_all_done;          // all unit outputs
-  scoreboard_t b_all_arrived;       // all expected error d-b-ps
-  scoreboard_t b_all_done;          // all error deltas
-  uint         num_in_procs;        // number of input (net) comp procedures
-  uint         procs_list[SPINN_NUM_IN_PROCS];
-  uchar        in_integr_en;        // input integrator in use
-  fpreal       in_integr_dt;        // integration time const for input integr
-  fpreal       soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
-  net_t        initNets;            // initial value for unit nets
-  short_activ_t initOutput;         // initial value for unit outputs
-  uint         inputs_addr;         // address in SDRAM for inputs file
-} s_conf_t;
+  scoreboard_t all_arrived;         // all expected partial nets/errors
+  } s_conf_t;
 // ------------------------------------------------------------------------
 
 
@@ -230,25 +215,18 @@ typedef struct s_conf    // sum core configuration
 // input cores process the values received from the sum cores through the
 // elements of the input pipeline as required by LENS.
 // ------------------------------------------------------------------------
-typedef struct i_conf               // sum core configuration
+typedef struct i_conf                // input core configuration
 {
-  uchar        output_grp;          // is this an OUTPUT group?
-  uchar        input_grp;           // is this an INPUT group?
-  uint         num_nets;            // this core's number of unit nets
-  uint         net_blk;             // this core's net block
-  uint         delta_blk;           // this core's delta block
-  scoreboard_t f_all_arrived;       // all expected unit output b-d-ps
-  scoreboard_t f_all_done;          // all unit outputs
-  scoreboard_t b_all_arrived;       // all expected error d-b-ps
-  scoreboard_t b_all_done;          // all error deltas
-  uint         num_in_procs;        // number of input (net) comp procedures
-  uint         procs_list[SPINN_NUM_IN_PROCS];
-  uchar        in_integr_en;        // input integrator in use
-  fpreal       in_integr_dt;        // integration time const for input integr
-  fpreal       soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
-  net_t        initNets;            // initial value for unit nets
-  short_activ_t initOutput;         // initial value for unit outputs
-  uint         inputs_addr;         // address in SDRAM for inputs file
+  uchar         output_grp;          // is this an OUTPUT group?
+  uchar         input_grp;           // is this an INPUT group?
+  uint          num_nets;            // this core's number of unit nets
+  uint          num_in_procs;        // number of input (net) comp procedures
+  uint          procs_list[SPINN_NUM_IN_PROCS];
+  uchar         in_integr_en;        // input integrator in use
+  fpreal        in_integr_dt;        // integration time const for input integr
+  fpreal        soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
+  net_t         initNets;            // initial value for unit nets
+  short_activ_t initOutput;          // initial value for unit outputs
 } i_conf_t;
 // ------------------------------------------------------------------------
 
@@ -303,14 +281,6 @@ typedef struct t_conf    // threshold core configuration
 // ------------------------------------------------------------------------
 
 
-typedef struct mc_table_entry // multicast routing entry
-{
-  uint key;               // entry key
-  uint mask;              // entry mask
-  uint route;             // entry route
-} mc_table_entry_t;
-
-
 typedef struct
 {
   uint key;               // packet key (for routing)
@@ -332,7 +302,7 @@ typedef struct
 // ------------------------------------------------------------------------
 // example configuration in SDRAM
 // ------------------------------------------------------------------------
-// Examples are organized as LENS exmaples (see LENS documentation).
+// Examples are organized as LENS examples (see LENS documentation).
 // ------------------------------------------------------------------------
 typedef struct mlp_set {
   uint   num_examples;

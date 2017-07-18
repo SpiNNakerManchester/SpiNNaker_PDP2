@@ -59,7 +59,6 @@ class ThresholdVertex(
         self._exSetFile = "data/example_set.dat"
         self._examplesFile = "data/examples.dat"
         self._eventsFile = "data/events.dat"
-        self._routingFile = "data/routingtbl_{}_{}.dat".format (file_x, file_y)
 
         self._N_NETWORK_CONFIGURATION_BYTES = \
             len ((self._network).config)

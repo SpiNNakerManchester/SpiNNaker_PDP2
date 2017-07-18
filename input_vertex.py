@@ -1,3 +1,4 @@
+import struct
 import numpy as np
 import os
 
@@ -36,7 +37,16 @@ class InputVertex(
     """
 
     def __init__(self, network=None, group=None,
-                 file_x=None, file_y=None, file_c=None):
+                 output_grp = 0,
+                 input_grp = 0,
+                 num_nets = None,
+                 num_in_procs = 0,
+                 procs_list = [0, 0],
+                 in_integr_en = 0,
+                 in_integr_dt = 0,
+                 soft_clamp_strength = 0x00008000,
+                 initNets = 0,
+                 initOutput = 0x4000):
         """
         """
 
@@ -46,6 +56,18 @@ class InputVertex(
         # MLP network
         self._network = network
 
+        # input core-specific parameters
+        self._output_grp          = output_grp
+        self._input_grp           = input_grp
+        self._num_nets            = num_nets
+        self._num_in_procs        = num_in_procs
+        self._procs_list          = procs_list
+        self._in_integr_en        = in_integr_en
+        self._in_integr_dt        = in_integr_dt
+        self._soft_clamp_strength = soft_clamp_strength
+        self._initNets            = initNets
+        self._initOutput          = initOutput
+
         # forward and backprop link partition names
         self._fwd_link = "fwd_i{}".format (group)
         self._bkp_link = "bkp_i{}".format (group)
@@ -54,30 +76,20 @@ class InputVertex(
 
         # binary, configuration and data files
         self._aplxFile = "binaries/input.aplx"
-        self._coreFile = "data/i_conf_{}_{}_{}.dat".format (file_x, file_y, file_c)
         self._inputsFile = "data/inputs_{}.dat".format (group)
-        self._exSetFile = "data/example_set.dat"
         self._examplesFile = "data/examples.dat"
         self._eventsFile = "data/events.dat"
-        self._routingFile = "data/routingtbl_{}_{}.dat".format (file_x, file_y)
 
         # size in bytes of the data in the regions
         self._N_NETWORK_CONFIGURATION_BYTES = \
             len ((self._network).config)
 
         self._N_CORE_CONFIGURATION_BYTES = \
-            os.path.getsize (self._coreFile) \
-            if os.path.isfile (self._coreFile) \
-            else 0
+            len (self.config)
 
         self._N_INPUTS_CONFIGURATION_BYTES = \
             os.path.getsize (self._inputsFile) \
             if os.path.isfile (self._inputsFile) \
-            else 0
-
-        self._N_EXAMPLE_SET_BYTES = \
-            os.path.getsize (self._exSetFile) \
-            if os.path.isfile (self._exSetFile) \
             else 0
 
         self._N_EXAMPLES_BYTES = \
@@ -96,7 +108,6 @@ class InputVertex(
             self._N_NETWORK_CONFIGURATION_BYTES + \
             self._N_CORE_CONFIGURATION_BYTES + \
             self._N_INPUTS_CONFIGURATION_BYTES + \
-            self._N_EXAMPLE_SET_BYTES + \
             self._N_EXAMPLES_BYTES + \
             self._N_EVENTS_BYTES + \
             self._N_KEY_BYTES
@@ -109,6 +120,42 @@ class InputVertex(
     @property
     def bkp_link (self):
         return self._bkp_link
+
+    @property
+    def config (self):
+        """ returns a packed string that corresponds to
+            (C struct) i_conf in mlp_types.h:
+
+            typedef struct i_conf
+            {
+              uchar         output_grp;
+              uchar         input_grp;
+              uint          num_nets;
+              uint          num_in_procs;
+              uint          procs_list[SPINN_NUM_IN_PROCS];
+              uchar         in_integr_en;
+              fpreal        in_integr_dt;
+              fpreal        soft_clamp_strength;
+              net_t         initNets;
+              short_activ_t initOutput;
+            } i_conf_t;
+
+            pack: standard sizes, little-endian byte-order,
+            explicit padding
+        """
+        return struct.pack("<2B2x4IB3x3ih2x",
+                           self._output_grp,
+                           self._input_grp,
+                           self._num_nets,
+                           self._num_in_procs,
+                           self._procs_list[0],
+                           self._procs_list[1],
+                           self._in_integr_en,
+                           self._in_integr_dt,
+                           self._soft_clamp_strength,
+                           self._initNets,
+                           self._initOutput & 0xffff
+                           )
 
     @property
     @overrides (MachineVertex.resources_required)
@@ -153,19 +200,15 @@ class InputVertex(
             spec.write_value (ord (c), data_type=DataType.UINT8)
 
         # Reserve and write the core configuration region
-        if os.path.isfile (self._coreFile):
-            spec.reserve_memory_region (
-                MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
+        spec.reserve_memory_region (
+            MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
 
-            spec.switch_write_focus (MLPRegions.CORE.value)
+        spec.switch_write_focus (MLPRegions.CORE.value)
 
-            # open the core configuration file
-            core_file = open (self._coreFile, "rb")
+        # write the core configuration into spec
+        for c in self.config:
+            spec.write_value (ord (c), data_type=DataType.UINT8)
 
-            # read the data into a numpy array and put in spec
-            pc = np.fromfile (core_file, np.uint8)
-            for byte in pc:
-                spec.write_value (byte, data_type=DataType.UINT8)
 
         # Reserve and write the input data region
         if os.path.isfile (self._inputsFile):
@@ -181,22 +224,6 @@ class InputVertex(
             # read the data into a numpy array and put in spec
             ic = np.fromfile (inputs_file, np.uint8)
             for byte in ic:
-                spec.write_value (byte, data_type=DataType.UINT8)
-
-        # Reserve and write the example set region
-        if os.path.isfile (self._exSetFile):
-            spec.reserve_memory_region (
-                MLPRegions.EXAMPLE_SET.value,
-                self._N_EXAMPLE_SET_BYTES)
-
-            spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
-
-            # open the example set file
-            ex_set_file = open (self._exSetFile, "rb")
-
-            # read the data into a numpy array and put in spec
-            es = np.fromfile (ex_set_file, np.uint8)
-            for byte in es:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
         # Reserve and write the examples region

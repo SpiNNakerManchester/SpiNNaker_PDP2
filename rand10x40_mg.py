@@ -44,10 +44,14 @@ wv2_4 = WeightVertex    (rand10x40, group = 2, frm_grp = 4,
                          file_x=0, file_y=0, file_c=3)
 wv2_5 = WeightVertex    (rand10x40, group = 2, frm_grp = 5,
                          file_x=0, file_y=0, file_c=4)
-sv2   = SumVertex       (rand10x40, group = 2,
-                         file_x=0, file_y=0, file_c=5)
-iv2   = InputVertex     (rand10x40, group = 2,
-                         file_x=0, file_y=0, file_c=6)
+sv2   = SumVertex       (rand10x40,
+                         group = 2,
+                         num_nets = 1,
+                         all_arrived = 4)
+iv2   = InputVertex     (rand10x40,
+                         group = 2,
+                         num_nets = 1,
+                         initOutput = 0x7fff)
 tv2   = ThresholdVertex (rand10x40, group = 2,
                          file_x=0, file_y=0, file_c=7)
 
@@ -72,10 +76,14 @@ wv3_4 = WeightVertex    (rand10x40, group = 3, frm_grp = 4,
                          file_x=0, file_y=0, file_c=10)
 wv3_5 = WeightVertex    (rand10x40, group = 3, frm_grp = 5,
                          file_x=0, file_y=0, file_c=11)
-sv3   = SumVertex       (rand10x40, group = 3,
-                         file_x=0, file_y=0, file_c=12)
-iv3   = InputVertex     (rand10x40, group = 3,
-                         file_x=0, file_y=0, file_c=13)
+sv3   = SumVertex       (rand10x40,
+                         group = 3,
+                         num_nets = 10,
+                         all_arrived = 4)
+iv3   = InputVertex     (rand10x40,
+                         group = 3,
+                         input_grp = 1,
+                         num_nets = 10)
 tv3   = ThresholdVertex (rand10x40, group = 3,
                          file_x=0, file_y=0, file_c=14)
 
@@ -100,10 +108,16 @@ wv4_4 = WeightVertex    (rand10x40, group = 4, frm_grp = 4,
                          file_x=0, file_y=1, file_c=1)
 wv4_5 = WeightVertex    (rand10x40, group = 4, frm_grp = 5,
                          file_x=0, file_y=1, file_c=2)
-sv4   = SumVertex       (rand10x40, group = 4,
-                         file_x=0, file_y=1, file_c=3)
-iv4   = InputVertex     (rand10x40, group = 4,
-                         file_x=0, file_y=1, file_c=4)
+sv4   = SumVertex       (rand10x40,
+                         group = 4,
+                         num_nets = 50,
+                         all_arrived = 4)
+iv4   = InputVertex     (rand10x40,
+                         group = 4,
+                         num_nets = 50,
+                         num_in_procs = 1,
+                         in_integr_en = 1,
+                         in_integr_dt = 0x00003333)
 tv4   = ThresholdVertex (rand10x40, group = 4,
                          file_x=0, file_y=1, file_c=5)
 
@@ -128,10 +142,14 @@ wv5_4 = WeightVertex    (rand10x40, group = 5, frm_grp = 4,
                          file_x=0, file_y=1, file_c=8)
 wv5_5 = WeightVertex    (rand10x40, group = 5, frm_grp = 5,
                          file_x=0, file_y=1, file_c=9)
-sv5   = SumVertex       (rand10x40, group = 5,
-                         file_x=0, file_y=1, file_c=10)
-iv5   = InputVertex     (rand10x40, group = 5,
-                         file_x=0, file_y=1, file_c=11)
+sv5   = SumVertex       (rand10x40,
+                         group = 5,
+                         num_nets = 10,
+                         all_arrived = 4)
+iv5   = InputVertex     (rand10x40,
+                         group = 5,
+                         output_grp = 1,
+                         num_nets = 10)
 tv5   = ThresholdVertex (rand10x40, group = 5,
                          file_x=0, file_y=1, file_c=12)
 
