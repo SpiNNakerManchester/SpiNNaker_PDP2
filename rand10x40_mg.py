@@ -4,7 +4,7 @@ import spinnaker_graph_front_end as g
 
 from pacman.model.graphs.machine import MachineEdge
 
-from mlp_network      import MLPNetwork, MLPTypes
+from mlp_network      import MLPNetwork, MLPTypes, MLPInputProcs
 from input_vertex     import InputVertex
 from sum_vertex       import SumVertex
 from threshold_vertex import ThresholdVertex
@@ -116,6 +116,8 @@ iv4   = InputVertex     (rand10x40,
                          group = 4,
                          num_nets = 50,
                          num_in_procs = 1,
+                         procs_list = [MLPInputProcs.IN_INTEGR.value,\
+                                       MLPInputProcs.IN_NONE.value],
                          in_integr_en = 1,
                          in_integr_dt = 0x00003333)
 tv4   = ThresholdVertex (rand10x40, group = 4,

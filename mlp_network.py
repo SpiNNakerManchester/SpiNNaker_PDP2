@@ -1,6 +1,18 @@
 import struct
 from enum import Enum
 
+class MLPRegions (Enum):
+    """ regions used by MLP cores
+    """
+    NETWORK = 0
+    CORE = 1
+    INPUTS = 2
+    TARGETS = 3
+    EXAMPLE_SET = 4
+    EXAMPLES = 5
+    EVENTS = 6
+    WEIGHTS = 7
+    ROUTING = 8
 
 class MLPTypes (Enum):
     """ MLP network types
@@ -9,6 +21,14 @@ class MLPTypes (Enum):
     SIMPLE_REC = 1
     RBPTT      = 2
     CONT       = 3
+
+
+class MLPInputProcs (Enum):
+    """ MLP input-stage procedures
+    """
+    IN_INTEGR     = 0
+    IN_SOFT_CLAMP = 1
+    IN_NONE       = 255
 
 
 class MLPNetwork():

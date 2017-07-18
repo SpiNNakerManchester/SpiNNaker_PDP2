@@ -22,7 +22,7 @@ from spinn_front_end_common.abstract_models\
     .abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
 
-from mlp_regions import MLPRegions
+from mlp_network import MLPRegions
 
 
 class ThresholdVertex(

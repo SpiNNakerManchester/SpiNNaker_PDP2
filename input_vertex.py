@@ -25,7 +25,7 @@ from spinn_front_end_common.abstract_models\
     .abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
 
-from mlp_regions import MLPRegions
+from mlp_network import MLPRegions, MLPInputProcs
 
 
 class InputVertex(
@@ -41,7 +41,8 @@ class InputVertex(
                  input_grp = 0,
                  num_nets = None,
                  num_in_procs = 0,
-                 procs_list = [0, 0],
+                 procs_list = [MLPInputProcs.IN_NONE.value,\
+                               MLPInputProcs.IN_NONE.value],
                  in_integr_en = 0,
                  in_integr_dt = 0,
                  soft_clamp_strength = 0x00008000,
