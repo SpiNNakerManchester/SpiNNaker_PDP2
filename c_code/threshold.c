@@ -211,18 +211,41 @@ uint init ()
   // initialize core-specific configuration from SDRAM
   spin1_memcpy (&tcfg, dt, sizeof(t_conf_t));
 
+  io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
+  io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
+  io_printf (IO_BUF, "no: %d\n", tcfg.num_outputs);
+  io_printf (IO_BUF, "fa: %d\n", tcfg.f_s_all_arr);
+  io_printf (IO_BUF, "ba: %d\n", tcfg.b_s_all_arr);
+  io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
+  io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
+  io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
+  io_printf (IO_BUF, "ic: %f\n", tcfg.out_integr_dt);
+  io_printf (IO_BUF, "op: %d\n", tcfg.num_out_procs);
+  io_printf (IO_BUF, "l0: %d\n", tcfg.procs_list[0]);
+  io_printf (IO_BUF, "l1: %d\n", tcfg.procs_list[1]);
+  io_printf (IO_BUF, "l2: %d\n", tcfg.procs_list[2]);
+  io_printf (IO_BUF, "l3: %d\n", tcfg.procs_list[3]);
+  io_printf (IO_BUF, "l4: %d\n", tcfg.procs_list[4]);
+  io_printf (IO_BUF, "wc: %f\n", tcfg.weak_clamp_strength);
+  io_printf (IO_BUF, "io: %k\n", tcfg.initOutput);
+  io_printf (IO_BUF, "gc: %d\n", tcfg.group_criterion);
+  io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
+  io_printf (IO_BUF, "g1: %d\n", tcfg.is_first_output_group);
+  io_printf (IO_BUF, "gl: %d\n", tcfg.is_last_output_group);
+  io_printf (IO_BUF, "ef: %d\n", tcfg.error_function);
+
   // inputs
-  it = (activation_t *) data_specification_get_region
+  if (tcfg.input_grp)
+  {
+    it = (activation_t *) data_specification_get_region
 		  (INPUTS, data_address);
+  }
 
   // targets
-  tt = (activation_t *) data_specification_get_region
-		  (TARGETS, data_address);
-
-  for (uint i = 0; i < 20; i++)
+  if (tcfg.output_grp)
   {
-	  //io_printf (IO_BUF, "tt[%u]: %k\n", i, tt[i] >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
-	  io_printf (IO_BUF, "tt[%u]: %k\n", i, tt[i]);
+    tt = (activation_t *) data_specification_get_region
+		  (TARGETS, data_address);
   }
 
   // example set
@@ -297,8 +320,8 @@ void done (uint ec)
 
       #ifdef DEBUG_VRB
         io_printf (IO_BUF, "(tactive:%u ta:0x%08x/0x%08x tb:0x%08x/0x%08x)\n",
-                    t_active, tf_arrived, tcfg.f_all_arrived,
-                    tb_arrived, tcfg.b_all_arrived
+                    t_active, tf_arrived, tcfg.num_outputs,
+                    tb_arrived, tcfg.num_outputs
                   );
         io_printf (IO_BUF, "(tsd:%u tsa:0x%08x/0x%08x)\n",
                     t_sync_done, t_sync_arr, tcfg.f_s_all_arr

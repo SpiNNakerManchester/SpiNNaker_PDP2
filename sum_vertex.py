@@ -36,25 +36,29 @@ class SumVertex(
     """ A vertex to implement an MLP input core
     """
 
-    def __init__(self, network=None, group=None,
-                 num_nets=None,
-                 all_arrived=None):
+    def __init__(self,
+                 network = None,
+                 group = None,
+                 num_nets = None,
+                 all_arrived = None
+                 ):
         """
         """
-
-        MachineVertex.__init__(self, label =\
-                               "s{} core".format (group))
 
         # MLP network
         self._network = network
+        self._group   = group
+
+        MachineVertex.__init__(self, label =\
+                               "s{} core".format (self._group))
 
         # sum core-specific parameters
         self._num_nets    = num_nets
         self._all_arrived = all_arrived
 
         # forward and backprop link partition names
-        self._fwd_link = "fwd_s{}".format (group)
-        self._bkp_link = "bkp_s{}".format (group)
+        self._fwd_link = "fwd_s{}".format (self._group)
+        self._bkp_link = "bkp_s{}".format (self._group)
 
         self._n_keys = 65536
 

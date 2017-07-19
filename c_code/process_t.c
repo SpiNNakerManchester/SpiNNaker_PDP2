@@ -86,7 +86,7 @@ void tf_process (uint null0, uint null1)
     #endif
 
     // and check if all nets arrived (i.e., all outputs done)
-    if (tf_arrived == tcfg.f_all_arrived)
+    if (tf_arrived == tcfg.num_outputs)
     {
       // if possible, FORWARD stop criterion
       if (tcfg.output_grp)
@@ -208,8 +208,8 @@ void tb_process (uint null0, uint null1)
     #endif
 
     #ifdef DEBUG_VRB
-      io_printf(IO_BUF, "d[%2d][%2d] = %10.7f (%08x)\n", tcfg.delta_blk, inx,
-                 SPINN_CONV_TO_PRINT(delta, SPINN_DELTA_SHIFT),
+      io_printf(IO_BUF, "d[%2d] = %10.7f (%08x)\n", inx,
+                 SPINN_CONV_TO_PRINT (delta, SPINN_DELTA_SHIFT),
                  delta
                );
     #endif
@@ -642,28 +642,33 @@ void t_init_outputs (uint null0, uint null1)
   for (uint i = 0; i < tcfg.num_outputs; i++)
   {
     // setup the initial output value.
-    // Lens has two ways of initialise the output value, as defined in Lens 2.63
-    // and Lens 2.64, and the two ways are not compatible
+    // Lens has two ways of initialise the output value,
+	// as defined in Lens 2.63 and Lens 2.64,
+	// and the two ways are not compatible
 
     // use initial values,
     // TODO: need to verify initInput with Lens
     // NOTE: The following code follows the output of Lens 2.63:
     // initialise the output value of the units
 
-    // hack to force the initial output value of the bias unit to be 1 rather 0.999969
-    if (tcfg.initOutput == 32767)
+    // TODO: hack to force the initial output value of the
+	// bias unit to be 1 rather 0.999969
+    if (tcfg.initOutput == SPINN_SHORT_ACTIV_MAX)
     {
       t_outputs[i] = SPINN_ACTIV_ONE;
     }
     else
     {
-      t_outputs[i] = (tcfg.initOutput << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+      t_outputs[i] = (tcfg.initOutput
+    		  << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
     }
 
     // if the output integrator is used
     // reset the array of the last values
     if (tcfg.out_integr_en) {
-      t_last_integr_output[i] = (tcfg.initOutput << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+      t_last_integr_output[i] = (tcfg.initOutput
+    		  << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+
       t_last_integr_output_deriv[i] = 0;
     }
 

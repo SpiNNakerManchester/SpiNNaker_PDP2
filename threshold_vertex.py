@@ -1,3 +1,4 @@
+import struct
 import numpy as np
 import os
 
@@ -22,7 +23,7 @@ from spinn_front_end_common.abstract_models\
     .abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
 
-from mlp_network import MLPRegions
+from mlp_network import MLPRegions, MLPOutputProcs
 
 
 class ThresholdVertex(
@@ -33,29 +34,74 @@ class ThresholdVertex(
     """ A vertex to implement an MLP threshold core
     """
 
-    def __init__(self, network=None, group=None,
-                 file_x=None, file_y=None, file_c=None):
+    def __init__(self,
+                 network=None,
+                 group=None,
+                 output_grp = 0,
+                 input_grp = 0,
+                 num_outputs = None,
+                 f_s_all_arr = None,
+                 b_s_all_arr = None,
+                 write_out = 0,
+                 write_blk = 0,
+                 out_integr_en = 0,
+                 out_integr_dt = 0,
+                 num_out_procs = 0,
+                 procs_list = [MLPOutputProcs.OUT_NONE.value,\
+                               MLPOutputProcs.OUT_NONE.value,\
+                               MLPOutputProcs.OUT_NONE.value,\
+                               MLPOutputProcs.OUT_NONE.value,\
+                               MLPOutputProcs.OUT_NONE.value],
+                 weak_clamp_strength = 0x00008000,
+                 initOutput = 0x4000,
+                 group_criterion = 0,
+                 criterion_function = 0,
+                 is_first_output_group = 0,
+                 is_last_output_group = 0,
+                 error_function = 0
+                 ):
         """
         """
-
-        MachineVertex.__init__(self, label =\
-                               "t{} core".format (group))
 
         # MLP network
         self._network = network
+        self._group   = group
+
+        MachineVertex.__init__(self, label =\
+                               "t{} core".format (self._group))
+
+        # threshold core-specific parameters
+        self._output_grp            = output_grp
+        self._input_grp             = input_grp
+        self._num_outputs           = num_outputs
+        self._f_s_all_arr           = f_s_all_arr
+        self._b_s_all_arr           = b_s_all_arr
+        self._write_out             = write_out
+        self._write_blk             = write_blk
+        self._out_integr_en         = out_integr_en
+        self._out_integr_dt         = out_integr_dt
+        self._num_out_procs         = num_out_procs
+        self._procs_list            = procs_list
+        self._weak_clamp_strength   = weak_clamp_strength
+        self._initOutput            = initOutput
+        self._group_criterion       = group_criterion
+        self._criterion_function    = criterion_function
+        self._is_first_output_group = is_first_output_group
+        self._is_last_output_group  = is_last_output_group
+        self._error_function        = error_function
+
 
         # forward and backprop link partition names
-        self._fwd_link = "fwd_s{}".format (group)
-        self._bkp_link = "bkp_s{}".format (group)
-        self._stp_link = "stp_s{}".format (group)
+        self._fwd_link = "fwd_s{}".format (self._group)
+        self._bkp_link = "bkp_s{}".format (self._group)
+        self._stp_link = "stp_s{}".format (self._group)
 
         self._n_keys = 65536
 
         # binary, configuration and data files
         self._aplxFile = "binaries/threshold.aplx"
-        self._coreFile = "data/t_conf_{}_{}_{}.dat".format (file_x, file_y, file_c)
-        self._inputsFile = "data/inputs_{}.dat".format (group)
-        self._targetsFile = "data/targets_{}.dat".format (group)
+        self._inputsFile = "data/inputs_{}.dat".format (self._group)
+        self._targetsFile = "data/targets_{}.dat".format (self._group)
         self._exSetFile = "data/example_set.dat"
         self._examplesFile = "data/examples.dat"
         self._eventsFile = "data/events.dat"
@@ -64,9 +110,7 @@ class ThresholdVertex(
             len ((self._network).config)
 
         self._N_CORE_CONFIGURATION_BYTES = \
-            os.path.getsize (self._coreFile) \
-            if os.path.isfile (self._coreFile) \
-            else 0
+            len (self.config)
 
         self._N_INPUTS_CONFIGURATION_BYTES = \
             os.path.getsize (self._inputsFile) \
@@ -119,6 +163,60 @@ class ThresholdVertex(
         return self._stp_link
 
     @property
+    def config (self):
+        """ returns a packed string that corresponds to
+            (C struct) t_conf in mlp_types.h:
+
+            typedef struct t_conf
+            {
+              uchar         output_grp;
+              uchar         input_grp;
+              uint          num_outputs;
+              scoreboard_t  f_s_all_arr;
+              scoreboard_t  b_s_all_arr;
+              uchar         write_out;
+              uint          write_blk;
+              uchar         out_integr_en;
+              fpreal        out_integr_dt;
+              uint          num_out_procs;
+              uint          procs_list[SPINN_NUM_OUT_PROCS];
+              fpreal        weak_clamp_strength;
+              short_activ_t initOutput;
+              error_t       group_criterion;
+              uchar         criterion_function;
+              uchar         is_first_output_group;
+              uchar         is_last_output_group;
+              uchar         error_function;
+            } t_conf_t;
+
+            pack: standard sizes, little-endian byte-order,
+            explicit padding
+        """
+        return struct.pack("<2B2x3IB3xIB3xi6Iih2xi4B",
+                           self._output_grp,
+                           self._input_grp,
+                           self._num_outputs,
+                           self._f_s_all_arr,
+                           self._b_s_all_arr,
+                           self._write_out,
+                           self._write_blk,
+                           self._out_integr_en,
+                           self._out_integr_dt,
+                           self._num_out_procs,
+                           self._procs_list [0],
+                           self._procs_list [1],
+                           self._procs_list [2],
+                           self._procs_list [3],
+                           self._procs_list [4],
+                           self._weak_clamp_strength,
+                           self._initOutput,
+                           self._group_criterion,
+                           self._criterion_function,
+                           self._is_first_output_group,
+                           self._is_last_output_group,
+                           self._error_function
+                           )
+    @property
     @overrides (MachineVertex.resources_required)
     def resources_required (self):
 
@@ -162,19 +260,14 @@ class ThresholdVertex(
             spec.write_value (ord (c), data_type=DataType.UINT8)
 
         # Reserve and write the core configuration region
-        if os.path.isfile (self._coreFile):
-            spec.reserve_memory_region (
-                MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
+        spec.reserve_memory_region (
+            MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
 
-            spec.switch_write_focus (MLPRegions.CORE.value)
+        spec.switch_write_focus (MLPRegions.CORE.value)
 
-            # open the core configuration file
-            core_file = open (self._coreFile, "rb")
-
-            # read the data into a numpy array and put in spec
-            pc = np.fromfile (core_file, np.uint8)
-            for byte in pc:
-                spec.write_value (byte, data_type=DataType.UINT8)
+        # write the core configuration into spec
+        for c in self.config:
+            spec.write_value (ord (c), data_type=DataType.UINT8)
 
         # Reserve and write the input data region
         if os.path.isfile (self._inputsFile):

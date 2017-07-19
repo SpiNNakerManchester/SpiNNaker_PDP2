@@ -1,6 +1,7 @@
 import struct
 from enum import Enum
 
+
 class MLPRegions (Enum):
     """ regions used by MLP cores
     """
@@ -14,7 +15,8 @@ class MLPRegions (Enum):
     WEIGHTS = 7
     ROUTING = 8
 
-class MLPTypes (Enum):
+
+class MLPNetworkTypes (Enum):
     """ MLP network types
     """
     FEED_FWD   = 0
@@ -29,6 +31,33 @@ class MLPInputProcs (Enum):
     IN_INTEGR     = 0
     IN_SOFT_CLAMP = 1
     IN_NONE       = 255
+
+
+class MLPOutputProcs (Enum):
+    """ MLP output-stage procedures
+    """
+    OUT_LOGISTIC   = 0
+    OUT_INTEGR     = 1
+    OUT_HARD_CLAMP = 2
+    OUT_WEAK_CLAMP = 3
+    OUT_BIAS       = 4
+    OUT_NONE       = 255
+
+
+class MLPStopCriteria (Enum):
+    """ MLP error criteria
+    """
+    STOP_NONE = 0
+    STOP_STD  = 1
+    STOP_MAX  = 2
+
+
+class MLPErrorFuncs (Enum):
+    """ MLP error functions
+    """
+    ERR_NONE          = 0
+    ERR_CROSS_ENTROPY = 1
+    ERR_SQUARED       = 2
 
 
 class MLPNetwork():

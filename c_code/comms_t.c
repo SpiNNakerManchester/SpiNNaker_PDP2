@@ -218,7 +218,7 @@ void t_syncPacket (uint key, uint ph)
         t_sync_done = TRUE;
       }
     }
-    }*/
+  }*/
 }
 // ------------------------------------------------------------------------
 
@@ -289,7 +289,7 @@ void t_backpropPacket (uint key, uint payload)
   #endif
 
   // if all expected errors have arrived may move to next tick
-  if (tb_arrived == tcfg.b_all_arrived)
+  if (tb_arrived == tcfg.num_outputs)
   {
     // initialize arrival scoreboard for next tick,
     tb_arrived = 0;

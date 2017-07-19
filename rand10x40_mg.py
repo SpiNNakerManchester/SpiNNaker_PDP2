@@ -4,7 +4,9 @@ import spinnaker_graph_front_end as g
 
 from pacman.model.graphs.machine import MachineEdge
 
-from mlp_network      import MLPNetwork, MLPTypes, MLPInputProcs
+from mlp_network      import MLPNetwork, MLPNetworkTypes
+from mlp_network      import MLPInputProcs, MLPOutputProcs
+from mlp_network      import MLPStopCriteria, MLPErrorFuncs
 from input_vertex     import InputVertex
 from sum_vertex       import SumVertex
 from threshold_vertex import ThresholdVertex
@@ -25,7 +27,7 @@ g.setup ()
 
 # instantiate MLP network
 rand10x40 = MLPNetwork (
-    net_type = MLPTypes.CONT.value,
+    net_type = MLPNetworkTypes.CONT.value,
     training=1,
     num_epochs=1,
     num_examples=40,
@@ -47,13 +49,26 @@ wv2_5 = WeightVertex    (rand10x40, group = 2, frm_grp = 5,
 sv2   = SumVertex       (rand10x40,
                          group = 2,
                          num_nets = 1,
-                         all_arrived = 4)
+                         all_arrived = 4
+                         )
 iv2   = InputVertex     (rand10x40,
                          group = 2,
                          num_nets = 1,
-                         initOutput = 0x7fff)
-tv2   = ThresholdVertex (rand10x40, group = 2,
-                         file_x=0, file_y=0, file_c=7)
+                         initOutput = 0x7fff
+                         )
+tv2   = ThresholdVertex (rand10x40,
+                         group = 2,
+                         num_outputs = 1,
+                         f_s_all_arr = 4,
+                         b_s_all_arr = 4,
+                         num_out_procs = 1,
+                         procs_list = [MLPOutputProcs.OUT_BIAS.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value],
+                         initOutput = 0x7fff
+                         )
 
 # add group 2 vertices to graph
 g.add_machine_vertex_instance (wv2_2)
@@ -75,17 +90,31 @@ wv3_3 = WeightVertex    (rand10x40, group = 3, frm_grp = 3,
 wv3_4 = WeightVertex    (rand10x40, group = 3, frm_grp = 4,
                          file_x=0, file_y=0, file_c=10)
 wv3_5 = WeightVertex    (rand10x40, group = 3, frm_grp = 5,
-                         file_x=0, file_y=0, file_c=11)
+                         file_x=0, file_y=0, file_c=11
+                         )
 sv3   = SumVertex       (rand10x40,
                          group = 3,
                          num_nets = 10,
-                         all_arrived = 4)
+                         all_arrived = 4
+                         )
 iv3   = InputVertex     (rand10x40,
                          group = 3,
                          input_grp = 1,
-                         num_nets = 10)
-tv3   = ThresholdVertex (rand10x40, group = 3,
-                         file_x=0, file_y=0, file_c=14)
+                         num_nets = 10
+                         )
+tv3   = ThresholdVertex (rand10x40,
+                         group = 3,
+                         input_grp = 1,
+                         num_outputs = 10,
+                         f_s_all_arr = 4,
+                         b_s_all_arr = 4,
+                         num_out_procs = 1,
+                         procs_list = [MLPOutputProcs.OUT_HARD_CLAMP.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value]
+                         )
 
 # add group 3 vertices to graph
 g.add_machine_vertex_instance (wv3_2)
@@ -111,7 +140,8 @@ wv4_5 = WeightVertex    (rand10x40, group = 4, frm_grp = 5,
 sv4   = SumVertex       (rand10x40,
                          group = 4,
                          num_nets = 50,
-                         all_arrived = 4)
+                         all_arrived = 4
+                         )
 iv4   = InputVertex     (rand10x40,
                          group = 4,
                          num_nets = 50,
@@ -119,9 +149,20 @@ iv4   = InputVertex     (rand10x40,
                          procs_list = [MLPInputProcs.IN_INTEGR.value,\
                                        MLPInputProcs.IN_NONE.value],
                          in_integr_en = 1,
-                         in_integr_dt = 0x00003333)
-tv4   = ThresholdVertex (rand10x40, group = 4,
-                         file_x=0, file_y=1, file_c=5)
+                         in_integr_dt = 0x00003333
+                         )
+tv4   = ThresholdVertex (rand10x40,
+                         group = 4,
+                         num_outputs = 50,
+                         f_s_all_arr = 4,
+                         b_s_all_arr = 4,
+                         num_out_procs = 1,
+                         procs_list = [MLPOutputProcs.OUT_LOGISTIC.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value]
+                         )
 
 # add group 4 vertices to graph
 g.add_machine_vertex_instance (wv4_2)
@@ -152,8 +193,26 @@ iv5   = InputVertex     (rand10x40,
                          group = 5,
                          output_grp = 1,
                          num_nets = 10)
-tv5   = ThresholdVertex (rand10x40, group = 5,
-                         file_x=0, file_y=1, file_c=12)
+tv5   = ThresholdVertex (rand10x40,
+                         group = 5,
+                         output_grp = 1,
+                         num_outputs = 10,
+                         f_s_all_arr = 4,
+                         b_s_all_arr = 4,
+                         write_out = 1,
+                         out_integr_en = 1,
+                         out_integr_dt = 0x00003333,
+                         num_out_procs = 2,
+                         procs_list = [MLPOutputProcs.OUT_LOGISTIC.value,\
+                                       MLPOutputProcs.OUT_INTEGR.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value,\
+                                       MLPOutputProcs.OUT_NONE.value],
+                         criterion_function = MLPStopCriteria.STOP_STD.value,
+                         is_first_output_group = 1,
+                         is_last_output_group = 1,
+                         error_function = MLPErrorFuncs.ERR_CROSS_ENTROPY.value
+                         )
 
 # add group 5 vertices to graph
 g.add_machine_vertex_instance (wv5_2)

@@ -36,7 +36,9 @@ class InputVertex(
     """ A vertex to implement an MLP input core
     """
 
-    def __init__(self, network=None, group=None,
+    def __init__(self,
+                 network=None,
+                 group=None,
                  output_grp = 0,
                  input_grp = 0,
                  num_nets = None,
@@ -47,15 +49,17 @@ class InputVertex(
                  in_integr_dt = 0,
                  soft_clamp_strength = 0x00008000,
                  initNets = 0,
-                 initOutput = 0x4000):
+                 initOutput = 0x4000
+                 ):
         """
         """
-
-        MachineVertex.__init__(self, label =\
-                               "i{} core".format (group))
 
         # MLP network
         self._network = network
+        self._group   = group
+
+        MachineVertex.__init__(self, label =\
+                               "i{} core".format (self._group))
 
         # input core-specific parameters
         self._output_grp          = output_grp
@@ -70,14 +74,14 @@ class InputVertex(
         self._initOutput          = initOutput
 
         # forward and backprop link partition names
-        self._fwd_link = "fwd_i{}".format (group)
-        self._bkp_link = "bkp_i{}".format (group)
+        self._fwd_link = "fwd_i{}".format (self._group)
+        self._bkp_link = "bkp_i{}".format (self._group)
 
         self._n_keys = 65536
 
         # binary, configuration and data files
         self._aplxFile = "binaries/input.aplx"
-        self._inputsFile = "data/inputs_{}.dat".format (group)
+        self._inputsFile = "data/inputs_{}.dat".format (self._group)
         self._examplesFile = "data/examples.dat"
         self._eventsFile = "data/events.dat"
 

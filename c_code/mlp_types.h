@@ -224,7 +224,7 @@ typedef struct i_conf                // input core configuration
   uint          procs_list[SPINN_NUM_IN_PROCS];
   uchar         in_integr_en;        // input integrator in use
   fpreal        in_integr_dt;        // integration time const for input integr
-  fpreal        soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
+  fpreal        soft_clamp_strength; // Strength coeff for soft clamp
   net_t         initNets;            // initial value for unit nets
   short_activ_t initOutput;          // initial value for unit outputs
 } i_conf_t;
@@ -240,43 +240,26 @@ typedef struct i_conf                // input core configuration
 // In the BACKPROP phase, these cores compute the error deltas from the
 // errors computed locally (output groups only) or sent by the sum cores.
 // ------------------------------------------------------------------------
-typedef struct t_conf    // threshold core configuration
+typedef struct t_conf                  // threshold core configuration
 {
-  uchar        output_grp;            // is this an OUTPUT group?
-  uchar        input_grp;             // is this an INPUT group?
-  uint         num_outputs;           // this core's number of unit outputs
-  uint         num_ext_inputs;        // this core's number of external inputs
-  uint         output_offset;         // offset wrt to global outputs
-  uint         output_blk;            // this core's unit output block
-  uint         delta_blk;             // this core's delta block
-  scoreboard_t f_all_arrived;         // all expected nets
-  scoreboard_t b_all_arrived;         // all expected errors
-  scoreboard_t f_s_all_arr;           // all expected FORWARD sync packets
-  scoreboard_t b_s_all_arr;           // all expected BACKPROP sync packets
-  uchar        write_out;             // write outputs (send to host)?
-  uint         write_blk;             // this core's write block
-//   uint         example_set_addr;      // addr in SDRAM for example set file
-//   uint         examples_addr;         // addr in SDRAM for examples file
-//   uint         events_addr;           // addr in SDRAM for events file
-  uint         inputs_addr;           // address in SDRAM for inputs file
-  uint         targets_addr;          // address in SDRAM for targets file
-  uint         num_in_procs;          // number of input comp procs - used in
-                                      // output initialization
-  uchar        out_integr_en;         // input integrator in use
-  fpreal       out_integr_dt;         // integration time const for input integr
-  uint         num_out_procs;         // number of output comp procedures
-  uint         procs_list[SPINN_NUM_OUT_PROCS];
-  fpreal       weak_clamp_strength;   // Strength coeff for weak clamp fix 16.16
-  short_activ_t initOutput;           // initial value for unit outputs
-  error_t      group_criterion;       // convergence criterion value
-  uchar        criterion_function;    // function to eval convergence criterion
-  uchar        is_first_output_group; // is this the firso of the output groups
-  uchar        is_last_output_group;  // is this the last of the output groups
-  uchar        error_function;        // is the error function id to be used for
-                                      // BACKPROP
-  uint         group_id;              // ID of the group
-  uint         subgroup_id;           // ID of the subgroup
-  uint         total_subgroups;       // total number of subgroups
+  uchar         output_grp;            // is this an OUTPUT group?
+  uchar         input_grp;             // is this an INPUT group?
+  uint          num_outputs;           // this core's number of unit outputs
+  scoreboard_t  f_s_all_arr;           // all expected FORWARD sync packets
+  scoreboard_t  b_s_all_arr;           // all expected BACKPROP sync packets
+  uchar         write_out;             // write outputs (send to host)?
+  uint          write_blk;             // this core's write block
+  uchar         out_integr_en;         // input integrator in use
+  fpreal        out_integr_dt;         // integration time const for input integr
+  uint          num_out_procs;         // number of output comp procedures
+  uint          procs_list[SPINN_NUM_OUT_PROCS];
+  fpreal        weak_clamp_strength;   // Strength coeff for weak clamp
+  short_activ_t initOutput;            // initial value for unit outputs
+  error_t       group_criterion;       // convergence criterion value
+  uchar         criterion_function;    // function to eval convergence criterion
+  uchar         is_first_output_group; // is this the first of the output groups
+  uchar         is_last_output_group;  // is this the last of the output groups
+  uchar         error_function;        // error function used for BACKPROP
 } t_conf_t;
 // ------------------------------------------------------------------------
 

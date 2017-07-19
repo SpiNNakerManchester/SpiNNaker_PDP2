@@ -35,21 +35,25 @@ class WeightVertex(
     """ A vertex to implement an MLP input core
     """
 
-    def __init__(self, network=None, group = None,
-                 frm_grp = None, file_x = None, file_y = None, file_c = None):
+    def __init__(self,
+                 network=None,
+                 group = None,
+                 frm_grp = None, file_x = None, file_y = None, file_c = None
+                 ):
         """
         """
-
-        MachineVertex.__init__(self, label =\
-                               "w{}_{} core".format (group, frm_grp))
 
         # MLP network
         self._network = network
+        self._group   = group
+
+        MachineVertex.__init__(self, label =\
+                               "w{}_{} core".format (self._group, frm_grp))
 
         # forward and backprop link partition names
-        self._fwd_link = "fwd_w{}_{}".format (group, frm_grp)
-        self._bkp_link = "bkp_w{}_{}".format (group, frm_grp)
-        self._fds_link = "fds_w{}_{}".format (group, frm_grp)
+        self._fwd_link = "fwd_w{}_{}".format (self._group, frm_grp)
+        self._bkp_link = "bkp_w{}_{}".format (self._group, frm_grp)
+        self._fds_link = "fds_w{}_{}".format (self._group, frm_grp)
 
         self._n_keys = 65536
 
