@@ -1,3 +1,4 @@
+import struct
 import numpy as np
 import os
 
@@ -38,7 +39,10 @@ class WeightVertex(
     def __init__(self,
                  network=None,
                  group = None,
-                 frm_grp = None, file_x = None, file_y = None, file_c = None
+                 frm_grp = None,
+                 num_rows = None,
+                 num_cols = None,
+                 learning_rate = 0
                  ):
         """
         """
@@ -46,31 +50,34 @@ class WeightVertex(
         # MLP network
         self._network = network
         self._group   = group
+        self._frm_grp = frm_grp
 
         MachineVertex.__init__(self, label =\
-                               "w{}_{} core".format (self._group, frm_grp))
+                               "w{}_{} core".format (self._group, self._frm_grp))
+
+        # weight core-specific parameters
+        self._num_rows      = num_rows
+        self._num_cols      = num_cols
+        self._learning_rate = learning_rate
 
         # forward and backprop link partition names
-        self._fwd_link = "fwd_w{}_{}".format (self._group, frm_grp)
-        self._bkp_link = "bkp_w{}_{}".format (self._group, frm_grp)
-        self._fds_link = "fds_w{}_{}".format (self._group, frm_grp)
+        self._fwd_link = "fwd_w{}_{}".format (self._group, self._frm_grp)
+        self._bkp_link = "bkp_w{}_{}".format (self._group, self._frm_grp)
+        self._fds_link = "fds_w{}_{}".format (self._group, self._frm_grp)
 
         self._n_keys = 65536
 
         # binary, configuration and data files
         self._aplxFile = "binaries/weight.aplx"
-        self._coreFile = "data/w_conf_{}_{}_{}.dat".format (file_x, file_y, file_c)
         self._examplesFile = "data/examples.dat"
-        self._weightsFile = "data/weights_{}_{}_{}.dat".format (file_x, file_y, file_c)
+        self._weightsFile = "data/weights_{}_{}.dat".format (self._group, self._frm_grp)
 
         # size in bytes of the data in the regions
         self._N_NETWORK_CONFIGURATION_BYTES = \
             len ((self._network).config)
 
         self._N_CORE_CONFIGURATION_BYTES = \
-            os.path.getsize (self._coreFile) \
-            if os.path.isfile (self._coreFile) \
-            else 0
+            len (self.config)
 
         self._N_EXAMPLES_BYTES = \
             os.path.getsize (self._examplesFile) \
@@ -103,6 +110,27 @@ class WeightVertex(
     @property
     def fds_link (self):
         return self._fds_link
+
+    @property
+    def config (self):
+        """ returns a packed string that corresponds to
+            (C struct) w_conf in mlp_types.h:
+
+            typedef struct w_conf
+            {
+              uint         num_rows;
+              uint         num_cols;
+              short_activ_t learningRate;
+            } w_conf_t;
+
+            pack: standard sizes, little-endian byte-order,
+            explicit padding
+        """
+        return struct.pack("<2Ih2x",
+                           self._num_rows,
+                           self._num_cols,
+                           self._learning_rate & 0xffff
+                           )
 
     @property
     @overrides (MachineVertex.resources_required)
@@ -147,19 +175,14 @@ class WeightVertex(
             spec.write_value (ord (c), data_type=DataType.UINT8)
 
         # Reserve and write the core configuration region
-        if os.path.isfile (self._coreFile):
-            spec.reserve_memory_region (
-                MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
+        spec.reserve_memory_region (
+            MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
 
-            spec.switch_write_focus (MLPRegions.CORE.value)
+        spec.switch_write_focus (MLPRegions.CORE.value)
 
-            # open the core configuration file
-            core_file = open (self._coreFile, "rb")
-
-            # read the data into a numpy array and put in spec
-            pc = np.fromfile (core_file, np.uint8)
-            for byte in pc:
-                spec.write_value (byte, data_type=DataType.UINT8)
+        # write the core configuration into spec
+        for c in self.config:
+            spec.write_value (ord (c), data_type=DataType.UINT8)
 
         # Reserve and write the examples region
         if os.path.isfile (self._examplesFile):

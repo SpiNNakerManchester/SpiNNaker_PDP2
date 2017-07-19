@@ -177,20 +177,9 @@ typedef struct network_conf     // MLP network configuration
 // ------------------------------------------------------------------------
 typedef struct w_conf               // weight core configuration
 {
-  uchar        to_out_grp;          // projection weights into an OUTPUT group?
-  uchar        from_out_grp;        // projection weights from an OUTPUT group?
-  uchar        to_input_grp;        // projection weights into an INPUT group?
-  uchar        from_input_grp;      // projection weights from an INPUT group?
-  uint         num_rblks;           // blocks in a row of the global matrix
-  uint         num_cblks;           // blocks in a column of the global matrix
-  uint         blk_row;             // this core's block row coordinate
-  uint         blk_col;             // this core's block column coordinate
-  uint         num_rows;            // rows in this core's block
-  uint         num_cols;            // columns in this core's block
-  scoreboard_t f_all_arrived;       // all expected unit outputs
-  scoreboard_t b_all_arrived;       // all expected error deltas
+  uint          num_rows;           // rows in this core's block
+  uint          num_cols;           // columns in this core's block
   short_activ_t learningRate;       // network learning rate
-  uint         weights_struct_addr; // address in SDRAM for weight file
 } w_conf_t;
 // ------------------------------------------------------------------------
 

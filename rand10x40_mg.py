@@ -38,14 +38,30 @@ rand10x40 = MLPNetwork (
 
 #------v- bias layer (group 2) -v------
 # instantiate group 2 cores and place them appropriately
-wv2_2 = WeightVertex    (rand10x40, group = 2, frm_grp = 2,
-                         file_x=0, file_y=0, file_c=1)
-wv2_3 = WeightVertex    (rand10x40, group = 2, frm_grp = 3,
-                         file_x=0, file_y=0, file_c=2)
-wv2_4 = WeightVertex    (rand10x40, group = 2, frm_grp = 4,
-                         file_x=0, file_y=0, file_c=3)
-wv2_5 = WeightVertex    (rand10x40, group = 2, frm_grp = 5,
-                         file_x=0, file_y=0, file_c=4)
+wv2_2 = WeightVertex    (rand10x40,
+                         group = 2,
+                         frm_grp = 2,
+                         num_rows = 1,
+                         num_cols = 1
+                         )
+wv2_3 = WeightVertex    (rand10x40,
+                         group = 2,
+                         frm_grp = 3,
+                         num_rows = 10,
+                         num_cols = 1
+                         )
+wv2_4 = WeightVertex    (rand10x40,
+                         group = 2,
+                         frm_grp = 4,
+                         num_rows = 50,
+                         num_cols = 1
+                         )
+wv2_5 = WeightVertex    (rand10x40,
+                         group = 2,
+                         frm_grp = 5,
+                         num_rows = 10,
+                         num_cols = 1
+                         )
 sv2   = SumVertex       (rand10x40,
                          group = 2,
                          num_nets = 1,
@@ -83,14 +99,29 @@ g.add_machine_vertex_instance (tv2)
 
 #------v- input layer (group 3) -v------
 # instantiate group 3 cores and place them appropriately
-wv3_2 = WeightVertex    (rand10x40, group = 3, frm_grp = 2,
-                         file_x=0, file_y=0, file_c=8)
-wv3_3 = WeightVertex    (rand10x40, group = 3, frm_grp = 3,
-                         file_x=0, file_y=0, file_c=9)
-wv3_4 = WeightVertex    (rand10x40, group = 3, frm_grp = 4,
-                         file_x=0, file_y=0, file_c=10)
-wv3_5 = WeightVertex    (rand10x40, group = 3, frm_grp = 5,
-                         file_x=0, file_y=0, file_c=11
+wv3_2 = WeightVertex    (rand10x40,
+                         group = 3,
+                         frm_grp = 2,
+                         num_rows = 1,
+                         num_cols = 10
+                         )
+wv3_3 = WeightVertex    (rand10x40,
+                         group = 3,
+                         frm_grp = 3,
+                         num_rows = 10,
+                         num_cols = 10
+                         )
+wv3_4 = WeightVertex    (rand10x40,
+                         group = 3,
+                         frm_grp = 4,
+                         num_rows = 50,
+                         num_cols = 10
+                         )
+wv3_5 = WeightVertex    (rand10x40,
+                         group = 3,
+                         frm_grp = 5,
+                         num_rows = 10,
+                         num_cols = 10
                          )
 sv3   = SumVertex       (rand10x40,
                          group = 3,
@@ -129,14 +160,32 @@ g.add_machine_vertex_instance (tv3)
 
 #------v- hidden layer (group 4) -v------
 # instantiate group 4 cores and place them appropriately
-wv4_2 = WeightVertex    (rand10x40, group = 4, frm_grp = 2,
-                         file_x=0, file_y=0, file_c=15)
-wv4_3 = WeightVertex    (rand10x40, group = 4, frm_grp = 3,
-                         file_x=0, file_y=0, file_c=16)
-wv4_4 = WeightVertex    (rand10x40, group = 4, frm_grp = 4,
-                         file_x=0, file_y=1, file_c=1)
-wv4_5 = WeightVertex    (rand10x40, group = 4, frm_grp = 5,
-                         file_x=0, file_y=1, file_c=2)
+wv4_2 = WeightVertex    (rand10x40,
+                         group = 4,
+                         frm_grp = 2,
+                         num_rows = 1,
+                         num_cols = 50,
+                         learning_rate = 0x0ccc
+                         )
+wv4_3 = WeightVertex    (rand10x40,
+                         group = 4,
+                         frm_grp = 3,
+                         num_rows = 10,
+                         num_cols = 50,
+                         learning_rate = 0x0ccc
+                         )
+wv4_4 = WeightVertex    (rand10x40,
+                         group = 4,
+                         frm_grp = 4,
+                         num_rows = 50,
+                         num_cols = 50
+                         )
+wv4_5 = WeightVertex    (rand10x40,
+                         group = 4,
+                         frm_grp = 5,
+                         num_rows = 10,
+                         num_cols = 50
+                         )
 sv4   = SumVertex       (rand10x40,
                          group = 4,
                          num_nets = 50,
@@ -177,14 +226,32 @@ g.add_machine_vertex_instance (tv4)
 
 #------v- output layer (group 5) -v------
 # instantiate group 5 cores and place them appropriately
-wv5_2 = WeightVertex    (rand10x40, group = 5, frm_grp = 2,
-                         file_x=0, file_y=1, file_c=6)
-wv5_3 = WeightVertex    (rand10x40, group = 5, frm_grp = 3,
-                         file_x=0, file_y=1, file_c=7)
-wv5_4 = WeightVertex    (rand10x40, group = 5, frm_grp = 4,
-                         file_x=0, file_y=1, file_c=8)
-wv5_5 = WeightVertex    (rand10x40, group = 5, frm_grp = 5,
-                         file_x=0, file_y=1, file_c=9)
+wv5_2 = WeightVertex    (rand10x40,
+                         group = 5,
+                         frm_grp = 2,
+                         num_rows = 1,
+                         num_cols = 10,
+                         learning_rate = 0x0ccc
+                         )
+wv5_3 = WeightVertex    (rand10x40,
+                         group = 5,
+                         frm_grp = 3,
+                         num_rows = 10,
+                         num_cols = 10
+                         )
+wv5_4 = WeightVertex    (rand10x40,
+                         group = 5,
+                         frm_grp = 4,
+                         num_rows = 50,
+                         num_cols = 10,
+                         learning_rate = 0x0ccc
+                         )
+wv5_5 = WeightVertex    (rand10x40,
+                         group = 5,
+                         frm_grp = 5,
+                         num_rows = 10,
+                         num_cols = 10
+                         )
 sv5   = SumVertex       (rand10x40,
                          group = 5,
                          num_nets = 10,

@@ -151,7 +151,7 @@ void wb_process (uint null0, uint null1)
                      );
 
       // check if done with all deltas
-      if (wb_arrived == wcfg.b_all_arrived)
+      if (wb_arrived == wcfg.num_cols)
       {
         // send computed error dot product,
         while (!spin1_send_mc_packet ((bkpKey | i),
@@ -169,7 +169,7 @@ void wb_process (uint null0, uint null1)
     }
 
     // if done with all deltas advance tick
-    if (wb_arrived == wcfg.b_all_arrived)
+    if (wb_arrived == wcfg.num_cols)
     {
       // initialize arrival scoreboard for next tick,
       wb_arrived = 0;
@@ -283,12 +283,9 @@ void w_update_weights (void)
       }
 
       #ifdef DEBUG_VRB
-        uint roff = wcfg.blk_row * wcfg.num_rows;
-        uint coff = wcfg.blk_col * wcfg.num_cols;
-
         io_printf (IO_BUF,
                     "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                    roff + i, coff + j,
+                    i, j,
                     SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
                     old_weight,
                     SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),

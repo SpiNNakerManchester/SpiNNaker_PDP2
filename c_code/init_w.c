@@ -18,9 +18,7 @@ uint w_init (void)
   uint i, j;
 
   #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "br:%d bc:%d r:%d c:%d\n",
-                wcfg.blk_row,
-                wcfg.blk_col,
+    io_printf (IO_BUF, "r:%d c:%d\n",
                 wcfg.num_rows,
                 wcfg.num_cols
               );

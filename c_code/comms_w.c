@@ -114,7 +114,7 @@ void w_forwardPacket (uint key, uint payload)
   #endif
 
   // if all expected inputs have arrived may move to next tick
-  if (wf_arrived == wcfg.f_all_arrived)
+  if (wf_arrived == wcfg.num_rows)
   {
     // initialize arrival scoreboard for next tick,
     wf_arrived = 0;
