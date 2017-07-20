@@ -37,7 +37,7 @@ rand10x40 = MLPNetwork (
     )
 
 #------v- bias layer (group 2) -v------
-# instantiate group 2 cores and place them appropriately
+# instantiate group 2 cores
 wv2_2 = WeightVertex    (rand10x40,
                          group = 2,
                          frm_grp = 2,
@@ -76,8 +76,7 @@ iv2   = InputVertex     (rand10x40,
 tv2   = ThresholdVertex (rand10x40,
                          group = 2,
                          num_outputs = 1,
-                         f_s_all_arr = 4,
-                         b_s_all_arr = 4,
+                         fwd_sync_expect = 4,
                          num_out_procs = 1,
                          procs_list = [MLPOutputProcs.OUT_BIAS.value,\
                                        MLPOutputProcs.OUT_NONE.value,\
@@ -99,7 +98,7 @@ g.add_machine_vertex_instance (tv2)
 
 
 #------v- input layer (group 3) -v------
-# instantiate group 3 cores and place them appropriately
+# instantiate group 3 cores
 wv3_2 = WeightVertex    (rand10x40,
                          group = 3,
                          frm_grp = 2,
@@ -139,8 +138,7 @@ tv3   = ThresholdVertex (rand10x40,
                          group = 3,
                          input_grp = 1,
                          num_outputs = 10,
-                         f_s_all_arr = 4,
-                         b_s_all_arr = 4,
+                         fwd_sync_expect = 4,
                          num_out_procs = 1,
                          procs_list = [MLPOutputProcs.OUT_HARD_CLAMP.value,\
                                        MLPOutputProcs.OUT_NONE.value,\
@@ -161,7 +159,7 @@ g.add_machine_vertex_instance (tv3)
 
 
 #------v- hidden layer (group 4) -v------
-# instantiate group 4 cores and place them appropriately
+# instantiate group 4 cores
 wv4_2 = WeightVertex    (rand10x40,
                          group = 4,
                          frm_grp = 2,
@@ -206,8 +204,7 @@ iv4   = InputVertex     (rand10x40,
 tv4   = ThresholdVertex (rand10x40,
                          group = 4,
                          num_outputs = 50,
-                         f_s_all_arr = 4,
-                         b_s_all_arr = 4,
+                         fwd_sync_expect = 4,
                          num_out_procs = 1,
                          procs_list = [MLPOutputProcs.OUT_LOGISTIC.value,\
                                        MLPOutputProcs.OUT_NONE.value,\
@@ -228,7 +225,7 @@ g.add_machine_vertex_instance (tv4)
 
 
 #------v- output layer (group 5) -v------
-# instantiate group 5 cores and place them appropriately
+# instantiate group 5 cores
 wv5_2 = WeightVertex    (rand10x40,
                          group = 5,
                          frm_grp = 2,
@@ -270,8 +267,7 @@ tv5   = ThresholdVertex (rand10x40,
                          group = 5,
                          output_grp = 1,
                          num_outputs = 10,
-                         f_s_all_arr = 4,
-                         b_s_all_arr = 4,
+                         fwd_sync_expect = 4,
                          write_out = 1,
                          out_integr_en = 1,
                          out_integr_dt = 0x00003333,

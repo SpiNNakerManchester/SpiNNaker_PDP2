@@ -40,8 +40,8 @@ class ThresholdVertex(
                  output_grp = 0,
                  input_grp = 0,
                  num_outputs = None,
-                 f_s_all_arr = None,
-                 b_s_all_arr = None,
+                 fwd_sync_expect = None,
+                 bkp_sync_expect = 0,
                  write_out = 0,
                  write_blk = 0,
                  out_integr_en = 0,
@@ -74,8 +74,8 @@ class ThresholdVertex(
         self._output_grp            = output_grp
         self._input_grp             = input_grp
         self._num_outputs           = num_outputs
-        self._f_s_all_arr           = f_s_all_arr
-        self._b_s_all_arr           = b_s_all_arr
+        self._fwd_sync_expect       = fwd_sync_expect
+        self._bkp_sync_expect       = bkp_sync_expect
         self._write_out             = write_out
         self._write_blk             = write_blk
         self._out_integr_en         = out_integr_en
@@ -172,8 +172,8 @@ class ThresholdVertex(
               uchar         output_grp;
               uchar         input_grp;
               uint          num_outputs;
-              scoreboard_t  f_s_all_arr;
-              scoreboard_t  b_s_all_arr;
+              scoreboard_t  fwd_sync_expect;
+              scoreboard_t  bkp_sync_expect;
               uchar         write_out;
               uint          write_blk;
               uchar         out_integr_en;
@@ -196,8 +196,8 @@ class ThresholdVertex(
                            self._output_grp,
                            self._input_grp,
                            self._num_outputs,
-                           self._f_s_all_arr,
-                           self._b_s_all_arr,
+                           self._fwd_sync_expect,
+                           self._bkp_sync_expect,
                            self._write_out,
                            self._write_blk,
                            self._out_integr_en,
