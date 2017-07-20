@@ -156,6 +156,8 @@ activation_t     t_max_target;      // highest target value
 
 long_deriv_t   * t_output_deriv;    // derivative of the output value
 delta_t        * t_deltas;
+
+// history arrays
 net_t          * t_net_history;
 activation_t   * t_output_history;
 activation_t   * t_target_history;
@@ -210,29 +212,6 @@ uint init ()
 
   // initialize core-specific configuration from SDRAM
   spin1_memcpy (&tcfg, dt, sizeof(t_conf_t));
-
-  io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
-  io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
-  io_printf (IO_BUF, "no: %d\n", tcfg.num_outputs);
-  io_printf (IO_BUF, "fa: %d\n", tcfg.f_s_all_arr);
-  io_printf (IO_BUF, "ba: %d\n", tcfg.b_s_all_arr);
-  io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
-  io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
-  io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
-  io_printf (IO_BUF, "ic: %f\n", tcfg.out_integr_dt);
-  io_printf (IO_BUF, "op: %d\n", tcfg.num_out_procs);
-  io_printf (IO_BUF, "l0: %d\n", tcfg.procs_list[0]);
-  io_printf (IO_BUF, "l1: %d\n", tcfg.procs_list[1]);
-  io_printf (IO_BUF, "l2: %d\n", tcfg.procs_list[2]);
-  io_printf (IO_BUF, "l3: %d\n", tcfg.procs_list[3]);
-  io_printf (IO_BUF, "l4: %d\n", tcfg.procs_list[4]);
-  io_printf (IO_BUF, "wc: %f\n", tcfg.weak_clamp_strength);
-  io_printf (IO_BUF, "io: %k\n", tcfg.initOutput);
-  io_printf (IO_BUF, "gc: %d\n", tcfg.group_criterion);
-  io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
-  io_printf (IO_BUF, "g1: %d\n", tcfg.is_first_output_group);
-  io_printf (IO_BUF, "gl: %d\n", tcfg.is_last_output_group);
-  io_printf (IO_BUF, "ef: %d\n", tcfg.error_function);
 
   // inputs
   if (tcfg.input_grp)
@@ -324,7 +303,7 @@ void done (uint ec)
                     tb_arrived, tcfg.num_outputs
                   );
         io_printf (IO_BUF, "(tsd:%u tsa:0x%08x/0x%08x)\n",
-                    t_sync_done, t_sync_arr, tcfg.f_s_all_arr
+                    t_sync_done, t_sync_arr, tcfg.fwd_sync_expect
                   );
       #endif
 

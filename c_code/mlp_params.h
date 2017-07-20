@@ -8,7 +8,6 @@
 // ------------------------------------------------------------------------
 // software configuration
 // ------------------------------------------------------------------------
-#define SPINN_USE_COUNTER_SB     TRUE
 #define SPINN_WEIGHT_HISTORY     FALSE
 #define SPINN_OUTPUT_HISTORY     FALSE
 

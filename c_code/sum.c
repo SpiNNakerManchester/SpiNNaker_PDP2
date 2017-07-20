@@ -66,10 +66,8 @@ uint             sf_thrds_done;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
 // (error computation)
-long_error_t   * sb_init_error;     // initial error value for every tick
 scoreboard_t   * sb_arrived;        // keep track of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
-//#uint             sb_thrds_done;     // sync. semaphore: proc & stop
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -188,9 +186,8 @@ void done (uint ec)
 
         for (uint i = 0; i < scfg.num_nets; i++)
         {
-          io_printf (IO_BUF, "(fa:%08x/%08x ba:%08x/%08x)\n",
-                      sf_arrived[0][i], sf_arrived[1][i],
-                      sb_arrived[0][i], sb_arrived[1][i]
+          io_printf (IO_BUF, "(fa:%08x ba:%08x)\n",
+                      sf_arrived[i], sb_arrived[i]
                     );
         }
       #endif

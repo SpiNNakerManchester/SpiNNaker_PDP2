@@ -65,7 +65,8 @@ wv2_5 = WeightVertex    (rand10x40,
 sv2   = SumVertex       (rand10x40,
                          group = 2,
                          num_nets = 1,
-                         all_arrived = 4
+                         fwd_expect = 4,
+                         bkp_expect = 4
                          )
 iv2   = InputVertex     (rand10x40,
                          group = 2,
@@ -126,7 +127,8 @@ wv3_5 = WeightVertex    (rand10x40,
 sv3   = SumVertex       (rand10x40,
                          group = 3,
                          num_nets = 10,
-                         all_arrived = 4
+                         fwd_expect = 4,
+                         bkp_expect = 4
                          )
 iv3   = InputVertex     (rand10x40,
                          group = 3,
@@ -189,7 +191,8 @@ wv4_5 = WeightVertex    (rand10x40,
 sv4   = SumVertex       (rand10x40,
                          group = 4,
                          num_nets = 50,
-                         all_arrived = 4
+                         fwd_expect = 4,
+                         bkp_expect = 4
                          )
 iv4   = InputVertex     (rand10x40,
                          group = 4,
@@ -255,11 +258,14 @@ wv5_5 = WeightVertex    (rand10x40,
 sv5   = SumVertex       (rand10x40,
                          group = 5,
                          num_nets = 10,
-                         all_arrived = 4)
+                         fwd_expect = 4,
+                         bkp_expect = 4
+                         )
 iv5   = InputVertex     (rand10x40,
                          group = 5,
                          output_grp = 1,
-                         num_nets = 10)
+                         num_nets = 10
+                         )
 tv5   = ThresholdVertex (rand10x40,
                          group = 5,
                          output_grp = 1,

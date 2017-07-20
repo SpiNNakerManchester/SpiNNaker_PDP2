@@ -107,11 +107,7 @@ void w_forwardPacket (uint key, uint payload)
   }
 
   // and update scoreboard,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    wf_arrived |= (1 << inx);
-  #else
-    wf_arrived++;
-  #endif
+  wf_arrived++;
 
   // if all expected inputs have arrived may move to next tick
   if (wf_arrived == wcfg.num_rows)

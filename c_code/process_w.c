@@ -122,11 +122,7 @@ void wb_process (uint null0, uint null1)
     inx &= SPINN_DELTA_MASK;
 
     // update scoreboard,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      wb_arrived |= (1 << inx);
-    #else
-      wb_arrived++;
-    #endif
+    wb_arrived++;
 
     // partially compute error dot products,
     for (uint i = 0; i < wcfg.num_rows; i++)

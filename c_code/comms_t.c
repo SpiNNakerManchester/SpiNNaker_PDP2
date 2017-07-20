@@ -148,18 +148,11 @@ void t_syncPacket (uint key, uint ph)
 
   if (ph == SPINN_FORWARD)
   {
-    // keep track of arrived blocks,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      // get sync block
-      uint blk = (key & SPINN_BLK_C_MASK) >> SPINN_BLK_C_SHIFT;
-
-      t_sync_arr |= (1 << blk);
-    #else
-      t_sync_arr++;
-    #endif
+    // keep track of FORWARD sync packets,
+    t_sync_arr++;
 
     // and check if all expected packets arrived
-    if (t_sync_arr == tcfg.f_s_all_arr)
+    if (t_sync_arr == tcfg.fwd_sync_expect)
     {
       // initialize for next synchronization,
       t_sync_arr = 0;
@@ -187,21 +180,15 @@ void t_syncPacket (uint key, uint ph)
       }
     }
   }
-/*  //TODO: not using BACKPROP synchronization packets
+/*
+  //NOTE: no longer using BACKPROP synchronization packets
   else
   {
-    // keep track of arrived blocks,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      // get sync block
-      uint blk = (key & SPINN_BLK_R_MASK) >> SPINN_BLK_R_SHIFT;
-
-      t_sync_arr |= (1 << blk);
-    #else
-      t_sync_arr++;
-    #endif
+    // keep track of BACKPROP sync packets,
+    t_sync_arr++;
 
     // and check if all expected packets arrived,
-    if (t_sync_arr == tcfg.b_s_all_arr)
+    if (t_sync_arr == tcfg.bkp_sync_expect)
     {
       // initialize for next synchronization,
       t_sync_arr = 0;
@@ -218,7 +205,8 @@ void t_syncPacket (uint key, uint ph)
         t_sync_done = TRUE;
       }
     }
-  }*/
+  }
+*/
 }
 // ------------------------------------------------------------------------
 
@@ -282,11 +270,7 @@ void t_backpropPacket (uint key, uint payload)
   t_errors[tb_comms][inx] = (error_t) payload;
 
   // and update scoreboard,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    tb_arrived |= (1 << inx);
-  #else
-    tb_arrived++;
-  #endif
+  tb_arrived++;
 
   // if all expected errors have arrived may move to next tick
   if (tb_arrived == tcfg.num_outputs)

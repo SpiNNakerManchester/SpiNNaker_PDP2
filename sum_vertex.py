@@ -40,7 +40,8 @@ class SumVertex(
                  network = None,
                  group = None,
                  num_nets = None,
-                 all_arrived = None
+                 fwd_expect = None,
+                 bkp_expect = None
                  ):
         """
         """
@@ -53,8 +54,9 @@ class SumVertex(
                                "s{} core".format (self._group))
 
         # sum core-specific parameters
-        self._num_nets    = num_nets
-        self._all_arrived = all_arrived
+        self._num_nets   = num_nets
+        self._fwd_expect = fwd_expect
+        self._bkp_expect = bkp_expect
 
         # forward and backprop link partition names
         self._fwd_link = "fwd_s{}".format (self._group)
@@ -103,15 +105,17 @@ class SumVertex(
             typedef struct s_conf
             {
               uint         num_nets;
-              scoreboard_t all_arrived;
+              scoreboard_t fwd_expect;
+              scoreboard_t bkp_expect;
             } s_conf_t;
 
             pack: standard sizes, little-endian byte-order,
             explicit padding
         """
-        return struct.pack("<2I",
+        return struct.pack("<3I",
                            self._num_nets,
-                           self._all_arrived
+                           self._fwd_expect,
+                           self._bkp_expect
                            )
     @property
     @overrides (MachineVertex.resources_required)

@@ -109,8 +109,8 @@ uint             if_thrds_done;     // sync. semaphore: proc & stop
 // (delta processing)
 long_delta_t   * ib_init_delta;     // initial delta value for every tick
 scoreboard_t     ib_done;           // current tick delta computation done
-//#uint             ib_thrds_done;     // sync. semaphore: proc & stop
 
+// history arrays
 long_net_t     * i_net_history;   //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 

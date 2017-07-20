@@ -79,11 +79,7 @@ void tf_process (uint null0, uint null1)
       tf_stop_func (inx);
 
     // mark net as arrived,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      tf_arrived |= (1 << inx);
-    #else
-      tf_arrived++;
-    #endif
+    tf_arrived++;
 
     // and check if all nets arrived (i.e., all outputs done)
     if (tf_arrived == tcfg.num_outputs)

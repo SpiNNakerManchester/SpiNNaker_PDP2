@@ -89,28 +89,10 @@ void s_forward_packet (uint key, uint payload)
   s_nets[inx] += (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    // get net block: mask out phase and net index data
-    uint blk = (key & SPINN_BLK_R_MASK) >> SPINN_BLK_R_SHIFT;
-
-    // check if already marked -- problem,
-    #ifdef DEBUG
-      if (sf_arrived[inx] & (1 << blk))
-      {
-        io_printf (IO_BUF, "!b:%u k:%u a:0x%08x\n",
-                    blk, inx, sf_arrived[inx]
-                  );
-      }
-    #endif
-
-    // mark it
-    sf_arrived[inx] |= (1 << blk);
-  #else
-    sf_arrived[inx]++;
-  #endif
+  sf_arrived[inx]++;
 
   // and check if dot product complete to compute net
-  if (sf_arrived[inx] == scfg.all_arrived)
+  if (sf_arrived[inx] == scfg.fwd_expect)
   {
     net_t net_tmp;
 
@@ -141,11 +123,7 @@ void s_forward_packet (uint key, uint payload)
     sf_arrived[inx] = 0;
 
     // mark net as done,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      sf_done |= (1 << inx);
-    #else
-      sf_done++;
-    #endif
+    sf_done++;
 
     // and check if all nets done
     if (sf_done == scfg.num_nets)
@@ -192,33 +170,16 @@ void s_backprop_packet (uint key, uint payload)
   s_errors[inx] += (error_t) payload;
 
   // mark error b-d-p as arrived,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    // get error block: mask out phase and net index data
-    uint blk = (key & SPINN_BLK_C_MASK) >> SPINN_BLK_C_SHIFT;
-
-    // check if already marked -- problem,
-    #ifdef DEBUG
-      if (sb_arrived[inx] & (1 << blk))
-      {
-        io_printf (IO_BUF, "!b:%u k:%u a:0x%08x\n",
-		            blk, inx, sb_arrived[inx]
-                  );
-      }
-    #endif
-
-      // mark it
-    sb_arrived[inx] |= (1 << blk);
-  #else
-    sb_arrived[inx]++;
-  #endif
+  sb_arrived[inx]++;
 
   // and check if error complete to send to next stage
-  if (sb_arrived[inx] == scfg.all_arrived)
+  if (sb_arrived[inx] == scfg.bkp_expect)
   {
     //NOTE: may need to use long_error_t and saturate before sending
     error_t error = s_errors[inx];
 
-/*    long_error_t err_tmp = s_errors[inx]
+/*
+    long_error_t err_tmp = s_errors[inx]
                               >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
 
     if (err_tmp >= (long_error_t) SPINN_ERROR_MAX)
@@ -232,7 +193,8 @@ void s_backprop_packet (uint key, uint payload)
     else
     {
       error = (error_t) err_tmp;
-    }*/
+    }
+*/
 
     // incorporate error index to the packet key and send,
     while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
@@ -247,11 +209,7 @@ void s_backprop_packet (uint key, uint payload)
     sb_arrived[inx] = 0;
 
     // mark error as done,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      sb_done |= (1 << inx);
-    #else
-      sb_done++;
-    #endif
+    sb_done++;
 
     // and check if all errors done
     if (sb_done == scfg.num_nets)

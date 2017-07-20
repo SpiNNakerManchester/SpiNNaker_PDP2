@@ -117,11 +117,7 @@ void i_forward_packet (uint key, uint payload)
   #endif
 
   // mark net as done,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    if_done |= (1 << inx);
-  #else
-    if_done++;
-  #endif
+  if_done++;
 
   // and check if all nets done
   if (if_done == icfg.num_nets)
@@ -200,11 +196,7 @@ void i_backprop_packet (uint key, uint payload)
   #endif
 
   // mark delta as done,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    ib_done |= (1 << inx);
-  #else
-    ib_done++;
-  #endif
+  ib_done++;
 
   // and check if all deltas done
   if (ib_done == icfg.num_nets)

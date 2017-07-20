@@ -58,6 +58,7 @@ extern uint               wf_sync_key;   // FORWARD processing can start
 extern uchar              wb_active;     // processing deltas from queue?
 extern scoreboard_t       wb_arrived;    // keeps track of received deltas
 extern uint               wb_sync_key;   // BACKPROP processing can start
+
 // history arrays
 extern activation_t     * w_output_history;
 // ------------------------------------------------------------------------
@@ -72,15 +73,20 @@ extern uchar            s_active;      // processing b-d-ps from queue?
 extern scoreboard_t   * sf_arrived;    // keep track of expected net b-d-p
 extern scoreboard_t     sf_done;       // current tick net computation done
 extern uint             sf_thrds_done; // sync. semaphore: proc & stop
-extern long_error_t   * sb_init_error; // initial error value for every tick
 extern scoreboard_t   * sb_arrived;    // keep track of expected error b-d-p
 extern scoreboard_t     sb_done;       // current tick error computation done
-//#extern uint             sb_thrds_done; // sync. semaphore: proc & stop
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // input core variables
 // ------------------------------------------------------------------------
+// global "constants"
+//list of input pipeline procedures
+extern in_proc_t      const i_in_procs[SPINN_NUM_IN_PROCS];
+extern in_proc_back_t const i_in_back_procs[SPINN_NUM_IN_PROCS];
+//list of initialization procedures for input pipeline
+extern in_proc_init_t const i_init_in_procs[SPINN_NUM_IN_PROCS];
+
 extern long_net_t     * i_nets;        // unit nets computed in current tick
 extern long_delta_t   * i_deltas;      // deltas computed in current tick
 extern long_delta_t   * i_init_delta;  // deltas computed in first tick
@@ -91,20 +97,26 @@ extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_done; // sync. semaphore: proc & stop
 extern long_delta_t   * ib_init_delta; // initial delta value for every tick
 extern scoreboard_t     ib_done;       // current tick delta computation done
-//#extern uint             ib_thrds_done; // sync. semaphore: proc & stop
 extern long_net_t     * i_last_integr_net;   //last integrator output value
 extern long_delta_t   * i_last_integr_delta; //last integrator delta value
-//list of input pipeline procedures
-extern in_proc_t const  i_in_procs[SPINN_NUM_IN_PROCS];
-extern in_proc_back_t const  i_in_back_procs[SPINN_NUM_IN_PROCS];
-//list of initialization procedures for input pipeline
-extern in_proc_init_t const  i_init_in_procs[SPINN_NUM_IN_PROCS];
+
+// history arrays
 extern long_net_t      * i_net_history; //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // threshold core variables
 // ------------------------------------------------------------------------
+// global "constants"
+// list of output pipeline procedures
+extern out_proc_t      const t_out_procs[SPINN_NUM_OUT_PROCS];
+extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
+// list of stop eval procedures
+extern stop_crit_t     const t_stop_procs[SPINN_NUM_STOP_PROCS];
+// list of initialization procedures for output pipeline
+extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
+extern out_error_t     const t_out_error[SPINN_NUM_ERROR_PROCS];
+
 extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
@@ -136,17 +148,9 @@ extern int              t_max_output_unit; // unit with highest output
 extern int              t_max_target_unit; // unit with highest target
 extern activation_t     t_max_output;      // highest output value
 extern activation_t     t_max_target;      // highest target value
-// list of output pipeline procedures
-extern out_proc_t const  t_out_procs[SPINN_NUM_OUT_PROCS];
-extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
-// list of stop eval procedures
-extern stop_crit_t const t_stop_procs[SPINN_NUM_STOP_PROCS];
-// list of initialization procedures for output pipeline
-extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
-extern out_error_t const t_out_error[SPINN_NUM_ERROR_PROCS];
-// derivative of the output
 extern long_deriv_t   * t_output_deriv;
 extern delta_t        * t_deltas;
+
 // history arrays
 extern net_t          * t_net_history;
 extern activation_t   * t_output_history;
