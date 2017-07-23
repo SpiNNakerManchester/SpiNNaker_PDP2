@@ -121,14 +121,14 @@ extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from sum cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
 extern activation_t   * t_last_integr_output;   //last integrator output value
-extern long_deriv_t   * t_last_integr_output_deriv; //last integrator output deriv value
-extern activation_t   * t_instant_outputs; // current output value stored for the backward pass
-extern uchar            t_hard_clamp_en; //hard clamp output enabled
+extern long_deriv_t   * t_last_integr_output_deriv; //last integr output deriv
+extern activation_t   * t_instant_outputs; // output stored BACKPROP
+extern uchar            t_hard_clamp_en;   // hard clamp output enabled
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example
 extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
 extern uchar            t_active;      // processing nets/errors from queue?
-extern scoreboard_t     t_sync_arr;    // keep track of expected sync packets
+extern scoreboard_t     t_sync_arrived; // keep track of expected sync packets
 extern uchar            t_sync_done;   // have expected sync packets arrived?
 extern sdp_msg_t        t_sdp_msg;     // SDP message buffer for host comms.
 extern scoreboard_t     tf_arrived;    // keep track of expected nets

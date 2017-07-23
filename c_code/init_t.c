@@ -203,7 +203,7 @@ uint t_init (void)
   t_active = FALSE;
 
   // initialize received sync packets scoreboard
-  t_sync_arr = 0;
+  t_sync_arrived = 0;
 
   // initialize sync packets flag
   t_sync_done = FALSE;

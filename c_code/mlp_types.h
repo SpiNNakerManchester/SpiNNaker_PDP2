@@ -193,8 +193,8 @@ typedef struct w_conf               // weight core configuration
 typedef struct s_conf               // sum core configuration
 {
   uint         num_nets;            // this core's number of unit nets
-  scoreboard_t fwd_expect;          // num of expected partial nets
-  scoreboard_t bkp_expect;          // num of expected partial errors
+  scoreboard_t fwd_expected;        // num of expected partial nets
+  scoreboard_t bkp_expected;        // num of expected partial errors
   } s_conf_t;
 // ------------------------------------------------------------------------
 
@@ -235,8 +235,8 @@ typedef struct t_conf                  // threshold core configuration
   uchar         output_grp;            // is this an OUTPUT group?
   uchar         input_grp;             // is this an INPUT group?
   uint          num_outputs;           // this core's number of unit outputs
-  scoreboard_t  fwd_sync_expect;       // all expected FORWARD sync packets
-  scoreboard_t  bkp_sync_expect;       // all expected BACKPROP sync packets
+  scoreboard_t  fwd_sync_expected;     // all expected FORWARD sync packets
+  scoreboard_t  bkp_sync_expected;     // all expected BACKPROP sync packets
   uchar         write_out;             // write outputs (send to host)?
   uint          write_blk;             // this core's write block
   uchar         out_integr_en;         // input integrator in use

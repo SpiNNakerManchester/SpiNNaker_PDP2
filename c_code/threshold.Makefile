@@ -23,3 +23,7 @@ SOURCES = threshold.c comms_t.c process_t.c init_t.c activation.c
 include $(SPINN_DIRS)/make/Makefile.SpiNNFrontEndCommon
 
 all: $(APP_OUTPUT_DIR)$(APP).aplx
+
+# Tidy up
+tidy:
+	$(RM) $(OBJECTS) $(BUILD_DIR)$(APP).elf $(BUILD_DIR)$(APP).txt

@@ -182,6 +182,22 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
+  #ifdef DEBUG
+    io_printf (IO_BUF, "og: %d\n", icfg.output_grp);
+    io_printf (IO_BUF, "ig: %d\n", icfg.input_grp);
+    io_printf (IO_BUF, "nn: %d\n", icfg.num_nets);
+    io_printf (IO_BUF, "np: %d\n", icfg.num_in_procs);
+    io_printf (IO_BUF, "pl: %d\n", icfg.procs_list[0]);
+    io_printf (IO_BUF, "pl: %d\n", icfg.procs_list[1]);
+    io_printf (IO_BUF, "ie: %d\n", icfg.in_integr_en);
+    io_printf (IO_BUF, "dt: %f\n", icfg.in_integr_dt);
+    io_printf (IO_BUF, "sc: %f\n", icfg.soft_clamp_strength);
+    io_printf (IO_BUF, "in: %d\n", icfg.initNets);
+    io_printf (IO_BUF, "io: %k\n", icfg.initOutput);
+    io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
+    io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
+  #endif
+
   // initialize epoch, example and event counters
   //TODO: alternative algorithms for chosing example order!
   epoch   = 0;

@@ -23,3 +23,7 @@ SOURCES = input.c comms_i.c process_i.c init_i.c activation.c
 include $(SPINN_DIRS)/make/Makefile.SpiNNFrontEndCommon
 
 all: $(APP_OUTPUT_DIR)$(APP).aplx
+
+# Tidy up
+tidy:
+	$(RM) $(OBJECTS) $(BUILD_DIR)$(APP).elf $(BUILD_DIR)$(APP).txt

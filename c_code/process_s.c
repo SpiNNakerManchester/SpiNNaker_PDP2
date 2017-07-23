@@ -92,7 +92,7 @@ void s_forward_packet (uint key, uint payload)
   sf_arrived[inx]++;
 
   // and check if dot product complete to compute net
-  if (sf_arrived[inx] == scfg.fwd_expect)
+  if (sf_arrived[inx] == scfg.fwd_expected)
   {
     net_t net_tmp;
 
@@ -173,7 +173,7 @@ void s_backprop_packet (uint key, uint payload)
   sb_arrived[inx]++;
 
   // and check if error complete to send to next stage
-  if (sb_arrived[inx] == scfg.bkp_expect)
+  if (sb_arrived[inx] == scfg.bkp_expected)
   {
     //NOTE: may need to use long_error_t and saturate before sending
     error_t error = s_errors[inx];

@@ -149,13 +149,13 @@ void t_syncPacket (uint key, uint ph)
   if (ph == SPINN_FORWARD)
   {
     // keep track of FORWARD sync packets,
-    t_sync_arr++;
+    t_sync_arrived++;
 
     // and check if all expected packets arrived
-    if (t_sync_arr == tcfg.fwd_sync_expect)
+    if (t_sync_arrived == tcfg.fwd_sync_expected)
     {
       // initialize for next synchronization,
-      t_sync_arr = 0;
+      t_sync_arrived = 0;
 
       // and check if can trigger sending data
       if (phase == SPINN_FORWARD)
@@ -185,13 +185,13 @@ void t_syncPacket (uint key, uint ph)
   else
   {
     // keep track of BACKPROP sync packets,
-    t_sync_arr++;
+    t_sync_arrived++;
 
     // and check if all expected packets arrived,
-    if (t_sync_arr == tcfg.bkp_sync_expect)
+    if (t_sync_arrived == tcfg.bkp_sync_expected)
     {
       // initialize for next synchronization,
-      t_sync_arr = 0;
+      t_sync_arrived = 0;
 
       // check if can trigger sending data
       if (phase == SPINN_BACKPROP)

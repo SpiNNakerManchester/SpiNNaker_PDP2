@@ -23,3 +23,7 @@ SOURCES = weight.c comms_w.c process_w.c init_w.c
 include $(SPINN_DIRS)/make/Makefile.SpiNNFrontEndCommon
 
 all: $(APP_OUTPUT_DIR)$(APP).aplx
+
+# Tidy up
+tidy:
+	$(RM) $(OBJECTS) $(BUILD_DIR)$(APP).elf $(BUILD_DIR)$(APP).txt

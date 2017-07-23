@@ -127,6 +127,14 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
+  #ifdef DEBUG
+    io_printf (IO_BUF, "nn: %d\n", scfg.num_nets);
+    io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
+    io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
+    io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
+    io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
+  #endif
+
   // initialize epoch, example and event counters
   //TODO: alternative algorithms for chosing example order!
   epoch   = 0;

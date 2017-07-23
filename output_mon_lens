@@ -46,7 +46,7 @@ my $targets = [[], []];
 
 sub usage
 {
-    warn "usage: output_mon <args>\n";
+    warn "usage: output_mon_lens <args>\n";
     warn "  -port <num>         - set UDP port number (default $port)\n";
     die  "  -version            - print version number\n";
 }
@@ -60,11 +60,11 @@ sub process_args
 
 	if ($arg eq '-version')
 	{
-	    die "output_mon - v$version\n";
+	    die "output_mon_lens - v$version\n";
 	}
 	elsif ($arg eq '-port')
 	{
-	    die "port not specified\n" unless defined $ARGV[0] &&
+	    die "error: port not specified\n" unless defined $ARGV[0] &&
 		$ARGV[0] =~ /^\d+$/;
 	    $port = shift @ARGV;
 	}

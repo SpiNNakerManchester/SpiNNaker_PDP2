@@ -126,7 +126,7 @@ uint             t_it_idx;          // index into current inputs/targets
 uint             t_tot_ticks;       // total ticks on current example
 pkt_queue_t      t_net_pkt_q;       // queue to hold received nets
 uchar            t_active;          // processing nets/errors from queue?
-scoreboard_t     t_sync_arr;        // keep track of expected sync packets
+scoreboard_t     t_sync_arrived;    // keep track of expected sync packets
 uchar            t_sync_done;       // have expected sync packets arrived?
 sdp_msg_t        t_sdp_msg;         // SDP message buffer for host comms.
 
@@ -243,6 +243,34 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
+  #ifdef DEBUG
+    io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
+    io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
+    io_printf (IO_BUF, "no: %d\n", tcfg.num_outputs);
+    io_printf (IO_BUF, "fs: %d\n", tcfg.fwd_sync_expected);
+    io_printf (IO_BUF, "bs: %d\n", tcfg.bkp_sync_expected);
+    io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
+    io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
+    io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
+    io_printf (IO_BUF, "dt: %f\n", tcfg.out_integr_dt);
+    io_printf (IO_BUF, "np: %d\n", tcfg.num_out_procs);
+    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[0]);
+    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[1]);
+    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[2]);
+    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[3]);
+    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[4]);
+    io_printf (IO_BUF, "wc: %f\n", tcfg.weak_clamp_strength);
+    io_printf (IO_BUF, "io: %k\n", tcfg.initOutput);
+    io_printf (IO_BUF, "gc: %d\n", tcfg.group_criterion);
+    io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
+    io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output_group);
+    io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output_group);
+    io_printf (IO_BUF, "ef: %d\n", tcfg.error_function);
+    io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
+    io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
+    io_printf (IO_BUF, "sk: 0x%08x\n", rt[STP]);
+  #endif
+
   // initialize epoch, example and event counters
   //TODO: alternative algorithms for chosing example order!
   epoch   = 0;
@@ -303,7 +331,7 @@ void done (uint ec)
                     tb_arrived, tcfg.num_outputs
                   );
         io_printf (IO_BUF, "(tsd:%u tsa:0x%08x/0x%08x)\n",
-                    t_sync_done, t_sync_arr, tcfg.fwd_sync_expect
+                    t_sync_done, t_sync_arrived, tcfg.fwd_sync_expected
                   );
       #endif
 
