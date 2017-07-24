@@ -1476,12 +1476,16 @@ void std_stop_crit (uint inx)
   // evaluate only if target is not NaN
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-    error_t error = ABS (t_outputs[inx] - tt[t_it_idx + inx]);
+
+    //s16.15 = s4.27 - s4.27 >> 12
+    error_t error = (error_t) (ABS (t_outputs[inx] - tt[t_it_idx + inx] >> (SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT)));
     
     // Correction to fixed point arithmetic: tcfg.group_criterion is assumed
     // to be in a format with 15 decimal bits, but appears to have 16, making
-    // it twice the size it should be.  Therefore shift one bit to the right.
-    tf_stop_crit = tf_stop_crit && (error < (tcfg.group_criterion >> 1));
+    // it twice the size it should be.  Therefore divide by two.
+    error_t group_criterion = tcfg.group_criterion / 2;
+
+    tf_stop_crit = tf_stop_crit && (error < group_criterion);
   }
 }
 // ------------------------------------------------------------------------
@@ -1530,14 +1534,17 @@ void max_stop_crit (uint inx)
       t_max_target_unit = inx;
     }
 
-    error_t error = ABS ((t_max_output - t_max_target) >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+    //s16.15 = s4.27 - s4.27 >> 12
+    error_t error = (error_t) ABS ((t_max_output - t_max_target) >> (SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
     // Correction to fixed point arithmetic: tcfg.group_criterion is assumed
     // to be in a format with 15 decimal bits, but appears to have 16, making
-    // it twice the size it should be.  Therefore shift one bit to the right.
+    // it twice the size it should be.  Therefore divide by two.
+    error_t group_criterion = tcfg.group_criterion / 2;
+    
     if ((t_max_output_unit == -1)
 	 || ((t_max_output_unit == t_max_target_unit)
-	     && (error < (tcfg.group_criterion >> 1))
+	     && (error < group_criterion)
             )
        )
       tf_stop_crit = TRUE;
