@@ -23,7 +23,7 @@ from spinn_front_end_common.abstract_models\
     .abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
 
-from mlp_types import MLPRegions
+from mlp_types import MLPRegions, MLPConstants
 
 
 class ThresholdVertex(
@@ -59,7 +59,7 @@ class ThresholdVertex(
         self._stp_link = "stp_s{}".format (self.group.id)
 
         # reserve a 16-bit key space in every link
-        self._n_keys = 65536
+        self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
         # binary, configuration and data files
         self._aplx_file     = "binaries/threshold.aplx"
@@ -70,6 +70,10 @@ class ThresholdVertex(
         self._exSet_file    = "data/example_set.dat"
         self._examples_file = "data/examples.dat"
         self._events_file   = "data/events.dat"
+
+        # find out the size of an integer!
+        _dt=DataType.INT32
+        int_size = _dt.size
 
         self._N_NETWORK_CONFIGURATION_BYTES = \
             len (self._network.config)
@@ -102,7 +106,8 @@ class ThresholdVertex(
             if os.path.isfile (self._events_file) \
             else 0
 
-        self._N_KEYS_BYTES = 16
+        # 4 keys / keys are integers
+        self._N_KEYS_BYTES = 4 * int_size
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -255,6 +260,7 @@ class ThresholdVertex(
 
             # read the data into a numpy array and put in spec
             _ic = np.fromfile (_if, np.uint8)
+            _if.close ()
             for byte in _ic:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
@@ -275,6 +281,7 @@ class ThresholdVertex(
 
             # read the data into a numpy array and put in spec
             _tc = np.fromfile (_tf, np.uint8)
+            _tf.close ()
             for byte in _tc:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
@@ -295,6 +302,7 @@ class ThresholdVertex(
 
             # read the data into a numpy array and put in spec
             _es = np.fromfile (_sf, np.uint8)
+            _sf.close ()
             for byte in _es:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
@@ -315,6 +323,7 @@ class ThresholdVertex(
 
             # read the data into a numpy array and put in spec
             _ex = np.fromfile (_xf, np.uint8)
+            _xf.close ()
             for byte in _ex:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
@@ -335,6 +344,7 @@ class ThresholdVertex(
 
             # read the data into a numpy array and put in spec
             _ev = np.fromfile (_vf, np.uint8)
+            _vf.close ()
             for byte in _ev:
                 spec.write_value (byte, data_type=DataType.UINT8)
 

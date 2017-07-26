@@ -4,6 +4,9 @@ from enum import Enum
 class MLPConstants ():
     """ MLP network constants
     """
+    # core configuration CONSTANTS
+    KEY_SPACE_SIZE = 65536
+
     DEF_LEARN_RT  = 0x0ccc
 
     DEF_INIT_NET  = 0
@@ -22,6 +25,19 @@ class MLPConstants ():
     DEF_WEAK_CLMP = 0
 
     DEF_GRP_CRIT  = 0
+
+    # weights and weight file CONSTANTS
+    MAGIC_LENS_WEIGHT_COOKIE = 1431655766
+
+    WEIGHT_SHIFT       = 15
+    WEIGHT_MAX         = 0xffff << WEIGHT_SHIFT
+    WEIGHT_MIN         = -WEIGHT_MAX
+    WEIGHT_POS_EPSILON = 1
+    WEIGHT_NEG_EPSILON = -1
+
+    WF_MAX = (1.0 * WEIGHT_MAX) / (1.0 * (1 << WEIGHT_SHIFT))
+    WF_MIN = (1.0 * WEIGHT_MIN) / (1.0 * (1 << WEIGHT_SHIFT))
+    WF_EPS = (1.0 * WEIGHT_POS_EPSILON) / (1.0 * (1 << WEIGHT_SHIFT))
 
 
 class MLPNetworkTypes (Enum):

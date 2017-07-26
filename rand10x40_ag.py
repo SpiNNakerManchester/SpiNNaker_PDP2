@@ -33,8 +33,12 @@ Output = rand10x40.group (units = 10,
 rand10x40.link (Input,  Hidden)
 rand10x40.link (Hidden, Output)
 
+# read initial weights from Lens-generated file
+rand10x40.read_Lens_weights_file (
+    "data/rand10x40_train_no_recurrent_conn_weights.txt")
+
 # train the network
-rand10x40.train (num_epochs   = 1,
+rand10x40.train (num_updates  = 1,
                  num_examples = 40
                  )
 

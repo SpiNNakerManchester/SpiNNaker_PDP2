@@ -124,11 +124,11 @@ typedef long long long_weight_t;    // intermediate conntection weight
 typedef int       wchange_t;        // connection weight change
 typedef long long long_wchange_t;   // intermediate connection weight change
 
-#define SPINN_WEIGHT_SHIFT     15
-#define SPINN_WEIGHT_MAX       ((weight_t)  (0xffff << SPINN_WEIGHT_SHIFT))
-#define SPINN_WEIGHT_MIN       ((weight_t) -(0xffff << SPINN_WEIGHT_SHIFT))
-#define SPINN_WEIGHT_POS_DELTA ((weight_t)  1)
-#define SPINN_WEIGHT_NEG_DELTA ((weight_t) -1)
+#define SPINN_WEIGHT_SHIFT       15
+#define SPINN_WEIGHT_MAX         ((weight_t)  (0xffff << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_MIN         ((weight_t) -(0xffff << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_POS_EPSILON ((weight_t)  1)
+#define SPINN_WEIGHT_NEG_EPSILON ((weight_t) -1)
 
 typedef int       fpreal;           // 32-bit fixed-point number
 typedef long long lfpreal;          // 64-bit fixed-point number

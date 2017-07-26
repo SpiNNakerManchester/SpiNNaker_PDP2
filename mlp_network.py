@@ -1,3 +1,4 @@
+import os
 import struct
 
 import spinnaker_graph_front_end as g
@@ -11,7 +12,7 @@ from weight_vertex    import WeightVertex
 
 from mlp_group import MLPGroup
 from mlp_link  import MLPLink
-from mlp_types import MLPGroupTypes
+from mlp_types import MLPGroupTypes, MLPConstants
 
 
 class MLPNetwork():
@@ -34,11 +35,15 @@ class MLPNetwork():
         self._timeout            = 100
 
         # initialise lists of groups and links
-        self._groups = []
-        self._links  = []
+        self.groups = []
+        self.links  = []
 
-        # OUTPUT groups are connected in a daisy chain for convergence
+        # OUTPUT groups form chain for convergence decision
         self._output_chain = []
+
+        # keep track if initial weights have been loaded
+        self._initial_weights_loaded = 0
+        self._initial_weights_file = None
 
         # create single-unit Bias group by default
         self._bias_group = self.group (units        = 1,
@@ -78,10 +83,6 @@ class MLPNetwork():
     @property
     def timeout (self):
         return self._timeout
-
-    @property
-    def groups (self):
-        return self._groups
 
     @property
     def output_chain (self):
@@ -176,6 +177,9 @@ class MLPNetwork():
             group_type == MLPGroupTypes.HIDDEN):
             self.link (self.bias_group, _group)
 
+        # initial weights file must be re-loaded!
+        self._initial_weights_loaded = 0
+
         return _group
 
 
@@ -206,12 +210,97 @@ class MLPNetwork():
         print "adding link from {} to {} [total: {}]".format (\
             pre_link_group.label,
             post_link_group.label,
-            len (self._links) + 1
+            len (self.links) + 1
             )
 
-        self._links.append (_link)
+        self.links.append (_link)
+
+        # initial weights file must be re-loaded!
+        self._initial_weights_loaded = 0
 
         return _link
+
+
+    def read_Lens_weights_file (self,
+                                weights_file
+                                ):
+        """ reads a Lens-style weights file
+
+        File format (Lens online manual):
+
+        <I magic-weight-cookie>
+        <I total-number-of-links>
+        <I num-values>
+        <I totalUpdates>
+        for each group:
+          for each unit in group:
+            for each incoming link to unit:
+              <R link-weight>
+        	  if num-values >= 2:
+                <R link-lastWeightDelta>
+        	  if num-values >= 3:
+                <R link-lastValue>
+        """
+        # check if file exists
+        if os.path.isfile (weights_file):
+            self.weights_file = weights_file
+        elif os.path.isfile ("data/{}".format (weights_file)):
+            self.weights_file = "data/{}".format (weights_file)
+        else:
+            self.weights_file = None
+            print "error: cannot open weights file: {}".\
+                format (self.initial_weights_file)
+            return
+
+        print "reading Lens-style weights file"
+
+        # compute the number of expected weights in the file
+        _num_wts = 0
+        for to_grp in self.groups:
+            for frm_grp in to_grp.links_from:
+                _num_wts = _num_wts + to_grp.units * frm_grp.units
+
+        # check that it is the correct file type
+        _wf = open (self.weights_file, "r")
+
+        if int (_wf.readline()) != MLPConstants.MAGIC_LENS_WEIGHT_COOKIE:
+            print "error: incorrect weights file type"
+            _wf.close ()
+            return
+
+        # check that the file contains the right number of weights
+        if int (_wf.readline()) != _num_wts:
+            print "error: incorrect number of weights in file"
+            _wf.close ()
+            return
+
+        # read weights from file and store them in the corresponding group
+        _num_values = int (_wf.readline())
+        _ = _wf.readline()  # discard number of updates
+
+        for grp in self.groups:
+            # create an empty weight list for every possible link
+            for fgrp in self.groups:
+                grp.weights[fgrp] = []
+
+            # populate weight lists from file
+            # lists store weights in column-major order
+            for _ in range (grp.units):
+                # read weight if link exists (read in the correct order!)
+                for fgrp in self.groups:
+                    if fgrp in grp.links_from:
+                        for _ in range (fgrp.units):
+                            grp.weights[fgrp].append(float (_wf.readline()))
+                            if _num_values >= 2:
+                                _ = _wf.readline()  # discard
+                            if _num_values >= 3:
+                                _ = _wf.readline()  # discard
+
+        # clean up
+        _wf.close ()
+
+        # mark weights file as loaded
+        self._initial_weights_loaded = 1
 
 
     def generate_machine_graph (self,
@@ -348,7 +437,7 @@ class MLPNetwork():
 
 
     def train (self,
-               num_epochs   = None,
+               num_updates  = None,
                num_examples = None
                ):
         """ train the application graph for a number of epochs
@@ -362,7 +451,7 @@ class MLPNetwork():
         print "g.run ()"
 
         self._training     = 1
-        self._num_epochs   = num_epochs
+        self._num_epochs   = num_updates
         self._num_examples = num_examples
 
         # generate machine graph
@@ -385,6 +474,12 @@ class MLPNetwork():
 
         self._training     = 0
         self._num_examples = num_examples
+
+        # may need to reload initial weights file if
+        # application graph was modified after first load
+        if self.weights_file is not None and\
+            not self._initial_weights_loaded:
+            self.read_Lens_weights_file(self.weights_file)
 
         # generate machine graph
         self.generate_machine_graph ()

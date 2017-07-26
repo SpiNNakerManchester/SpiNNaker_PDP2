@@ -22,7 +22,7 @@ from spinn_front_end_common.abstract_models\
     .abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
 
-from mlp_types import MLPRegions
+from mlp_types import MLPRegions, MLPConstants
 
 
 class WeightVertex(
@@ -59,14 +59,15 @@ class WeightVertex(
                                               self.from_group.id)
 
         # reserve a 16-bit key space in every link
-        self._n_keys = 65536
+        self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
         # binary, configuration and data files
         self._aplx_file     = "binaries/weight.aplx"
         self._examples_file = "data/examples.dat"
-        self._weights_file  = "data/weights_{}_{}.dat".format (
-                                self.group.id + 2,
-                                self.from_group.id + 2) #lap
+
+        # find out the size of an integer!
+        _dt=DataType.INT32
+        int_size = _dt.size
 
         # size in bytes of the data in the regions
         self._N_NETWORK_CONFIGURATION_BYTES = \
@@ -80,12 +81,12 @@ class WeightVertex(
             if os.path.isfile (self._examples_file) \
             else 0
 
+        # each weight is an integer
         self._N_WEIGHTS_BYTES = \
-            os.path.getsize (self._weights_file) \
-            if os.path.isfile (self._weights_file) \
-            else 0
+            self.group.units * self.from_group.units * int_size
 
-        self._N_KEYS_BYTES = 16
+        # 4 keys / keys are integers
+        self._N_KEYS_BYTES = 4 * int_size
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -114,6 +115,29 @@ class WeightVertex(
     @property
     def fds_link (self):
         return self._fds_link
+
+    def cast_float_to_weight (self,
+                              wt_float
+                              ):
+        """ casts a (float) weight into a (weight_t) weight
+        """
+        # round weight
+        if wt_float >= 0:
+            wt_float = wt_float + MLPConstants.WF_EPS / 2.0
+        else:
+            wt_float = wt_float - MLPConstants.WF_EPS / 2.0
+
+        # saturate weight
+        if wt_float >= MLPConstants.WF_MAX:
+            wtemp = MLPConstants.WF_MAX;
+            print "warning: input weight >= {}".format (MLPConstants.WF_MAX)
+        elif wt_float <= MLPConstants.WF_MIN:
+            wtemp = MLPConstants.WF_MIN;
+            print "warning: input weight <= {}".format (MLPConstants.WF_MIN)
+        else:
+            wtemp = wt_float
+
+        return (int (wtemp * (1 << MLPConstants.WEIGHT_SHIFT)))
 
     @property
     def config (self):
@@ -191,7 +215,6 @@ class WeightVertex(
             spec.reserve_memory_region (
                 MLPRegions.EXAMPLES.value,
                 self._N_EXAMPLES_BYTES)
-
 #             print "wv-{}_{}: reading {}".format (self.group.id,
 #                                                  self.from_group.id,
 #                                                  self._examples_file
@@ -204,29 +227,31 @@ class WeightVertex(
 
             # read the data into a numpy array and put in spec
             _ex = np.fromfile (_ef, np.uint8)
+            _ef.close ()
             for byte in _ex:
                 spec.write_value (byte, data_type=DataType.UINT8)
 
         # Reserve and write the weights region
-        if os.path.isfile (self._weights_file):
-            spec.reserve_memory_region (
-                MLPRegions.WEIGHTS.value,
-                self._N_WEIGHTS_BYTES)
+        spec.reserve_memory_region (
+            MLPRegions.WEIGHTS.value,
+            self._N_WEIGHTS_BYTES)
 
-#             print "wv-{}_{}: reading {}".format (self.group.id,
-#                                                  self.from_group.id,
-#                                                  self._weights_file
-#                                                  )
+        spec.switch_write_focus (MLPRegions.WEIGHTS.value)
 
-            spec.switch_write_focus (MLPRegions.WEIGHTS.value)
+        # weight matrix is kept in column-major order
+        # and has to be written out in row-major order
+        _wts = self.group.weights[self.from_group]
+        _nrows = self.from_group.units
+        _ncols = self.group.units
+        if len (_wts):
+            for row in range (_nrows):
+                for col in range (_ncols):
+                    _wt = self.cast_float_to_weight (_wts[col * _nrows + row])
+                    spec.write_value (_wt, data_type=DataType.INT32)
+        else:
+            for _ in range (_nrows * _ncols):
+                spec.write_value (0, data_type=DataType.INT32)
 
-            # open the weights file
-            _rf = open (self._weights_file, "rb")
-
-            # read the data into a numpy array and put in spec
-            _wc = np.fromfile (_rf, np.uint8)
-            for byte in _wc:
-                spec.write_value (byte, data_type=DataType.UINT8)
 
         # Reserve and write the routing region
         spec.reserve_memory_region (

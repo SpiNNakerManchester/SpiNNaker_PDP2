@@ -27,6 +27,12 @@ class MLPGroup():
 
         print "creating group {}".format (self.label)
 
+        # keep track of associated incoming links
+        self.links_from = []
+
+        # group has no initial weights
+        self.weights = dict ()
+
         # keep track of associated vertices
         self.w_vertices = []
         self.s_vertex   = None
@@ -105,7 +111,7 @@ class MLPGroup():
         # host communication parameters
         self.write_out = (self.type == MLPGroupTypes.OUTPUT)
 
-        # group types modify some default values
+        # group type modifies default values
         if (self.type == MLPGroupTypes.BIAS):
             self.num_out_procs = 1
             self.out_procs_list [0] = MLPOutputProcs.OUT_BIAS

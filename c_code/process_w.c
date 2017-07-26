@@ -265,11 +265,11 @@ void w_update_weights (void)
         {
           if (w_weights[i][j] > 0)
           {
-            w_weights[i][j] = SPINN_WEIGHT_POS_DELTA;
+            w_weights[i][j] = SPINN_WEIGHT_POS_EPSILON;
           }
           else
           {
-            w_weights[i][j] = SPINN_WEIGHT_NEG_DELTA;
+            w_weights[i][j] = SPINN_WEIGHT_NEG_EPSILON;
           }
         }
         else
