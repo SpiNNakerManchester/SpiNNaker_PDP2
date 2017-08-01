@@ -243,10 +243,10 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
-  #ifdef DEBUG
+  #ifdef DEBUG_CFG0
     io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
     io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
-    io_printf (IO_BUF, "no: %d\n", tcfg.num_outputs);
+    io_printf (IO_BUF, "no: %d\n", tcfg.num_units);
     io_printf (IO_BUF, "fs: %d\n", tcfg.fwd_sync_expected);
     io_printf (IO_BUF, "bs: %d\n", tcfg.bkp_sync_expected);
     io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
@@ -327,8 +327,8 @@ void done (uint ec)
 
       #ifdef DEBUG_VRB
         io_printf (IO_BUF, "(tactive:%u ta:0x%08x/0x%08x tb:0x%08x/0x%08x)\n",
-                    t_active, tf_arrived, tcfg.num_outputs,
-                    tb_arrived, tcfg.num_outputs
+                    t_active, tf_arrived, tcfg.num_units,
+                    tb_arrived, tcfg.num_units
                   );
         io_printf (IO_BUF, "(tsd:%u tsa:0x%08x/0x%08x)\n",
                     t_sync_done, t_sync_arrived, tcfg.fwd_sync_expected

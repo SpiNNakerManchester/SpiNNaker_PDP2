@@ -42,24 +42,24 @@ void s_process (uint null0, uint null1)
     uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
     if (ph == SPINN_FORWARD)
     {
-      // process FORWARD phase packet
       #ifdef DEBUG
         recv_fwd++;
         if (phase != SPINN_FORWARD)
           wrng_phs++;
       #endif
 
+      // process FORWARD phase packet
       s_forward_packet (key, payload);
     }
     else
     {
-      // process BACKPROP phase packet
       #ifdef DEBUG
         recv_bkp++;
         if (phase != SPINN_BACKPROP)
           wrng_phs++;
       #endif
 
+      // process BACKPROP phase packet
       s_backprop_packet (key, payload);
     }
 
@@ -113,6 +113,10 @@ void s_forward_packet (uint key, uint payload)
     // incorporate net index to the packet key and send,
     while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
+    #ifdef DEBUG_CFG3
+      io_printf (IO_BUF, "sn[%u]: 0x%08x\n", inx, net_tmp);
+    #endif
+
     #ifdef DEBUG
       pkt_sent++;
       sent_fwd++;
@@ -126,7 +130,7 @@ void s_forward_packet (uint key, uint payload)
     sf_done++;
 
     // and check if all nets done
-    if (sf_done == scfg.num_nets)
+    if (sf_done == scfg.num_units)
     {
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
@@ -163,23 +167,26 @@ void s_forward_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void s_backprop_packet (uint key, uint payload)
 {
-  // get error index: mask out block and phase data,
+  // get error index: mask out block, phase and colour data,
   uint inx = key & SPINN_ERROR_MASK;
 
+  // get error colour: mask out block, phase and net index data,
+  uint clr = (key & SPINN_COLOUR_MASK) >> SPINN_COLOUR_SHIFT;
+
   // accumulate new error b-d-p,
-  s_errors[inx] += (error_t) payload;
+  s_errors[clr][inx] += (error_t) payload;
 
   // mark error b-d-p as arrived,
-  sb_arrived[inx]++;
+  sb_arrived[clr][inx]++;
 
   // and check if error complete to send to next stage
-  if (sb_arrived[inx] == scfg.bkp_expected)
+  if (sb_arrived[clr][inx] == scfg.bkp_expected)
   {
     //NOTE: may need to use long_error_t and saturate before sending
-    error_t error = s_errors[inx];
+    error_t error = s_errors[clr][inx];
 
 /*
-    long_error_t err_tmp = s_errors[inx]
+    long_error_t err_tmp = s_errors[clr][inx]
                               >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
 
     if (err_tmp >= (long_error_t) SPINN_ERROR_MAX)
@@ -199,20 +206,24 @@ void s_backprop_packet (uint key, uint payload)
     // incorporate error index to the packet key and send,
     while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
 
+    #ifdef DEBUG_CFG4
+      io_printf (IO_BUF, "se[%u]: 0x%08x\n", inx, error);
+    #endif
+
     #ifdef DEBUG
       pkt_sent++;
       sent_bkp++;
     #endif
 
     // prepare for next tick,
-    s_errors[inx] = 0;
-    sb_arrived[inx] = 0;
+    s_errors[clr][inx] = 0;
+    sb_arrived[clr][inx] = 0;
 
     // mark error as done,
     sb_done++;
 
     // and check if all errors done
-    if (sb_done == scfg.num_nets)
+    if (sb_done == scfg.num_units)
     {
       // advance tick
       //TODO: check if need to schedule or can simply call
@@ -282,7 +293,7 @@ void sb_advance_tick (uint null0, uint null1)
     tick = SPINN_S_INIT_TICK;
 
     #ifdef TRACE
-      io_printf (IO_BUF, "w_switch_to_fw\n");
+      io_printf (IO_BUF, "s_switch_to_fw\n");
     #endif
 
     // switch to FORWARD phase,
@@ -321,10 +332,6 @@ void sf_advance_event (void)
     {
       // if training save number of ticks,
       num_ticks = tick;
-
-      #ifdef TRACE
-        io_printf (IO_BUF, "w_switch_to_bp\n");
-      #endif
 
       // and do BACKPROP phase
       phase = SPINN_BACKPROP;

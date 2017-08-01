@@ -32,7 +32,7 @@ class MLPNetwork():
         self._net_type           = net_type.value
         self._ticks_per_interval = ticks_per_interval
         self._global_max_ticks   = (intervals * ticks_per_interval) + 1
-        self._timeout            = 100
+        self._timeout            = 10000
 
         # initialise lists of groups and links
         self.groups = []
@@ -70,7 +70,7 @@ class MLPNetwork():
 
     @property
     def ticks_per_int (self):
-        return self._ticks_per_int
+        return self._ticks_per_interval
 
     @property
     def global_max_ticks (self):
@@ -129,13 +129,12 @@ class MLPNetwork():
                group_type   = MLPGroupTypes.HIDDEN,
                input_funcs  = None,
                output_funcs = None,
-               write_blk    = None,
                label        = None
                ):
         """ add a group to the network
 
         :param units:
-        :param gtype:
+        :param group_type:
         :param label:
 
         :return: a new group object
@@ -321,65 +320,82 @@ class MLPNetwork():
 
         for grp in self.groups:
             # create one weight core per network group, including this one
-            for i in range (_num_groups):
+            # NOTE: could be optimised. If so, see NOTEs below.
+            for fgrp in self.groups:
                 wv = WeightVertex (self,
                                    grp,
-                                   from_group = self.groups[i]
+                                   from_group = fgrp
                                    )
-                g.add_machine_vertex_instance (wv)
-                # list w_vertices is ordered by from_group
-                grp.w_vertices.append (wv)
 
+                grp.w_vertices.append (wv)
+                g.add_machine_vertex_instance (wv)
+
+            # NOTE: if all-zero w cores are optimised out
+            # then fwd_expect and bkp_expect must be adjusted
             sv = SumVertex (self,
                             grp,
                             fwd_expect = _num_groups,
                             bkp_expect = _num_groups
                             )
-            g.add_machine_vertex_instance (sv)
+
             grp.s_vertex = sv
+            g.add_machine_vertex_instance (sv)
 
             iv = InputVertex (self,
                               grp
                               )
-            g.add_machine_vertex_instance (iv)
+
             grp.i_vertex = iv
+            g.add_machine_vertex_instance (iv)
 
             # check if last output group in daisy chain
-            if (grp.type == MLPGroupTypes.OUTPUT):
-                if grp == self.output_chain[-1]:
-                    _is_last_out = 1
-                else:
-                    _is_last_out = 0
+            if grp == self.output_chain[-1]:
+                _is_last_out = 1
             else:
                 _is_last_out = 0
 
+            # NOTE: if all-zero w cores are optimised out
+            # then fwd_sync_expecr must be adjusted
             tv = ThresholdVertex (self,
                                   grp,
                                   fwd_sync_expect = _num_groups,
                                   is_last_out     = _is_last_out
                                   )
-            g.add_machine_vertex_instance (tv)
-            grp.t_vertex = tv
 
-        # create associated forward, backprop, sync and stop
-        # machine edges for every network group
-        for gn, grp in enumerate (self.groups):
+            grp.t_vertex = tv
+            g.add_machine_vertex_instance (tv)
+
+        # create associated forward, backprop, synchronisation and
+        # stop machine edges for every network group
+        for grp in self.groups:
             for w in grp.w_vertices:
+                _frmg = w.from_group
+
                 # create forward w to s links
                 g.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
                                              w.fwd_link)
+
                 # create backprop w to s links
-                _frmg = w.from_group
                 g.add_machine_edge_instance (MachineEdge (w, _frmg.s_vertex),
                                              w.bkp_link)
+
                 # create forward synchronisation w to t links
                 g.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
                                              w.fds_link)
+
+                # create backprop i to w (multicast) links
+                g.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
+                                             grp.i_vertex.bkp_link)
+
+                # create forward t to w (multicast) links
+                g.add_machine_edge_instance (MachineEdge (_frmg.t_vertex, w),
+                                             _frmg.t_vertex.fwd_link)
 
             # create forward s to i link
             g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                       grp.i_vertex),
                                          grp.s_vertex.fwd_link)
+
             # create backprop s to t link
             g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                       grp.t_vertex),
@@ -389,16 +405,7 @@ class MLPNetwork():
             g.add_machine_edge_instance (MachineEdge (grp.i_vertex,
                                                       grp.t_vertex),
                                          grp.i_vertex.fwd_link)
-            # create backprop i to w (multicast) links
-            for w in grp.w_vertices:
-                g.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
-                                             grp.i_vertex.bkp_link)
 
-            # create forward t to w (multicast) links
-            for fg in self.groups:
-                g.add_machine_edge_instance (MachineEdge (grp.t_vertex,
-                                                          fg.w_vertices[gn]),
-                                             grp.t_vertex.fwd_link)
             # create backprop t to i link
             g.add_machine_edge_instance (MachineEdge (grp.t_vertex,
                                                       grp.i_vertex),

@@ -52,6 +52,10 @@ void wf_process (uint null0, uint null1)
     // incorporate net index to the packet key and send
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));
 
+    #ifdef DEBUG_CFG3
+      io_printf (IO_BUF, "wn[%u]: 0x%08x\n", j, net_part);
+    #endif
+
     #ifdef DEBUG
       pkt_sent++;
       sent_fwd++;
@@ -153,6 +157,10 @@ void wb_process (uint null0, uint null1)
         while (!spin1_send_mc_packet ((bkpKey | i),
                 (uint) w_errors[i], WITH_PAYLOAD)
               );
+
+        #ifdef DEBUG_CFG4
+          io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
+        #endif
 
         #ifdef DEBUG
           pkt_sent++;
@@ -353,6 +361,9 @@ void wb_advance_tick (uint null0, uint null1)
   #ifdef DEBUG_VRB
     io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
   #endif
+
+  // change packet key colour,
+  bkpKey ^= SPINN_COLOUR_KEY;
 
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)

@@ -45,7 +45,7 @@ class WeightVertex(
                                    group.id, from_group.id)
                                )
 
-        # weight core-specific parameters
+        # application-level data
         self._network       = network
         self._group         = group
         self._from_group    = from_group
@@ -57,6 +57,11 @@ class WeightVertex(
                                               self.from_group.id)
         self._fds_link = "fds_w{}_{}".format (self.group.id,
                                               self.from_group.id)
+        # weight core-specific parameters
+        if len (self.group.weights[self.from_group]):
+            self.learning_rate = self.group.learning_rate
+        else:
+            self.learning_rate = 0
 
         # reserve a 16-bit key space in every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -66,8 +71,8 @@ class WeightVertex(
         self._examples_file = "data/examples.dat"
 
         # find out the size of an integer!
-        _dt=DataType.INT32
-        int_size = _dt.size
+        _data_int=DataType.INT32
+        int_size = _data_int.size
 
         # size in bytes of the data in the regions
         self._N_NETWORK_CONFIGURATION_BYTES = \
@@ -86,7 +91,7 @@ class WeightVertex(
             self.group.units * self.from_group.units * int_size
 
         # 4 keys / keys are integers
-        self._N_KEYS_BYTES = 4 * int_size
+        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * int_size
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -157,7 +162,7 @@ class WeightVertex(
         return struct.pack ("<2Ih2x",
                             self.from_group.units,
                             self.group.units,
-                            self.group.learning_rate & 0xffff
+                            self.learning_rate & 0xffff
                             )
 
     @property

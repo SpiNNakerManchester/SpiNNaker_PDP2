@@ -44,15 +44,17 @@ class SumVertex(
         MachineVertex.__init__(self, label =\
                                "s{} core".format (group.id))
 
-        # sum core-specific parameters
+        # application-level data
         self._network    = network
         self._group      = group
-        self._fwd_expect = fwd_expect
-        self._bkp_expect = bkp_expect
 
         # forward and backprop link partition names
         self._fwd_link = "fwd_s{}".format (self.group.id)
         self._bkp_link = "bkp_s{}".format (self.group.id)
+
+        # sum core-specific parameters
+        self._fwd_expect = fwd_expect
+        self._bkp_expect = bkp_expect
 
         # reserve a 16-bit key space in every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -62,8 +64,8 @@ class SumVertex(
         self._examples_file = "data/examples.dat"
 
         # find out the size of an integer!
-        _dt=DataType.INT32
-        int_size = _dt.size
+        _data_int=DataType.INT32
+        int_size = _data_int.size
 
         # size in bytes of the data in the regions
         self._N_NETWORK_CONFIGURATION_BYTES = \
@@ -77,8 +79,8 @@ class SumVertex(
             if os.path.isfile (self._examples_file) \
             else 0
 
-        # 4 keys / keys are integers
-        self._N_KEYS_BYTES = 4 * int_size
+        # keys are integers
+        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * int_size
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -106,7 +108,7 @@ class SumVertex(
 
             typedef struct s_conf
             {
-              uint         num_nets;
+              uint         num_units;
               scoreboard_t fwd_expect;
               scoreboard_t bkp_expect;
             } s_conf_t;

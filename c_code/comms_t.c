@@ -273,7 +273,7 @@ void t_backpropPacket (uint key, uint payload)
   tb_arrived++;
 
   // if all expected errors have arrived may move to next tick
-  if (tb_arrived == tcfg.num_outputs)
+  if (tb_arrived == tcfg.num_units)
   {
     // initialize arrival scoreboard for next tick,
     tb_arrived = 0;
@@ -322,7 +322,7 @@ void send_outputs_to_host (uint cmd, uint tick)
 
   // copy outputs and targets into msg buffer,
   short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
-  for (uint i = 0; i < tcfg.num_outputs; i++)
+  for (uint i = 0; i < tcfg.num_units; i++)
   {
     if (tick == 0)
     {
@@ -344,7 +344,7 @@ void send_outputs_to_host (uint cmd, uint tick)
   }
 
   // set message length,
-  uint len = 2 * tcfg.num_outputs * sizeof(short_activ_t);
+  uint len = 2 * tcfg.num_units * sizeof(short_activ_t);
   t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message
@@ -366,7 +366,7 @@ void send_info_to_host (uint null0, uint null1)
   // report epoch, example and tick,
   t_sdp_msg.cmd_rc = SPINN_HOST_INFO;
   t_sdp_msg.seq    = tcfg.write_blk;
-  t_sdp_msg.arg1   = tcfg.num_outputs;
+  t_sdp_msg.arg1   = tcfg.num_units;
   t_sdp_msg.arg2   = ncfg.num_write_blks;
   t_sdp_msg.arg3   = t_tot_ticks + 1;
 
@@ -379,7 +379,7 @@ void send_info_to_host (uint null0, uint null1)
   #ifdef DEBUG_VRB
     io_printf (IO_BUF, "sent info to host: nb:%d wb:%d no:%d tt:%d\n",
                 ncfg.num_write_blks, tcfg.write_blk,
-                tcfg.num_outputs, t_tot_ticks
+                tcfg.num_units, t_tot_ticks
               );
   #endif
 }

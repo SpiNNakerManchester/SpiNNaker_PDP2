@@ -6,6 +6,7 @@ class MLPConstants ():
     """
     # core configuration CONSTANTS
     KEY_SPACE_SIZE = 65536
+    NUM_KEYS_REQ   = 4
 
     DEF_LEARN_RT  = 0x0ccc
 
@@ -22,7 +23,7 @@ class MLPConstants ():
 
     DEF_INTEGR_DT = 0x00003333
     DEF_SOFT_CLMP = 0x00008000
-    DEF_WEAK_CLMP = 0
+    DEF_WEAK_CLMP = 0x00008000
 
     DEF_GRP_CRIT  = 0
 

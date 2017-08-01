@@ -145,7 +145,7 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
-  #ifdef DEBUG
+  #ifdef DEBUG_CFG0
     io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
     io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
     io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);

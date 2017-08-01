@@ -139,6 +139,16 @@ uint w_init (void)
                  );
   }
 
+  #ifdef DEBUG_CFG2
+    for (uint r = 0; r < wcfg.num_rows; r++)
+    {
+      for (uint c =0; c < wcfg.num_cols; c++)
+      {
+	    io_printf (IO_BUF, "w[%u][%u]: %k\n", r, c, w_weights[r][c]);
+      }
+    }
+  #endif
+
   #ifdef WEIGHT_TRACE
     //TODO: dump weights to SDRAM for record keeping
   #endif

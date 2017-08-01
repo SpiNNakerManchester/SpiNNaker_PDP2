@@ -20,6 +20,8 @@
 *.swp
 *.tab
 *.txt
-**/build
 **/application_generated_data_files
+**/binaries
+**/build
+**/data
 **/reports/

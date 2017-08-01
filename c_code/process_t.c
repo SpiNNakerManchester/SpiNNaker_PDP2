@@ -82,7 +82,7 @@ void tf_process (uint null0, uint null1)
     tf_arrived++;
 
     // and check if all nets arrived (i.e., all outputs done)
-    if (tf_arrived == tcfg.num_outputs)
+    if (tf_arrived == tcfg.num_units)
     {
       // if possible, FORWARD stop criterion
       if (tcfg.output_grp)
@@ -166,7 +166,7 @@ void tb_process (uint null0, uint null1)
 
   // compute deltas based on pre-computed errors,
   //TODO: this needs checking!
-  for (uint inx = 0; inx < tcfg.num_outputs; inx++)
+  for (uint inx = 0; inx < tcfg.num_units; inx++)
   {
     if (tcfg.output_grp)
     {
@@ -197,6 +197,10 @@ void tb_process (uint null0, uint null1)
 
     // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
+
+    #ifdef DEBUG_CFG4
+      io_printf (IO_BUF, "td[%u]: 0x%08x\n", inx, delta);
+    #endif
 
     #ifdef DEBUG
       pkt_sent++;
@@ -390,7 +394,7 @@ void tf_advance_event (void)
     if (tcfg.input_grp || tcfg.output_grp)
     {
       // update input/target index,
-      t_it_idx += tcfg.num_outputs;
+      t_it_idx += tcfg.num_units;
 
       // and update number of ticks for new event
       if (tcfg.is_last_output_group)
@@ -456,7 +460,7 @@ void t_advance_example (void)
   // if input or output group initialize new event input/target index
   if (tcfg.input_grp || tcfg.output_grp)
   {
-    t_it_idx = ev[event_idx].it_idx * tcfg.num_outputs;
+    t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
   }
 
   // update number of ticks for new event
@@ -562,7 +566,7 @@ void t_switch_to_bp (void)
   phase = SPINN_BACKPROP;
 
   // initialize t_errors for next example
-  for (uint i = 0; i < tcfg.num_outputs; i++)
+  for (uint i = 0; i < tcfg.num_units; i++)
   {
     t_errors[tb_procs][i] = 0;
   }
@@ -635,7 +639,7 @@ void t_init_outputs (uint null0, uint null1)
   #endif
 
   // initialize every unit output and send for processing
-  for (uint i = 0; i < tcfg.num_outputs; i++)
+  for (uint i = 0; i < tcfg.num_units; i++)
   {
     // setup the initial output value.
     // Lens has two ways of initialise the output value,
@@ -675,6 +679,10 @@ void t_init_outputs (uint null0, uint null1)
                                  )
           );
 
+    #ifdef DEBUG_CFG3
+      io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
+    #endif
+
     #ifdef DEBUG
       pkt_sent++;
       sent_fwd++;
@@ -705,7 +713,7 @@ void compute_out (uint inx)
 
   #ifdef DEBUG_VRB
     char* group;
-    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
+    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example, tick, inx);
   #endif
 
@@ -760,7 +768,7 @@ void store_targets (uint inx)
     io_printf (IO_BUF, "store_targets\n");
   #endif
 
-  t_target_history[(tick * tcfg.num_outputs) + inx] = tt[t_it_idx + inx];
+  t_target_history[(tick * tcfg.num_units) + inx] = tt[t_it_idx + inx];
 }
 // ------------------------------------------------------------------------
 
@@ -774,7 +782,7 @@ void store_output_deriv (uint inx)
     io_printf (IO_BUF, "store_output_deriv\n");
   #endif
 
-  t_output_deriv_history[(tick * tcfg.num_outputs) + inx] = t_output_deriv[inx];
+  t_output_deriv_history[(tick * tcfg.num_units) + inx] = t_output_deriv[inx];
 }
 // ------------------------------------------------------------------------
 
@@ -789,7 +797,7 @@ void restore_output_deriv (uint inx, uint tick)
   #endif
 
   t_output_deriv[inx] =
-    t_output_deriv_history[(tick * tcfg.num_outputs) + inx];
+    t_output_deriv_history[(tick * tcfg.num_units) + inx];
 }
 // ------------------------------------------------------------------------
 
@@ -803,7 +811,7 @@ void store_nets (uint inx)
     io_printf (IO_BUF, "store_nets\n");
   #endif
 
-  t_net_history[(tick * tcfg.num_outputs) + inx] = t_nets[inx];
+  t_net_history[(tick * tcfg.num_units) + inx] = t_nets[inx];
 }
 // ------------------------------------------------------------------------
 
@@ -817,7 +825,7 @@ void restore_nets (uint inx, uint tick)
     io_printf (IO_BUF, "restore_nets\n");
   #endif
 
-  t_nets[inx] = t_net_history[((tick * tcfg.num_outputs) + inx)];
+  t_nets[inx] = t_net_history[((tick * tcfg.num_units) + inx)];
 }
 // ------------------------------------------------------------------------
 
@@ -830,7 +838,7 @@ void store_outputs (uint inx)
     io_print (IO_BUF, "store_outputs\n");
   #endif
 
-  t_output_history[(tick * tcfg.num_outputs) + inx] = t_outputs[inx];
+  t_output_history[(tick * tcfg.num_units) + inx] = t_outputs[inx];
 }
 // ------------------------------------------------------------------------
 
@@ -843,7 +851,7 @@ void restore_outputs (uint inx, uint tick)
     io_printf (IO_BUF, "restore_outputs\n");
   #endif
 
-  t_outputs[inx] = t_output_history[((tick * tcfg.num_outputs) + inx)];
+  t_outputs[inx] = t_output_history[((tick * tcfg.num_units) + inx)];
 }
 // ------------------------------------------------------------------------
 
@@ -883,7 +891,7 @@ void out_integr (uint inx)
 
 
   // store the output for the backward path
-  t_instant_outputs[((tick - 1) * tcfg.num_outputs) + inx] = t_outputs[inx];
+  t_instant_outputs[((tick - 1) * tcfg.num_units) + inx] = t_outputs[inx];
 
   // compute the of the output integrator and round off
   // s36.27 = (s0.16 * (s4.27 - s4.27)) >> 16
@@ -934,7 +942,7 @@ void out_hard_clamp (uint inx)
 /*
   if (ncfg.training)
   {
-    short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_outputs;
+    short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_units;
     tmp[inx] = t_outputs[inx];
   }
 */
@@ -974,7 +982,7 @@ void out_weak_clamp (uint inx)
   if (ncfg.training)
   {
     //store previous value of t_output for BACKPROP computation
-    short_activ_t * tmp = t_out_weak_clamp_data + tick * tcfg.num_outputs;
+    short_activ_t * tmp = t_out_weak_clamp_data + tick * tcfg.num_units;
     tmp[inx] = t_outputs[inx] << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
   }
 */
@@ -1019,7 +1027,7 @@ void compute_out_back (uint inx)
 
   #ifdef DEBUG_VRB
     char* group;
-    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
+    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d - Unit: %d\n", group, example, tick, inx);
   #endif
 
@@ -1088,7 +1096,7 @@ void out_integr_back (uint inx)
   lfpreal dt = (lfpreal) tcfg.out_integr_dt;
 
   // reset output to value stored during forward pass
-  t_outputs[inx] = t_instant_outputs[((tick - 1) * tcfg.num_outputs) + inx];
+  t_outputs[inx] = t_instant_outputs[((tick - 1) * tcfg.num_units) + inx];
 
   // s36.27 = (s47.16 * s36.27) >> 16
   long_deriv_t d = (dt * last_output_deriv) >> SPINN_FPREAL_SHIFT;
@@ -1111,7 +1119,7 @@ void out_hard_clamp_back (uint inx)
   #endif
 
 /*
-  short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_outputs;
+  short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_units;
 
   if (tmp[inx] != SPINN_SHORT_ACTIV_NaN)
     t_output_deriv[inx] = 0;
@@ -1161,21 +1169,21 @@ int init_out_integr ()
   // allocate memory for integrator state
   //NOTE: these variables are initialised in function init_outputs ()
   if ((t_last_integr_output = ((activation_t *)
-       spin1_malloc (tcfg.num_outputs * sizeof(activation_t)))) == NULL
+       spin1_malloc (tcfg.num_units * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((t_last_integr_output_deriv = ((long_deriv_t *)
-       spin1_malloc (tcfg.num_outputs * sizeof(long_deriv_t)))) == NULL
+       spin1_malloc (tcfg.num_units * sizeof(long_deriv_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((t_instant_outputs = ((activation_t *)
-       spin1_malloc (tcfg.num_outputs * ncfg.global_max_ticks * sizeof(activation_t)))) == NULL
+       spin1_malloc (tcfg.num_units * ncfg.global_max_ticks * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -1202,7 +1210,7 @@ int init_out_hard_clamp ()
     // allocate memory for outputs
     if ((t_out_hard_clamp_data = ((short_activ_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof(short_activ_t),
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof(short_activ_t),
                        0, ALLOC_LOCK)
                        )) == NULL
        )
@@ -1235,7 +1243,7 @@ int init_out_weak_clamp ()
     // allocate memory for outputs
     if ((t_out_weak_clamp_data = ((short_activ_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof(short_activ_t),
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof(short_activ_t),
                        0, ALLOC_LOCK)
                        )) == NULL
        )

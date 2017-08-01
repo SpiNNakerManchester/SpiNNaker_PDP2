@@ -111,6 +111,10 @@ void i_forward_packet (uint key, uint payload)
   // incorporate net index to the packet key and send,
   while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
+    #ifdef DEBUG_CFG3
+      io_printf (IO_BUF, "in[%u]: 0x%08x\n", inx, net_tmp);
+    #endif
+
   #ifdef DEBUG
     pkt_sent++;
     sent_fwd++;
@@ -120,7 +124,7 @@ void i_forward_packet (uint key, uint payload)
   if_done++;
 
   // and check if all nets done
-  if (if_done == icfg.num_nets)
+  if (if_done == icfg.num_units)
   {
     // access synchronization semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
@@ -190,6 +194,10 @@ void i_backprop_packet (uint key, uint payload)
   // incorporate delta index to the packet key and send,
   while (!spin1_send_mc_packet ((bkpKey | inx), delta, WITH_PAYLOAD));
 
+    #ifdef DEBUG_CFG4
+      io_printf (IO_BUF, "id[%u]: 0x%08x\n", inx, delta);
+    #endif
+
   #ifdef DEBUG
     pkt_sent++;
     sent_bkp++;
@@ -199,7 +207,7 @@ void i_backprop_packet (uint key, uint payload)
   ib_done++;
 
   // and check if all deltas done
-  if (ib_done == icfg.num_nets)
+  if (ib_done == icfg.num_units)
   {
     // advance tick
     //TODO: check if need to schedule or can simply call
@@ -312,10 +320,6 @@ void if_advance_event (void)
       // if training, save number of ticks
       num_ticks = tick;
 
-      #ifdef TRACE
-        io_printf (IO_BUF, "w_switch_to_bp\n");
-      #endif
-
       // then do BACKPROP phase
       phase = SPINN_BACKPROP;
     }
@@ -335,7 +339,7 @@ void if_advance_event (void)
     // output group
     if (icfg.input_grp || icfg.output_grp)
     {
-      i_it_idx += icfg.num_nets;
+      i_it_idx += icfg.num_units;
     }
 
     // and increment tick
@@ -382,12 +386,12 @@ void i_advance_example (void)
   // output group
   if (icfg.input_grp || icfg.output_grp)
   {
-    i_it_idx = ev[event_idx].it_idx * icfg.num_nets;
+    i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
   // if the input integrator is used reset the array of last values
   if (icfg.in_integr_en)
-    for (uint i = 0; i < icfg.num_nets; i++)
+    for (uint i = 0; i < icfg.num_units; i++)
     {
       i_last_integr_net[i] = (long_net_t) icfg.initNets;
       i_last_integr_delta[i] = 0;
@@ -409,7 +413,7 @@ void compute_in (uint inx)
 
   #ifdef DEBUG_VRB
     char* group;
-    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_nets == 1) ? "Bias" : "Hidden"));
+    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
   #endif
 
@@ -439,7 +443,7 @@ void store_nets (uint inx)
     io_printf (IO_BUF, "store_nets\n");
   #endif
 
-  i_net_history[(tick * icfg.num_nets) + inx] = i_nets[inx];
+  i_net_history[(tick * icfg.num_units) + inx] = i_nets[inx];
 }
 // ------------------------------------------------------------------------
 
@@ -453,7 +457,7 @@ void restore_nets (uint inx, uint tick)
     io_printf (IO_BUF, "restore_nets\n");
   #endif
 
-  i_nets[inx] = i_net_history[(tick * icfg.num_nets) + inx];
+  i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
 }
 // ------------------------------------------------------------------------
 
@@ -537,7 +541,7 @@ void compute_in_back (uint inx)
 
   #ifdef DEBUG_VRB
     char* group;
-    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_nets == 1) ? "Bias" : "Hidden"));
+    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
   #endif
 
@@ -609,7 +613,7 @@ int init_in_integr ()
 
   // allocate the memory for the integrator state variable for outputs
   if ((i_last_integr_net = ((long_net_t *)
-         spin1_malloc (icfg.num_nets * sizeof(long_net_t)))) == NULL
+         spin1_malloc (icfg.num_units * sizeof(long_net_t)))) == NULL
        )
   {
       return (SPINN_MEM_UNAVAIL);
@@ -617,14 +621,14 @@ int init_in_integr ()
 
   // allocate the memory for the integrator state variable for deltas
   if ((i_last_integr_delta = ((long_delta_t *)
-         spin1_malloc (icfg.num_nets * sizeof(long_delta_t)))) == NULL
+         spin1_malloc (icfg.num_units * sizeof(long_delta_t)))) == NULL
        )
   {
       return (SPINN_MEM_UNAVAIL);
   }
 
   // reset the memory of the integrator state variable
-  for (uint i = 0; i<icfg.num_nets; i++)
+  for (uint i = 0; i<icfg.num_units; i++)
   {
     i_last_integr_net[i] = (long_net_t) icfg.initNets;
     i_last_integr_delta[i] = 0;

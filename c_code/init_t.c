@@ -21,7 +21,7 @@ uint t_init (void)
 
   // allocate memory for nets -- stored in FORWARD phase for use in BACKPROP
   if ((t_nets = ((net_t *)
-         spin1_malloc (tcfg.num_outputs * sizeof(net_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof(net_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -29,7 +29,7 @@ uint t_init (void)
 
   // allocate memory for outputs
   if ((t_outputs = ((activation_t *)
-         spin1_malloc (tcfg.num_outputs * sizeof(activation_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -37,7 +37,7 @@ uint t_init (void)
 
   // allocate memory for output derivative (which is equal to error derivative)
   if ((t_output_deriv = ((long_deriv_t *)
-         spin1_malloc (tcfg.num_outputs * sizeof(long_deriv_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof(long_deriv_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -45,7 +45,7 @@ uint t_init (void)
 
   // allocate memory for deltas
   if ((t_deltas = ((delta_t *)
-	 spin1_malloc (tcfg.num_outputs * sizeof(delta_t)))) == NULL
+	 spin1_malloc (tcfg.num_units * sizeof(delta_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -53,33 +53,33 @@ uint t_init (void)
 
   // allocate memory for errors
   if ((t_errors[0] = ((error_t *)
-         spin1_malloc (tcfg.num_outputs * sizeof(error_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof(error_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((t_errors[1] = ((error_t *)
-         spin1_malloc (tcfg.num_outputs * sizeof(error_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof(error_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   // initialize output derivatives
-  for (i = 0; i < tcfg.num_outputs; i++)
+  for (i = 0; i < tcfg.num_units; i++)
   {
     t_output_deriv[i] = 0;
   }
 
   // initialize deltas
-  for (i = 0; i < tcfg.num_outputs; i++)
+  for (i = 0; i < tcfg.num_units; i++)
   {
     t_deltas[i] = 0;
   }
 
   // initialize errors
-  for (i = 0; i < tcfg.num_outputs; i++)
+  for (i = 0; i < tcfg.num_units; i++)
   {
     t_errors[0][i] = 0;
     t_errors[1][i] = 0;
@@ -260,7 +260,7 @@ uint t_init (void)
   // if input or output group initialize event input/target index
   if (tcfg.input_grp || tcfg.output_grp)
   {
-    t_it_idx = ev[event_idx].it_idx * tcfg.num_outputs;
+    t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
   }
 
   // TODO: the following memory allocation is to be used to store
@@ -273,7 +273,7 @@ uint t_init (void)
   // allocate memory in SDRAM for target history
   if ((t_target_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof (activation_t),
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof (activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -284,7 +284,7 @@ uint t_init (void)
   // allocate memory in SDRAM for output derivative history
   if ((t_output_deriv_history = ((long_deriv_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof (long_deriv_t),
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof (long_deriv_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -295,7 +295,7 @@ uint t_init (void)
   // allocate memory in SDRAM for net history
   if ((t_net_history = ((net_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof (net_t),
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof (net_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -306,7 +306,7 @@ uint t_init (void)
   // allocate memory in SDRAM for output history
   if ((t_output_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * ncfg.global_max_ticks * sizeof (activation_t),
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof (activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -316,9 +316,15 @@ uint t_init (void)
 
   // schedule initialization and sending of unit outputs
   spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
-  spin1_schedule_callback (send_outputs_to_host,
-                            SPINN_HOST_NORMAL, 0, SPINN_SEND_OUTS_P
-                          );
+
+  // and, if required, send outputs to host
+  if (tcfg.write_out)
+  {
+    spin1_schedule_callback (send_outputs_to_host,
+                              SPINN_HOST_NORMAL, 0, SPINN_SEND_OUTS_P
+                            );
+
+  }
 
   return (SPINN_NO_ERROR);
 }

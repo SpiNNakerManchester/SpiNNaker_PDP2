@@ -54,7 +54,7 @@ s_conf_t       scfg;           // sum core configuration parameters
 // sum cores compute unit nets and errors (acummulate b-d-ps).
 // ------------------------------------------------------------------------
 long_net_t     * s_nets;            // unit nets computed in current tick
-long_error_t   * s_errors;          // errors computed in current tick
+long_error_t   * s_errors[2];       // errors computed in current tick
 pkt_queue_t      s_pkt_queue;       // queue to hold received b-d-ps
 uchar            s_active;          // processing b-d-ps from queue?
 
@@ -66,7 +66,7 @@ uint             sf_thrds_done;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
 // (error computation)
-scoreboard_t   * sb_arrived;        // keep track of expected error b-d-p
+scoreboard_t   * sb_arrived[2];     // keep track of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
 // ------------------------------------------------------------------------
 
@@ -127,8 +127,8 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
-  #ifdef DEBUG
-    io_printf (IO_BUF, "nn: %d\n", scfg.num_nets);
+  #ifdef DEBUG_CFG0
+    io_printf (IO_BUF, "nn: %d\n", scfg.num_units);
     io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
     io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
@@ -192,7 +192,7 @@ void done (uint ec)
       #ifdef DEBUG_VRB
         io_printf (IO_BUF, "(fd:%08x bd:%08x)\n", sf_done, sb_done);
 
-        for (uint i = 0; i < scfg.num_nets; i++)
+        for (uint i = 0; i < scfg.num_units; i++)
         {
           io_printf (IO_BUF, "(fa:%08x ba:%08x)\n",
                       sf_arrived[i], sb_arrived[i]

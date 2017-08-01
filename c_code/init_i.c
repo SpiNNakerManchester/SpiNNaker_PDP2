@@ -19,7 +19,7 @@ uint i_init (void)
 
   // allocate memory for nets
   if ((i_nets = ((long_net_t *)
-         spin1_malloc (icfg.num_nets * sizeof(long_net_t)))) == NULL
+         spin1_malloc (icfg.num_units * sizeof(long_net_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -27,7 +27,7 @@ uint i_init (void)
 
   // allocate memory for deltas
   if ((i_deltas = ((long_delta_t *)
-         spin1_malloc (icfg.num_nets * sizeof(long_delta_t)))) == NULL
+         spin1_malloc (icfg.num_units * sizeof(long_delta_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -36,7 +36,7 @@ uint i_init (void)
   // TODO: probably this variable can be removed
   // allocate memory to store delta values during the first BACKPROPagation tick
   if ((i_init_delta = ((long_delta_t *)
-         spin1_malloc (icfg.num_nets * sizeof(long_delta_t)))) == NULL
+         spin1_malloc (icfg.num_units * sizeof(long_delta_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -76,7 +76,7 @@ uint i_init (void)
   // if input or output group initialize event input/target index
   if (icfg.input_grp || icfg.output_grp)
   {
-    i_it_idx = ev[event_idx].it_idx * icfg.num_nets;
+    i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
   // if the network requires training and elements of the pipeline require
@@ -101,7 +101,7 @@ uint i_init (void)
   // which needs to come from splens
   if ((i_net_history = ((long_net_t *)
           sark_xalloc (sv->sdram_heap,
-                       icfg.num_nets * ncfg.global_max_ticks * sizeof(long_net_t),
+                       icfg.num_units * ncfg.global_max_ticks * sizeof(long_net_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -111,7 +111,7 @@ uint i_init (void)
 
   // and initialise net history for tick 0.
   //TODO: understand why the values for tick 0 are used!
-  for (uint i = 0; i < icfg.num_nets; i++)
+  for (uint i = 0; i < icfg.num_units; i++)
   {
     i_net_history[i] = 0;
   }

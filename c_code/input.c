@@ -182,10 +182,10 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
-  #ifdef DEBUG
+  #ifdef DEBUG_CFG0
     io_printf (IO_BUF, "og: %d\n", icfg.output_grp);
     io_printf (IO_BUF, "ig: %d\n", icfg.input_grp);
-    io_printf (IO_BUF, "nn: %d\n", icfg.num_nets);
+    io_printf (IO_BUF, "nn: %d\n", icfg.num_units);
     io_printf (IO_BUF, "np: %d\n", icfg.num_in_procs);
     io_printf (IO_BUF, "pl: %d\n", icfg.procs_list[0]);
     io_printf (IO_BUF, "pl: %d\n", icfg.procs_list[1]);

@@ -42,6 +42,7 @@ class InputVertex(
         MachineVertex.__init__(self, label =\
                                "i{} core".format (group.id))
 
+        # application-level data
         self._network = network
         self._group   = group
 
@@ -49,9 +50,12 @@ class InputVertex(
         self._fwd_link = "fwd_i{}".format (self.group.id)
         self._bkp_link = "bkp_i{}".format (self.group.id)
 
+        # input core-specific parameters
+        self._in_integr_dt = int ((1.0 / network.ticks_per_int) *\
+                                  (1 << 16))
+
         # reserve a 16-bit key space in every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
-
 
         # binary, configuration and data files
         self._aplx_file     = "binaries/input.aplx"
@@ -61,8 +65,8 @@ class InputVertex(
         self._events_file   = "data/events.dat"
 
         # find out the size of an integer!
-        _dt=DataType.INT32
-        int_size = _dt.size
+        _data_int=DataType.INT32
+        int_size = _data_int.size
 
         # size in bytes of the data in the regions
         self._N_NETWORK_CONFIGURATION_BYTES = \
@@ -87,7 +91,7 @@ class InputVertex(
             else 0
 
         # 4 keys / keys are integers
-        self._N_KEYS_BYTES = 4 * int_size
+        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * int_size
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -119,7 +123,7 @@ class InputVertex(
             {
               uchar         output_grp;
               uchar         input_grp;
-              uint          num_nets;
+              uint          num_units;
               uint          num_in_procs;
               uint          procs_list[SPINN_NUM_IN_PROCS];
               uchar         in_integr_en;
@@ -140,7 +144,7 @@ class InputVertex(
                             self.group.in_procs_list[0].value,
                             self.group.in_procs_list[1].value,
                             self.group.in_integr_en,
-                            self.group.in_integr_dt,
+                            self._in_integr_dt,
                             self.group.soft_clamp_strength,
                             self.group.init_net,
                             self.group.init_output & 0xffff

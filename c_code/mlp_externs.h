@@ -67,13 +67,13 @@ extern activation_t     * w_output_history;
 // sum core variables
 // ------------------------------------------------------------------------
 extern long_net_t     * s_nets;        // unit nets computed in current tick
-extern long_error_t   * s_errors;      // errors computed in current tick
+extern long_error_t   * s_errors[2];   // errors computed in current tick
 extern pkt_queue_t      s_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            s_active;      // processing b-d-ps from queue?
 extern scoreboard_t   * sf_arrived;    // keep track of expected net b-d-p
 extern scoreboard_t     sf_done;       // current tick net computation done
 extern uint             sf_thrds_done; // sync. semaphore: proc & stop
-extern scoreboard_t   * sb_arrived;    // keep track of expected error b-d-p
+extern scoreboard_t   * sb_arrived[2]; // keep track of expected error b-d-p
 extern scoreboard_t     sb_done;       // current tick error computation done
 // ------------------------------------------------------------------------
 
