@@ -11,11 +11,11 @@ version of SpiNNaker_PDP2.
 
 This code has been ported to work based on the
 SpiNNaker Graph Front End platform. Any further
-development will be on this platform.
+development will be on that platform.
 
 Most of the issues reported in this file have
 now been added as issues in the GIT repository
-and will, therefore, de removed from this file.
+and will, therefore, be removed from this file.
 -----------------------------------------------
 ***********************************************
 -----------------------------------------------
