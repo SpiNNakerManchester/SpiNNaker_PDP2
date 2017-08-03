@@ -25,7 +25,9 @@ class MLPConstants ():
     DEF_SOFT_CLMP = 0x00008000
     DEF_WEAK_CLMP = 0x00008000
 
-    DEF_GRP_CRIT  = 0
+    DEF_GRP_CRIT   = 0
+    DEF_TIMEOUT    = 10000
+    DEF_NUM_EPOCHS = 1
 
     # weights and weight file CONSTANTS
     MAGIC_LENS_WEIGHT_COOKIE = 1431655766

@@ -35,12 +35,18 @@ rand10x40.link (Hidden, Output)
 
 # read initial weights from Lens-generated file
 rand10x40.read_Lens_weights_file (
-    "data/rand10x40_train_no_recurrent_conn_weights.txt")
+    "rand10x40_train_no_recurrent_conn_weights.txt")
+
+# read Lens-style examples file
+set1 = rand10x40.read_Lens_examples_file ("rand10x40.ex")
+
+# set network parameters
+rand10x40.set (num_updates = 10,
+               train_group_crit = 0.2
+               )
 
 # train the network
-rand10x40.train (num_updates  = 300,
-                 num_examples = 40
-                 )
+rand10x40.train (num_examples = 40)
 
-# close the simulation
+# close the application
 rand10x40.end ()

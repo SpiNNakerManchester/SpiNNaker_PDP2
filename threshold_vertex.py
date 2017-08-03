@@ -36,10 +36,7 @@ class ThresholdVertex(
 
     def __init__(self,
                  network,
-                 group,
-                 fwd_sync_expect = None,
-                 bkp_sync_expect = 0,
-                 is_last_out     = None
+                 group
                  ):
         """
         """
@@ -47,8 +44,8 @@ class ThresholdVertex(
                                "t{} core".format (group.id))
 
         # application-level data
-        self._network               = network
-        self._group                 = group
+        self._network = network
+        self._group   = group
 
         # forward, backprop and stop link partition names
         self._fwd_link = "fwd_s{}".format (self.group.id)
@@ -56,11 +53,32 @@ class ThresholdVertex(
         self._stp_link = "stp_s{}".format (self.group.id)
 
         # threshold core-specific parameters
-        self._fwd_sync_expect       = fwd_sync_expect
-        self._bkp_sync_expect       = bkp_sync_expect
-        self._is_last_output_group  = is_last_out
-        self._out_integr_dt = int ((1.0 / network.ticks_per_int) *\
+        # NOTE: if all-zero w cores are optimised out this need reviewing
+        self._fwd_sync_expect = len (network.groups)
+        self._bkp_sync_expect = len (network.groups)
+        self._out_integr_dt   = int ((1.0 / network.ticks_per_int) *\
                                    (1 << 16))
+        if network.training:
+            if self.group.train_group_crit is not None:
+                self._group_criterion = self.group.train_group_crit
+            elif network._train_group_crit is not None:
+                self._group_criterion = network._train_group_crit
+            else:
+                self._group_criterion = MLPConstants.DEF_GRP_CRIT
+        else:
+            if self.group.test_group_crit is not None:
+                self._group_criterion = self.group.test_group_crit
+            elif network._test_group_crit is not None:
+                self._group_criterion = network._test_group_crit
+            else:
+                self._group_criterion = MLPConstants.DEF_GRP_CRIT
+
+        # check if last output group in daisy chain
+        if group == network.output_chain[-1]:
+            self._is_last_output_group = 1
+        else:
+            self._is_last_output_group = 0
+
 
         # reserve a 16-bit key space in every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -167,7 +185,7 @@ class ThresholdVertex(
               uchar         error_function;
             } t_conf_t;
 
-            pack: standard sizes, little-endian byte-order,
+            pack: standard sizes, little-endian byte order,
             explicit padding
         """
         return struct.pack ("<2B2x3IB3xIB3xi6Iih2xi4B",
@@ -188,7 +206,7 @@ class ThresholdVertex(
                             self.group.out_procs_list[4].value,
                             self.group.weak_clamp_strength,
                             self.group.init_output,
-                            self.group.group_criterion,
+                            self._group_criterion,
                             self.group.criterion_function.value & 0xff,
                             self.group.is_first_out & 0xff,
                             self._is_last_output_group & 0xff,

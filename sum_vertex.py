@@ -35,9 +35,7 @@ class SumVertex(
 
     def __init__(self,
                  network,
-                 group,
-                 fwd_expect = None,
-                 bkp_expect = None
+                 group
                  ):
         """
         """
@@ -53,8 +51,9 @@ class SumVertex(
         self._bkp_link = "bkp_s{}".format (self.group.id)
 
         # sum core-specific parameters
-        self._fwd_expect = fwd_expect
-        self._bkp_expect = bkp_expect
+        # NOTE: if all-zero w cores are optimised out this need reviewing
+        self._fwd_expect = len (network.groups)
+        self._bkp_expect = len (network.groups)
 
         # reserve a 16-bit key space in every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -113,7 +112,7 @@ class SumVertex(
               scoreboard_t bkp_expect;
             } s_conf_t;
 
-            pack: standard sizes, little-endian byte-order,
+            pack: standard sizes, little-endian byte order,
             explicit padding
         """
         return struct.pack ("<3I",

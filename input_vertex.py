@@ -133,7 +133,7 @@ class InputVertex(
               short_activ_t initOutput;
             } i_conf_t;
 
-            pack: standard sizes, little-endian byte-order,
+            pack: standard sizes, little-endian byte order,
             explicit padding
         """
         return struct.pack ("<2B2x4IB3x3ih2x",

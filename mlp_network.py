@@ -1,18 +1,24 @@
 import os
 import struct
+import time
 
 import spinnaker_graph_front_end as g
 
 from pacman.model.graphs.machine import MachineEdge
+
+from spinnman.model.enums.cpu_state import CPUState
+
+from spinn_front_end_common.utilities import globals_variables
 
 from input_vertex     import InputVertex
 from sum_vertex       import SumVertex
 from threshold_vertex import ThresholdVertex
 from weight_vertex    import WeightVertex
 
-from mlp_group import MLPGroup
-from mlp_link  import MLPLink
-from mlp_types import MLPGroupTypes, MLPConstants
+from mlp_types    import MLPGroupTypes, MLPConstants
+from mlp_group    import MLPGroup
+from mlp_link     import MLPLink
+from mlp_examples import MLPExampleSet, MLPExample, MLPEvent
 
 
 class MLPNetwork():
@@ -28,11 +34,16 @@ class MLPNetwork():
                 ):
         """
         """
-        # assign network parameter initial values
+        # assign network parameter values from arguments
         self._net_type           = net_type.value
         self._ticks_per_interval = ticks_per_interval
         self._global_max_ticks   = (intervals * ticks_per_interval) + 1
-        self._timeout            = 10000
+
+        # default network parameter values
+        self._train_group_crit = None
+        self._test_group_crit  = None
+        self._timeout          = MLPConstants.DEF_TIMEOUT
+        self._num_epochs       = MLPConstants.DEF_NUM_EPOCHS
 
         # initialise lists of groups and links
         self.groups = []
@@ -41,9 +52,12 @@ class MLPNetwork():
         # OUTPUT groups form chain for convergence decision
         self._output_chain = []
 
-        # keep track if initial weights have been loaded
-        self._initial_weights_loaded = 0
-        self._initial_weights_file = None
+        # track if initial weights have been loaded
+        self._weights_loaded = False
+        self._weights_file = None
+
+        # keep track if examples have been loaded
+        self._examples_loaded = False
 
         # create single-unit Bias group by default
         self._bias_group = self.group (units        = 1,
@@ -109,7 +123,7 @@ class MLPNetwork():
               uint  timeout;
             } network_conf_t;
 
-            pack: standard sizes, little-endian byte-order,
+            pack: standard sizes, little-endian byte order,
             explicit padding
         """
         return struct.pack("<2B2x6I",
@@ -133,9 +147,17 @@ class MLPNetwork():
                ):
         """ add a group to the network
 
-        :param units:
-        :param group_type:
-        :param label:
+        :param units: number of units that form the group
+        :param group_type: Lens-style group type
+        :param input_funcs: functions applied in the input pipeline
+        :param output_funcs: functions appllied in the output pipeline
+        :param label: human-readable group identifier
+
+        :type units: unsigned integer
+        :type group_type: enum MLPGroupTypes
+        :type input_funcs: enum MLPInputProcs
+        :type output_funcs: enum MLPOutputProcs
+        :type label: string
 
         :return: a new group object
         """
@@ -177,7 +199,7 @@ class MLPNetwork():
             self.link (self.bias_group, _group)
 
         # initial weights file must be re-loaded!
-        self._initial_weights_loaded = 0
+        self._weights_loaded = False
 
         return _group
 
@@ -191,6 +213,11 @@ class MLPNetwork():
 
         :param pre_link_group: link source group
         :param post_link_group: link destination group
+        :param label: human-readable link identifier
+
+        :type pre_link_group: MLPGroup
+        :type post_link_group: MLPGroup
+        :type label: string
 
         :return: a new link object
         """
@@ -215,9 +242,33 @@ class MLPNetwork():
         self.links.append (_link)
 
         # initial weights file must be re-loaded!
-        self._initial_weights_loaded = 0
+        self._weights_loaded = False
 
         return _link
+
+
+    def set (self,
+             num_updates      = None,
+             train_group_crit = None,
+             test_group_crit  = None
+             ):
+        """ set a network parameter
+
+        :param num_updates: number of training epochs to be done
+        :param train_group_crit: criterion used to stop training
+        :param test_group_crit: criterion used to stop testing
+
+        :type num_updates: unsigned integer
+        :type train_group_crit: s16.15 fixed-point value
+        """
+        if num_updates is not None:
+            self._num_epochs = num_updates
+
+        if train_group_crit is not None:
+            self._train_group_crit = int (train_group_crit * (1 << 15))
+
+        if test_group_crit is not None:
+            self._test_group_crit = int (test_group_crit * (1 << 15))
 
 
     def read_Lens_weights_file (self,
@@ -225,7 +276,10 @@ class MLPNetwork():
                                 ):
         """ reads a Lens-style weights file
 
-        File format (Lens online manual):
+        Lens online manual:
+            http://web.stanford.edu/group/mbc/LENSManual/
+
+        File format:
 
         <I magic-weight-cookie>
         <I total-number-of-links>
@@ -242,13 +296,13 @@ class MLPNetwork():
         """
         # check if file exists
         if os.path.isfile (weights_file):
-            self.weights_file = weights_file
+            self._weights_file = weights_file
         elif os.path.isfile ("data/{}".format (weights_file)):
-            self.weights_file = "data/{}".format (weights_file)
+            self._weights_file = "data/{}".format (weights_file)
         else:
-            self.weights_file = None
+            self._weights_file = None
             print "error: cannot open weights file: {}".\
-                format (self.initial_weights_file)
+                format (weights_file)
             return
 
         print "reading Lens-style weights file"
@@ -260,22 +314,22 @@ class MLPNetwork():
                 _num_wts = _num_wts + to_grp.units * frm_grp.units
 
         # check that it is the correct file type
-        _wf = open (self.weights_file, "r")
+        _wf = open (self._weights_file, "r")
 
-        if int (_wf.readline()) != MLPConstants.MAGIC_LENS_WEIGHT_COOKIE:
+        if int (_wf.readline ()) != MLPConstants.MAGIC_LENS_WEIGHT_COOKIE:
             print "error: incorrect weights file type"
             _wf.close ()
             return
 
         # check that the file contains the right number of weights
-        if int (_wf.readline()) != _num_wts:
+        if int (_wf.readline ()) != _num_wts:
             print "error: incorrect number of weights in file"
             _wf.close ()
             return
 
         # read weights from file and store them in the corresponding group
-        _num_values = int (_wf.readline())
-        _ = _wf.readline()  # discard number of updates
+        _num_values = int (_wf.readline ())
+        _ = _wf.readline ()  # discard number of updates
 
         for grp in self.groups:
             # create an empty weight list for every possible link
@@ -289,22 +343,181 @@ class MLPNetwork():
                 for fgrp in self.groups:
                     if fgrp in grp.links_from:
                         for _ in range (fgrp.units):
-                            grp.weights[fgrp].append(float (_wf.readline()))
+                            grp.weights[fgrp].append (float (_wf.readline()))
                             if _num_values >= 2:
-                                _ = _wf.readline()  # discard
+                                _ = _wf.readline ()  # discard
                             if _num_values >= 3:
-                                _ = _wf.readline()  # discard
+                                _ = _wf.readline ()  # discard
 
         # clean up
         _wf.close ()
 
         # mark weights file as loaded
-        self._initial_weights_loaded = 1
+        self._weights_loaded = True
 
 
-    def generate_machine_graph (self,
-                                ):
-        """ generates a machine graph for simulation
+    def read_Lens_examples_file (self,
+                                 examples_file
+                                 ):
+        """ reads a Lens-style examples file
+
+        Lens online manual:
+            http://web.stanford.edu/group/mbc/LENSManual/
+
+        File format:
+
+        proc:  <S set-proc>
+        max:   <R set-maxTime>
+        min:   <R set-minTime>
+        grace: <R set-graceTime>
+        defI:  <R set-defaultInput>
+        actI:  <R set-activeInput>
+        defT:  <R set-defaultTarget>
+        actT:  <R set-activeTarget>
+        ;
+
+        for each example:
+          name:   <S example-name>
+          proc:   <S example-proc>
+          freq:   <R example-frequency>
+          <I example-numEvents>   this can be left out if it is 1
+
+          for each list of events:
+            [(<I event> | <I event>-<I event> | *)
+              proc:  <S event-proc>
+              max:   <R event-maxTime>
+              min:   <R event-minTime>
+              grace: <R event-graceTime>
+              defI:  <R event-defaultInput>
+              actI:  <R event-activeInput>
+              defT:  <R event-defaultTarget>
+              actT:  <R event-activeTarget>
+            ]
+
+            (I:|i:|T:|t:|B:|b:|) (
+              dense range:  (<S group-name> <I first-unit>) (<R input-value>) |
+              sparse range: {<S group-name> <R input-value>} [* | (<I unit> | <I unit>-<I unit>)]
+            )
+          ;
+        """
+        # check if file exists
+        if os.path.isfile (examples_file):
+            self._examples_file = examples_file
+        elif os.path.isfile ("data/{}".format (examples_file)):
+            self._examples_file = "data/{}".format (examples_file)
+        else:
+            self._examples_file = None
+            print "error: cannot open examples file: {}".\
+                format (examples_file)
+            return
+
+        print "reading Lens-style examples file"
+
+        _ef = open (self._examples_file, "r")
+
+        # create new example set
+        _set = MLPExampleSet ()
+
+        # process example file header
+        _line = _ef.readline ()
+        while (';' not in _line):
+            if ('proc:' in _line):
+                print "set procedure not supported"
+            elif ('max:' in _line):
+                _, _val = _line.split(':')
+                _set.max_time = float (_val)
+            elif ('min:' in _line):
+                _, _val = _line.split(':')
+                _set.min_time = float (_val)
+            elif ('grace:' in _line):
+                _, _val = _line.split(':')
+                _set.grace_time = float (_val)
+            elif ('defI:' in _line):
+                _, _val = _line.split(':')
+                _set.def_input = float (_val)
+            elif ('actI:' in _line):
+                print "set active input not supported"
+            elif ('defT:' in _line):
+                _, _val = _line.split(':')
+                _set.def_target = float (_val)
+            elif ('actT:' in _line):
+                print "set active target not supported"
+            else:
+                # ';' is optional
+                break
+
+            _line = _ef.readline ()
+
+        while (_line != ""):
+            _line = _ef.readline ()
+
+        # process each example in the set
+        _ex_id = 0
+        while (_line != ""):
+            # create new example
+            _ex = MLPExample (_ex_id)
+
+            # process the example header
+            _done = False
+            while not _done:
+                _done = True
+                try:
+                    if ('proc:' in _line):
+                        print "example procedure not supported"
+                    elif ('freq:' in _line):
+                        print "example frequency not supported"
+                    elif ('name:' in _line):
+                        _, _ex.name = _line.split(':')
+                        _line = _ef.readline ()
+                    else:
+                        # try to get non-default number of events
+                        _num_ev = int (_line)
+                        _done = True
+
+                    # process next line
+                    _line = _ef.readline ()
+                    if (_line == ""):
+                        print "unexpected end-of-file - read aborted"
+                        _ef.close ()
+                        return None
+                except:
+                    # if absent number of events defaults to 1
+                    _num_ev = 1
+                    _done = True
+                    print "default num_ev!"
+                    print _line
+
+            # process each event in the example
+            _ev_id = 0
+            while (False):
+                # create new event
+                _ev = MLPEvent (_ev_id)
+
+
+                # add new event to example event list
+                _ex.events.append (_ev)
+
+                # prepare for next example
+                _ex_id = _ex_id + 1
+                _line = _ef.readline ()
+
+            # add new example to set example list
+            _set.examples.append (_ex)
+
+            # prepare for next example
+            _ex_id = _ex_id + 1
+
+        # clean up
+        _ef.close ()
+
+        # mark examples file as loaded
+        self._examples_loaded = True
+
+        return _set
+
+
+    def generate_machine_graph (self):
+        """ generates a machine graph for the application graph
         """
         print "generating machine graph"
 
@@ -316,52 +529,26 @@ class MLPNetwork():
 
         # create associated weight, sum, input and threshold
         # machine vertices for every network group
-        _num_groups = len (self.groups)
-
         for grp in self.groups:
-            # create one weight core per network group, including this one
-            # NOTE: could be optimised. If so, see NOTEs below.
-            for fgrp in self.groups:
-                wv = WeightVertex (self,
-                                   grp,
-                                   from_group = fgrp
-                                   )
-
+            # create one weight core per (from_group, group) pair
+            # NOTE: all-zero cores can be optimised out
+            for from_grp in self.groups:
+                wv = WeightVertex (self, grp, from_grp)
                 grp.w_vertices.append (wv)
                 g.add_machine_vertex_instance (wv)
 
-            # NOTE: if all-zero w cores are optimised out
-            # then fwd_expect and bkp_expect must be adjusted
-            sv = SumVertex (self,
-                            grp,
-                            fwd_expect = _num_groups,
-                            bkp_expect = _num_groups
-                            )
-
+            # create one sum core per group
+            sv = SumVertex (self, grp)
             grp.s_vertex = sv
             g.add_machine_vertex_instance (sv)
 
-            iv = InputVertex (self,
-                              grp
-                              )
-
+            # create one input core per group
+            iv = InputVertex (self, grp)
             grp.i_vertex = iv
             g.add_machine_vertex_instance (iv)
 
-            # check if last output group in daisy chain
-            if grp == self.output_chain[-1]:
-                _is_last_out = 1
-            else:
-                _is_last_out = 0
-
-            # NOTE: if all-zero w cores are optimised out
-            # then fwd_sync_expecr must be adjusted
-            tv = ThresholdVertex (self,
-                                  grp,
-                                  fwd_sync_expect = _num_groups,
-                                  is_last_out     = _is_last_out
-                                  )
-
+            # create one sum core per group
+            tv = ThresholdVertex (self, grp)
             grp.t_vertex = tv
             g.add_machine_vertex_instance (tv)
 
@@ -416,20 +603,23 @@ class MLPNetwork():
                 # if last OUTPUT group broadcast stop decision
                 if grp == self.output_chain[-1]:
                     for stpg in self.groups:
+                        # create stop links to all w cores
                         for w in stpg.w_vertices:
                             g.add_machine_edge_instance\
                               (MachineEdge (grp.t_vertex, w),
                                grp.t_vertex.stp_link)
 
+                        # create stop links to all s cores
                         g.add_machine_edge_instance\
                          (MachineEdge (grp.t_vertex, stpg.s_vertex),\
                           grp.t_vertex.stp_link)
 
+                        # create stop links to all i cores
                         g.add_machine_edge_instance\
                          (MachineEdge (grp.t_vertex, stpg.i_vertex),\
                           grp.t_vertex.stp_link)
 
-                        # no link to itself!
+                        # create stop links to t cores (no link to itself!)
                         if stpg != grp:
                             g.add_machine_edge_instance\
                              (MachineEdge (grp.t_vertex, stpg.t_vertex),\
@@ -444,59 +634,85 @@ class MLPNetwork():
 
 
     def train (self,
-               num_updates  = None,
                num_examples = None
                ):
         """ train the application graph for a number of epochs
 
-        :param num_epochs:
-        :param num_examples:
+        :param num_examples: number of examples from the set to be used
 
-        :type  num_epochs: int
-        :type  num_examples: int
+        :type  num_examples: unsigned integer
         """
-        print "g.run ()"
-
         self._training     = 1
-        self._num_epochs   = num_updates
         self._num_examples = num_examples
 
-        # generate machine graph
-        self.generate_machine_graph ()
-
-        # run simulation of the machine graph
-        g.run (None)
+        # run the application
+        self.run ()
 
 
     def test (self,
-               num_examples = None
+              num_examples = None
               ):
         """ test the application graph without training
 
-        :param num_examples:
+        :param num_examples: number of examples from the set to be used
 
-        :type  num_examples: int
+        :type  num_examples: unsigned integer
         """
-        print "g.run ()"
-
         self._training     = 0
         self._num_examples = num_examples
 
+        # run the application
+        self.run ()
+
+
+    def run (self):
+        """ run the application graph
+        """
+        # cannot run unless examples have been loaded
+        if not self._examples_loaded:
+            print "run aborted: examples not loaded"
+            return
+
+        # cannot run unless weights file exists
+        if self._weights_file is None:
+            print "run aborted: weights file not given"
+            return
+
         # may need to reload initial weights file if
         # application graph was modified after first load
-        if self.weights_file is not None and\
-            not self._initial_weights_loaded:
-            self.read_Lens_weights_file(self.weights_file)
+        if self._weights_file is not None and\
+            not self._weights_loaded:
+            self.read_Lens_weights_file (self._weights_file)
 
         # generate machine graph
         self.generate_machine_graph ()
 
-        # run simulation of the machine graph
+        # run application based on the machine graph
         g.run (None)
+
+        # wait for the application to finish
+        print "running: waiting for application to finish"
+        _txrx = g.transceiver()
+        _app_id = globals_variables.get_simulator ()._app_id
+        _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
+        while _running > 0:
+            time.sleep (0.5)
+            _error = _txrx.get_core_state_count\
+                    (_app_id, CPUState.RUN_TIME_EXCEPTION)
+            _wdog = _txrx.get_core_state_count (_app_id, CPUState.WATCHDOG)
+            if _error > 0 or _wdog > 0:
+                print "application stopped: cores failed ({}\
+                     RTE, {} WDOG)".format (_error, _wdog)
+                break
+            _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
 
 
     def end (self):
         """ clean up before exiting
         """
-        print "g.stop ()"
+        # pause to allow debugging
+        raw_input ('paused for debug: press enter to exit')
+
+        print "exit: application finished"
+        # let the gfe clean up
         #g.stop()

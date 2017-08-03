@@ -109,7 +109,8 @@ class MLPGroup():
                 self.out_integr_dt = 0
 
         # network convergence parameters
-        self.group_criterion    = MLPConstants.DEF_GRP_CRIT
+        self.train_group_crit   = None
+        self.test_group_crit    = None
         self.criterion_function = MLPStopCriteria.STOP_NONE
         self.error_function     = MLPErrorFuncs.ERR_NONE
 

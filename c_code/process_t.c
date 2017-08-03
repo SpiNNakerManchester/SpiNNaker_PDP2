@@ -1259,10 +1259,10 @@ int init_out_weak_clamp ()
 
 
 // ------------------------------------------------------------------------
-// evaluation of the standard convergence criteria.
+// evaluation of the standard convergence criterion
 // for each unit in the output group check if the output value is close
 // to the target value, with the "group_criterion" variable defining the
-// acceptance margin
+// acceptance margin.
 // ------------------------------------------------------------------------
 void std_stop_crit (uint inx)
 {
@@ -1273,38 +1273,24 @@ void std_stop_crit (uint inx)
   // evaluate only if target is not NaN
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-    error_t error = ABS (t_outputs[inx] - tt[t_it_idx + inx]);
+    //s16.15 = s4.27 - s4.27 >> 12
+    error_t error = (error_t) (ABS (t_outputs[inx] - tt[t_it_idx + inx] >>
+    		(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT)));
 
-    // Correction to fixed point arithmetic: tcfg.group_criterion is assumed
-    // to be in a format with 15 decimal bits, but appears to have 16, making
-    // it twice the size it should be.  Therefore shift one bit to the right.
-    tf_stop_crit = tf_stop_crit && (error < (tcfg.group_criterion >> 1));
+    tf_stop_crit = tf_stop_crit && (error < tcfg.group_criterion);
   }
 }
 // ------------------------------------------------------------------------
 
 
-/*
 // ------------------------------------------------------------------------
-// The following routine has only been used for debugging purposes
-// and the only scope for it is to run the simulation always for the maximum
-// number of ticks
-// ------------------------------------------------------------------------
-void max_stop_crit (uint inx)  //## DEBUGGING
-{
-  tf_stop_crit = FALSE;
-}
-*/
-
-
-// ------------------------------------------------------------------------
-// evaluation of the "max" convergence criteria.
+// evaluation of the "max" convergence criterion
 // for each unit in the output group check if both the output and target values
 // are the maximum in the group and, in this case, if their difference is less
 // or equal than the tcfg.group_criterion value.
 // TODO: this routine needs to be modified to adapt to the case in which the
-// output group is split across multiple cores, as this i sa global convergence
-// rule, rather than an individual one, as the standard convergence criterion
+// output group is split across multiple cores, as this is a global convergence
+// rule, rather than an individual one, as the standard convergence criterion.
 // ------------------------------------------------------------------------
 void max_stop_crit (uint inx)
 {
@@ -1327,14 +1313,13 @@ void max_stop_crit (uint inx)
       t_max_target_unit = inx;
     }
 
-    error_t error = ABS ((t_max_output - t_max_target) >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+    //s16.15 = s4.27 - s4.27 >> 12
+    error_t error = (error_t) ABS ((t_max_output - t_max_target) >>
+    			(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
-    // Correction to fixed point arithmetic: tcfg.group_criterion is assumed
-    // to be in a format with 15 decimal bits, but appears to have 16, making
-    // it twice the size it should be.  Therefore shift one bit to the right.
     if ((t_max_output_unit == -1)
 	 || ((t_max_output_unit == t_max_target_unit)
-	     && (error < (tcfg.group_criterion >> 1))
+	     && (error < tcfg.group_criterion)
             )
        )
       tf_stop_crit = TRUE;

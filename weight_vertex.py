@@ -36,7 +36,7 @@ class WeightVertex(
     def __init__(self,
                  network,
                  group,
-                 from_group = None
+                 from_group
                  ):
         """
         """
@@ -156,7 +156,7 @@ class WeightVertex(
               short_activ_t learningRate;
             } w_conf_t;
 
-            pack: standard sizes, little-endian byte-order,
+            pack: standard sizes, little-endian byte order,
             explicit padding
         """
         return struct.pack ("<2Ih2x",
