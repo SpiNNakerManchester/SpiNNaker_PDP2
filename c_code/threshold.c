@@ -231,13 +231,45 @@ uint init ()
   es = (struct mlp_set *) data_specification_get_region
 		  (EXAMPLE_SET, data_address);
 
+  #ifdef DEBUG_CFG5
+    io_printf (IO_BUF, "ne: %u\n", es->num_examples);
+    io_printf (IO_BUF, "mt: %f\n", es->max_time);
+    io_printf (IO_BUF, "nt: %f\n", es->min_time);
+    io_printf (IO_BUF, "gt: %f\n", es->grace_time);
+  #endif
+
   // examples
   ex = (struct mlp_example *) data_specification_get_region
 		  (EXAMPLES, data_address);
 
+  #ifdef DEBUG_CFG5
+    for (uint i = 0; i < es->num_examples; i++)
+    {
+      io_printf (IO_BUF, "nx[%u]: %u\n", i, ex[i].num);
+      io_printf (IO_BUF, "nv[%u]: %u\n", i, ex[i].num_events);
+      io_printf (IO_BUF, "vi[%u]: %u\n", i, ex[i].ev_idx);
+      io_printf (IO_BUF, "xf[%u]: %f\n", i, ex[i].freq);
+    }
+  #endif
+
   // events
   ev = (struct mlp_event *) data_specification_get_region
 		  (EVENTS, data_address);
+
+  #ifdef DEBUG_CFG5
+    uint evi = 0;
+    for (uint i = 0; i < es->num_examples; i++)
+    {
+      for (uint j = 0; j < ex[i].num_events; j++)
+      {
+        io_printf (IO_BUF, "mt[%u][%u]: %f\n", i, j, ev[evi].max_time);
+        io_printf (IO_BUF, "nt[%u][%u]: %f\n", i, j, ev[evi].min_time);
+        io_printf (IO_BUF, "gt[%u][%u]: %f\n", i, j, ev[evi].grace_time);
+        io_printf (IO_BUF, "ii[%u][%u]: %u\n", i, j, ev[evi].it_idx);
+        evi++;
+      }
+    }
+  #endif
 
   // routing keys
   rt = (uint *) data_specification_get_region

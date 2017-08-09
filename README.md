@@ -30,14 +30,15 @@ The GFE must be installed to use this software. For further information
 about the GFE see:
 
 http://spinnakermanchester.github.io/graph_front_end/3.0.0/index.html
+
 https://github.com/SpiNNakerManchester/SpiNNakerGraphFrontEnd
 
 As with most SpiNNaker software, this repository contains C code that
 runs on SpiNNaker, which implements the actual MLP network, and python
 code that runs on the host machine, which manages the distribution of
 tasks across SpiNNaker cores and sets up the communications network
-to support inter-core communication. It is also responsible for the
-downloading of data to SpiNNaker and the collection of results.
+to support inter-core communication. This code is also responsible for
+the downloading of data to SpiNNaker and the collection of results.
 
 Acknowledgments
 ---------------
@@ -45,12 +46,12 @@ Acknowledgments
 Work on Multi-layer Perceptrons on SpiNNaker started as part of the
 project 'PDP-squared: Meaningful PDP language models using parallel
 distributed processors', conducted in collaboration with researchers
-of the School of Psychology at The University of Manchester. The project
+from the School of Psychology at The University of Manchester. The project
 was supported by EPSRC (the UK Engineering and Physical Sciences Research
 Council) under grant EP/F03430X/1. Ongoing development is supported by
 the EU ICT Flagship Human Brain Project (FP7-604102). We gratefully
 acknowledge these institutions for their support.
 
 Many people have contributed to the development of MLPs on SpiNNaker,
-amongst them J Moy, LA Plana, SR Welbourne, X. Jin, AD Rast, S Davis
+amongst them J Moy, LA Plana, SR Welbourne, X Jin, AD Rast, S Davis
 and SB Furber.

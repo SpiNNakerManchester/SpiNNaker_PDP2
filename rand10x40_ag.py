@@ -33,20 +33,29 @@ Output = rand10x40.group (units = 10,
 rand10x40.link (Input,  Hidden)
 rand10x40.link (Hidden, Output)
 
-# read initial weights from Lens-generated file
-rand10x40.read_Lens_weights_file (
-    "rand10x40_train_no_recurrent_conn_weights.txt")
+# instantiate network example set
+set1 = rand10x40.example_set (label = "set1")
 
 # read Lens-style examples file
-set1 = rand10x40.read_Lens_examples_file ("rand10x40.ex")
+set1.read_Lens_examples_file ("rand10x40.ex")
+
+# set example set parameters
+set1.set (grace_time = 1.0,
+          min_time   = 1.0,
+          max_time   = 4.0
+          )
 
 # set network parameters
 rand10x40.set (num_updates = 10,
                train_group_crit = 0.2
                )
 
+# read initial weights from Lens-generated file
+rand10x40.read_Lens_weights_file (
+    "rand10x40_train_no_recurrent_conn_weights.txt")
+
 # train the network
-rand10x40.train (num_examples = 40)
+rand10x40.train ()
 
 # close the application
 rand10x40.end ()

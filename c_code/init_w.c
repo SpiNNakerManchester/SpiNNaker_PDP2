@@ -29,7 +29,7 @@ uint w_init (void)
   // continuous networks, these histories always need to be saved.
   // For non-continuous networks, they only need to be stored if the
   // backpropTicks field of the network is greater than one. This
-  // information needs to come from splens in the tcfg structure.
+  // information needs to come in the wcfg structure.
 
   // allocate memory in SDRAM for output history
   if ((w_output_history = ((activation_t *)

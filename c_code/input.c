@@ -28,8 +28,8 @@ in_proc_t const
   };
 
 // list of procedures for the BACKPROP phase. Order is relevant, as the index
-// needs to be the same as in the FORWARD phase. In case one routine is not
-// intended to be available in splens, then a NULL should replace the call
+// needs to be the same as in the FORWARD phase. In case a routine is not
+// available, then a NULL should replace the call
 in_proc_back_t const
   i_in_back_procs[SPINN_NUM_IN_PROCS] =
   {

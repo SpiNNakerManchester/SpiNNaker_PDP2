@@ -46,6 +46,9 @@ class ThresholdVertex(
         # application-level data
         self._network = network
         self._group   = group
+        self._set_cfg = network._ex_set.set_config
+        self._ex_cfg  = network._ex_set.example_config
+        self._ev_cfg  = network._ex_set.event_config
 
         # forward, backprop and stop link partition names
         self._fwd_link = "fwd_s{}".format (self.group.id)
@@ -56,8 +59,9 @@ class ThresholdVertex(
         # NOTE: if all-zero w cores are optimised out this need reviewing
         self._fwd_sync_expect = len (network.groups)
         self._bkp_sync_expect = len (network.groups)
-        self._out_integr_dt   = int ((1.0 / network.ticks_per_int) *\
-                                   (1 << 16))
+        self._out_integr_dt   = 1.0 / network.ticks_per_int
+
+        # choose appropriate group criterion
         if network.training:
             if self.group.train_group_crit is not None:
                 self._group_criterion = self.group.train_group_crit
@@ -79,54 +83,43 @@ class ThresholdVertex(
         else:
             self._is_last_output_group = 0
 
-
         # reserve a 16-bit key space in every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
         # binary, configuration and data files
-        self._aplx_file     = "binaries/threshold.aplx"
-        self._inputs_file   = "data/inputs_{}.dat".\
-                                format (self.group.id + 2) #lap
-        self._targets_file  = "data/targets_{}.dat".\
-                                format (self.group.id + 2) #lap
-        self._exSet_file    = "data/example_set.dat"
-        self._examples_file = "data/examples.dat"
-        self._events_file   = "data/events.dat"
+        self._aplx_file = "binaries/threshold.aplx"
 
         # find out the size of an integer!
         _data_int=DataType.INT32
         int_size = _data_int.size
 
+        # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
             len (self._network.config)
 
+        # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
             len (self.config)
 
-        self._N_INPUTS_BYTES = \
-            os.path.getsize (self._inputs_file) \
-            if os.path.isfile (self._inputs_file) \
-            else 0
-
-        self._N_TARGETS_CONFIGURATION_BYTES = \
-            os.path.getsize (self._targets_file) \
-            if os.path.isfile (self._targets_file) \
-            else 0
-
+        # set configuration structure
         self._N_EXAMPLE_SET_BYTES = \
-            os.path.getsize (self._exSet_file) \
-            if os.path.isfile (self._exSet_file) \
-            else 0
+            len (self._set_cfg)
 
+        # list of example configurations
         self._N_EXAMPLES_BYTES = \
-            os.path.getsize (self._examples_file) \
-            if os.path.isfile (self._examples_file) \
-            else 0
+            len (self._ex_cfg) * len (self._ex_cfg[0])
 
+        # list of event configurations
         self._N_EVENTS_BYTES = \
-            os.path.getsize (self._events_file) \
-            if os.path.isfile (self._events_file) \
-            else 0
+            len (self._ev_cfg) * len (self._ev_cfg[0])
+
+        # list of group inputs (empty if not an INPUT group)
+        self._N_INPUTS_BYTES = \
+            len (self._group.inputs) * int_size
+
+        # list of group targets (empty if not an OUTPUT group)
+        self._N_TARGETS_BYTES = \
+            len (self._group.targets) * int_size
 
         # 4 keys / keys are integers
         self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * int_size
@@ -134,11 +127,11 @@ class ThresholdVertex(
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
             self._N_CORE_CONFIGURATION_BYTES + \
-            self._N_INPUTS_BYTES + \
-            self._N_TARGETS_CONFIGURATION_BYTES + \
             self._N_EXAMPLE_SET_BYTES + \
             self._N_EXAMPLES_BYTES + \
             self._N_EVENTS_BYTES + \
+            self._N_INPUTS_BYTES + \
+            self._N_TARGETS_BYTES + \
             self._N_KEYS_BYTES
         )
 
@@ -188,6 +181,14 @@ class ThresholdVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # integration dt is represented in fixed-point s15.16 notation
+        _out_integr_dt = int (self._out_integr_dt *\
+                              (1 << MLPConstants.FPREAL_SHIFT))
+
+        # group criterion is represented in fixed-point s16.15 notation
+        _group_criterion = int (self._group_criterion *\
+                                (1 << MLPConstants.ACTIV_SHIFT))
+
         return struct.pack ("<2B2x3IB3xIB3xi6Iih2xi4B",
                             self.group.output_grp & 0xff,
                             self.group.input_grp & 0xff,
@@ -197,7 +198,7 @@ class ThresholdVertex(
                             self.group.write_out & 0xff,
                             self.group.write_blk,
                             self.group.out_integr_en & 0xff,
-                            self._out_integr_dt,
+                            _out_integr_dt,
                             self.group.num_out_procs,
                             self.group.out_procs_list[0].value,
                             self.group.out_procs_list[1].value,
@@ -206,7 +207,7 @@ class ThresholdVertex(
                             self.group.out_procs_list[4].value,
                             self.group.weak_clamp_strength,
                             self.group.init_output,
-                            self._group_criterion,
+                            _group_criterion,
                             self.group.criterion_function.value & 0xff,
                             self.group.is_first_out & 0xff,
                             self._is_last_output_group & 0xff,
@@ -245,143 +246,98 @@ class ThresholdVertex(
             self, spec, placement, routing_info):
 
         # Reserve and write the network configuration region
-        spec.reserve_memory_region (
-            MLPRegions.NETWORK.value,
-            self._N_NETWORK_CONFIGURATION_BYTES)
+        spec.reserve_memory_region (MLPRegions.NETWORK.value,
+                                    self._N_NETWORK_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
         for c in self._network.config:
-            spec.write_value (ord (c), data_type=DataType.UINT8)
+            spec.write_value (ord (c), data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
-        spec.reserve_memory_region (
-            MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
+        spec.reserve_memory_region (MLPRegions.CORE.value,
+                                    self._N_CORE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.CORE.value)
 
         # write the core configuration into spec
         for c in self.config:
-            spec.write_value (ord (c), data_type=DataType.UINT8)
+            spec.write_value (ord (c), data_type = DataType.UINT8)
 
-        # Reserve and write the input data region
-        if os.path.isfile (self._inputs_file):
-            spec.reserve_memory_region (
-                MLPRegions.INPUTS.value,
-                self._N_INPUTS_BYTES)
+        # Reserve and write the example set region
+        spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
+                                    self._N_EXAMPLE_SET_BYTES)
 
-#             print "tv-{}: reading {}".format (self.group.id,
-#                                               self._inputs_file
-#                                               )
+        spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
+
+        # write the example set configuration into spec
+        for c in self._set_cfg:
+            spec.write_value (ord (c), data_type = DataType.UINT8)
+
+        # Reserve and write the examples region
+        spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
+                                    self._N_EXAMPLES_BYTES)
+
+        spec.switch_write_focus (MLPRegions.EXAMPLES.value)
+
+        # write the example configurations into spec
+        for ex in self._ex_cfg:
+            for c in ex:
+                spec.write_value (ord (c), data_type = DataType.UINT8)
+
+        # Reserve and write the events region
+        spec.reserve_memory_region (MLPRegions.EVENTS.value,
+                                    self._N_EVENTS_BYTES)
+
+        spec.switch_write_focus (MLPRegions.EVENTS.value)
+
+        # write the event configurations into spec
+        for ev in self._ev_cfg:
+            for c in ev:
+                spec.write_value (ord (c), data_type = DataType.UINT8)
+
+        # Reserve and write the input data region (if INPUT group)
+        if self._N_INPUTS_BYTES != 0:
+            spec.reserve_memory_region (MLPRegions.INPUTS.value,
+                                        self._N_INPUTS_BYTES)
 
             spec.switch_write_focus (MLPRegions.INPUTS.value)
 
-            # open input data file
-            _if = open (self._inputs_file, "rb")
-
-            # read the data into a numpy array and put in spec
-            _ic = np.fromfile (_if, np.uint8)
-            _if.close ()
-            for byte in _ic:
-                spec.write_value (byte, data_type=DataType.UINT8)
+            # write inputs to spec
+            for _i in self._group.inputs:
+                # inputs are represented in fix-point s16.15 notation
+                _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
+                spec.write_value (_inp, data_type = DataType.UINT32)
 
         # Reserve and write the target data region
-        if os.path.isfile (self._targets_file):
-            spec.reserve_memory_region (
-                MLPRegions.TARGETS.value,
-                self._N_TARGETS_CONFIGURATION_BYTES)
-
-#             print "tv-{}: reading {}".format (self.group.id,
-#                                               self._targets_file
-#                                               )
+        if self._N_TARGETS_BYTES != 0:
+            spec.reserve_memory_region (MLPRegions.TARGETS.value,
+                                        self._N_TARGETS_BYTES)
 
             spec.switch_write_focus (MLPRegions.TARGETS.value)
 
-            # open target data file
-            _tf = open (self._targets_file, "rb")
-
-            # read the data into a numpy array and put in spec
-            _tc = np.fromfile (_tf, np.uint8)
-            _tf.close ()
-            for byte in _tc:
-                spec.write_value (byte, data_type=DataType.UINT8)
-
-        # Reserve and write the example set region
-        if os.path.isfile (self._exSet_file):
-            spec.reserve_memory_region (
-                MLPRegions.EXAMPLE_SET.value,
-                self._N_EXAMPLE_SET_BYTES)
-
-#             print "tv-{}: reading {}".format (self.group.id,
-#                                               self._exSet_file
-#                                               )
-
-            spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
-
-            # open the example set file
-            _sf = open (self._exSet_file, "rb")
-
-            # read the data into a numpy array and put in spec
-            _es = np.fromfile (_sf, np.uint8)
-            _sf.close ()
-            for byte in _es:
-                spec.write_value (byte, data_type=DataType.UINT8)
-
-        # Reserve and write the examples region
-        if os.path.isfile (self._examples_file):
-            spec.reserve_memory_region (
-                MLPRegions.EXAMPLES.value,
-                self._N_EXAMPLES_BYTES)
-
-#             print "tv-{}: reading {}".format (self.group.id,
-#                                               self._examples_file
-#                                               )
-
-            spec.switch_write_focus (MLPRegions.EXAMPLES.value)
-
-            # open the examples file
-            _xf = open (self._examples_file, "rb")
-
-            # read the data into a numpy array and put in spec
-            _ex = np.fromfile (_xf, np.uint8)
-            _xf.close ()
-            for byte in _ex:
-                spec.write_value (byte, data_type=DataType.UINT8)
-
-        # Reserve and write the events region
-        if os.path.isfile (self._events_file):
-            spec.reserve_memory_region (
-                MLPRegions.EVENTS.value,
-                self._N_EVENTS_BYTES)
-
-#             print "tv-{}: reading {}".format (self.group.id,
-#                                               self._events_file
-#                                               )
-
-            spec.switch_write_focus (MLPRegions.EVENTS.value)
-
-            # open the events file
-            _vf = open (self._events_file, "rb")
-
-            # read the data into a numpy array and put in spec
-            _ev = np.fromfile (_vf, np.uint8)
-            _vf.close ()
-            for byte in _ev:
-                spec.write_value (byte, data_type=DataType.UINT8)
+            # write targets to spec
+            for _t in self._group.targets:
+                # targets are represented in fix-point s16.15 notation
+                _tgt = int (_t * (1 << MLPConstants.ACTIV_SHIFT))
+                spec.write_value (_tgt, data_type = DataType.UINT32)
 
         # Reserve and write the routing region
-        spec.reserve_memory_region (
-            MLPRegions.ROUTING.value, self._N_KEYS_BYTES)
+        spec.reserve_memory_region (MLPRegions.ROUTING.value,
+                                    self._N_KEYS_BYTES)
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys (fwd, bkp, fds, stp)
+        # write link keys: fwd, bkp, fds, stp
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
+
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
+
         spec.write_value (0, data_type = DataType.UINT32)
+
         # stop key for OUTPUT groups only
         if self.group.output_grp:
             spec.write_value (routing_info.get_first_key_from_pre_vertex (

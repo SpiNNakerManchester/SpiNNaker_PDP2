@@ -457,7 +457,7 @@ void t_advance_example (void)
   num_events = ex[example].num_events;
   event_idx = ex[example].ev_idx;
 
-  // if input or output group initialize new event input/target index
+  // if input or output group initialise new event input/target index
   if (tcfg.input_grp || tcfg.output_grp)
   {
     t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
@@ -487,7 +487,7 @@ void t_advance_example (void)
 
   if (t_sync_done)
   {
-    // if ready clear synchronization flag,
+    // if ready clear synchronisation flag,
     t_sync_done = FALSE;
 
     // restore interrupts,
@@ -582,7 +582,7 @@ void t_switch_to_bp (void)
 
 
 // ------------------------------------------------------------------------
-// in the FORWARD phase the convergence critieron may require the simulation to
+// in the FORWARD phase the convergence criterion may require the simulation to
 // stop before the maximum time is reached. This routine sends a broadcast
 // message to communicate the final decision if the criterion has been reached
 // across all the output groups to all the cores in the simulation
@@ -627,8 +627,8 @@ void tf_send_stop (uint null0, uint null1)
 
 
 // ------------------------------------------------------------------------
-// this routine initializes the output values of the units. There is a conflict
-// in the initialization routine between lens 2.63 and lens 2.64.
+// this routine initialises the output values of the units. There is a conflict
+// in the initialisation routine between lens 2.63 and lens 2.64.
 // The current version implements the routine as expressed by lens 2.63, with
 // comments on the line to change to apply lens version 2.64
 // ------------------------------------------------------------------------
@@ -694,11 +694,11 @@ void t_init_outputs (uint null0, uint null1)
 
 // ------------------------------------------------------------------------
 // This routine calls in the appropriate order all the elements of the output
-// pipeline, as expressed in the array passed by splens tcfg.procs_list[i].
+// pipeline, as expressed in the array tcfg.procs_list[i].
 // the routines to be called are listed in the array t_out_procs[]
 // The SPINN_STORE_OUTPUT and the SPINN_STORE_TARGET flags are currently set
 // at compile time, but they should be passed through the tcfg structure.
-// This has also an implication in the initialization routine, as the memory
+// This has also an implication in the initialisation routine, as the memory
 // where to store the history needs to be allocated in SDRAM.
 // Finally also the return values of the error function (output_deriv) need to
 // be stored to be used in the BACKPROP phase
@@ -731,7 +731,7 @@ void compute_out (uint inx)
   }
 
   // if the network is set for training, then compute the output derivative
-  // using the appropriate function as set by splens
+  // using the appropriate function
   if (ncfg.training && tcfg.output_grp)
   {
     #ifdef TRACE_VRB
@@ -748,7 +748,7 @@ void compute_out (uint inx)
 
   // if in training mode store targets and output derivatives.
   //TODO: for non-continuous networks, this needs to check the requirement
-  //TODO: to have these histories saved, which needs to come from splens.
+  //TODO: to have these histories saved, which needs configuration parameter.
   //TODO: For continuous networks, these are always required.
   if (ncfg.training)
   {
@@ -1274,8 +1274,8 @@ void std_stop_crit (uint inx)
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
     //s16.15 = s4.27 - s4.27 >> 12
-    error_t error = (error_t) (ABS (t_outputs[inx] - tt[t_it_idx + inx] >>
-    		(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT)));
+    error_t error = (error_t) (ABS (t_outputs[inx] - (tt[t_it_idx + inx] >>
+    		(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT))));
 
     tf_stop_crit = tf_stop_crit && (error < tcfg.group_criterion);
   }

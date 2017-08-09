@@ -402,8 +402,7 @@ void i_advance_example (void)
 
 // ------------------------------------------------------------------------
 // FORWARD phase:
-// call the elements in the input pipeline, as they have been
-// specified through splens
+// call the elements in the input pipeline
 // ------------------------------------------------------------------------
 void compute_in (uint inx)
 {
@@ -423,9 +422,9 @@ void compute_in (uint inx)
   }
 
   // check if in training mode, and if so, store nets
-  // TODO: for non-continuous networks, this needs to check the requirement to have these
-  // histories saved, which needs to come from splens. For continuous networks, these histories
-  // are always required.
+  // TODO: for non-continuous networks, this needs to check the requirement
+  // to have these histories saved, which needs to come as a configuration
+  // parameter. For continuous networks, these histories are always required.
   if (ncfg.training)
   {
     store_nets(inx);

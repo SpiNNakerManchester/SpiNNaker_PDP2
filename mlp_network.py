@@ -18,28 +18,28 @@ from weight_vertex    import WeightVertex
 from mlp_types    import MLPGroupTypes, MLPConstants
 from mlp_group    import MLPGroup
 from mlp_link     import MLPLink
-from mlp_examples import MLPExampleSet, MLPExample, MLPEvent
+from mlp_examples import MLPExampleSet
 
 
 class MLPNetwork():
     """ top-level MLP network object.
-            contains groups and links
-            and top-level properties.
+            contains groups, links and
+            and network-level parameters.
     """
 
     def __init__(self,
                 net_type,
                 intervals = 1,
-                ticks_per_interval = None,
+                ticks_per_interval = 1,
                 ):
         """
         """
         # assign network parameter values from arguments
         self._net_type           = net_type.value
         self._ticks_per_interval = ticks_per_interval
-        self._global_max_ticks   = (intervals * ticks_per_interval) + 1
 
         # default network parameter values
+        self._global_max_ticks = (intervals * ticks_per_interval) + 1
         self._train_group_crit = None
         self._test_group_crit  = None
         self._timeout          = MLPConstants.DEF_TIMEOUT
@@ -49,15 +49,19 @@ class MLPNetwork():
         self.groups = []
         self.links  = []
 
-        # OUTPUT groups form chain for convergence decision
+        # initialise lists of INPUT and OUTPUT groups
+        self.in_grps  = []
+        self.out_grps = []
+
+        # OUTPUT groups form a chain for convergence decision
         self._output_chain = []
 
         # track if initial weights have been loaded
         self._weights_loaded = False
         self._weights_file = None
 
-        # keep track if examples have been loaded
-        self._examples_loaded = False
+        # initialise example set
+        self._ex_set = None
 
         # create single-unit Bias group by default
         self._bias_group = self.group (units        = 1,
@@ -163,6 +167,7 @@ class MLPNetwork():
         """
         _id = len (self.groups)
 
+        # set properties for OUTPUT group
         if (group_type == MLPGroupTypes.OUTPUT):
             _write_blk = len (self.output_chain)
             if len (self.output_chain):
@@ -173,6 +178,7 @@ class MLPNetwork():
             _write_blk    = 0
             _is_first_out = 0
 
+        # instantiate a new group
         _group = MLPGroup (_id,
                            units        = units,
                            gtype        = group_type,
@@ -183,14 +189,21 @@ class MLPNetwork():
                            label        = label
                            )
 
-        print "adding group {} [total: {}]".format (
-                label,
-                len (self.groups) + 1
-                )
-
+        # append new group to network list
         self.groups.append (_group)
 
+        print "adding group {} [total: {}]".format (
+                label,
+                len (self.groups)
+                )
+
+        # if it's an INPUT group add to list
+        if (group_type == MLPGroupTypes.INPUT):
+            self.in_grps.append (_group)
+
+        # if it's an OUTPUT group add to list and to the tail of the chain
         if (group_type == MLPGroupTypes.OUTPUT):
+            self.out_grps.append (_group)
             self.output_chain.append (_group)
 
         # OUTPUT and HIDDEN groups instantiate BIAS links by default
@@ -198,7 +211,7 @@ class MLPNetwork():
             group_type == MLPGroupTypes.HIDDEN):
             self.link (self.bias_group, _group)
 
-        # initial weights file must be re-loaded!
+        # a new group forces reloading of initial weights file
         self._weights_loaded = False
 
         return _group
@@ -228,23 +241,52 @@ class MLPNetwork():
         else:
             _label = label
 
+        # check that enough data is provided
+        if (pre_link_group is None) or (post_link_group is None):
+            print ("error: pre and post link groups required")
+            return None
+
+        # instantiate a new link
         _link = MLPLink (pre_link_group  = pre_link_group,
                          post_link_group = post_link_group,
                          label           = _label
                          )
 
+        # add new link to the network list
+        self.links.append (_link)
+
         print "adding link from {} to {} [total: {}]".format (\
             pre_link_group.label,
             post_link_group.label,
-            len (self.links) + 1
+            len (self.links)
             )
 
-        self.links.append (_link)
-
-        # initial weights file must be re-loaded!
+        # a new link forces reloading of initial weights file
         self._weights_loaded = False
 
         return _link
+
+
+    def example_set (self,
+                     label = None
+                     ):
+        """ add an example set to the network
+
+        :param example_set: example set to be added
+
+        :type example set: MLPExampleSet
+        """
+        self.label = label
+
+        # instantiate a new example set
+        _set = MLPExampleSet (label = label)
+
+        # add example set to the network list
+        self._ex_set = _set
+
+        print "adding example set {}".format (label)
+
+        return _set
 
 
     def set (self,
@@ -252,23 +294,26 @@ class MLPNetwork():
              train_group_crit = None,
              test_group_crit  = None
              ):
-        """ set a network parameter
+        """ set a network parameter to the given value
 
         :param num_updates: number of training epochs to be done
         :param train_group_crit: criterion used to stop training
         :param test_group_crit: criterion used to stop testing
 
         :type num_updates: unsigned integer
-        :type train_group_crit: s16.15 fixed-point value
+        :type train_group_crit: float
         """
         if num_updates is not None:
+            print "setting num_epochs to {}".format (num_updates)
             self._num_epochs = num_updates
 
         if train_group_crit is not None:
-            self._train_group_crit = int (train_group_crit * (1 << 15))
+            print "setting train_group_crit to {}".format (train_group_crit)
+            self._train_group_crit = train_group_crit
 
         if test_group_crit is not None:
-            self._test_group_crit = int (test_group_crit * (1 << 15))
+            print "setting test_group_crit to {}".format (test_group_crit)
+            self._test_group_crit = test_group_crit
 
 
     def read_Lens_weights_file (self,
@@ -303,7 +348,7 @@ class MLPNetwork():
             self._weights_file = None
             print "error: cannot open weights file: {}".\
                 format (weights_file)
-            return
+            return False
 
         print "reading Lens-style weights file"
 
@@ -316,16 +361,16 @@ class MLPNetwork():
         # check that it is the correct file type
         _wf = open (self._weights_file, "r")
 
-        if int (_wf.readline ()) != MLPConstants.MAGIC_LENS_WEIGHT_COOKIE:
+        if int (_wf.readline ()) != MLPConstants.LENS_WEIGHT_MAGIC_COOKIE:
             print "error: incorrect weights file type"
             _wf.close ()
-            return
+            return False
 
         # check that the file contains the right number of weights
         if int (_wf.readline ()) != _num_wts:
             print "error: incorrect number of weights in file"
             _wf.close ()
-            return
+            return False
 
         # read weights from file and store them in the corresponding group
         _num_values = int (_wf.readline ())
@@ -355,165 +400,7 @@ class MLPNetwork():
         # mark weights file as loaded
         self._weights_loaded = True
 
-
-    def read_Lens_examples_file (self,
-                                 examples_file
-                                 ):
-        """ reads a Lens-style examples file
-
-        Lens online manual:
-            http://web.stanford.edu/group/mbc/LENSManual/
-
-        File format:
-
-        proc:  <S set-proc>
-        max:   <R set-maxTime>
-        min:   <R set-minTime>
-        grace: <R set-graceTime>
-        defI:  <R set-defaultInput>
-        actI:  <R set-activeInput>
-        defT:  <R set-defaultTarget>
-        actT:  <R set-activeTarget>
-        ;
-
-        for each example:
-          name:   <S example-name>
-          proc:   <S example-proc>
-          freq:   <R example-frequency>
-          <I example-numEvents>   this can be left out if it is 1
-
-          for each list of events:
-            [(<I event> | <I event>-<I event> | *)
-              proc:  <S event-proc>
-              max:   <R event-maxTime>
-              min:   <R event-minTime>
-              grace: <R event-graceTime>
-              defI:  <R event-defaultInput>
-              actI:  <R event-activeInput>
-              defT:  <R event-defaultTarget>
-              actT:  <R event-activeTarget>
-            ]
-
-            (I:|i:|T:|t:|B:|b:|) (
-              dense range:  (<S group-name> <I first-unit>) (<R input-value>) |
-              sparse range: {<S group-name> <R input-value>} [* | (<I unit> | <I unit>-<I unit>)]
-            )
-          ;
-        """
-        # check if file exists
-        if os.path.isfile (examples_file):
-            self._examples_file = examples_file
-        elif os.path.isfile ("data/{}".format (examples_file)):
-            self._examples_file = "data/{}".format (examples_file)
-        else:
-            self._examples_file = None
-            print "error: cannot open examples file: {}".\
-                format (examples_file)
-            return
-
-        print "reading Lens-style examples file"
-
-        _ef = open (self._examples_file, "r")
-
-        # create new example set
-        _set = MLPExampleSet ()
-
-        # process example file header
-        _line = _ef.readline ()
-        while (';' not in _line):
-            if ('proc:' in _line):
-                print "set procedure not supported"
-            elif ('max:' in _line):
-                _, _val = _line.split(':')
-                _set.max_time = float (_val)
-            elif ('min:' in _line):
-                _, _val = _line.split(':')
-                _set.min_time = float (_val)
-            elif ('grace:' in _line):
-                _, _val = _line.split(':')
-                _set.grace_time = float (_val)
-            elif ('defI:' in _line):
-                _, _val = _line.split(':')
-                _set.def_input = float (_val)
-            elif ('actI:' in _line):
-                print "set active input not supported"
-            elif ('defT:' in _line):
-                _, _val = _line.split(':')
-                _set.def_target = float (_val)
-            elif ('actT:' in _line):
-                print "set active target not supported"
-            else:
-                # ';' is optional
-                break
-
-            _line = _ef.readline ()
-
-        while (_line != ""):
-            _line = _ef.readline ()
-
-        # process each example in the set
-        _ex_id = 0
-        while (_line != ""):
-            # create new example
-            _ex = MLPExample (_ex_id)
-
-            # process the example header
-            _done = False
-            while not _done:
-                _done = True
-                try:
-                    if ('proc:' in _line):
-                        print "example procedure not supported"
-                    elif ('freq:' in _line):
-                        print "example frequency not supported"
-                    elif ('name:' in _line):
-                        _, _ex.name = _line.split(':')
-                        _line = _ef.readline ()
-                    else:
-                        # try to get non-default number of events
-                        _num_ev = int (_line)
-                        _done = True
-
-                    # process next line
-                    _line = _ef.readline ()
-                    if (_line == ""):
-                        print "unexpected end-of-file - read aborted"
-                        _ef.close ()
-                        return None
-                except:
-                    # if absent number of events defaults to 1
-                    _num_ev = 1
-                    _done = True
-                    print "default num_ev!"
-                    print _line
-
-            # process each event in the example
-            _ev_id = 0
-            while (False):
-                # create new event
-                _ev = MLPEvent (_ev_id)
-
-
-                # add new event to example event list
-                _ex.events.append (_ev)
-
-                # prepare for next example
-                _ex_id = _ex_id + 1
-                _line = _ef.readline ()
-
-            # add new example to set example list
-            _set.examples.append (_ex)
-
-            # prepare for next example
-            _ex_id = _ex_id + 1
-
-        # clean up
-        _ef.close ()
-
-        # mark examples file as loaded
-        self._examples_loaded = True
-
-        return _set
+        return True
 
 
     def generate_machine_graph (self):
@@ -562,21 +449,21 @@ class MLPNetwork():
                 g.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
                                              w.fwd_link)
 
+                # create forward t to w (multicast) links
+                g.add_machine_edge_instance (MachineEdge (_frmg.t_vertex, w),
+                                             _frmg.t_vertex.fwd_link)
+
                 # create backprop w to s links
                 g.add_machine_edge_instance (MachineEdge (w, _frmg.s_vertex),
                                              w.bkp_link)
-
-                # create forward synchronisation w to t links
-                g.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
-                                             w.fds_link)
 
                 # create backprop i to w (multicast) links
                 g.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
                                              grp.i_vertex.bkp_link)
 
-                # create forward t to w (multicast) links
-                g.add_machine_edge_instance (MachineEdge (_frmg.t_vertex, w),
-                                             _frmg.t_vertex.fwd_link)
+                # create forward synchronisation w to t links
+                g.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
+                                             w.fds_link)
 
             # create forward s to i link
             g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
@@ -633,33 +520,19 @@ class MLPNetwork():
                                                  grp.t_vertex.stp_link)
 
 
-    def train (self,
-               num_examples = None
-               ):
-        """ train the application graph for a number of epochs
-
-        :param num_examples: number of examples from the set to be used
-
-        :type  num_examples: unsigned integer
+    def train (self):
+        """ train the application graph
         """
-        self._training     = 1
-        self._num_examples = num_examples
+        self._training = 1
 
         # run the application
         self.run ()
 
 
-    def test (self,
-              num_examples = None
-              ):
+    def test (self):
         """ test the application graph without training
-
-        :param num_examples: number of examples from the set to be used
-
-        :type  num_examples: unsigned integer
         """
-        self._training     = 0
-        self._num_examples = num_examples
+        self._training = 0
 
         # run the application
         self.run ()
@@ -668,21 +541,32 @@ class MLPNetwork():
     def run (self):
         """ run the application graph
         """
-        # cannot run unless examples have been loaded
-        if not self._examples_loaded:
-            print "run aborted: examples not loaded"
-            return
-
         # cannot run unless weights file exists
         if self._weights_file is None:
             print "run aborted: weights file not given"
             return
 
         # may need to reload initial weights file if
-        # application graph was modified after first load
-        if self._weights_file is not None and\
-            not self._weights_loaded:
-            self.read_Lens_weights_file (self._weights_file)
+        # application graph was modified after load
+        if not self._weights_loaded:
+            if not self.read_Lens_weights_file (self._weights_file):
+                print "run aborted: error reading weights file"
+
+        # cannot run unless example set exists
+        if self._ex_set is None:
+            print "run aborted: no example set"
+            return
+
+        # cannot run unless examples have been loaded
+        if not self._ex_set.examples_loaded:
+            print "run aborted: examples not loaded"
+            return
+
+        # generate summary set, example and event data
+        self._num_examples = self._ex_set.compile (self)
+        if self._num_examples == 0:
+            print "run aborted: error compiling example set"
+            return
 
         # generate machine graph
         self.generate_machine_graph ()
@@ -692,7 +576,7 @@ class MLPNetwork():
 
         # wait for the application to finish
         print "running: waiting for application to finish"
-        _txrx = g.transceiver()
+        _txrx = g.transceiver ()
         _app_id = globals_variables.get_simulator ()._app_id
         _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
         while _running > 0:
@@ -711,7 +595,7 @@ class MLPNetwork():
         """ clean up before exiting
         """
         # pause to allow debugging
-        raw_input ('paused for debug: press enter to exit')
+        raw_input ('paused: press enter to exit')
 
         print "exit: application finished"
         # let the gfe clean up

@@ -4,10 +4,7 @@ from enum import Enum
 class MLPConstants ():
     """ MLP network constants
     """
-    # core configuration CONSTANTS
-    KEY_SPACE_SIZE = 65536
-    NUM_KEYS_REQ   = 4
-
+    # network parameter CONSTANTS or DEFAULT values
     DEF_LEARN_RT  = 0x0ccc
 
     DEF_INIT_NET  = 0
@@ -21,23 +18,38 @@ class MLPConstants ():
     MAX_OUT_PROCS = 5
     DEF_OUT_PROCS = 2
 
-    DEF_INTEGR_DT = 0x00003333
     DEF_SOFT_CLMP = 0x00008000
     DEF_WEAK_CLMP = 0x00008000
 
     DEF_GRP_CRIT   = 0
     DEF_TIMEOUT    = 10000
     DEF_NUM_EPOCHS = 1
+    DEF_EX_FREQ    = 1.0
 
-    # weights and weight file CONSTANTS
-    MAGIC_LENS_WEIGHT_COOKIE = 1431655766
+    # core configuration CONSTANTS
+    KEY_SPACE_SIZE = 65536
+    NUM_KEYS_REQ   = 4
 
+    # fixed-point REALs CONSTANTS
+    FPREAL_SHIFT     = 16
+    FPREAL_NaN       = (-1 << FPREAL_SHIFT) & 0xffffffff
+    FPREAL_SMALL_VAL = 1
+
+    # activations (unit outputs) CONSTANTS
+    ACTIV_SHIFT = 27
+    ACTIV_NaN   = (-1 << ACTIV_SHIFT) & 0xffffffff
+    ACTIV_MAX   = 0x7fffffff
+    ACTIV_MIN   = 0
+
+    # weights CONSTANTS
     WEIGHT_SHIFT       = 15
     WEIGHT_MAX         = 0xffff << WEIGHT_SHIFT
     WEIGHT_MIN         = -WEIGHT_MAX
     WEIGHT_POS_EPSILON = 1
     WEIGHT_NEG_EPSILON = -1
 
+    # weights file CONSTANTS
+    LENS_WEIGHT_MAGIC_COOKIE = 1431655766
     WF_MAX = (1.0 * WEIGHT_MAX) / (1.0 * (1 << WEIGHT_SHIFT))
     WF_MIN = (1.0 * WEIGHT_MIN) / (1.0 * (1 << WEIGHT_SHIFT))
     WF_EPS = (1.0 * WEIGHT_POS_EPSILON) / (1.0 * (1 << WEIGHT_SHIFT))

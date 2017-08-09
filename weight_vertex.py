@@ -1,6 +1,4 @@
 import struct
-import numpy as np
-import os
 
 from data_specification.enums.data_type import DataType
 
@@ -46,9 +44,10 @@ class WeightVertex(
                                )
 
         # application-level data
-        self._network       = network
-        self._group         = group
-        self._from_group    = from_group
+        self._network    = network
+        self._group      = group
+        self._from_group = from_group
+        self._ex_cfg     = network._ex_set.example_config
 
         # forward, backprop and synchronisation link partition names
         self._fwd_link = "fwd_w{}_{}".format (self.group.id,
@@ -67,24 +66,23 @@ class WeightVertex(
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
         # binary, configuration and data files
-        self._aplx_file     = "binaries/weight.aplx"
-        self._examples_file = "data/examples.dat"
+        self._aplx_file = "binaries/weight.aplx"
 
         # find out the size of an integer!
         _data_int=DataType.INT32
         int_size = _data_int.size
 
-        # size in bytes of the data in the regions
+        # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
             len (self._network.config)
 
+        # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
             len (self.config)
 
+        # list of example configurations
         self._N_EXAMPLES_BYTES = \
-            os.path.getsize (self._examples_file) \
-            if os.path.isfile (self._examples_file) \
-            else 0
+            len (self._ex_cfg) * len (self._ex_cfg[0])
 
         # each weight is an integer
         self._N_WEIGHTS_BYTES = \
@@ -195,51 +193,39 @@ class WeightVertex(
             self, spec, placement, routing_info):
 
         # Reserve and write the network configuration region
-        spec.reserve_memory_region (
-            MLPRegions.NETWORK.value,
-            self._N_NETWORK_CONFIGURATION_BYTES)
+        spec.reserve_memory_region (MLPRegions.NETWORK.value,
+                                    self._N_NETWORK_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
         for c in self._network.config:
-            spec.write_value (ord (c), data_type=DataType.UINT8)
+            spec.write_value (ord (c), data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
-        spec.reserve_memory_region (
-            MLPRegions.CORE.value, self._N_CORE_CONFIGURATION_BYTES)
+        spec.reserve_memory_region (MLPRegions.CORE.value,
+                                    self._N_CORE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.CORE.value)
 
         # write the core configuration into spec
         for c in self.config:
-            spec.write_value (ord (c), data_type=DataType.UINT8)
+            spec.write_value (ord (c), data_type = DataType.UINT8)
 
         # Reserve and write the examples region
-        if os.path.isfile (self._examples_file):
-            spec.reserve_memory_region (
-                MLPRegions.EXAMPLES.value,
-                self._N_EXAMPLES_BYTES)
-#             print "wv-{}_{}: reading {}".format (self.group.id,
-#                                                  self.from_group.id,
-#                                                  self._examples_file
-#                                                  )
+        spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
+                                    self._N_EXAMPLES_BYTES)
 
-            spec.switch_write_focus (MLPRegions.EXAMPLES.value)
+        spec.switch_write_focus (MLPRegions.EXAMPLES.value)
 
-            # open the examples file
-            _ef = open (self._examples_file, "rb")
-
-            # read the data into a numpy array and put in spec
-            _ex = np.fromfile (_ef, np.uint8)
-            _ef.close ()
-            for byte in _ex:
-                spec.write_value (byte, data_type=DataType.UINT8)
+        # write the example configurations into spec
+        for ex in self._ex_cfg:
+            for c in ex:
+                spec.write_value (ord (c), data_type = DataType.UINT8)
 
         # Reserve and write the weights region
-        spec.reserve_memory_region (
-            MLPRegions.WEIGHTS.value,
-            self._N_WEIGHTS_BYTES)
+        spec.reserve_memory_region (MLPRegions.WEIGHTS.value,
+                                    self._N_WEIGHTS_BYTES)
 
         spec.switch_write_focus (MLPRegions.WEIGHTS.value)
 
@@ -252,25 +238,27 @@ class WeightVertex(
             for row in range (_nrows):
                 for col in range (_ncols):
                     _wt = self.cast_float_to_weight (_wts[col * _nrows + row])
-                    spec.write_value (_wt, data_type=DataType.INT32)
+                    spec.write_value (_wt, data_type = DataType.INT32)
         else:
             for _ in range (_nrows * _ncols):
-                spec.write_value (0, data_type=DataType.INT32)
-
+                spec.write_value (0, data_type = DataType.INT32)
 
         # Reserve and write the routing region
-        spec.reserve_memory_region (
-            MLPRegions.ROUTING.value, self._N_KEYS_BYTES)
+        spec.reserve_memory_region (MLPRegions.ROUTING.value,
+                                    self._N_KEYS_BYTES)
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys (fwd, bkp, fds, stp)
+        # write link keys: fwd, bkp, fds, stp
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
+
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
+
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fds_link), data_type = DataType.UINT32)
+
         spec.write_value (0, data_type = DataType.UINT32)
 
         # End the specification

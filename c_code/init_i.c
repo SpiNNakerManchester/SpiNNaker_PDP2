@@ -98,7 +98,7 @@ uint i_init (void)
 
   // allocate memory in SDRAM for input history,
   // TODO: this needs a condition on the requirement to have input history
-  // which needs to come from splens
+  // which needs to come as a configuration parameter
   if ((i_net_history = ((long_net_t *)
           sark_xalloc (sv->sdram_heap,
                        icfg.num_units * ncfg.global_max_ticks * sizeof(long_net_t),

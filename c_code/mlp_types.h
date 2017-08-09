@@ -273,19 +273,21 @@ typedef struct
 
 
 // ------------------------------------------------------------------------
-// example configuration in SDRAM
+// example set, example and event configurations
 // ------------------------------------------------------------------------
-// Examples are organized as LENS examples (see LENS documentation).
+// examples are organised as LENS-style examples
 // ------------------------------------------------------------------------
-typedef struct mlp_set {
-  uint   num_examples;
+typedef struct mlp_set
+{
+  uint    num_examples;
   fpreal  max_time;
   fpreal  min_time;
   fpreal  grace_time;
 } mlp_set_t;
 
 
-typedef struct mlp_example {
+typedef struct mlp_example
+{
   uint   num;
   uint   num_events;
   uint   ev_idx;
@@ -293,7 +295,8 @@ typedef struct mlp_example {
 } mlp_example_t;
 
 
-typedef struct mlp_event {
+typedef struct mlp_event
+{
   fpreal  max_time;
   fpreal  min_time;
   fpreal  grace_time;
