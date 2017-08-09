@@ -1,6 +1,4 @@
 import struct
-import numpy as np
-import os
 
 from data_specification.enums.data_type import DataType
 
@@ -50,15 +48,7 @@ class ThresholdVertex(
         self._ex_cfg  = network._ex_set.example_config
         self._ev_cfg  = network._ex_set.event_config
 
-        # forward, backprop and stop link partition names
-        self._fwd_link = "fwd_s{}".format (self.group.id)
-        self._bkp_link = "bkp_s{}".format (self.group.id)
-        self._stp_link = "stp_s{}".format (self.group.id)
-
-        # threshold core-specific parameters
-        # NOTE: if all-zero w cores are optimised out this need reviewing
-        self._fwd_sync_expect = len (network.groups)
-        self._bkp_sync_expect = len (network.groups)
+        # application parameters
         self._out_integr_dt   = 1.0 / network.ticks_per_int
 
         # choose appropriate group criterion
@@ -83,7 +73,17 @@ class ThresholdVertex(
         else:
             self._is_last_output_group = 0
 
-        # reserve a 16-bit key space in every link
+        # forward, backprop and stop link partition names
+        self._fwd_link = "fwd_s{}".format (self.group.id)
+        self._bkp_link = "bkp_s{}".format (self.group.id)
+        self._stp_link = "stp_s{}".format (self.group.id)
+
+        # threshold core-specific parameters
+        # NOTE: if all-zero w cores are optimised out this need reviewing
+        self._fwd_sync_expect = len (network.groups)
+        self._bkp_sync_expect = len (network.groups)
+
+        # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
         # binary, configuration and data files
@@ -160,7 +160,8 @@ class ThresholdVertex(
             {
               uchar         output_grp;
               uchar         input_grp;
-              uint          num_units;
+              uint          num_units;        # reserve key space for every link
+
               scoreboard_t  fwd_sync_expect;
               scoreboard_t  bkp_sync_expect;
               uchar         write_out;
@@ -344,7 +345,6 @@ class ThresholdVertex(
                 self, self.stp_link), data_type = DataType.UINT32)
         else:
             spec.write_value (0, data_type = DataType.UINT32)
-
 
         # End the specification
         spec.end_specification ()

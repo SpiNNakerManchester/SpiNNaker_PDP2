@@ -56,7 +56,7 @@ class SumVertex(
         self._fwd_expect = len (network.groups)
         self._bkp_expect = len (network.groups)
 
-        # reserve a 16-bit key space in every link
+        # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
         # binary, configuration and data files

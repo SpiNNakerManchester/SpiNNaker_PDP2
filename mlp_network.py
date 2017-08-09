@@ -599,4 +599,4 @@ class MLPNetwork():
 
         print "exit: application finished"
         # let the gfe clean up
-        #g.stop()
+        g.stop()

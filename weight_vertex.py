@@ -62,7 +62,7 @@ class WeightVertex(
         else:
             self.learning_rate = 0
 
-        # reserve a 16-bit key space in every link
+        # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
         # binary, configuration and data files

@@ -48,14 +48,14 @@ class InputVertex(
         self._ex_cfg  = network._ex_set.example_config
         self._ev_cfg  = network._ex_set.event_config
 
+        # application parameters
+        self._in_integr_dt = 1.0 / network.ticks_per_int
+
         # forward and backprop link partition names
         self._fwd_link = "fwd_i{}".format (self.group.id)
         self._bkp_link = "bkp_i{}".format (self.group.id)
 
-        # input core-specific parameters
-        self._in_integr_dt = 1.0 / network.ticks_per_int
-
-        # reserve a 16-bit key space in every link
+        # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
         # binary, configuration and data files

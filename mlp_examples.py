@@ -160,7 +160,7 @@ class MLPExampleSet ():
 
         print "processing example set header"
 
-        # process example file header
+        # process example set header
         _line = _ef.readline ()
         while (';' not in _line):
             if ('proc:' in _line):
@@ -210,6 +210,7 @@ class MLPExampleSet ():
 
             _line = _ef.readline ()
 
+        # ';' is optional
         if (';' in _line):
             _line = _ef.readline ()
 
@@ -238,7 +239,7 @@ class MLPExampleSet ():
                     print "setting example freq:{}".format (_ex.freq)
 
                 else:
-                    # try to get non-default number of events
+                    # try to get number of events
                     try:
                         _num_ev = int (_line)
                         _done = True
@@ -258,18 +259,28 @@ class MLPExampleSet ():
 
             # process each event in the example
             # TODO: need to complete event list processing!
-            _ev_id = 0
+            _ev_id = -1
             while (';' not in _line):
+                # read event list, if present
+                if ("[" in _line):
+                    _ev_list = _line.strip ()
+                    while ("]" not in _line):
+                        _line = _ef.readline ()
+                        _ev_list = _ev_list + " " + _line.strip ()
+                else:
+                    _ev_list = None
+
+                _ev_id += 1
+
                 # create new event
                 _ev = MLPEvent (_ev_id)
 
                 print "reading event {}".format (_ev_id)
 
                 # get inputs and targets for every event
-                #_isd = False
-                #_tsd = False
-                #while (not _isd or not _tsd):
-                while True:
+                _isd = False
+                _tsd = False
+                while (not _isd or not _tsd):
                     # instantiate new list of values
                     _vl = MLPEventValues ()
 
@@ -285,6 +296,7 @@ class MLPExampleSet ():
                         print "added inputs {}:{}".format (_vl.name, _vl.values)
 
                         _ev.inputs.append (_vl)
+                        _isd = True
 
                     # check line for targets
                     elif ('T:' in _line) or ('t:' in _line):
@@ -298,7 +310,7 @@ class MLPExampleSet ():
                         print "added targets {}:{}".format (_vl.name, _vl.values)
 
                         _ev.targets.append (_vl)
-                        #_tsd = True
+                        _tsd = True
 
                     # check line for both inputs and targets
                     elif ('B:' in _line) or ('b:' in _line):
@@ -313,8 +325,8 @@ class MLPExampleSet ():
 
                         _ev.inputs.append (_vl)
                         _ev.targets.append (_vl)
-                        #_isd = True
-                        #_tsd = True
+                        _isd = True
+                        _tsd = True
 
                     # check if final event in example
                     if (";" in _line):
