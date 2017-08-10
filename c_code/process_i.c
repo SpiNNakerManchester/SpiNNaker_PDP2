@@ -506,20 +506,20 @@ void in_soft_clamp (uint inx)
     io_printf (IO_BUF, "in_soft_clamp\n");
   #endif
 
-  long_activ_t external_input = it[i_it_idx + inx];  // 49.15 repr.
+  long_activ_t external_input = it[i_it_idx + inx];  // 36.27 repr.
 
   // compute only if input is not NaN
   if (external_input != (long_activ_t) SPINN_SHORT_ACTIV_NaN)
   {
     lfpreal soft_clamp_strength = icfg.soft_clamp_strength; // 48.16 repr.
-    long_activ_t init_output = icfg.initOutput;             // 49.15 repr.
+    long_activ_t init_output = icfg.initOutput;             // 36.27 repr.
 
     // computation of the soft clamp operator following Lens code
-    // representation: 36.27 + (48.16 * (49.15 - 49.15) >> (16 - 12)) = 36.27
+    // representation: 36.27 + (48.16 * (36.27 - 36.27)) >> 16 = 36.27
     long_activ_t output = init_output
                              + ((soft_clamp_strength
                                  * (external_input - init_output))
-                                   >>  (SPINN_FPREAL_SHIFT - SPINN_ACTIV_SHIFT + SPINN_SHORT_ACTIV_SHIFT)
+                                   >> SPINN_FPREAL_SHIFT
                                );
 
     i_nets[inx] += inv_sigmoid((short_activ_t) (output << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)));

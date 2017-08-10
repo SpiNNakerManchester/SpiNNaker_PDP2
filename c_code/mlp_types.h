@@ -216,7 +216,7 @@ typedef struct i_conf                // input core configuration
   fpreal        in_integr_dt;        // integration time const for input integr
   fpreal        soft_clamp_strength; // Strength coeff for soft clamp
   net_t         initNets;            // initial value for unit nets
-  short_activ_t initOutput;          // initial value for unit outputs
+  activation_t  initOutput;          // initial value for unit outputs
 } i_conf_t;
 // ------------------------------------------------------------------------
 
@@ -244,7 +244,7 @@ typedef struct t_conf                  // threshold core configuration
   uint          num_out_procs;         // number of output comp procedures
   uint          procs_list[SPINN_NUM_OUT_PROCS];
   fpreal        weak_clamp_strength;   // Strength coeff for weak clamp
-  short_activ_t initOutput;            // initial value for unit outputs
+  activation_t  initOutput;            // initial value for unit outputs
   error_t       group_criterion;       // convergence criterion value
   uchar         criterion_function;    // function to eval convergence criterion
   uchar         is_first_output_group; // is this the first of the output groups

@@ -125,7 +125,7 @@ class InputVertex(
               fpreal        in_integr_dt;
               fpreal        soft_clamp_strength;
               net_t         initNets;
-              short_activ_t initOutput;
+              activation_t  initOutput;
             } i_conf_t;
 
             pack: standard sizes, little-endian byte order,
@@ -134,7 +134,11 @@ class InputVertex(
         # integration dt is represented in fixed-point s15.16 notation
         _in_integr_dt = int (self._in_integr_dt * (1 << MLPConstants.FPREAL_SHIFT))
 
-        return struct.pack ("<2B2x4IB3x3ih2x",
+        # init output is represented in fixed-point s4.27 notation
+        init_output = int (self.group.init_output *\
+                           (1 << MLPConstants.ACTIV_SHIFT))
+
+        return struct.pack ("<2B2x4IB3x4i",
                             self.group.output_grp,
                             self.group.input_grp,
                             self.group.units,
@@ -145,7 +149,7 @@ class InputVertex(
                             _in_integr_dt,
                             self.group.soft_clamp_strength,
                             self.group.init_net,
-                            self.group.init_output & 0xffff
+                            init_output
                             )
 
     @property

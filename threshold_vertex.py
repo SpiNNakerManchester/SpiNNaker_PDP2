@@ -171,7 +171,7 @@ class ThresholdVertex(
               uint          num_out_procs;
               uint          procs_list[SPINN_NUM_OUT_PROCS];
               fpreal        weak_clamp_strength;
-              short_activ_t initOutput;
+              activation_t  initOutput;
               error_t       group_criterion;
               uchar         criterion_function;
               uchar         is_first_output_group;
@@ -186,11 +186,15 @@ class ThresholdVertex(
         _out_integr_dt = int (self._out_integr_dt *\
                               (1 << MLPConstants.FPREAL_SHIFT))
 
+        # init output is represented in fixed-point s4.27 notation
+        init_output = int (self.group.init_output *\
+                           (1 << MLPConstants.ACTIV_SHIFT))
+
         # group criterion is represented in fixed-point s16.15 notation
         _group_criterion = int (self._group_criterion *\
                                 (1 << MLPConstants.ACTIV_SHIFT))
 
-        return struct.pack ("<2B2x3IB3xIB3xi6Iih2xi4B",
+        return struct.pack ("<2B2x3IB3xIB3xi6I3i4B",
                             self.group.output_grp & 0xff,
                             self.group.input_grp & 0xff,
                             self.group.units,
@@ -207,7 +211,7 @@ class ThresholdVertex(
                             self.group.out_procs_list[3].value,
                             self.group.out_procs_list[4].value,
                             self.group.weak_clamp_strength,
-                            self.group.init_output,
+                            init_output,
                             _group_criterion,
                             self.group.criterion_function.value & 0xff,
                             self.group.is_first_out & 0xff,

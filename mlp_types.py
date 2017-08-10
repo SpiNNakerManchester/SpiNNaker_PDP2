@@ -8,9 +8,9 @@ class MLPConstants ():
     DEF_LEARN_RT  = 0x0ccc
 
     DEF_INIT_NET  = 0
-    DEF_INIT_OUT  = 0x4000
+    DEF_INIT_OUT  = 0.5
 
-    BIAS_INIT_OUT = 0x7fff
+    BIAS_INIT_OUT = 1.0
 
     MAX_IN_PROCS  = 2
     DEF_IN_PROCS  = 0

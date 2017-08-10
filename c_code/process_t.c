@@ -651,23 +651,12 @@ void t_init_outputs (uint null0, uint null1)
     // NOTE: The following code follows the output of Lens 2.63:
     // initialise the output value of the units
 
-    // TODO: hack to force the initial output value of the
-	// bias unit to be 1 rather 0.999969
-    if (tcfg.initOutput == SPINN_SHORT_ACTIV_MAX)
-    {
-      t_outputs[i] = SPINN_ACTIV_ONE;
-    }
-    else
-    {
-      t_outputs[i] = (tcfg.initOutput
-    		  << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
-    }
+    t_outputs[i] = tcfg.initOutput;
 
     // if the output integrator is used
     // reset the array of the last values
     if (tcfg.out_integr_en) {
-      t_last_integr_output[i] = (tcfg.initOutput
-    		  << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+      t_last_integr_output[i] = tcfg.initOutput;
 
       t_last_integr_output_deriv[i] = 0;
     }
