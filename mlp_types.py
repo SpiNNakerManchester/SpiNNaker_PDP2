@@ -30,17 +30,17 @@ class MLPConstants ():
     KEY_SPACE_SIZE = 65536
     NUM_KEYS_REQ   = 4
 
-    # fixed-point REALs CONSTANTS
+    # MLP fixed-point fpreal type CONSTANTS
     FPREAL_SHIFT     = 16
     FPREAL_NaN       = (-1 << FPREAL_SHIFT) & 0xffffffff
 
-    # activation_t (unit outputs) CONSTANTS
+    # MLP fixed-point activ_t type CONSTANTS
     ACTIV_SHIFT = 27
 
-    # error_t CONSTANTS
+    # MLP fixed-point error_t type CONSTANTS
     ERROR_SHIFT = 15
 
-    # weight_t CONSTANTS
+    # MLP fixed-point weight_t type CONSTANTS
     WEIGHT_SHIFT       = 15
     WEIGHT_MAX         = 0xffff << WEIGHT_SHIFT
     WEIGHT_MIN         = -WEIGHT_MAX

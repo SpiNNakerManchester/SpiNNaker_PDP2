@@ -824,7 +824,7 @@ void restore_nets (uint inx, uint tick)
 void store_outputs (uint inx)
 {
   #ifdef TRACE_VRB
-    io_print (IO_BUF, "store_outputs\n");
+    io_printf (IO_BUF, "store_outputs\n");
   #endif
 
   t_output_history[(tick * tcfg.num_units) + inx] = t_outputs[inx];

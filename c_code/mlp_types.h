@@ -22,8 +22,8 @@ enum MLPKeys {
 	STP
 };
 
-typedef short     short_activ_t;    // unit output or activation
-typedef int       activation_t;     // intermediate unit output or activation
+typedef short     short_activ_t;
+typedef int       activation_t;     // unit output or activation
 typedef long long long_activ_t;     // intermediate unit output or activation
 
 // short activations are s0.15

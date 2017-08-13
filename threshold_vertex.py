@@ -182,15 +182,15 @@ class ThresholdVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # integration dt is represented in fixed-point s15.16 notation
+        # integration dt is an MLP fixed-point fpreal
         _out_integr_dt = int (self._out_integr_dt *\
                               (1 << MLPConstants.FPREAL_SHIFT))
 
-        # init output is represented in fixed-point s4.27 notation
+        # init output is an MLP fixed-point activ_t
         init_output = int (self.group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
 
-        # group criterion is represented in fixed-point s16.15 notation
+        # group criterion is an MLP fixed-point error_t
         _group_criterion = int (self._group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
@@ -311,7 +311,7 @@ class ThresholdVertex(
 
             # write inputs to spec
             for _i in self._group.inputs:
-                # inputs are represented in fix-point s16.15 notation
+                # inputs are MLP fixed-point activ_t
                 _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_inp, data_type = DataType.UINT32)
 
@@ -324,7 +324,7 @@ class ThresholdVertex(
 
             # write targets to spec
             for _t in self._group.targets:
-                # targets are represented in fix-point s16.15 notation
+                # targets are MLP fixed-point activ_t
                 _tgt = int (_t * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_tgt, data_type = DataType.UINT32)
 

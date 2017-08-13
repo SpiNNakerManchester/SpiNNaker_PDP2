@@ -122,7 +122,7 @@ class WeightVertex(
     def cast_float_to_weight (self,
                               wt_float
                               ):
-        """ casts a (float) weight into a (weight_t) weight
+        """ casts a float into an MLP fixed-point weight_t
         """
         # round weight
         if wt_float >= 0:
@@ -140,6 +140,7 @@ class WeightVertex(
         else:
             wtemp = wt_float
 
+        # return an MLP fixed-point weight_t
         return (int (wtemp * (1 << MLPConstants.WEIGHT_SHIFT)))
 
     @property

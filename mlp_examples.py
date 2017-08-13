@@ -2,7 +2,6 @@ import os
 import struct
 import re
 from mlp_types import MLPConstants
-from numpy.distutils.lib2def import DEFAULT_NM
 
 
 class MLPExampleSet ():
@@ -79,15 +78,15 @@ class MLPExampleSet ():
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # max_time is represented in fixed-point s15.16 notation
+        # max_time is an MLP fixed-point fpreal
         _max_time = int (self.max_time *\
                          (1 << MLPConstants.FPREAL_SHIFT))
 
-        # min_time is represented in fixed-point s15.16 notation
+        # min_time is an MLP fixed-point fpreal
         _min_time = int (self.min_time *\
                          (1 << MLPConstants.FPREAL_SHIFT))
 
-        # grace_time is represented in fixed-point s15.16 notation
+        # grace_time is an MLP fixed-point fpreal
         _grace_time = int (self.grace_time *\
                            (1 << MLPConstants.FPREAL_SHIFT))
 
@@ -502,7 +501,7 @@ class MLPExample ():
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # freq is represented in fixed-point s15.16 notation
+        # freq is an MLP fixed-point fpreal
         if self.freq is not None:
             _freq = int (self.freq * (1 << MLPConstants.FPREAL_SHIFT))
         else:
@@ -560,21 +559,21 @@ class MLPEvent ():
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # max_time is represented in fixed-point s15.16 notation
+        # max_time is an MLP fixed-point fpreal
         if self.max_time is not None:
             _max_time = int (self.max_time *\
                              (1 << MLPConstants.FPREAL_SHIFT))
         else:
             _max_time = MLPConstants.FPREAL_NaN
 
-        # min_time is represented in fixed-point s15.16 notation
+        # min_time is an MLP fixed-point fpreal
         if self.min_time is not None:
             _min_time = int (self.min_time *\
                              (1 << MLPConstants.FPREAL_SHIFT))
         else:
             _min_time = MLPConstants.FPREAL_NaN
 
-        # grace_time is represented in fixed-point s15.16 notation
+        # grace_time is an MLP fixed-point fpreal
         if self.grace_time is not None:
             _grace_time = int (self.grace_time *\
                                (1 << MLPConstants.FPREAL_SHIFT))
