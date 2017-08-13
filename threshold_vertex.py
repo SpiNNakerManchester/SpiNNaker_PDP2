@@ -192,7 +192,7 @@ class ThresholdVertex(
 
         # group criterion is represented in fixed-point s16.15 notation
         _group_criterion = int (self._group_criterion *\
-                                (1 << MLPConstants.ACTIV_SHIFT))
+                                (1 << MLPConstants.ERROR_SHIFT))
 
         return struct.pack ("<2B2x3IB3xIB3xi6I3i4B",
                             self.group.output_grp & 0xff,

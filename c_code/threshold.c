@@ -7,6 +7,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_macros.h"
 #include "mlp_externs.h"  // allows compiler to check extern types!
 
 #include "init_t.h"
@@ -292,8 +293,9 @@ uint init ()
     io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[3]);
     io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[4]);
     io_printf (IO_BUF, "wc: %f\n", tcfg.weak_clamp_strength);
-    io_printf (IO_BUF, "io: %k\n", tcfg.initOutput);
-    io_printf (IO_BUF, "gc: %d\n", tcfg.group_criterion);
+    io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
+    			tcfg.initOutput, SPINN_ACTIV_SHIFT));
+    io_printf (IO_BUF, "gc: %k\n", tcfg.group_criterion);
     io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
     io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output_group);
     io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output_group);

@@ -33,15 +33,14 @@ class MLPConstants ():
     # fixed-point REALs CONSTANTS
     FPREAL_SHIFT     = 16
     FPREAL_NaN       = (-1 << FPREAL_SHIFT) & 0xffffffff
-    FPREAL_SMALL_VAL = 1
 
-    # activations (unit outputs) CONSTANTS
+    # activation_t (unit outputs) CONSTANTS
     ACTIV_SHIFT = 27
-    ACTIV_NaN   = (-1 << ACTIV_SHIFT) & 0xffffffff
-    ACTIV_MAX   = 0x7fffffff
-    ACTIV_MIN   = 0
 
-    # weights CONSTANTS
+    # error_t CONSTANTS
+    ERROR_SHIFT = 15
+
+    # weight_t CONSTANTS
     WEIGHT_SHIFT       = 15
     WEIGHT_MAX         = 0xffff << WEIGHT_SHIFT
     WEIGHT_MIN         = -WEIGHT_MAX
