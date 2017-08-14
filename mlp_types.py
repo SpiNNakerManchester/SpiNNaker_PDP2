@@ -34,7 +34,7 @@ class MLPConstants ():
     FPREAL_SHIFT     = 16
     FPREAL_NaN       = (-1 << FPREAL_SHIFT) & 0xffffffff
 
-    # MLP fixed-point activ_t type CONSTANTS
+    # MLP fixed-point activation_t type CONSTANTS
     ACTIV_SHIFT = 27
 
     # MLP fixed-point error_t type CONSTANTS

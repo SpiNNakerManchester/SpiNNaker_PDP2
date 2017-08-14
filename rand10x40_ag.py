@@ -46,7 +46,7 @@ set1.set (grace_time = 1.0,
           )
 
 # set network parameters
-rand10x40.set (num_updates = 10,
+rand10x40.set (num_updates = 300,
                train_group_crit = 0.2
                )
 

@@ -186,7 +186,7 @@ class ThresholdVertex(
         _out_integr_dt = int (self._out_integr_dt *\
                               (1 << MLPConstants.FPREAL_SHIFT))
 
-        # init output is an MLP fixed-point activ_t
+        # init output is an MLP fixed-point activation_t
         init_output = int (self.group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
 
@@ -311,7 +311,7 @@ class ThresholdVertex(
 
             # write inputs to spec
             for _i in self._group.inputs:
-                # inputs are MLP fixed-point activ_t
+                # inputs are MLP fixed-point activation_t
                 _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_inp, data_type = DataType.UINT32)
 
@@ -324,7 +324,7 @@ class ThresholdVertex(
 
             # write targets to spec
             for _t in self._group.targets:
-                # targets are MLP fixed-point activ_t
+                # targets are MLP fixed-point activation_t
                 _tgt = int (_t * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_tgt, data_type = DataType.UINT32)
 

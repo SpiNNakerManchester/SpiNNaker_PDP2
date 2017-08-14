@@ -134,7 +134,7 @@ class InputVertex(
         # integration dt is an MLP fixed-point fpreal
         _in_integr_dt = int (self._in_integr_dt * (1 << MLPConstants.FPREAL_SHIFT))
 
-        # init output is represented in fixed-point s4.27 notation
+        # init output is an MLP fixed-point activation_t
         init_output = int (self.group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
 
@@ -232,7 +232,7 @@ class InputVertex(
 
             # write inputs to spec
             for _i in self._group.inputs:
-                # inputs are MLP fixed-point activ_t
+                # inputs are MLP fixed-point activation_t
                 _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_inp, data_type = DataType.UINT32)
 

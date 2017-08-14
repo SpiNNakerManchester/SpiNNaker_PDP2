@@ -1184,7 +1184,7 @@ int init_out_integr ()
 
 
 // ------------------------------------------------------------------------
-// initialization of the hard clamp includes SDRAM memory allocation to store
+// initialisation of the hard clamp includes SDRAM memory allocation to store
 // information related to the values injected. This function is currently a stub
 // ------------------------------------------------------------------------
 int init_out_hard_clamp ()
@@ -1217,7 +1217,7 @@ int init_out_hard_clamp ()
 
 
 // ------------------------------------------------------------------------
-// initialization of the hard clamp includes SDRAM memory allocation to store
+// initialisation of the weak clamp includes SDRAM memory allocation to store
 // information related to the values injected. This function is currently a stub
 // ------------------------------------------------------------------------
 int init_out_weak_clamp ()
@@ -1263,7 +1263,7 @@ void std_stop_crit (uint inx)
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
     // s16.15 = (s4.27 - s4.27) >> (27 - 15)
-    error_t error = (error_t) (ABS (t_outputs[inx] - tt[t_it_idx + inx]) >>
+    error_t error = (error_t) ABS ((t_outputs[inx] - tt[t_it_idx + inx]) >>
     		(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
     tf_stop_crit = tf_stop_crit && (error < tcfg.group_criterion);
@@ -1303,7 +1303,7 @@ void max_stop_crit (uint inx)
     }
 
     // s16.15 = (s4.27 - s4.27) >> (27 - 15)
-    error_t error = (error_t) (ABS (t_max_output - t_max_target) >>
+    error_t error = (error_t) ABS ((t_max_output - t_max_target) >>
     			(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
     if ((t_max_output_unit == -1)
