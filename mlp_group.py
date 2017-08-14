@@ -50,7 +50,7 @@ class MLPGroup():
         self.input_grp  = (self.type == MLPGroupTypes.INPUT)
 
         # weight-related parameters
-        self.learning_rate = MLPConstants.DEF_LEARN_RT
+        self.learning_rate = MLPConstants.DEF_LEARNING_RATE
 
         # input function parameters
         self.soft_clamp_strength = MLPConstants.DEF_SOFT_CLMP

@@ -150,18 +150,22 @@ class WeightVertex(
 
             typedef struct w_conf
             {
-              uint          num_rows;
-              uint          num_cols;
-              short_activ_t learningRate;
+              uint           num_rows;
+              uint           num_cols;
+              short_fpreal_t learningRate;
             } w_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # learning_rate is an MLP short fixed-point fpreal
+        learning_rate = int (self.learning_rate *\
+                              (1 << MLPConstants.SHORT_FPREAL_SHIFT))
+
         return struct.pack ("<2Ih2x",
                             self.from_group.units,
                             self.group.units,
-                            self.learning_rate & 0xffff
+                            learning_rate & 0xffff
                             )
 
     @property

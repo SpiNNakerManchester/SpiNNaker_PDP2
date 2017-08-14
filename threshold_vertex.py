@@ -183,15 +183,19 @@ class ThresholdVertex(
             explicit padding
         """
         # integration dt is an MLP fixed-point fpreal
-        _out_integr_dt = int (self._out_integr_dt *\
+        out_integr_dt = int (self._out_integr_dt *\
                               (1 << MLPConstants.FPREAL_SHIFT))
+
+        # weak_clamp_strength is an MLP fixed-point fpreal
+        weak_clamp_strength = int (self.group.weak_clamp_strength *\
+                           (1 << MLPConstants.FPREAL_SHIFT))
 
         # init output is an MLP fixed-point activation_t
         init_output = int (self.group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
 
         # group criterion is an MLP fixed-point error_t
-        _group_criterion = int (self._group_criterion *\
+        group_criterion = int (self._group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
         return struct.pack ("<2B2x3IB3xIB3xi6I3i4B",
@@ -203,16 +207,16 @@ class ThresholdVertex(
                             self.group.write_out & 0xff,
                             self.group.write_blk,
                             self.group.out_integr_en & 0xff,
-                            _out_integr_dt,
+                            out_integr_dt,
                             self.group.num_out_procs,
                             self.group.out_procs_list[0].value,
                             self.group.out_procs_list[1].value,
                             self.group.out_procs_list[2].value,
                             self.group.out_procs_list[3].value,
                             self.group.out_procs_list[4].value,
-                            self.group.weak_clamp_strength,
+                            weak_clamp_strength,
                             init_output,
-                            _group_criterion,
+                            group_criterion,
                             self.group.criterion_function.value & 0xff,
                             self.group.is_first_out & 0xff,
                             self._is_last_output_group & 0xff,

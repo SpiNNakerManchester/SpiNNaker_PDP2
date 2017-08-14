@@ -876,7 +876,7 @@ void out_integr (uint inx)
   activation_t new_output = t_outputs[inx];
 
   // s0.16
-  lfpreal dt = tcfg.out_integr_dt;
+  long_fpreal dt = tcfg.out_integr_dt;
 
 
   // store the output for the backward path
@@ -976,13 +976,12 @@ void out_weak_clamp (uint inx)
   }
 */
 
-  long_activ_t external_input = it[t_it_idx + inx];         // 49.15 repr.
-
   // compute only if input is not NaN
-  if (external_input != (long_activ_t) SPINN_ACTIV_NaN)
+  if (it[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-    lfpreal weak_clamp_strength = tcfg.weak_clamp_strength; // 48.16 repr.
-    long_activ_t output_value = t_outputs[inx];             // s36.27 repr.
+	long_activ_t external_input = it[t_it_idx + inx];           // s36.27
+    long_fpreal weak_clamp_strength = tcfg.weak_clamp_strength; // s48.16
+    long_activ_t output_value = t_outputs[inx];                 // s36.27
 
     // computation of the weak clamp output following Lens implementation
     // representation: s36.27 + (48.16 * (s36.27 - s36.27) >> 16) = s36.27
@@ -1082,7 +1081,7 @@ void out_integr_back (uint inx)
 
   long_deriv_t last_output_deriv = t_last_integr_output_deriv[inx];
 
-  lfpreal dt = (lfpreal) tcfg.out_integr_dt;
+  long_fpreal dt = (long_fpreal) tcfg.out_integr_dt;
 
   // reset output to value stored during forward pass
   t_outputs[inx] = t_instant_outputs[((tick - 1) * tcfg.num_units) + inx];
@@ -1329,6 +1328,7 @@ void error_squared (uint inx)
     io_printf (IO_BUF, "error_squared\n");
   #endif
 
+  // evaluate only if target is not NaN
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
     t_output_deriv[inx] = ((long_deriv_t) t_outputs[inx] - (long_deriv_t) tt[t_it_idx + inx]);
   else

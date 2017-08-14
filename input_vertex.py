@@ -132,7 +132,11 @@ class InputVertex(
             explicit padding
         """
         # integration dt is an MLP fixed-point fpreal
-        _in_integr_dt = int (self._in_integr_dt * (1 << MLPConstants.FPREAL_SHIFT))
+        in_integr_dt = int (self._in_integr_dt * (1 << MLPConstants.FPREAL_SHIFT))
+
+        # soft_clamp_strength is an MLP fixed-point fpreal
+        soft_clamp_strength = int (self.group.soft_clamp_strength *\
+                           (1 << MLPConstants.FPREAL_SHIFT))
 
         # init output is an MLP fixed-point activation_t
         init_output = int (self.group.init_output *\
@@ -146,8 +150,8 @@ class InputVertex(
                             self.group.in_procs_list[0].value,
                             self.group.in_procs_list[1].value,
                             self.group.in_integr_en,
-                            _in_integr_dt,
-                            self.group.soft_clamp_strength,
+                            in_integr_dt,
+                            soft_clamp_strength,
                             self.group.init_net,
                             init_output
                             )

@@ -5,7 +5,7 @@ class MLPConstants ():
     """ MLP network constants
     """
     # network parameter CONSTANTS or DEFAULT values
-    DEF_LEARN_RT  = 0x0ccc
+    DEF_LEARNING_RATE = 0.1
 
     DEF_INIT_NET  = 0
     DEF_INIT_OUT  = 0.5
@@ -18,8 +18,8 @@ class MLPConstants ():
     MAX_OUT_PROCS = 5
     DEF_OUT_PROCS = 2
 
-    DEF_SOFT_CLMP = 0x00008000
-    DEF_WEAK_CLMP = 0x00008000
+    DEF_SOFT_CLMP = 0.5
+    DEF_WEAK_CLMP = 0.5
 
     DEF_GRP_CRIT   = 0
     DEF_TIMEOUT    = 10000
@@ -31,8 +31,12 @@ class MLPConstants ():
     NUM_KEYS_REQ   = 4
 
     # MLP fixed-point fpreal type CONSTANTS
+    FPREAL_SIZE      = 32
     FPREAL_SHIFT     = 16
-    FPREAL_NaN       = (-1 << FPREAL_SHIFT) & 0xffffffff
+    FPREAL_NaN       = (1 << (FPREAL_SIZE - 1)) & 0xffffffff
+
+    # MLP fixed-point short fpreal type CONSTANTS
+    SHORT_FPREAL_SHIFT = 15
 
     # MLP fixed-point activation_t type CONSTANTS
     ACTIV_SHIFT = 27

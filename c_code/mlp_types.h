@@ -26,24 +26,29 @@ typedef short     short_activ_t;
 typedef int       activation_t;     // unit output or activation
 typedef long long long_activ_t;     // intermediate unit output or activation
 
-// short activations are s0.15
+// short activations are s0.15 (note difference with activation!)
+#define SPINN_SHORT_ACTIV_SIZE   16
 #define SPINN_SHORT_ACTIV_SHIFT  15
 #define SPINN_SHORT_ACTIV_MAX    ((1 << SPINN_SHORT_ACTIV_SHIFT) - 1)
 #define SPINN_SHORT_ACTIV_MIN    0
 // minimum negative value for an activation variable
 #define SPINN_SHORT_ACTIV_MIN_NEG      (-1 * SPINN_SHORT_ACTIV_MAX)
-#define SPINN_SHORT_ACTIV_NaN          (-1 << SPINN_SHORT_ACTIV_SHIFT)
+#define SPINN_SHORT_ACTIV_NaN          (1 << (SPINN_SHORT_ACTIV_SIZE - 1))
 
 // activations are s4.27
+#define SPINN_ACTIV_SIZE         32
 #define SPINN_ACTIV_SHIFT        27
 #define SPINN_ACTIV_MAX          INT_MAX
 #define SPINN_ACTIV_MIN          0
-#define SPINN_ACTIV_NaN          (-1 << SPINN_ACTIV_SHIFT)
+#define SPINN_ACTIV_NaN          (1 << (SPINN_ACTIV_SIZE - 1))
 // minimum negative value for a long activation variable
 //~#define SPINN_ACTIV_MIN_NEG   INT_MIN
 // these values are set to compute the cross entropy error function
 #define SPINN_ACTIV_ONE          (1 << SPINN_ACTIV_SHIFT)
 //~#define SPINN_ACTIV_NEG_ONE   (-1 << SPINN_ACTIV_SHIFT)
+
+// long activations are s36.27
+#define SPINN_LONG_ACTIV_SHIFT   27
 
 typedef short     short_deriv_t;  // input or output derivative
 typedef int       derivative_t;   // intermediate unit input or output derivative
@@ -130,15 +135,22 @@ typedef long long long_wchange_t;   // intermediate connection weight change
 #define SPINN_WEIGHT_POS_EPSILON ((weight_t)  1)
 #define SPINN_WEIGHT_NEG_EPSILON ((weight_t) -1)
 
+typedef short     short_fpreal_t;
 typedef int       fpreal;           // 32-bit fixed-point number
-typedef long long lfpreal;          // 64-bit fixed-point number
+typedef long long long_fpreal;      // 64-bit fixed-point number
+
+// short fixed-point reals are s0.15 (note difference with fpreal!)
+#define SPINN_SHORT_FPREAL_SHIFT 15
 
 //NOTE: may be a good idea to change to s16.15 for compatibility!
 // fixed-point reals are s15.16
-// long fixed-point reals are s47.16
+#define SPINN_FPREAL_SIZE        32
 #define SPINN_FPREAL_SHIFT       16
-#define SPINN_FP_NaN             (-1 << SPINN_FPREAL_SHIFT)
+#define SPINN_FP_NaN             (1 << (SPINN_FPREAL_SIZE - 1))
 #define SPINN_SMALL_VAL          1
+
+// long fixed-point reals are s47.16
+#define SPINN_LONG_FPREAL_SHIFT  16
 
 typedef uint      scoreboard_t;     // keep track of received items
 
@@ -177,9 +189,9 @@ typedef struct network_conf     // MLP network configuration
 // ------------------------------------------------------------------------
 typedef struct w_conf               // weight core configuration
 {
-  uint          num_rows;           // rows in this core's block
-  uint          num_cols;           // columns in this core's block
-  short_activ_t learningRate;       // network learning rate
+  uint           num_rows;          // rows in this core's block
+  uint           num_cols;          // columns in this core's block
+  short_fpreal_t learningRate;      // network learning rate
 } w_conf_t;
 // ------------------------------------------------------------------------
 

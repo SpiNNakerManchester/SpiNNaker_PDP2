@@ -506,13 +506,12 @@ void in_soft_clamp (uint inx)
     io_printf (IO_BUF, "in_soft_clamp\n");
   #endif
 
-  long_activ_t external_input = it[i_it_idx + inx];  // 36.27 repr.
-
   // compute only if input is not NaN
-  if (external_input != (long_activ_t) SPINN_SHORT_ACTIV_NaN)
+  if (it[i_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-    lfpreal soft_clamp_strength = icfg.soft_clamp_strength; // 48.16 repr.
-    long_activ_t init_output = icfg.initOutput;             // 36.27 repr.
+	long_activ_t external_input = it[i_it_idx + inx];           // s36.27
+    long_fpreal soft_clamp_strength = icfg.soft_clamp_strength; // s48.16
+    long_activ_t init_output = icfg.initOutput;                 // s36.27
 
     // computation of the soft clamp operator following Lens code
     // representation: 36.27 + (48.16 * (36.27 - 36.27)) >> 16 = 36.27
@@ -572,7 +571,7 @@ void in_integr_back (uint inx)
   long_delta_t last_delta = i_last_integr_delta[inx];
 
   // s47.16
-  lfpreal dt = icfg.in_integr_dt;
+  long_fpreal dt = icfg.in_integr_dt;
 
   // s36.27 = (s47.16 * s36.27) >> 16
   long_delta_t d = (dt * last_delta) >> SPINN_FPREAL_SHIFT;
