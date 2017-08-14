@@ -33,7 +33,6 @@ typedef long long long_activ_t;     // intermediate unit output or activation
 #define SPINN_SHORT_ACTIV_MIN    0
 // minimum negative value for an activation variable
 #define SPINN_SHORT_ACTIV_MIN_NEG      (-1 * SPINN_SHORT_ACTIV_MAX)
-#define SPINN_SHORT_ACTIV_NaN          (1 << (SPINN_SHORT_ACTIV_SIZE - 1))
 
 // activations are s4.27
 #define SPINN_ACTIV_SIZE         32
@@ -60,7 +59,6 @@ typedef long long long_deriv_t;   // intermediate unit input or output derivativ
 //~#define SPINN_SHORT_DERIV_MIN          0
 // minimum negative value for an derivative variable
 #define SPINN_SHORT_DERIV_MIN_NEG     (-1 * SPINN_SHORT_DERIV_MAX)
-#define SPINN_SHORT_DERIV_NaN          (-1 << SPINN_DERIV_SHIFT)
 
 // derivatives are s16.15
 #define SPINN_DERIV_MAX          INT_MAX

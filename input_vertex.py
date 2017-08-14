@@ -237,7 +237,10 @@ class InputVertex(
             # write inputs to spec
             for _i in self._group.inputs:
                 # inputs are MLP fixed-point activation_t
-                _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
+                if (_i is None) or (_i == float ('nan')):
+                    _inp = MLPConstants.ACTIV_NaN
+                else:
+                    _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_inp, data_type = DataType.UINT32)
 
         # Reserve and write the routing region

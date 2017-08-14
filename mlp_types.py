@@ -39,7 +39,9 @@ class MLPConstants ():
     SHORT_FPREAL_SHIFT = 15
 
     # MLP fixed-point activation_t type CONSTANTS
+    ACTIV_SIZE  = 32
     ACTIV_SHIFT = 27
+    ACTIV_NaN   = (1 << (ACTIV_SIZE - 1)) & 0xffffffff
 
     # MLP fixed-point error_t type CONSTANTS
     ERROR_SHIFT = 15

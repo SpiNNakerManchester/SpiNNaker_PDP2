@@ -1,6 +1,5 @@
 import os
 import struct
-import re
 from mlp_types import MLPConstants
 
 
@@ -79,22 +78,31 @@ class MLPExampleSet ():
             explicit padding
         """
         # max_time is an MLP fixed-point fpreal
-        _max_time = int (self.max_time *\
-                         (1 << MLPConstants.FPREAL_SHIFT))
+        if (self.max_time is None) or (self.max_time == float ('nan')):
+            max_time = MLPConstants.FPREAL_NaN
+        else:
+            max_time = int (self.max_time *\
+                            (1 << MLPConstants.FPREAL_SHIFT))
 
         # min_time is an MLP fixed-point fpreal
-        _min_time = int (self.min_time *\
-                         (1 << MLPConstants.FPREAL_SHIFT))
+        if (self.min_time is None) or (self.min_time == float ('nan')):
+            min_time = MLPConstants.FPREAL_NaN
+        else:
+            min_time = int (self.min_time *\
+                            (1 << MLPConstants.FPREAL_SHIFT))
 
         # grace_time is an MLP fixed-point fpreal
-        _grace_time = int (self.grace_time *\
-                           (1 << MLPConstants.FPREAL_SHIFT))
+        if (self.grace_time is None) or (self.grace_time == float ('nan')):
+            grace_time = MLPConstants.FPREAL_NaN
+        else:
+            grace_time = int (self.grace_time *\
+                            (1 << MLPConstants.FPREAL_SHIFT))
 
         return struct.pack("<4I",
                            len (self.examples),
-                           _max_time,
-                           _min_time,
-                           _grace_time
+                           max_time,
+                           min_time,
+                           grace_time
                            )
 
 
@@ -155,143 +163,222 @@ class MLPExampleSet ():
 
         print "reading Lens-style examples file"
 
-        _ef = open (self._examples_file, "r")
+        ef = open (self._examples_file, "r")
 
         print "processing example set header"
 
         # process example set header
-        _line = _ef.readline ()
-        while (';' not in _line):
-            if ('proc:' in _line):
+        line = ef.readline ()
+        while (';' not in line):
+            if ('proc:' in line):
                 print "set procedure not supported"
-            elif ('max:' in _line):
-                _, _val = _line.split (':')
+            elif ('max:' in line):
+                _, val = line.split (':')
                 try:
-                    self.max_time = float (_val)
+                    self.max_time = float (val)
                 except:
                     self.max_time = float ('nan')
                 print "setting set max:{}".format (self.max_time)
-            elif ('min:' in _line):
-                _, _val = _line.split (':')
+            elif ('min:' in line):
+                _, val = line.split (':')
                 try:
-                    self.min_time = float (_val)
+                    self.min_time = float (val)
                 except:
                     self.min_time = float ('nan')
                 print "setting set min:{}".format (self.min_time)
-            elif ('grace:' in _line):
-                _, _val = _line.split (':')
+            elif ('grace:' in line):
+                _, val = line.split (':')
                 try:
-                    self.grace_time = float (_val)
+                    self.grace_time = float (val)
                 except:
                     self.grace_time = float ('nan')
                 print "setting set grace:{}".format (self.grace_time)
-            elif ('defI:' in _line):
-                _, _val = _line.split (':')
+            elif ('defI:' in line):
+                _, val = line.split (':')
                 try:
-                    self.def_input = float (_val)
+                    self.def_input = float (val)
                 except:
                     self.def_input = float ('nan')
                 print "setting set defI:{}".format (self.def_input)
-            elif ('actI:' in _line):
+            elif ('actI:' in line):
                 print "set active input not supported"
-            elif ('defT:' in _line):
-                _, _val = _line.split (':')
+            elif ('defT:' in line):
+                _, val = line.split (':')
                 try:
-                    self.def_target = float (_val)
+                    self.def_target = float (val)
                 except:
                     self.def_target = float ('nan')
                 print "setting set defT:{}".format (self.def_target)
-            elif ('actT:' in _line):
+            elif ('actT:' in line):
                 print "set active target not supported"
             else:
                 # ';' is optional
                 break
 
-            _line = _ef.readline ()
+            line = ef.readline ()
 
         # ';' is optional
-        if (';' in _line):
-            _line = _ef.readline ()
+        if (';' in line):
+            line = ef.readline ()
 
         # process each example in the set
-        _ex_id = 0
-        while (_line != ""):
+        ex_id = 0
+        while (line != ""):
             # create new example, initially empty
-            _ex = MLPExample (_ex_id)
+            _ex = MLPExample (ex_id)
 
-            print "processing example {}".format (_ex_id)
+            print "processing example {}".format (ex_id)
 
             # process the example header
-            _done = False
-            while not _done:
-                if ('name:' in _line):
-                    _, _name = _line.split (':')
+            done = False
+            while not done:
+                if (line.strip () == ''):
+                    print "ignoring empty line"
+                elif ('name:' in line):
+                    _, _name = line.split (':')
                     _ex.name = _name.rstrip ()
                     print "setting example name:{}".format (_ex.name)
 
-                elif ('proc:' in _line):
+                elif ('proc:' in line):
                     print "example procedure not supported"
 
-                elif ('freq:' in _line):
-                    _, _freq = _line.split (':')
-                    _ex.freq = float (_freq)
+                elif ('freq:' in line):
+                    _, freq = line.split (':')
+                    _ex.freq = float (freq)
                     print "setting example freq:{}".format (_ex.freq)
 
                 else:
                     # try to get number of events
                     try:
-                        _num_ev = int (_line)
-                        _done = True
-                        print "setting example num_ev:{}".format (_num_ev)
+                        num_ev = int (line)
+                        done = True
+                        print "setting example num_ev:{}".format (num_ev)
                     except:
                         # if absent, number of events defaults to 1
-                        _num_ev = 1
-                        print "setting by default example num_ev:{}".format (_num_ev)
+                        num_ev = 1
+                        print "setting by default example num_ev:{}".format (num_ev)
                         break
 
                 # prepare to process next line
-                _line = _ef.readline ()
-                if (_line == ""):
+                line = ef.readline ()
+                if (line == ""):
                     print "error: unexpected end-of-file"
-                    _ef.close ()
+                    ef.close ()
                     return None
 
             # instantiate an event container for every event in example
-            _events = []
-            for i in range (_num_ev):
+            events = []
+            for i in range (num_ev):
                 # instantiate new empty event and add it to list
                 _ev = MLPEvent (i)
-                _events.append (_ev)
+                events.append (_ev)
 
             # process each event in the example
-            _ev_iid = 0
-            _ev_tid = 0
+            ev_iid = 0
+            ev_tid = 0
             while True:
                 # TODO: need to complete event list processing!
                 # read event list, if present
-                if ("[" in _line):
+                if ("[" in line):
                     # compose the multi-line list
-                    _ev_list = _line.strip ()
-                    while ("]" not in _line):
-                        _line = _ef.readline ()
-                        _ev_list = _ev_list + " " + _line.strip ()
+                    ev_list = line.strip ()
+                    while ("]" not in line):
+                        line = ef.readline ()
+                        ev_list += " " + line.strip ()
 
-                    print "processing event list {}".format (_ev_list)
+                    print "processing event list {}".format (ev_list)
 
-                    # update event indices
-                    #_ev_iid += 1
-                    #_ev_tid += 1
+                    maxt = None
+                    mint = None
+                    grct = None
+                    defi = None
+                    deft = None
+
+                    for s in (ev_list.strip ("[]")).split ():
+                        if ('proc:' in s):
+                            print "event procedure not supported"
+
+                        elif ('max:' in s):
+                            _, val = s.split (':')
+                            try:
+                                maxt = float (val)
+                            except:
+                                maxt = float ('nan')
+                            print "setting event max:{}".format (maxt)
+
+                        elif ('min:' in s):
+                            _, val = s.split (':')
+                            try:
+                                mint = float (val)
+                            except:
+                                mint = float ('nan')
+                            print "setting event min:{}".format (mint)
+
+                        elif ('grace:' in s):
+                            _, val = s.split (':')
+                            try:
+                                grct = float (val)
+                            except:
+                                grct = float ('nan')
+                            print "setting event grace:{}".format (grct)
+
+                        elif ('defI:' in s):
+                            _, val = s.split (':')
+                            try:
+                                defi = float (val)
+                            except:
+                                defi = float ('nan')
+                            print "setting event defI:{}".format (defi)
+
+                        elif ('actI:' in s):
+                            print "event active Input not supported"
+
+                        elif ('defT:' in s):
+                            _, val = s.split (':')
+                            try:
+                                deft = float (val)
+                            except:
+                                deft = float ('nan')
+                            print "setting event defT:{}".format (deft)
+
+                        elif ('actT:' in s):
+                            print "event active Target not supported"
+
+                        elif ('*' in s):
+                            print "multi-event lists not supported"
+
+                        elif ('-' in s):
+                            print "multi-event lists not supported"
+
+                        else:
+                            ev_act = int (s)
+                            ev_iid = ev_act
+                            ev_tid = ev_act
+                            print "event in event list: {}".format (ev_act)
+
+                    if maxt is not None:
+                        events[ev_act].max_time = maxt
+
+                    if mint is not None:
+                        events[ev_act].min_time = mint
+
+                    if grct is not None:
+                        events[ev_act].grace_time = grct
+
+                    if defi is not None:
+                        events[ev_act].def_input = defi
+
+                    if deft is not None:
+                        events[ev_act].def_target = deft
 
                 # get inputs and targets for every event
                 else:
-                    #_ev_list = None
-
                     # check line for inputs
-                    if ('I:' in _line) or ('i:' in _line):
-                        print "reading event {}/-".format (_ev_iid)
+                    if ('I:' in line) or ('i:' in line):
+                        print "reading event {}/-".format (ev_iid)
 
                         # remove line identifier
-                        _, _is = (_line.rstrip (" ;\n")).split (":")
+                        _, _is = (line.rstrip (" ;\n")).split (":")
 
                         # check if multiple group inputs
                         if "(" in _is:
@@ -304,44 +391,44 @@ class MLPExampleSet ():
                                 _gi = grpi.split ()
 
                                 # instantiate a new event value container
-                                _vl = MLPEventValues ()
+                                vl = MLPEventValues ()
 
                                 # first element is group name
-                                _vl.name = _gi[0].rstrip (")")
+                                vl.name = _gi[0].rstrip (")")
 
                                 # rest are input values
                                 for v in _gi[1:]:
-                                    _vl.values.append (float (v))
+                                    vl.values.append (float (v))
 
                                 # store inputs in event
                                 print "added inputs {}:{}".format\
-                                    (_vl.name, _vl.values)
-                                _events[_ev_iid].inputs.append (_vl)
+                                    (vl.name, vl.values)
+                                events[ev_iid].inputs.append (vl)
                         else:
                             # instantiate a new event value container
-                            _vl = MLPEventValues ()
+                            vl = MLPEventValues ()
 
                             # no group name given
-                            _vl.name = None
+                            vl.name = None
 
                             # read input values
                             for v in _is.split ():
-                                _vl.values.append (float (v))
+                                vl.values.append (float (v))
 
                             # store inputs in event
                             print "added inputs {}:{}".format\
-                                (_vl.name, _vl.values)
-                            _events[_ev_iid].inputs.append (_vl)
+                                (vl.name, vl.values)
+                            events[ev_iid].inputs.append (vl)
 
                         # update event input index
-                        _ev_iid += 1
+                        ev_iid += 1
 
                     # check line for targets
-                    elif ('T:' in _line) or ('t:' in _line):
-                        print "reading event -/{}".format (_ev_tid)
+                    elif ('T:' in line) or ('t:' in line):
+                        print "reading event -/{}".format (ev_tid)
 
                         # remove line identifier
-                        _, _ts = (_line.rstrip (" ;\n")).split (":")
+                        _, _ts = (line.rstrip (" ;\n")).split (":")
 
                         # check if multiple group inputs
                         if "(" in _ts:
@@ -354,104 +441,104 @@ class MLPExampleSet ():
                                 _gt = grpt.split ()
 
                                 # instantiate a new event value container
-                                _vl = MLPEventValues ()
+                                vl = MLPEventValues ()
 
                                 # first element is group name
-                                _vl.name = _gt[0].rstrip (")")
+                                vl.name = _gt[0].rstrip (")")
 
                                 # rest are target values
                                 for v in _gt[1:]:
-                                    _vl.values.append (float (v))
+                                    vl.values.append (float (v))
 
                                 # store targets in event
                                 print "added targets {}:{}".format\
-                                    (_vl.name, _vl.values)
-                                _events[_ev_tid].targets.append (_vl)
+                                    (vl.name, vl.values)
+                                events[ev_tid].targets.append (vl)
                         else:
                             # instantiate a new event value container
-                            _vl = MLPEventValues ()
+                            vl = MLPEventValues ()
 
                             # no group name given
-                            _vl.name = None
+                            vl.name = None
 
                             # read target values
                             for v in _ts.split ():
-                                _vl.values.append (float (v))
+                                vl.values.append (float (v))
 
                             # store targets in event
                             print "added targets {}:{}".format\
-                                (_vl.name, _vl.values)
-                            _events[_ev_tid].targets.append (_vl)
+                                (vl.name, vl.values)
+                            events[ev_tid].targets.append (vl)
 
                         # update event target index
-                        _ev_tid += 1
+                        ev_tid += 1
 
                     # check line for both inputs and targets
-                    elif ('B:' in _line) or ('b:' in _line):
-                        print "reading event {}/{}".format (_ev_iid, _ev_tid)
+                    elif ('B:' in line) or ('b:' in line):
+                        print "reading event {}/{}".format (ev_iid, ev_tid)
 
                         # remove line identifier
-                        _, _is = (_line.rstrip (" ;\n")).split (":")
+                        _, _is = (line.rstrip (" ;\n")).split (":")
 
                         # check if multiple group inputs
                         if "(" in _is:
                             # split into group inputs
-                            _gis = _is.split (":")
+                            gis = _is.split (":")
 
                             # process each group in turn
-                            for grpi in _gis[1:]:
+                            for grpi in gis[1:]:
                                 # create list of values
-                                _gi = grpi.split ()
+                                gi = grpi.split ()
 
                                 # instantiate a new event value container
-                                _vl = MLPEventValues ()
+                                vl = MLPEventValues ()
 
                                 # first element is group name
-                                _vl.name = _gi[0].rstrip (")")
+                                vl.name = gi[0].rstrip (")")
 
                                 # rest are input values
-                                for v in _gi[1:]:
-                                    _vl.values.append (float (v))
+                                for v in gi[1:]:
+                                    vl.values.append (float (v))
 
                                 # store inputs and targets in event
                                 print "added inputs/targets {}:{}".format\
-                                    (_vl.name, _vl.values)
-                                _events[_ev_iid].inputs.append (_vl)
-                                _events[_ev_tid].targets.append (_vl)
+                                    (vl.name, vl.values)
+                                events[ev_iid].inputs.append (vl)
+                                events[ev_tid].targets.append (vl)
                         else:
                             # instantiate a new event value container
-                            _vl = MLPEventValues ()
+                            vl = MLPEventValues ()
 
                             # no group name given
-                            _vl.name = None
+                            vl.name = None
 
                             # read input values
                             for v in _is.split ():
-                                _vl.values.append (float (v))
+                                vl.values.append (float (v))
 
                             # store inputs and targets in event
                             print "added inputs/targets {}:{}".format\
-                                (_vl.name, _vl.values)
-                            _events[_ev_iid].inputs.append (_vl)
-                            _events[_ev_tid].targets.append (_vl)
+                                (vl.name, vl.values)
+                            events[ev_iid].inputs.append (vl)
+                            events[ev_tid].targets.append (vl)
 
                         # update event input and event target indices
-                        _ev_iid += 1
-                        _ev_tid += 1
+                        ev_iid += 1
+                        ev_tid += 1
 
                     # check if final event in example
-                    if (";" in _line):
+                    if (";" in line):
                         break
 
                     # prepare to process new line
-                    _line = _ef.readline ()
-                    if (_line == ""):
+                    line = ef.readline ()
+                    if (line == ""):
                         print "error: unexpected end-of-file"
-                        _ef.close ()
+                        ef.close ()
                         return None
 
             # add events to example event list
-            for ev in _events:
+            for ev in events:
                 print "adding event {} to example {}".format (ev.id, _ex.id)
                 _ex.events.append (ev)
 
@@ -459,11 +546,11 @@ class MLPExampleSet ():
             self.examples.append (_ex)
 
             # prepare for next example
-            _ex_id = _ex_id + 1
-            _line = _ef.readline ()
+            ex_id += 1
+            line = ef.readline ()
 
         # clean up
-        _ef.close ()
+        ef.close ()
 
         # mark examples file as loaded
         self.examples_loaded = True
@@ -487,83 +574,83 @@ class MLPExampleSet ():
         self.example_config = []
         self.event_config   = []
 
-        _ev_idx = 0
-        _it_idx = 0
+        ev_idx = 0
+        it_idx = 0
 
         # create a configuration for every example
-        for _n, _ex in enumerate (self.examples):
-            self.example_config.append (_ex.config (_n, _ev_idx))
-            _ev_idx = _ev_idx + len (_ex.events)
+        for n, _ex in enumerate (self.examples):
+            self.example_config.append (_ex.config (n, ev_idx))
+            ev_idx += len (_ex.events)
 
             # process every event in the example
             for _ev in _ex.events:
                 # create an event configuration
-                self.event_config.append (_ev.config (_it_idx))
-                _it_idx = _it_idx + 1
+                self.event_config.append (_ev.config (it_idx))
+                it_idx += 1
 
                 # set default input value for this event
                 if _ev.def_input is not None:
-                    _defi = _ev.def_input
+                    defi = _ev.def_input
                 elif self.def_input is not None:
-                    _defi = self.def_input
+                    defi = self.def_input
                 else:
-                    _defi = None
+                    defi = None
 
                 # set default target value for this event
                 if _ev.def_target is not None:
-                    _deft = _ev.def_target
+                    deft = _ev.def_target
                 elif self.def_target is not None:
-                    _deft = self.def_target
+                    deft = self.def_target
                 else:
-                    _deft = None
+                    deft = None
 
                 # process event inputs
-                _grps_done = []
+                grps_done = []
                 for ei in _ev.inputs:
                     if ei.name is None:
                         if len (self._net.in_grps) == 1:
                             self._net.in_grps[0].inputs += ei.values
-                            _grps_done.append(self._net.in_grps[0])
+                            grps_done.append(self._net.in_grps[0])
                         else:
                             print "error: not enough inputs in event"
                             return 0
                     else:
                         for g in self._net.in_grps:
                             if g.label == ei.name:
-                                _grps_done.append (g)
+                                grps_done.append (g)
                                 g.inputs += ei.values
                                 break
 
                 # add default inputs for not-listed groups
                 for g in self._net.in_grps:
-                    if g not in _grps_done:
+                    if g not in grps_done:
                         for _ in range (g.units):
-                            g.inputs.append (_defi)
+                            g.inputs.append (defi)
 
                     print "{}: {} inputs".format (g.label, len (g.inputs))
 
                 # process event targets
-                _grps_done = []
+                grps_done = []
                 for et in _ev.targets:
                     if et.name is None:
                         if len (self._net.out_grps) == 1:
                             self._net.out_grps[0].targets += et.values
-                            _grps_done.append(self._net.out_grps[0])
+                            grps_done.append(self._net.out_grps[0])
                         else:
                             print "error: not enough targets in event"
                             return 0
                     else:
                         for g in self._net.out_grps:
                             if g.label == et.name:
-                                _grps_done.append (g)
+                                grps_done.append (g)
                                 g.targets += et.values
                                 break
 
                 # add default targets for not-listed groups
                 for g in self._net.out_grps:
-                    if g not in _grps_done:
+                    if g not in grps_done:
                         for _ in range (g.units):
-                            g.targets.append (_deft)
+                            g.targets.append (deft)
 
                     print "{}: {} targets".format (g.label, len (g.targets))
 
@@ -608,16 +695,16 @@ class MLPExample ():
         """
         # freq is an MLP fixed-point fpreal
         if self.freq is not None:
-            _freq = int (self.freq * (1 << MLPConstants.FPREAL_SHIFT))
+            freq = int (self.freq * (1 << MLPConstants.FPREAL_SHIFT))
         else:
-            _freq = int (MLPConstants.DEF_EX_FREQ *\
+            freq = int (MLPConstants.DEF_EX_FREQ *\
                          (1 << MLPConstants.FPREAL_SHIFT))
 
         return struct.pack("<4I",
                            num,
                            len (self.events),
                            ev_idx,
-                           _freq
+                           freq
                            )
 
 
@@ -665,30 +752,30 @@ class MLPEvent ():
             explicit padding
         """
         # max_time is an MLP fixed-point fpreal
-        if self.max_time is not None:
-            _max_time = int (self.max_time *\
-                             (1 << MLPConstants.FPREAL_SHIFT))
+        if (self.max_time is None) or (self.max_time == float ('nan')):
+            max_time = MLPConstants.FPREAL_NaN
         else:
-            _max_time = MLPConstants.FPREAL_NaN
+            max_time = int (self.max_time *\
+                            (1 << MLPConstants.FPREAL_SHIFT))
 
         # min_time is an MLP fixed-point fpreal
-        if self.min_time is not None:
-            _min_time = int (self.min_time *\
-                             (1 << MLPConstants.FPREAL_SHIFT))
+        if (self.min_time is None) or (self.min_time == float ('nan')):
+            min_time = MLPConstants.FPREAL_NaN
         else:
-            _min_time = MLPConstants.FPREAL_NaN
+            min_time = int (self.min_time *\
+                            (1 << MLPConstants.FPREAL_SHIFT))
 
         # grace_time is an MLP fixed-point fpreal
-        if self.grace_time is not None:
-            _grace_time = int (self.grace_time *\
-                               (1 << MLPConstants.FPREAL_SHIFT))
+        if (self.grace_time is None) or (self.grace_time == float ('nan')):
+            grace_time = MLPConstants.FPREAL_NaN
         else:
-            _grace_time = MLPConstants.FPREAL_NaN
+            grace_time = int (self.grace_time *\
+                            (1 << MLPConstants.FPREAL_SHIFT))
 
         return struct.pack("<4I",
-                           _max_time,
-                           _min_time,
-                           _grace_time,
+                           max_time,
+                           min_time,
+                           grace_time,
                            it_idx
                            )
 

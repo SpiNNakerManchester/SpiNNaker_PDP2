@@ -316,7 +316,10 @@ class ThresholdVertex(
             # write inputs to spec
             for _i in self._group.inputs:
                 # inputs are MLP fixed-point activation_t
-                _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
+                if (_i is None) or (_i == float ('nan')):
+                    _inp = MLPConstants.ACTIV_NaN
+                else:
+                    _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_inp, data_type = DataType.UINT32)
 
         # Reserve and write the target data region
@@ -329,7 +332,10 @@ class ThresholdVertex(
             # write targets to spec
             for _t in self._group.targets:
                 # targets are MLP fixed-point activation_t
-                _tgt = int (_t * (1 << MLPConstants.ACTIV_SHIFT))
+                if (_t is None) or (_t == float ('nan')):
+                    _tgt = MLPConstants.ACTIV_NaN
+                else:
+                    _tgt = int (_t * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_tgt, data_type = DataType.UINT32)
 
         # Reserve and write the routing region
