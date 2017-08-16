@@ -281,10 +281,12 @@ class MLPExampleSet ():
                 # read event list, if present
                 if ("[" in line):
                     # compose the multi-line list
-                    ev_list = line.strip ()
+                    evl = line.strip ()
                     while ("]" not in line):
                         line = ef.readline ()
-                        ev_list += " " + line.strip ()
+                        evl += " " + line.strip ()
+
+                    ev_list, line = evl.split (']')
 
                     print "processing event list {}".format (ev_list)
 
@@ -372,148 +374,131 @@ class MLPExampleSet ():
                         events[ev_act].def_target = deft
 
                 # get inputs and targets for every event
-                else:
-                    # check line for inputs
-                    if ('I:' in line) or ('i:' in line):
-                        print "reading event {}/-".format (ev_iid)
+                # check line for inputs
+                if ('I:' in line) or ('i:' in line):
+                    print "reading event {}/-".format (ev_iid)
 
-                        # remove line identifier
-                        _, _is = (line.rstrip (" ;\n")).split (":")
+                    # remove line identifier
+                    _, _is = (line.rstrip (" ;\n")).split (":")
 
-                        # check if multiple group inputs
-                        if "(" in _is:
-                            # split into group inputs
-                            _gis = _is.split ("(")
+                    # check if multiple group inputs
+                    if "(" in _is:
+                        # split into group inputs
+                        _gis = _is.split ("(")
 
-                            # process each group in turn
-                            for grpi in _gis[1:]:
-                                # create list of values
-                                _gi = grpi.split ()
+                        # process each group in turn
+                        for grpi in _gis[1:]:
+                            # create list of values
+                            _gi = grpi.split ()
 
-                                # instantiate a new event value container
-                                vl = MLPEventValues ()
-
-                                # first element is group name
-                                vl.name = _gi[0].rstrip (")")
-
-                                # rest are input values
-                                for v in _gi[1:]:
-                                    vl.values.append (float (v))
-
-                                # store inputs in event
-                                print "added inputs {}:{}".format\
-                                    (vl.name, vl.values)
-                                events[ev_iid].inputs.append (vl)
-                        else:
                             # instantiate a new event value container
                             vl = MLPEventValues ()
 
-                            # no group name given
-                            vl.name = None
+                            # first element is group name
+                            vl.name = _gi[0].rstrip (")")
 
-                            # read input values
-                            for v in _is.split ():
+                            # rest are input values
+                            for v in _gi[1:]:
                                 vl.values.append (float (v))
 
                             # store inputs in event
                             print "added inputs {}:{}".format\
                                 (vl.name, vl.values)
                             events[ev_iid].inputs.append (vl)
+                    else:
+                        # instantiate a new event value container
+                        vl = MLPEventValues ()
 
-                        # update event input index
-                        ev_iid += 1
+                        # no group name given
+                        vl.name = None
 
-                    # check line for targets
-                    elif ('T:' in line) or ('t:' in line):
-                        print "reading event -/{}".format (ev_tid)
+                        # read input values
+                        for v in _is.split ():
+                            vl.values.append (float (v))
 
-                        # remove line identifier
-                        _, _ts = (line.rstrip (" ;\n")).split (":")
+                        # store inputs in event
+                        print "added inputs {}:{}".format\
+                            (vl.name, vl.values)
+                        events[ev_iid].inputs.append (vl)
 
-                        # check if multiple group inputs
-                        if "(" in _ts:
-                            # split into group inputs
-                            _gts = _ts.split ("(")
+                    # update event input index
+                    ev_iid += 1
 
-                            # process each group in turn
-                            for grpt in _gts[1:]:
-                                # create list of values
-                                _gt = grpt.split ()
+                # check line for targets
+                elif ('T:' in line) or ('t:' in line):
+                    print "reading event -/{}".format (ev_tid)
 
-                                # instantiate a new event value container
-                                vl = MLPEventValues ()
+                    # remove line identifier
+                    _, _ts = (line.rstrip (" ;\n")).split (":")
 
-                                # first element is group name
-                                vl.name = _gt[0].rstrip (")")
+                    # check if multiple group inputs
+                    if "(" in _ts:
+                        # split into group inputs
+                        _gts = _ts.split ("(")
 
-                                # rest are target values
-                                for v in _gt[1:]:
-                                    vl.values.append (float (v))
+                        # process each group in turn
+                        for grpt in _gts[1:]:
+                            # create list of values
+                            _gt = grpt.split ()
 
-                                # store targets in event
-                                print "added targets {}:{}".format\
-                                    (vl.name, vl.values)
-                                events[ev_tid].targets.append (vl)
-                        else:
                             # instantiate a new event value container
                             vl = MLPEventValues ()
 
-                            # no group name given
-                            vl.name = None
+                            # first element is group name
+                            vl.name = _gt[0].rstrip (")")
 
-                            # read target values
-                            for v in _ts.split ():
+                            # rest are target values
+                            for v in _gt[1:]:
                                 vl.values.append (float (v))
 
                             # store targets in event
                             print "added targets {}:{}".format\
                                 (vl.name, vl.values)
                             events[ev_tid].targets.append (vl)
+                    else:
+                        # instantiate a new event value container
+                        vl = MLPEventValues ()
 
-                        # update event target index
-                        ev_tid += 1
+                        # no group name given
+                        vl.name = None
 
-                    # check line for both inputs and targets
-                    elif ('B:' in line) or ('b:' in line):
-                        print "reading event {}/{}".format (ev_iid, ev_tid)
+                        # read target values
+                        for v in _ts.split ():
+                            vl.values.append (float (v))
 
-                        # remove line identifier
-                        _, _is = (line.rstrip (" ;\n")).split (":")
+                        # store targets in event
+                        print "added targets {}:{}".format\
+                            (vl.name, vl.values)
+                        events[ev_tid].targets.append (vl)
 
-                        # check if multiple group inputs
-                        if "(" in _is:
-                            # split into group inputs
-                            gis = _is.split (":")
+                    # update event target index
+                    ev_tid += 1
 
-                            # process each group in turn
-                            for grpi in gis[1:]:
-                                # create list of values
-                                gi = grpi.split ()
+                # check line for both inputs and targets
+                elif ('B:' in line) or ('b:' in line):
+                    print "reading event {}/{}".format (ev_iid, ev_tid)
 
-                                # instantiate a new event value container
-                                vl = MLPEventValues ()
+                    # remove line identifier
+                    _, _is = (line.rstrip (" ;\n")).split (":")
 
-                                # first element is group name
-                                vl.name = gi[0].rstrip (")")
+                    # check if multiple group inputs
+                    if "(" in _is:
+                        # split into group inputs
+                        gis = _is.split (":")
 
-                                # rest are input values
-                                for v in gi[1:]:
-                                    vl.values.append (float (v))
+                        # process each group in turn
+                        for grpi in gis[1:]:
+                            # create list of values
+                            gi = grpi.split ()
 
-                                # store inputs and targets in event
-                                print "added inputs/targets {}:{}".format\
-                                    (vl.name, vl.values)
-                                events[ev_iid].inputs.append (vl)
-                                events[ev_tid].targets.append (vl)
-                        else:
                             # instantiate a new event value container
                             vl = MLPEventValues ()
 
-                            # no group name given
-                            vl.name = None
+                            # first element is group name
+                            vl.name = gi[0].rstrip (")")
 
-                            # read input values
-                            for v in _is.split ():
+                            # rest are input values
+                            for v in gi[1:]:
                                 vl.values.append (float (v))
 
                             # store inputs and targets in event
@@ -521,21 +506,37 @@ class MLPExampleSet ():
                                 (vl.name, vl.values)
                             events[ev_iid].inputs.append (vl)
                             events[ev_tid].targets.append (vl)
+                    else:
+                        # instantiate a new event value container
+                        vl = MLPEventValues ()
 
-                        # update event input and event target indices
-                        ev_iid += 1
-                        ev_tid += 1
+                        # no group name given
+                        vl.name = None
 
-                    # check if final event in example
-                    if (";" in line):
-                        break
+                        # read input values
+                        for v in _is.split ():
+                            vl.values.append (float (v))
 
-                    # prepare to process new line
-                    line = ef.readline ()
-                    if (line == ""):
-                        print "error: unexpected end-of-file"
-                        ef.close ()
-                        return None
+                        # store inputs and targets in event
+                        print "added inputs/targets {}:{}".format\
+                            (vl.name, vl.values)
+                        events[ev_iid].inputs.append (vl)
+                        events[ev_tid].targets.append (vl)
+
+                    # update event input and event target indices
+                    ev_iid += 1
+                    ev_tid += 1
+
+                # check if final event in example
+                if (";" in line):
+                    break
+
+                # prepare to process new line
+                line = ef.readline ()
+                if (line == ""):
+                    print "error: unexpected end-of-file"
+                    ef.close ()
+                    return None
 
             # add events to example event list
             for ev in events:
