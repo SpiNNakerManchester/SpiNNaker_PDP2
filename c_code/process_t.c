@@ -601,6 +601,7 @@ void tf_send_stop (uint null0, uint null1)
     spin1_delay_us (2000); //##
 
     tf_stop_crit = (ev_tick == max_ticks)
+                     || (tick == ncfg.global_max_ticks - 1)
                      || (tf_stop_crit && (ev_tick >= min_ticks));
     tick_stop = tf_stop_crit;
   }
