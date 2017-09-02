@@ -366,7 +366,7 @@ void tf_advance_event (void)
   #endif
 
   // check if done with events,
-  if (++evt >= num_events)
+  if ((++evt >= num_events)  || (tick == ncfg.global_max_ticks - 1))
   {
     // check if in training mode
     if (ncfg.training)
