@@ -8,38 +8,8 @@
 // ------------------------------------------------------------------------
 // software configuration
 // ------------------------------------------------------------------------
-#define SPINN_USE_COUNTER_SB     TRUE
 #define SPINN_WEIGHT_HISTORY     FALSE
 #define SPINN_OUTPUT_HISTORY     FALSE
-
-
-// ------------------------------------------------------------------------
-// system constants
-// ------------------------------------------------------------------------
-#define SPINN_NUM_CORES_CHIP     16
-#define SPINN_CHIP_OFFSET        16
-#define SPINN_CORE_OFFSET        11
-
-
-// ------------------------------------------------------------------------
-// configuration "files" offsets in SDRAM
-// ------------------------------------------------------------------------
-//#define CONF_OFFSET        0x0000  this must be kept constant!
-#define SPINN_GCONF_OFFSET       0x000000       //global configuration
-/*
-#define SPINN_CHIP_OFFSET        0x000200       //chip configuration
-#define SPINN_CMAP_OFFSET        0x000100       //core map
-#define SPINN_ESET_OFFSET        0x200000       //example set
-#define SPINN_CDAT_OFFSET        0x001000       //core data
-#define SPINN_ROUT_OFFSET        0x000300       //routing tables
-#define SPINN_EXAM_OFFSET        0x200010       //examples
-#define SPINN_EVNT_OFFSET        0x201010       //events
-#define SPINN_INPT_OFFSET        0x020000       //inputs
-#define SPINN_TARG_OFFSET        0x030000       //targets
-#define SPINN_WGTS_OFFSET        0x100000       //weights
-*/
-#define SPINN_OUTP_OFFSET        0x1000000      //outputs
-#define SPINN_WUPD_OFFSET        0x2000000      //weight update
 
 
 // ------------------------------------------------------------------------
@@ -121,9 +91,6 @@
 
 // ------------------------------------------------------------------------
 // multicast packet routing keys and masks
-// ------------------------------------------------------------------------
-// NOTE: key bits[15:10] must be different from 111111
-//       to comply with system reserved key space!
 // ------------------------------------------------------------------------
 #define SPINN_BLK_R_MASK     0xff000000
 #define SPINN_BLK_C_MASK     0x00ff0000
@@ -248,7 +215,6 @@
 #define SPINN_TIMEOUT_EXIT     3
 #define SPINN_UNXPD_PKT        4
 #define SPINN_CORE_TYPE_ERROR  5
-#define SPINN_UKNOWN_TYPE      100
 // ------------------------------------------------------------------------
 
 #endif

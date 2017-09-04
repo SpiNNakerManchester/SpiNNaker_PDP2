@@ -4,68 +4,12 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "sdram.h"
+#include "mlp_externs.h"
 
 #include "comms_w.h"
 #include "process_w.h"
 
 // this files contains the communication routines used by W cores
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint coreID;               // 5-bit virtual core ID
-extern uint coreKey;              // 21-bit core packet ID
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint         epoch;        // current training iteration
-extern uint         example;      // current example in epoch
-extern uint         evt;          // current event in example
-extern uint         num_ticks;    // number of ticks in current event
-extern proc_phase_t phase;        // FORWARD or BACKPROP
-extern uint         tick;         // current tick in phase
-extern uchar        tick_stop;    // current tick stop decision
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern w_conf_t       wcfg;       // weight core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// weight core variables
-// ------------------------------------------------------------------------
-extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern activation_t   * w_output_history; // history array for the outputs
-extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
-extern uint             wf_comms;      // pointer to receiving unit outputs
-extern scoreboard_t     wf_arrived;    // keeps track of received unit outputs
-extern uint             wf_thrds_done; // sync. semaphore: comms, proc & stop
-extern uchar            wb_active;     // processing deltas from queue?
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_bkp;  // packets sent in BACKPROP phase
-  extern uint pkt_recv;  // total packets received
-  extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received in BACKPROP phase
-  extern uint spk_sent;  // sync packets sent
-  extern uint spk_recv;  // sync packets received
-  extern uint stp_sent;  // stop packets sent
-  extern uint stp_recv;  // stop packets received
-  extern uint wrng_phs;  // packets received in wrong phase
-  extern uint wrng_tck;  // FORWARD packets received in wrong tick
-  extern uint wrng_btk;  // BACKPROP packets received in wrong tick
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // process received packets (stop, FORWARD and BACKPROP types)
@@ -148,7 +92,7 @@ void w_forwardPacket (uint key, uint payload)
     recv_fwd++;
     if (phase == SPINN_BACKPROP)
       wrng_phs++;
-  #endif 
+  #endif
 
   // get output index: mask out phase, core and block data,
   uint inx = key & SPINN_OUTPUT_MASK;
@@ -163,14 +107,10 @@ void w_forwardPacket (uint key, uint payload)
   }
 
   // and update scoreboard,
-  #if SPINN_USE_COUNTER_SB == FALSE
-    wf_arrived |= (1 << inx);
-  #else
-    wf_arrived++;
-  #endif
-    
+  wf_arrived++;
+
   // if all expected inputs have arrived may move to next tick
-  if (wf_arrived == wcfg.f_all_arrived)
+  if (wf_arrived == wcfg.num_rows)
   {
     // initialize arrival scoreboard for next tick,
     wf_arrived = 0;
@@ -219,7 +159,7 @@ void w_backpropPacket (uint key, uint payload)
   if (new_tail == w_delta_pkt_q.head)
   {
     // if queue full exit and report failure
-    spin1_kill (SPINN_QUEUE_FULL);
+    spin1_exit (SPINN_QUEUE_FULL);
   }
   else
   {

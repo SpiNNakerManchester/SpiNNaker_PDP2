@@ -1,29 +1,27 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
+// graph-front-end
+#include <data_specification.h>
+
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "sdram.h"
+#include "mlp_externs.h"  // allows compiler to check extern types!
 
 #include "init_w.h"
 #include "comms_w.h"
 
-#define SPINN_EXEC_TYPE 'W'
-
-// main methods for the W core
+// main methods for the weight core
 
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
-uint coreIndex;            // coreID - 1 (convenient for array indexing)
+
 uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-uint stpKey;               // 32-bit packet ID for stop criterion
-
-uint coreType;             // weight, sum or threshold
 
 uint         epoch;        // current training iteration
 uint         example;      // current example in epoch
@@ -38,24 +36,16 @@ uint         tick;         // current tick in phase
 uchar        tick_stop;    // current tick stop decision
 
 // ------------------------------------------------------------------------
-// configuration structures (SDRAM)
+// data structures in regions of SDRAM
 // ------------------------------------------------------------------------
-uint             *cm; // simulation core map
-chip_struct_t    *ct; // chip-specific data
-uchar            *dt; // core-specific data
-mc_table_entry_t *rt; // multicast routing table data
 weight_t         *wt; // initial connection weights
-mlp_set_t        *es; // example set data
 mlp_example_t    *ex; // example data
-mlp_event_t      *ev; // event data
-activation_t     *it; // example inputs
-activation_t     *tt; // example targets
+uint             *rt; // multicast routing keys data
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
 // ------------------------------------------------------------------------
-global_conf_t mlpc;           // network-wide configuration parameters
-chip_struct_t ccfg;           // chip configuration parameters
+network_conf_t ncfg;           // network-wide configuration parameters
 w_conf_t      wcfg;           // weight core configuration parameters
 // ------------------------------------------------------------------------
 
@@ -67,12 +57,11 @@ w_conf_t      wcfg;           // weight core configuration parameters
 // ------------------------------------------------------------------------
 weight_t       * * w_weights;         // connection weights block
 long_wchange_t * * w_wchanges;        // accumulated weight changes
-activation_t   * w_outputs[2];      // unit outputs for b-d-p
-long_delta_t * * w_link_deltas;     // computed link deltas
-error_t        * w_errors;          // computed errors next tick
-pkt_queue_t      w_delta_pkt_q;     // queue to hold received deltas
-activation_t   * w_output_history;  // history array for outputs
-fpreal           w_delta_dt;        // scaling factor for link deltas
+activation_t     * w_outputs[2];      // unit outputs for b-d-p
+long_delta_t   * * w_link_deltas;     // computed link deltas
+error_t          * w_errors;          // computed errors next tick
+pkt_queue_t        w_delta_pkt_q;     // queue to hold received deltas
+fpreal             w_delta_dt;        // scaling factor for link deltas
 
 // FORWARD phase specific variables
 // (net b-d-p computation)
@@ -90,6 +79,9 @@ uint             wf_sync_key;       // FORWARD processing can start
 uchar            wb_active;         // processing deltas from queue?
 scoreboard_t     wb_arrived;        // keeps track of received deltas
 uint             wb_sync_key;       // BACKPROP processing can start
+
+// history arrays
+activation_t     * w_output_history;  // history array for outputs
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -120,29 +112,46 @@ uint             wb_sync_key;       // BACKPROP processing can start
 // ------------------------------------------------------------------------
 uint init ()
 {
-  // return code
-  uint rcode = SPINN_NO_ERROR;
-  
-  // initialize network configuration from SDRAM
-  spin1_memcpy (&mlpc, gt, sizeof(global_conf_t));
-  
-  // initialize chip-specific configuration from SDRAM
-  ct = (chip_struct_t *) mlpc.chip_struct_addr;
-  spin1_memcpy(&ccfg, ct, sizeof(chip_struct_t));
-  
-  //initialize pointers to the appropriate structures
-  cm = (uint *) ccfg.cm_struct_addr;                // simulation core map
-  dt = (uchar *) ccfg.core_struct_addr[coreIndex];  // core-specific data
-  
-  es = (struct mlp_set *) ccfg.example_set_addr;    // example set data
-  ex = (struct mlp_example *) ccfg.examples_addr;   // example data
-  ev = (struct mlp_event *) ccfg.events_addr;       // event data
-  
-  // initialize global stop criteron packet key
-  stpKey = SPINN_STPR_KEY;
+  io_printf (IO_BUF, "weight\n");
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "sk = 0x%08x\n", stpKey);
+  // read the data specification header
+  address_t data_address = data_specification_get_data_address ();
+  if (!data_specification_read_header (data_address)) {
+	  rt_error (RTE_SWERR);
+  }
+
+  // get addresses of all SDRAM regions
+  // network configuration address
+  address_t nt = data_specification_get_region (NETWORK, data_address);
+
+  // initialize network configuration from SDRAM
+  spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
+
+  // core configuration address
+  address_t dt = data_specification_get_region (CORE, data_address);
+
+  // initialize core-specific configuration from SDRAM
+  spin1_memcpy (&wcfg, dt, sizeof (w_conf_t));
+
+  // initial connection weights
+  wt = (weight_t *) data_specification_get_region
+		  (WEIGHTS, data_address);
+
+  // examples
+  ex = (struct mlp_example *) data_specification_get_region
+		  (EXAMPLES, data_address);
+
+  // routing keys
+  rt = (uint *) data_specification_get_region
+		  (ROUTING, data_address);
+
+  #ifdef DEBUG_CFG0
+    io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
+    io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
+    io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
+    io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
+    io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
+    io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
   #endif
 
   // initialize epoch, example and event counters
@@ -158,46 +167,8 @@ uint init ()
   num_events = ex[example].num_events;
   event_idx  = ex[example].ev_idx;
 
-  // initialize core configuration according to core function
-  coreType = ccfg.core_type[coreIndex];
-
-  if (coreType != SPINN_WEIGHT_PROC)
-    return SPINN_CORE_TYPE_ERROR;
-      
-  io_printf (IO_STD, "weight\n");
-
-  spin1_memcpy (&wcfg, dt, sizeof(w_conf_t));
-  
-  // allocate memory and initialize variables,
-  rcode = w_init ();
-
-  // if init went well fill routing table -- only 1 core needs to do it
-  if (leadAp && (rcode == SPINN_NO_ERROR))
-  {
-    if (*(uint*)ccfg.rt_struct_addr != ccfg.num_rt_entries)
-        io_printf (IO_STD,
-                    "Warning: routing table size mismatch - ccfg: %d, rt: %d\n",
-                    ccfg.num_rt_entries, *(uint*)ccfg.rt_struct_addr
-                  );
-
-    // multicast routing table data: first word is length!
-    rt = (mc_table_entry_t *) (ccfg.rt_struct_addr + sizeof (uint));
-    
-    // allocate space in routing table
-    uint e = rtr_alloc (ccfg.num_rt_entries, 0); // allocate router entries
-    if (e == 0)
-      rt_error (RTE_ABORT);
-
-    // fill the routing tables with the values from the configuration files
-    for (uint i = 0; i < ccfg.num_rt_entries; i++)
-    {
-      rtr_mc_set (e + i,
-                   rt[i].key,
-                   rt[i].mask,
-                   rt[i].route
-                 );
-    }
-  }
+  // allocate memory and initialize variables
+  uint rcode = w_init ();
 
   return (rcode);
 }
@@ -209,47 +180,34 @@ uint init ()
 // ------------------------------------------------------------------------
 void done (uint ec)
 {
-  // skew execution to avoid tubotron congestion
-  spin1_delay_us (SPINN_SKEW_DELAY);  //@delay
-
   // report problems -- if any
   switch (ec)
   {
     case SPINN_NO_ERROR:
-      io_printf (IO_STD, "simulation OK\n");
-
-      break;
-
-    case SPINN_UKNOWN_TYPE:
-      io_printf (IO_STD, "unknown core type\n");
-      io_printf (IO_BUF, "unknown core type\n");
+      io_printf (IO_BUF, "simulation OK\n");
 
       break;
 
     case SPINN_QUEUE_FULL:
-      io_printf (IO_STD, "packet queue full\n");
       io_printf (IO_BUF, "packet queue full\n");
 
       break;
 
     case SPINN_MEM_UNAVAIL:
-      io_printf (IO_STD, "malloc failed\n");
       io_printf (IO_BUF, "malloc failed\n");
 
       break;
 
     case SPINN_UNXPD_PKT:
-      io_printf (IO_STD, "unexpected packet received - abort!\n");
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
 
       break;
 
     case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_STD, "timeout - see I/O buffer for log - abort!\n");
       io_printf (IO_BUF, "timeout (h: %u e:%u p:%u t:%u) - abort!\n",
                  epoch, example, phase, tick
                 );
-    
+
       #ifdef DEBUG_VRB
         io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
         io_printf (IO_BUF, "(fptd:%u)\n", wf_thrds_done);
@@ -258,40 +216,7 @@ void done (uint ec)
                    wf_arrived, wb_arrived
                   );
       #endif
-    
-      break;
-    
-    // in case the chip configuration data structure defines the core to be of a
-    // different type than this executable, throw an error
-    case SPINN_CORE_TYPE_ERROR:
-      
-      switch (coreType)
-      {
-        case SPINN_WEIGHT_PROC:
-          io_printf (IO_STD, "error in the core type - executable: %c core, structure: W type\n", SPINN_EXEC_TYPE);
-          break;
-          
-        case SPINN_SUM_PROC:
-          io_printf (IO_STD, "error in the core type - executable: %c core, structure: S type\n", SPINN_EXEC_TYPE);
-          break;
-          
-        case SPINN_INPUT_PROC:
-          io_printf (IO_STD, "error in the core type - executable: %c core, structure: I type\n", SPINN_EXEC_TYPE);
-          break;
-          
-        case SPINN_THRESHOLD_PROC:
-          io_printf (IO_STD, "error in the core type - executable: %c core, structure: T type\n", SPINN_EXEC_TYPE);
-          break;
-          
-        case SPINN_UNUSED_PROC:
-          io_printf (IO_STD, "error in the core type - executable: %c core, but the core should be unused\n", SPINN_EXEC_TYPE);
-          break;
-        
-        default:
-          io_printf (IO_STD, "error in the core type - executable: %c core, but chip structure has an invalid entry: %d\n", SPINN_EXEC_TYPE, coreType);
-          break;
-      }
-      
+
       break;
   }
 
@@ -319,10 +244,10 @@ void done (uint ec)
 // ------------------------------------------------------------------------
 void timeout (uint ticks, uint null)
 {
-  if (ticks == mlpc.timeout)
+  if (ticks == ncfg.timeout)
   {
     // exit and report timeout
-    spin1_kill (SPINN_TIMEOUT_EXIT);
+    spin1_exit (SPINN_TIMEOUT_EXIT);
   }
 }
 // ------------------------------------------------------------------------
@@ -334,12 +259,11 @@ void timeout (uint ticks, uint null)
 void c_main ()
 {
   // say hello,
-  io_printf (IO_STD, ">> mlp\n");
+  io_printf (IO_BUF, ">> mlp\n");
 
   // get this core's IDs,
   chipID = spin1_get_chip_id();
   coreID = spin1_get_core_id();
-  coreIndex = coreID - 1; // used to access arrays!
 
   // initialize application,
   uint exit_code = init ();
@@ -353,9 +277,6 @@ void c_main ()
     // and abort simulation
     return;
   }
-
-  // set the core map for the simulation,
-  spin1_set_core_map (mlpc.num_chips, cm);
 
   // set timer tick value (in microseconds),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
@@ -373,33 +294,34 @@ void c_main ()
 
   // packet received callback depends on core function
   spin1_callback_on (MC_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);
+  spin1_callback_on (MCPL_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);
 
   // go,
-  io_printf (IO_STD, "-----------------------\n");
-  io_printf (IO_STD, "starting simulation\n");
+  io_printf (IO_BUF, "-----------------------\n");
+  io_printf (IO_BUF, "starting simulation\n");
 
   #ifdef PROFILE
     uint start_time = tc[T2_COUNT];
-    io_printf (IO_STD, "start count: %u\n", start_time);
+    io_printf (IO_BUF, "start count: %u\n", start_time);
   #endif
 
   // start execution and get exit code,
-  exit_code = spin1_start ();
+  exit_code = spin1_start (SYNC_WAIT);
 
   #ifdef PROFILE
     uint final_time = tc[T2_COUNT];
-    io_printf (IO_STD, "final count: %u\n", final_time);
-    io_printf (IO_STD, "execution time: %u us\n",
+    io_printf (IO_BUF, "final count: %u\n", final_time);
+    io_printf (IO_BUF, "execution time: %u us\n",
                   (start_time - final_time) / SPINN_TIMER2_DIV);
   #endif
 
   // report results,
   done (exit_code);
 
-  io_printf (IO_STD, "stopping simulation\n");
-  io_printf (IO_STD, "-----------------------\n");
+  io_printf (IO_BUF, "stopping simulation\n");
+  io_printf (IO_BUF, "-----------------------\n");
 
   // and say goodbye
-  io_printf (IO_STD, "<< mlp\n");
+  io_printf (IO_BUF, "<< mlp\n");
 }
 // ------------------------------------------------------------------------

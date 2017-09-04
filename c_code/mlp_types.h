@@ -3,28 +3,51 @@
 
 #include "mlp_params.h"
 
-typedef short     short_activ_t;    // unit output or activation
-typedef int       activation_t;     // intermediate unit output or activation
+enum MLPRegions {
+	NETWORK,
+	CORE,
+	INPUTS,
+	TARGETS,
+	EXAMPLE_SET,
+	EXAMPLES,
+	EVENTS,
+	WEIGHTS,
+	ROUTING
+};
+
+enum MLPKeys {
+	FWD,
+	BKP,
+	FDS,
+	STP
+};
+
+typedef short     short_activ_t;
+typedef int       activation_t;     // unit output or activation
 typedef long long long_activ_t;     // intermediate unit output or activation
 
-// short activations are s0.15
+// short activations are s0.15 (note difference with activation!)
+#define SPINN_SHORT_ACTIV_SIZE   16
 #define SPINN_SHORT_ACTIV_SHIFT  15
 #define SPINN_SHORT_ACTIV_MAX    ((1 << SPINN_SHORT_ACTIV_SHIFT) - 1)
 #define SPINN_SHORT_ACTIV_MIN    0
 // minimum negative value for an activation variable
 #define SPINN_SHORT_ACTIV_MIN_NEG      (-1 * SPINN_SHORT_ACTIV_MAX)
-#define SPINN_SHORT_ACTIV_NaN          (-1 << SPINN_SHORT_ACTIV_SHIFT)
 
 // activations are s4.27
+#define SPINN_ACTIV_SIZE         32
 #define SPINN_ACTIV_SHIFT        27
 #define SPINN_ACTIV_MAX          INT_MAX
 #define SPINN_ACTIV_MIN          0
-#define SPINN_ACTIV_NaN          (-1 << SPINN_ACTIV_SHIFT)
+#define SPINN_ACTIV_NaN          (1 << (SPINN_ACTIV_SIZE - 1))
 // minimum negative value for a long activation variable
 //~#define SPINN_ACTIV_MIN_NEG   INT_MIN
 // these values are set to compute the cross entropy error function
 #define SPINN_ACTIV_ONE          (1 << SPINN_ACTIV_SHIFT)
 //~#define SPINN_ACTIV_NEG_ONE   (-1 << SPINN_ACTIV_SHIFT)
+
+// long activations are s36.27
+#define SPINN_LONG_ACTIV_SHIFT   27
 
 typedef short     short_deriv_t;  // input or output derivative
 typedef int       derivative_t;   // intermediate unit input or output derivative
@@ -36,7 +59,6 @@ typedef long long long_deriv_t;   // intermediate unit input or output derivativ
 //~#define SPINN_SHORT_DERIV_MIN          0
 // minimum negative value for an derivative variable
 #define SPINN_SHORT_DERIV_MIN_NEG     (-1 * SPINN_SHORT_DERIV_MAX)
-#define SPINN_SHORT_DERIV_NaN          (-1 << SPINN_DERIV_SHIFT)
 
 // derivatives are s16.15
 #define SPINN_DERIV_MAX          INT_MAX
@@ -105,21 +127,28 @@ typedef long long long_weight_t;    // intermediate conntection weight
 typedef int       wchange_t;        // connection weight change
 typedef long long long_wchange_t;   // intermediate connection weight change
 
-#define SPINN_WEIGHT_SHIFT     15
-#define SPINN_WEIGHT_MAX       ((weight_t)  (0xffff << SPINN_WEIGHT_SHIFT))
-#define SPINN_WEIGHT_MIN       ((weight_t) -(0xffff << SPINN_WEIGHT_SHIFT))
-#define SPINN_WEIGHT_POS_DELTA ((weight_t)  1)
-#define SPINN_WEIGHT_NEG_DELTA ((weight_t) -1)
+#define SPINN_WEIGHT_SHIFT       15
+#define SPINN_WEIGHT_MAX         ((weight_t)  (0xffff << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_MIN         ((weight_t) -(0xffff << SPINN_WEIGHT_SHIFT))
+#define SPINN_WEIGHT_POS_EPSILON ((weight_t)  1)
+#define SPINN_WEIGHT_NEG_EPSILON ((weight_t) -1)
 
+typedef short     short_fpreal_t;
 typedef int       fpreal;           // 32-bit fixed-point number
-typedef long long lfpreal;          // 64-bit fixed-point number
+typedef long long long_fpreal;      // 64-bit fixed-point number
+
+// short fixed-point reals are s0.15 (note difference with fpreal!)
+#define SPINN_SHORT_FPREAL_SHIFT 15
 
 //NOTE: may be a good idea to change to s16.15 for compatibility!
 // fixed-point reals are s15.16
-// long fixed-point reals are s47.16
+#define SPINN_FPREAL_SIZE        32
 #define SPINN_FPREAL_SHIFT       16
-#define SPINN_FP_NaN             (-1 << SPINN_FPREAL_SHIFT)
+#define SPINN_FP_NaN             (1 << (SPINN_FPREAL_SIZE - 1))
 #define SPINN_SMALL_VAL          1
+
+// long fixed-point reals are s47.16
+#define SPINN_LONG_FPREAL_SHIFT  16
 
 typedef uint      scoreboard_t;     // keep track of received items
 
@@ -127,42 +156,19 @@ typedef uchar     proc_phase_t;     // phase (FORWARD or BACKPROP)
 
 
 // ------------------------------------------------------------------------
-// global (network-wide) configuration
+// network configuration
 // ------------------------------------------------------------------------
-typedef struct global_conf      // MLP configuration
+typedef struct network_conf     // MLP network configuration
 {
-  // neural net configuration parameters
   uchar net_type;               // type of neural net
   uchar training;               // training or testing mode?
   uint  num_epochs;             // number of epochs to run
   uint  num_examples;           // number of examples per epoch
   uint  ticks_per_int;          // number of ticks per interval
-  uint  max_unit_outs;          // max. number of outputs in a group
-  uint  num_chips;              // number of chips in the simulation
-  uint  timeout;                // in case something goes wrong
-  uint  chip_struct_addr;       // address in SDRAM for core map
   uint  global_max_ticks;       // max number of ticks across all the examples
-} global_conf_t;
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// chip-wide configuration
-// ------------------------------------------------------------------------
-typedef struct chip_struct      // chip specific information
-{
-  // SpiNNaker configuration parameters
-  uchar core_type[SPINN_NUM_CORES_CHIP];
-  uint  conf_size;              // largest configuration data size
-  uint  num_rt_entries;         // number of routing table entries
   uint  num_write_blks;         // number of groups that write outputs
-  uint  cm_struct_addr;         // address in SDRAM for core map
-  uint  core_struct_addr[SPINN_NUM_CORES_CHIP]; // addr in SDRAM for core data
-  uint  rt_struct_addr;         // address in SDRAM for router data
-  uint  example_set_addr;       // address in SDRAM for example set file
-  uint  examples_addr;          // address in SDRAM for examples file
-  uint  events_addr;            // address in SDRAM for events file
-} chip_struct_t;
+  uint  timeout;                // in case something goes wrong
+} network_conf_t;
 // ------------------------------------------------------------------------
 
 
@@ -181,20 +187,9 @@ typedef struct chip_struct      // chip specific information
 // ------------------------------------------------------------------------
 typedef struct w_conf               // weight core configuration
 {
-  uchar        to_out_grp;          // projection weights into an OUTPUT group?
-  uchar        from_out_grp;        // projection weights from an OUTPUT group?
-  uchar        to_input_grp;        // projection weights into an INPUT group?
-  uchar        from_input_grp;      // projection weights from an INPUT group?
-  uint         num_rblks;           // blocks in a row of the global matrix
-  uint         num_cblks;           // blocks in a column of the global matrix
-  uint         blk_row;             // this core's block row coordinate
-  uint         blk_col;             // this core's block column coordinate
-  uint         num_rows;            // rows in this core's block
-  uint         num_cols;            // columns in this core's block
-  scoreboard_t f_all_arrived;       // all expected unit outputs
-  scoreboard_t b_all_arrived;       // all expected error deltas
-  short_activ_t learningRate;       // network learning rate
-  uint         weights_struct_addr; // address in SDRAM for weight file
+  uint           num_rows;          // rows in this core's block
+  uint           num_cols;          // columns in this core's block
+  short_fpreal_t learningRate;      // network learning rate
 } w_conf_t;
 // ------------------------------------------------------------------------
 
@@ -205,26 +200,12 @@ typedef struct w_conf               // weight core configuration
 // sum cores accumulate acummulate b-d-ps sent by weight cores and
 // compute unit nets (FORWARD phase) and errors (BACKPROP phase)
 // ------------------------------------------------------------------------
-typedef struct s_conf    // sum core configuration
+typedef struct s_conf               // sum core configuration
 {
-  uchar        output_grp;          // is this an OUTPUT group?
-  uchar        input_grp;           // is this an INPUT group?
-  uint         num_nets;            // this core's number of unit nets
-  uint         net_blk;             // this core's net block
-  uint         error_blk;           // this core's error block
-  scoreboard_t f_all_arrived;       // all expected unit output b-d-ps
-  scoreboard_t f_all_done;          // all unit outputs
-  scoreboard_t b_all_arrived;       // all expected error d-b-ps
-  scoreboard_t b_all_done;          // all error deltas
-  uint         num_in_procs;        // number of input (net) comp procedures
-  uint         procs_list[SPINN_NUM_IN_PROCS];
-  uchar        in_integr_en;        // input integrator in use
-  fpreal       in_integr_dt;        // integration time const for input integr
-  fpreal       soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
-  net_t        initNets;            // initial value for unit nets
-  short_activ_t initOutput;         // initial value for unit outputs
-  uint         inputs_addr;         // address in SDRAM for inputs file
-} s_conf_t;
+  uint         num_units;           // this core's number of units
+  scoreboard_t fwd_expected;        // num of expected partial nets
+  scoreboard_t bkp_expected;        // num of expected partial errors
+  } s_conf_t;
 // ------------------------------------------------------------------------
 
 
@@ -234,25 +215,18 @@ typedef struct s_conf    // sum core configuration
 // input cores process the values received from the sum cores through the
 // elements of the input pipeline as required by LENS.
 // ------------------------------------------------------------------------
-typedef struct i_conf               // sum core configuration
+typedef struct i_conf                // input core configuration
 {
-  uchar        output_grp;          // is this an OUTPUT group?
-  uchar        input_grp;           // is this an INPUT group?
-  uint         num_nets;            // this core's number of unit nets
-  uint         net_blk;             // this core's net block
-  uint         delta_blk;           // this core's delta block
-  scoreboard_t f_all_arrived;       // all expected unit output b-d-ps
-  scoreboard_t f_all_done;          // all unit outputs
-  scoreboard_t b_all_arrived;       // all expected error d-b-ps
-  scoreboard_t b_all_done;          // all error deltas
-  uint         num_in_procs;        // number of input (net) comp procedures
-  uint         procs_list[SPINN_NUM_IN_PROCS];
-  uchar        in_integr_en;        // input integrator in use
-  fpreal       in_integr_dt;        // integration time const for input integr
-  fpreal       soft_clamp_strength; // Strength coeff for soft clamp fix 16.16
-  net_t        initNets;            // initial value for unit nets
-  short_activ_t initOutput;         // initial value for unit outputs
-  uint         inputs_addr;         // address in SDRAM for inputs file
+  uchar         output_grp;          // is this an OUTPUT group?
+  uchar         input_grp;           // is this an INPUT group?
+  uint          num_units;           // this core's number of units
+  uint          num_in_procs;        // number of input (net) comp procedures
+  uint          procs_list[SPINN_NUM_IN_PROCS];
+  uchar         in_integr_en;        // input integrator in use
+  fpreal        in_integr_dt;        // integration time const for input integr
+  fpreal        soft_clamp_strength; // Strength coeff for soft clamp
+  net_t         initNets;            // initial value for unit nets
+  activation_t  initOutput;          // initial value for unit outputs
 } i_conf_t;
 // ------------------------------------------------------------------------
 
@@ -266,53 +240,28 @@ typedef struct i_conf               // sum core configuration
 // In the BACKPROP phase, these cores compute the error deltas from the
 // errors computed locally (output groups only) or sent by the sum cores.
 // ------------------------------------------------------------------------
-typedef struct t_conf    // threshold core configuration
+typedef struct t_conf                  // threshold core configuration
 {
-  uchar        output_grp;            // is this an OUTPUT group?
-  uchar        input_grp;             // is this an INPUT group?
-  uint         num_outputs;           // this core's number of unit outputs
-  uint         num_ext_inputs;        // this core's number of external inputs
-  uint         output_offset;         // offset wrt to global outputs
-  uint         output_blk;            // this core's unit output block
-  uint         delta_blk;             // this core's delta block
-  scoreboard_t f_all_arrived;         // all expected nets
-  scoreboard_t b_all_arrived;         // all expected errors
-  scoreboard_t f_s_all_arr;           // all expected FORWARD sync packets
-  scoreboard_t b_s_all_arr;           // all expected BACKPROP sync packets
-  uchar        write_out;             // write outputs (send to host)?
-  uint         write_blk;             // this core's write block
-//   uint         example_set_addr;      // addr in SDRAM for example set file
-//   uint         examples_addr;         // addr in SDRAM for examples file
-//   uint         events_addr;           // addr in SDRAM for events file
-  uint         inputs_addr;           // address in SDRAM for inputs file
-  uint         targets_addr;          // address in SDRAM for targets file
-  uint         num_in_procs;          // number of input comp procs - used in
-                                      // output initialization
-  uchar        out_integr_en;         // input integrator in use
-  fpreal       out_integr_dt;         // integration time const for input integr
-  uint         num_out_procs;         // number of output comp procedures
-  uint         procs_list[SPINN_NUM_OUT_PROCS];
-  fpreal       weak_clamp_strength;   // Strength coeff for weak clamp fix 16.16
-  short_activ_t initOutput;           // initial value for unit outputs
-  error_t      group_criterion;       // convergence criterion value
-  uchar        criterion_function;    // function to eval convergence criterion
-  uchar        is_first_output_group; // is this the firso of the output groups
-  uchar        is_last_output_group;  // is this the last of the output groups
-  uchar        error_function;        // is the error function id to be used for
-                                      // BACKPROP
-  uint         group_id;              // ID of the group
-  uint         subgroup_id;           // ID of the subgroup
-  uint         total_subgroups;       // total number of subgroups
+  uchar         output_grp;            // is this an OUTPUT group?
+  uchar         input_grp;             // is this an INPUT group?
+  uint          num_units;             // this core's number of units
+  scoreboard_t  fwd_sync_expected;     // all expected FORWARD sync packets
+  scoreboard_t  bkp_sync_expected;     // all expected BACKPROP sync packets
+  uchar         write_out;             // write outputs (send to host)?
+  uint          write_blk;             // this core's write block
+  uchar         out_integr_en;         // input integrator in use
+  fpreal        out_integr_dt;         // integration time const for input integr
+  uint          num_out_procs;         // number of output comp procedures
+  uint          procs_list[SPINN_NUM_OUT_PROCS];
+  fpreal        weak_clamp_strength;   // Strength coeff for weak clamp
+  activation_t  initOutput;            // initial value for unit outputs
+  error_t       group_criterion;       // convergence criterion value
+  uchar         criterion_function;    // function to eval convergence criterion
+  uchar         is_first_output_group; // is this the first of the output groups
+  uchar         is_last_output_group;  // is this the last of the output groups
+  uchar         error_function;        // error function used for BACKPROP
 } t_conf_t;
 // ------------------------------------------------------------------------
-
-
-typedef struct mc_table_entry // multicast routing entry
-{
-  uint key;               // entry key
-  uint mask;              // entry mask
-  uint route;             // entry route
-} mc_table_entry_t;
 
 
 typedef struct
@@ -334,19 +283,21 @@ typedef struct
 
 
 // ------------------------------------------------------------------------
-// example configuration in SDRAM
+// example set, example and event configurations
 // ------------------------------------------------------------------------
-// Examples are organized as LENS exmaples (see LENS documentation).
+// examples are organised as LENS-style examples
 // ------------------------------------------------------------------------
-typedef struct mlp_set {
-  uint   num_examples;
+typedef struct mlp_set
+{
+  uint    num_examples;
   fpreal  max_time;
   fpreal  min_time;
   fpreal  grace_time;
 } mlp_set_t;
 
 
-typedef struct mlp_example {
+typedef struct mlp_example
+{
   uint   num;
   uint   num_events;
   uint   ev_idx;
@@ -354,7 +305,8 @@ typedef struct mlp_example {
 } mlp_example_t;
 
 
-typedef struct mlp_event {
+typedef struct mlp_event
+{
   fpreal  max_time;
   fpreal  min_time;
   fpreal  grace_time;

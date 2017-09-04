@@ -5,7 +5,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
-#include "sdram.h"
+#include "mlp_externs.h"
 
 #include "init_w.h"
 #include "comms_w.h"
@@ -15,86 +15,6 @@
 // set of routines to be used by W core to process data
 
 // ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint         epoch;        // current training iteration
-extern uint         example;      // current example in epoch
-extern uint         evt;          // current event in example
-extern uint         num_events;   // number of events in current example
-extern proc_phase_t phase;        // FORWARD or BACKPROP
-extern uint         num_ticks;    // number of ticks in current event
-extern uint         tick;         // current tick in phase
-extern uchar        tick_stop;    // current tick stop decision
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// configuration structures (SDRAM)
-// ------------------------------------------------------------------------
-extern chip_struct_t        *ct; // chip-specific data
-extern uint                 *cm; // simulation core map
-extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
-extern mlp_set_t            *es; // example set data
-extern mlp_example_t        *ex; // example data
-extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t        *tt; // example targets
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern w_conf_t       wcfg;       // weight core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// weight core variables
-// ------------------------------------------------------------------------
-extern weight_t       * * w_weights;     // connection weights block
-extern long_wchange_t * * w_wchanges;    // accumulated weight changes
-extern activation_t   * w_outputs[2];  // unit outputs for b-d-p
-extern activation_t   * w_output_history;
-extern long_delta_t * * w_link_deltas; // computed link deltas
-extern error_t        * w_errors;      // computed errors next tick
-extern pkt_queue_t      w_delta_pkt_q; // queue to hold received deltas
-extern fpreal           w_delta_dt;    // scaling factor for link deltas
-extern uint             wf_procs;      // pointer to processing unit outputs
-extern uint             wf_thrds_done; // sync. semaphore: comms, proc & stop
-extern uint             wf_sync_key;   // FORWARD processing can start
-extern uchar            wb_active;     // processing deltas from queue?
-extern scoreboard_t     wb_arrived;    // keeps track of received deltas
-extern uint             wb_sync_key;   // BACKPROP processing can start
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-  extern uint sent_bkp;  // packets sent in BACKPROP phase
-  extern uint pkt_recv;  // total packets received
-  extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received in BACKPROP phase
-  extern uint spk_sent;  // sync packets sent
-  extern uint spk_recv;  // sync packets received
-  extern uint stp_sent;  // stop packets sent
-  extern uint stp_recv;  // stop packets received
-  extern uint wrng_phs;  // packets received in wrong phase
-  extern uint wght_ups;  // number of weight updates done
-  extern uint tot_tick;  // total number of ticks executed
-#endif
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
 // process FORWARD phase: compute partial dot products (output * weight)
 // ------------------------------------------------------------------------
 void wf_process (uint null0, uint null1)
@@ -102,7 +22,7 @@ void wf_process (uint null0, uint null1)
   #ifdef TRACE
     io_printf (IO_BUF, "wf_process\n");
   #endif
-  
+
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
@@ -121,7 +41,7 @@ void wf_process (uint null0, uint null1)
     // saturate the value computed and assign it to the net_part variable
     if (net_part_tmp > (long_net_t) SPINN_NET_MAX)
       // positive saturation
-      net_part = (net_t) SPINN_NET_MAX;  
+      net_part = (net_t) SPINN_NET_MAX;
     else if (net_part_tmp < (long_net_t) SPINN_NET_MIN)
       // negative saturation
       net_part = (net_t) SPINN_NET_MAX;
@@ -131,7 +51,11 @@ void wf_process (uint null0, uint null1)
 
     // incorporate net index to the packet key and send
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));
-    
+
+    #ifdef DEBUG_CFG3
+      io_printf (IO_BUF, "wn[%u]: 0x%08x\n", j, net_part);
+    #endif
+
     #ifdef DEBUG
       pkt_sent++;
       sent_fwd++;
@@ -178,7 +102,7 @@ void wb_process (uint null0, uint null1)
   #ifdef TRACE
     io_printf (IO_BUF, "wb_process\n");
   #endif
-  
+
   #ifdef PROFILE
     io_printf (IO_STD, "tin:  %u\n", tc[T2_COUNT]);
   #endif
@@ -202,11 +126,7 @@ void wb_process (uint null0, uint null1)
     inx &= SPINN_DELTA_MASK;
 
     // update scoreboard,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      wb_arrived |= (1 << inx);
-    #else
-      wb_arrived++;
-    #endif
+    wb_arrived++;
 
     // partially compute error dot products,
     for (uint i = 0; i < wcfg.num_rows; i++)
@@ -219,7 +139,7 @@ void wb_process (uint null0, uint null1)
       // s36.27 = (s4.27 * s8.23) >> 23
       w_link_deltas[i][inx] += ((long_delta_t) w_outputs[0][i]
                                  * (long_delta_t) delta)
-                                 >> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT 
+                                 >> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
                                  - SPINN_LONG_DELTA_SHIFT);
 
       //NOTE: may need to make w_errors a long_error_t type and saturate!
@@ -231,12 +151,16 @@ void wb_process (uint null0, uint null1)
                      );
 
       // check if done with all deltas
-      if (wb_arrived == wcfg.b_all_arrived)
+      if (wb_arrived == wcfg.num_cols)
       {
         // send computed error dot product,
         while (!spin1_send_mc_packet ((bkpKey | i),
                 (uint) w_errors[i], WITH_PAYLOAD)
               );
+
+        #ifdef DEBUG_CFG4
+          io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
+        #endif
 
         #ifdef DEBUG
           pkt_sent++;
@@ -249,7 +173,7 @@ void wb_process (uint null0, uint null1)
     }
 
     // if done with all deltas advance tick
-    if (wb_arrived == wcfg.b_all_arrived)
+    if (wb_arrived == wcfg.num_cols)
     {
       // initialize arrival scoreboard for next tick,
       wb_arrived = 0;
@@ -308,7 +232,7 @@ void w_update_weights (void)
       if (w_weights[i][j] != 0)
       {
         // scale the link derivatives
-        if (mlpc.net_type == SPINN_NET_CONT)
+        if (ncfg.net_type == SPINN_NET_CONT)
         {
           // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
@@ -327,7 +251,7 @@ void w_update_weights (void)
                                         - SPINN_WEIGHT_SHIFT - 1));
 
         // and adjust decimal point position
-        w_wchanges[i][j] = change_tmp 
+        w_wchanges[i][j] = change_tmp
                              >> (SPINN_SHORT_ACTIV_SHIFT + SPINN_LONG_DELTA_SHIFT
 		             - SPINN_WEIGHT_SHIFT);
 
@@ -349,11 +273,11 @@ void w_update_weights (void)
         {
           if (w_weights[i][j] > 0)
           {
-            w_weights[i][j] = SPINN_WEIGHT_POS_DELTA;
+            w_weights[i][j] = SPINN_WEIGHT_POS_EPSILON;
           }
           else
           {
-            w_weights[i][j] = SPINN_WEIGHT_NEG_DELTA;
+            w_weights[i][j] = SPINN_WEIGHT_NEG_EPSILON;
           }
         }
         else
@@ -363,12 +287,9 @@ void w_update_weights (void)
       }
 
       #ifdef DEBUG_VRB
-        uint roff = wcfg.blk_row * wcfg.num_rows;
-        uint coff = wcfg.blk_col * wcfg.num_cols;
-
         io_printf (IO_BUF,
                     "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                    roff + i, coff + j,
+                    i, j,
                     SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
                     old_weight,
                     SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
@@ -379,19 +300,7 @@ void w_update_weights (void)
   }
 
   #if SPINN_WEIGHT_HISTORY == TRUE
-    // dump weights to SDRAM for record keeping
-    //TODO: broken -- needs fixing!
-    //TODO: works only if examples have a single event
-    for (uint i = 0; i < wcfg.num_rows; i++)
-    {
-      //NOTE: could use DMA
-//##      spin1_memcpy(&wh[(((example + 1) * mlpc.num_outs
-//##                        + wcfg.blk_row * wcfg.num_rows + i) * mlpc.num_outs)
-//##                        + (wcfg.blk_col * wcfg.num_cols)],
-//##                   w_weights[i],
-//##                   wcfg.num_cols * sizeof(weight_t)
-//##                  );
-    }
+    //TODO: dump weights to SDRAM for record keeping
   #endif
 }
 // ------------------------------------------------------------------------
@@ -424,13 +333,10 @@ void wf_advance_tick (uint null0, uint null1)
       tot_tick++;
     #endif
 
-    // change packet key colour,
-    fwdKey ^= SPINN_COLOUR_KEY;
-
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "wf_tick: %d/%d\n", tick, tot_tick);
     #endif
   }
@@ -455,10 +361,10 @@ void wb_advance_tick (uint null0, uint null1)
   #ifdef DEBUG_VRB
     io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
   #endif
-  
+
   // change packet key colour,
   bkpKey ^= SPINN_COLOUR_KEY;
-  
+
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)
   {
@@ -480,7 +386,7 @@ void wb_advance_tick (uint null0, uint null1)
     // and trigger computation
     spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "wb_tick: %d/%d\n", tick, tot_tick);
     #endif
   }
@@ -496,16 +402,16 @@ void wf_advance_event (void)
   #ifdef TRACE
     io_printf (IO_BUF, "wf_advance_event\n");
   #endif
-  
+
   // check if done with events -- end of example's FORWARD phase
   if (++evt >= num_events)
   {
     // access synchronization semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
-    
+
     // initialize synchronization semaphore,
-    wf_thrds_done = 0;  // no processing and no stop in tick 0 
-    
+    wf_thrds_done = 0;  // no processing and no stop in tick 0
+
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
 
@@ -514,7 +420,7 @@ void wf_advance_event (void)
     tick_stop = FALSE;
 
     // and check if in training mode
-    if (mlpc.training)
+    if (ncfg.training)
     {
       // if training, save number of ticks
       num_ticks = tick;
@@ -540,9 +446,6 @@ void wf_advance_event (void)
       tot_tick++;
     #endif
 
-    // change packet key colour,
-    fwdKey ^= SPINN_COLOUR_KEY;
-
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
   }
@@ -558,16 +461,16 @@ void w_advance_example (void)
   #ifdef TRACE
     io_printf (IO_BUF, "w_advance_example\n");
   #endif
-  
+
   // check if done with examples
-  if (++example >= mlpc.num_examples)
+  if (++example >= ncfg.num_examples)
   {
     // if training update weights at end of epoch
-    if (mlpc.training)
+    if (ncfg.training)
     {
       //TODO: should be called or scheduled?
       w_update_weights ();
-      
+
       #if WEIGHT_HISTORY == TRUE
         // send weight history to host
         //TODO: write this function!
@@ -576,10 +479,10 @@ void w_advance_example (void)
     }
 
     // check if done with epochs
-    if (++epoch >= mlpc.num_epochs)
+    if (++epoch >= ncfg.num_epochs)
     {
       // if done then finish
-      spin1_stop ();
+      spin1_exit (SPINN_NO_ERROR);
       return;
     }
     else
@@ -589,7 +492,7 @@ void w_advance_example (void)
 
       // and, if training, initialize weight changes
       //TODO: find a better place for this operation
-      if (mlpc.training)
+      if (ncfg.training)
       {
         for (uint i = 0; i < wcfg.num_rows; i++)
         {
@@ -625,7 +528,7 @@ void w_switch_to_fw (void)
   #ifdef TRACE
     io_printf (IO_BUF, "w_switch_to_fw\n");
   #endif
-  
+
   // move to new FORWARD phase
   phase = SPINN_FORWARD;
 }
@@ -640,7 +543,7 @@ void w_switch_to_bp (void)
   #ifdef TRACE
     io_printf (IO_BUF, "w_switch_to_bp\n");
   #endif
-  
+
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 

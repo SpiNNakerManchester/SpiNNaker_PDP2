@@ -5,7 +5,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
-#include "sdram.h"
+#include "mlp_externs.h"
 
 #include "init_t.h"
 #include "comms_t.h"
@@ -13,114 +13,6 @@
 #include "activation.h"
 
 // set of routines to be used by T core to process data
-
-// ------------------------------------------------------------------------
-// global variables
-// ------------------------------------------------------------------------
-extern uint fwdKey;               // 32-bit packet ID for FORWARD phasees
-extern uint bkpKey;               // 32-bit packet ID for BACKPROP phasees
-extern uint stpKey;               // 32-bit packet ID for stop criterion
-
-extern uint         epoch;        // current training iteration
-extern uint         example;      // current example in epoch
-extern uint         evt;          // current event in example
-extern uint         num_events;   // number of events in current example
-extern uint         event_idx;    // index into current event
-extern proc_phase_t phase;        // FORWARD or BACKPROP
-extern uint         num_ticks;    // number of ticks in current event
-extern uint         max_ticks;    // maximum number of ticks in current event
-extern uint         min_ticks;    // minimum number of ticks in current event
-extern uint         tick;         // current tick in phase
-extern uint         ev_tick;      // current tick in event
-extern uchar        tick_stop;    // current tick stop decision
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// configuration structures (SDRAM)
-// ------------------------------------------------------------------------
-extern chip_struct_t        *ct; // chip-specific data
-extern uint                 *cm; // simulation core map
-extern uchar                *dt; // core-specific data
-extern mc_table_entry_t     *rt; // multicast routing table data
-extern weight_t             *wt; // initial connection weights
-extern mlp_set_t            *es; // example set data
-extern mlp_example_t        *ex; // example data
-extern mlp_event_t          *ev; // event data
-extern activation_t         *it; // example inputs
-extern activation_t         *tt; // example targets
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// network and core configurations
-// ------------------------------------------------------------------------
-extern global_conf_t  mlpc;       // network-wide configuration parameters
-extern chip_struct_t  ccfg;       // chip configuration parameters
-extern t_conf_t   tcfg;           // threshold core configuration parameters
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// threshold core variables
-// ------------------------------------------------------------------------
-extern activation_t   * t_outputs;     // current tick unit outputs
-extern activation_t   * t_output_history; // history array for outputs
-extern net_t          * t_nets;        // nets received from sum cores
-extern error_t        * t_errors[2];   // error banks: current and next tick
-extern uint             t_it_idx;      // index into current inputs/targets
-extern uint             t_tot_ticks;   // total ticks on current example
-extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
-extern uchar            t_active;      // processing nets/errors from queue?
-extern uchar            t_sync_done;   // have expected sync packets arrived?
-extern activation_t   * t_last_integr_output;  //last integrator output value
-extern long_deriv_t   * t_last_integr_output_deriv; //last integrator output deriv value
-extern activation_t   * t_instant_outputs; // current output value stored for the backward pass
-extern short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
-extern short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
-extern uchar            t_hard_clamp_en;       //hard clamp output enabled
-extern scoreboard_t     tf_arrived;    // keep track of expected nets
-extern uint             tf_thrds_init; // sync. semaphore initial value
-extern uint             tf_thrds_done; // sync. semaphore: proc & stop
-extern uchar            tf_stop_prev;  // previous group stop criterion met?
-extern uchar            tf_stop_crit;  // stop criterion met?
-extern uchar            tf_stop_init;  // sync. semaphore: stop daisy chain
-extern uchar            tf_stop_done;  // sync. semaphore: stop daisy chain
-extern stop_crit_t      tf_stop_func;  // stop evaluation function
-extern uint             tf_stop_key;   // stop criterion packet key
-extern uint             tb_procs;      // pointer to processing errors
-extern scoreboard_t     tb_arrived;    // keep track of expected errors
-extern uint             tb_thrds_done; // sync. semaphore: proc & stop
-extern int              t_max_output_unit; // unit with highest output
-extern int              t_max_target_unit; // unit with highest target
-extern activation_t     t_max_output;      // highest output value
-extern activation_t     t_max_target;      // highest target value
-// list of output pipeline procedures
-extern out_proc_t const t_out_procs[SPINN_NUM_OUT_PROCS];
-extern out_error_t const t_out_error[SPINN_NUM_ERROR_PROCS];
-extern long_deriv_t  * t_output_deriv;
-extern long_deriv_t  * t_output_deriv_history;
-extern delta_t        * t_deltas;
-extern activation_t   * t_target_history;
-extern net_t          * t_net_history;
-extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-#ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-  extern uint sent_bkp;  // packets sent in BACKPROP phase
-  extern uint pkt_recv;  // total packets received
-  extern uint spk_sent;  // sync packets sent
-  extern uint spk_recv;  // sync packets received
-  extern uint stp_sent;  // stop packets sent
-  extern uint stp_recv;  // stop packets received
-  extern uint wrng_phs;  // packets received in wrong phase
-  extern uint wght_ups;  // number of weight updates done
-  extern uint tot_tick;  // total number of ticks executed
-#endif
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // process FORWARD phase: compute outputs
@@ -147,7 +39,7 @@ void tf_process (uint null0, uint null1)
 
     // store net for BACKPROP computation,
     t_nets[inx] = net;
-    if (mlpc.training)
+    if (ncfg.training)
     {
       store_nets (inx);
     }
@@ -158,7 +50,7 @@ void tf_process (uint null0, uint null1)
 
     activation_t activation = (activation_t) t_outputs[inx];
 
-    if (mlpc.training)
+    if (ncfg.training)
     {
       store_outputs (inx);
     }
@@ -176,7 +68,7 @@ void tf_process (uint null0, uint null1)
                   activation
                 );
     #endif
-      
+
     #ifdef DEBUG
       pkt_sent++;
       sent_fwd++;
@@ -187,14 +79,10 @@ void tf_process (uint null0, uint null1)
       tf_stop_func (inx);
 
     // mark net as arrived,
-    #if SPINN_USE_COUNTER_SB == FALSE
-      tf_arrived |= (1 << inx);
-    #else
-      tf_arrived++;
-    #endif
+    tf_arrived++;
 
     // and check if all nets arrived (i.e., all outputs done)
-    if (tf_arrived == tcfg.f_all_arrived)
+    if (tf_arrived == tcfg.num_units)
     {
       // if possible, FORWARD stop criterion
       if (tcfg.output_grp)
@@ -278,7 +166,7 @@ void tb_process (uint null0, uint null1)
 
   // compute deltas based on pre-computed errors,
   //TODO: this needs checking!
-  for (uint inx = 0; inx < tcfg.num_outputs; inx++)
+  for (uint inx = 0; inx < tcfg.num_units; inx++)
   {
     if (tcfg.output_grp)
     {
@@ -302,7 +190,7 @@ void tb_process (uint null0, uint null1)
     restore_nets (inx, tick);
 
     compute_out_back (inx);
-    
+
     delta_t delta = t_deltas[inx];
 
     restore_outputs (inx, tick - 1);
@@ -310,14 +198,18 @@ void tb_process (uint null0, uint null1)
     // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
 
+    #ifdef DEBUG_CFG4
+      io_printf (IO_BUF, "td[%u]: 0x%08x\n", inx, delta);
+    #endif
+
     #ifdef DEBUG
       pkt_sent++;
       sent_bkp++;
     #endif
-    
+
     #ifdef DEBUG_VRB
-      io_printf(IO_BUF, "d[%2d][%2d] = %10.7f (%08x)\n", tcfg.delta_blk, inx,
-                 SPINN_CONV_TO_PRINT(delta, SPINN_DELTA_SHIFT),
+      io_printf(IO_BUF, "d[%2d] = %10.7f (%08x)\n", inx,
+                 SPINN_CONV_TO_PRINT (delta, SPINN_DELTA_SHIFT),
                  delta
                );
     #endif
@@ -364,30 +256,20 @@ void tf_advance_tick (uint null0, uint null1)
   #ifdef TRACE
     io_printf (IO_BUF, "tf_advance_tick\n");
   #endif
-  
+
   // initialize scoreboard for next tick,
   tf_arrived = 0;
 
-  // dump outputs to SDRAM for record keeping,
   #if SPINN_OUTPUT_HISTORY == TRUE
-    //TODO: works only if examples have a single event
-    //NOTE: could keep a pointer to current offset
-    //NOTE: could use DMA
-//###    spin1_memcpy(&oh[(((example * max_ticks) + tick) * mlpc.num_outs)
-//###                     +
-//###                     tcfg.output_offset
-//###                    ],
-//###                 t_outputs,
-//###                 tcfg.num_outputs * sizeof(short_activ_t)
-//###                );
+    //TODO: dump outputs to SDRAM for record keeping,
   #endif
 
   // if requested report outputs to host,
   if (tcfg.write_out)
   {
     // is this the last report?
-    if ((epoch    == (mlpc.num_epochs - 1))
-         && (example == (mlpc.num_examples - 1))
+    if ((epoch    == (ncfg.num_epochs - 1))
+         && (example == (ncfg.num_examples - 1))
          && (evt     == (num_events - 1))
          && (tick_stop)
        )
@@ -415,7 +297,7 @@ void tf_advance_tick (uint null0, uint null1)
     tick++;
     ev_tick++;
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "tf_tick: %d/%d\n", tick, tot_tick);
     #endif
   }
@@ -432,7 +314,7 @@ void tb_advance_tick (uint null0, uint null1)
   #ifdef TRACE
     io_printf (IO_BUF, "tb_advance_tick\n");
   #endif
-  
+
   #ifdef DEBUG
     tot_tick++;
   #endif
@@ -466,7 +348,7 @@ void tb_advance_tick (uint null0, uint null1)
     // and trigger computation
     spin1_schedule_callback (tb_process, NULL, NULL, SPINN_TB_PROCESS_P);
 
-    #ifdef TRACE
+    #ifdef DEBUG
       io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
     #endif
   }
@@ -482,12 +364,12 @@ void tf_advance_event (void)
   #ifdef TRACE
     io_printf (IO_BUF, "tf_advance_event\n");
   #endif
-  
+
   // check if done with events,
-  if (++evt >= num_events)
+  if ((++evt >= num_events)  || (tick == ncfg.global_max_ticks - 1))
   {
     // check if in training mode
-    if (mlpc.training)
+    if (ncfg.training)
     {
       // if training, save the number of ticks
       num_ticks = tick;
@@ -512,24 +394,24 @@ void tf_advance_event (void)
     if (tcfg.input_grp || tcfg.output_grp)
     {
       // update input/target index,
-      t_it_idx += tcfg.num_outputs;
+      t_it_idx += tcfg.num_units;
 
       // and update number of ticks for new event
       if (tcfg.is_last_output_group)
       {
         // maximum
         if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
-          max_ticks = (ev[event_idx + evt].max_time * mlpc.ticks_per_int)
+          max_ticks = (ev[event_idx + evt].max_time * ncfg.ticks_per_int)
             >> SPINN_FPREAL_SHIFT;
         else
-          max_ticks = (es->max_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
-      
+          max_ticks = (es->max_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+
         // minimum
         if (ev[event_idx + evt].min_time != SPINN_FP_NaN)
-          min_ticks = (ev[event_idx + evt].min_time * mlpc.ticks_per_int)
+          min_ticks = (ev[event_idx + evt].min_time * ncfg.ticks_per_int)
             >> SPINN_FPREAL_SHIFT;
         else
-          min_ticks = (es->min_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+          min_ticks = (es->min_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
       }
     }
 
@@ -551,16 +433,16 @@ void t_advance_example (void)
   #ifdef TRACE
     io_printf (IO_BUF, "t_advance_example\n");
   #endif
-  
+
   // check if done with examples
   //TODO: alternative algorithms for chosing example order!
-  if (++example >= mlpc.num_examples)
+  if (++example >= ncfg.num_examples)
   {
     // check if done with epochs
-    if (++epoch >= mlpc.num_epochs)
+    if (++epoch >= ncfg.num_epochs)
     {
       // done
-      spin1_stop ();
+      spin1_exit (SPINN_NO_ERROR);
       return;
     }
     else
@@ -575,10 +457,10 @@ void t_advance_example (void)
   num_events = ex[example].num_events;
   event_idx = ex[example].ev_idx;
 
-  // if input or output group initialize new event input/target index
+  // if input or output group initialise new event input/target index
   if (tcfg.input_grp || tcfg.output_grp)
   {
-    t_it_idx = ev[event_idx].it_idx * tcfg.num_outputs;
+    t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
   }
 
   // update number of ticks for new event
@@ -586,17 +468,17 @@ void t_advance_example (void)
   {
     // maximum
     if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
-      max_ticks = (ev[event_idx + evt].max_time * mlpc.ticks_per_int)
+      max_ticks = (ev[event_idx + evt].max_time * ncfg.ticks_per_int)
         >> SPINN_FPREAL_SHIFT;
     else
-      max_ticks = (es->max_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      max_ticks = (es->max_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
 
     // minimum
     if (ev[event_idx + evt].min_time != SPINN_FP_NaN)
-      min_ticks = (ev[event_idx + evt].min_time * mlpc.ticks_per_int)
+      min_ticks = (ev[event_idx + evt].min_time * ncfg.ticks_per_int)
         >> SPINN_FPREAL_SHIFT;
     else
-      min_ticks = (es->min_time * mlpc.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      min_ticks = (es->min_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
   }
 
   // check if ready to send initial unit outputs,
@@ -605,9 +487,9 @@ void t_advance_example (void)
 
   if (t_sync_done)
   {
-    // if ready clear synchronization flag,
+    // if ready clear synchronisation flag,
     t_sync_done = FALSE;
-  
+
     // restore interrupts,
     spin1_mode_restore (cpsr);
 
@@ -634,14 +516,14 @@ void t_advance_example (void)
 
 // ------------------------------------------------------------------------
 // BACKPROP phase: when the simulation is completed in the BACKPROP phase,
-// switch to the FORWARD phase again, if required 
+// switch to the FORWARD phase again, if required
 // ------------------------------------------------------------------------
 void t_switch_to_fw (void)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "t_switch_to_fw\n");
   #endif
-  
+
   // access queues with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
@@ -660,7 +542,7 @@ void t_switch_to_fw (void)
     // if empty flag going inactive
     t_active = FALSE;
   }
-  
+
   // and restore interrupts
   spin1_mode_restore (cpsr);
 }
@@ -669,14 +551,14 @@ void t_switch_to_fw (void)
 
 // ------------------------------------------------------------------------
 // FORWARD phase: when the simulation is completed in the FORWARD phase,
-// switch to the bacward phase if training is required 
+// switch to the backward phase if training is required
 // ------------------------------------------------------------------------
 void t_switch_to_bp (void)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "t_switch_to_bp\n");
   #endif
-  
+
   // access flags and queues with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
@@ -684,7 +566,7 @@ void t_switch_to_bp (void)
   phase = SPINN_BACKPROP;
 
   // initialize t_errors for next example
-  for (uint i = 0; i < tcfg.num_outputs; i++)
+  for (uint i = 0; i < tcfg.num_units; i++)
   {
     t_errors[tb_procs][i] = 0;
   }
@@ -692,7 +574,7 @@ void t_switch_to_bp (void)
   // start processing in BACKPROP phase,
   //TODO: check!
   spin1_schedule_callback (tb_process, NULL, NULL, SPINN_TB_PROCESS_P);
-  
+
   // and restore interrupts
   spin1_mode_restore (cpsr);
 }
@@ -700,17 +582,17 @@ void t_switch_to_bp (void)
 
 
 // ------------------------------------------------------------------------
-// in the FORWARD phase the convergence critieron may require the simulation to
+// in the FORWARD phase the convergence criterion may require the simulation to
 // stop before the maximum time is reached. This routine sends a broadcast
 // message to communicate the final decision if the criterion has been reached
-// across all the output groups to all the cores in teh simulation
+// across all the output groups to all the cores in the simulation
 // ------------------------------------------------------------------------
 void tf_send_stop (uint null0, uint null1)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "tf_send_stop\n");
   #endif
-  
+
   // "aggregate" criteria,
   tf_stop_crit = tf_stop_crit && tf_stop_prev;
 
@@ -719,6 +601,7 @@ void tf_send_stop (uint null0, uint null1)
     spin1_delay_us (2000); //##
 
     tf_stop_crit = (ev_tick == max_ticks)
+                     || (tick == ncfg.global_max_ticks - 1)
                      || (tf_stop_crit && (ev_tick >= min_ticks));
     tick_stop = tf_stop_crit;
   }
@@ -745,8 +628,8 @@ void tf_send_stop (uint null0, uint null1)
 
 
 // ------------------------------------------------------------------------
-// this routine initializes the output values of the units. There is a conflict
-// in the initialization routine between lens 2.63 and lens 2.64.
+// this routine initialises the output values of the units. There is a conflict
+// in the initialisation routine between lens 2.63 and lens 2.64.
 // The current version implements the routine as expressed by lens 2.63, with
 // comments on the line to change to apply lens version 2.64
 // ------------------------------------------------------------------------
@@ -755,53 +638,27 @@ void t_init_outputs (uint null0, uint null1)
   #ifdef TRACE
     io_printf (IO_BUF, "t_init_outputs\n");
   #endif
-  
+
   // initialize every unit output and send for processing
-  for (uint i = 0; i < tcfg.num_outputs; i++)
+  for (uint i = 0; i < tcfg.num_units; i++)
   {
     // setup the initial output value.
-    // Lens has two ways of initialise the output value, as defined in Lens 2.63
-    // and Lens 2.64, and the two ways are not compatible
-
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-//NOTE: The following code follows modification MOD009 of Lens version 2.64:
-/******************************************************************************/
-/*  MOD009: (09/10/05) (i) Bug fix for continuous network(courtesy Dave Plaut)*/
-/******************************************************************************/
-// it has been commented out as per e-mail interchange with Stephen Welbourne on 20th Sep 2013
-// the lens code as per MOD009 is the following, from: void resetOutputs(Group G) in act.c in Lens
-//
-//  if (!G->inputProcs || G->outputType & HARD_CLAMP) {
-//    FOR_EACH_UNIT2(G, U->output = O[u] = (isNaN(U->externalInput) ? initOutput : U->externalInput));
-//  } else {
-//    FOR_EACH_UNIT2(G, U->output = O[u] = initOutput);
-//  }
-//
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
+    // Lens has two ways of initialise the output value,
+	// as defined in Lens 2.63 and Lens 2.64,
+	// and the two ways are not compatible
 
     // use initial values,
-    // TODO: need to verify initInput with Lens    
+    // TODO: need to verify initInput with Lens
     // NOTE: The following code follows the output of Lens 2.63:
     // initialise the output value of the units
 
-    // hack to force the initial output value of the bias unit to be 1 rather 0.999969
-    if (tcfg.initOutput == 32767)
-    {
-      t_outputs[i] = SPINN_ACTIV_ONE;
-    }
-    else
-    { 
-      t_outputs[i] = (tcfg.initOutput << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
-    }
-    
+    t_outputs[i] = tcfg.initOutput;
+
     // if the output integrator is used
     // reset the array of the last values
     if (tcfg.out_integr_en) {
-      t_last_integr_output[i] = (tcfg.initOutput << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+      t_last_integr_output[i] = tcfg.initOutput;
+
       t_last_integr_output_deriv[i] = 0;
     }
 
@@ -811,6 +668,10 @@ void t_init_outputs (uint null0, uint null1)
                                    WITH_PAYLOAD
                                  )
           );
+
+    #ifdef DEBUG_CFG3
+      io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
+    #endif
 
     #ifdef DEBUG
       pkt_sent++;
@@ -823,11 +684,11 @@ void t_init_outputs (uint null0, uint null1)
 
 // ------------------------------------------------------------------------
 // This routine calls in the appropriate order all the elements of the output
-// pipeline, as expressed in the array passed by splens tcfg.procs_list[i].
+// pipeline, as expressed in the array tcfg.procs_list[i].
 // the routines to be called are listed in the array t_out_procs[]
 // The SPINN_STORE_OUTPUT and the SPINN_STORE_TARGET flags are currently set
 // at compile time, but they should be passed through the tcfg structure.
-// This has also an implication in the initialization routine, as the memory
+// This has also an implication in the initialisation routine, as the memory
 // where to store the history needs to be allocated in SDRAM.
 // Finally also the return values of the error function (output_deriv) need to
 // be stored to be used in the BACKPROP phase
@@ -842,13 +703,13 @@ void compute_out (uint inx)
 
   #ifdef DEBUG_VRB
     char* group;
-    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
+    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example, tick, inx);
   #endif
 
-  // initialize the array element where to store the output value for the 
+  // initialize the array element where to store the output value for the
   t_outputs[inx] = 0;
-  
+
   // compute all the elements of the output pipeline
   // from the observations in lens, the logistic is always the first element of
   // the output pipeline, which uses the value received through the multicast
@@ -860,8 +721,8 @@ void compute_out (uint inx)
   }
 
   // if the network is set for training, then compute the output derivative
-  // using the appropriate function as set by splens
-  if (mlpc.training && tcfg.output_grp)
+  // using the appropriate function
+  if (ncfg.training && tcfg.output_grp)
   {
     #ifdef TRACE_VRB
       io_printf (IO_BUF, "compute output deriv\n");
@@ -877,9 +738,9 @@ void compute_out (uint inx)
 
   // if in training mode store targets and output derivatives.
   //TODO: for non-continuous networks, this needs to check the requirement
-  //TODO: to have these histories saved, which needs to come from splens.
-  //TODO: For continuous networks, these are always required. 
-  if (mlpc.training)
+  //TODO: to have these histories saved, which needs configuration parameter.
+  //TODO: For continuous networks, these are always required.
+  if (ncfg.training)
   {
     store_targets (inx);
     store_output_deriv (inx);
@@ -897,7 +758,7 @@ void store_targets (uint inx)
     io_printf (IO_BUF, "store_targets\n");
   #endif
 
-  t_target_history[(tick * tcfg.num_outputs) + inx] = tt[t_it_idx + inx];
+  t_target_history[(tick * tcfg.num_units) + inx] = tt[t_it_idx + inx];
 }
 // ------------------------------------------------------------------------
 
@@ -911,7 +772,7 @@ void store_output_deriv (uint inx)
     io_printf (IO_BUF, "store_output_deriv\n");
   #endif
 
-  t_output_deriv_history[(tick * tcfg.num_outputs) + inx] = t_output_deriv[inx];
+  t_output_deriv_history[(tick * tcfg.num_units) + inx] = t_output_deriv[inx];
 }
 // ------------------------------------------------------------------------
 
@@ -925,8 +786,8 @@ void restore_output_deriv (uint inx, uint tick)
     io_printf (IO_BUF, "restore_output_deriv\n");
   #endif
 
-  t_output_deriv[inx] = 
-    t_output_deriv_history[(tick * tcfg.num_outputs) + inx];
+  t_output_deriv[inx] =
+    t_output_deriv_history[(tick * tcfg.num_units) + inx];
 }
 // ------------------------------------------------------------------------
 
@@ -940,7 +801,7 @@ void store_nets (uint inx)
     io_printf (IO_BUF, "store_nets\n");
   #endif
 
-  t_net_history[(tick * tcfg.num_outputs) + inx] = t_nets[inx];
+  t_net_history[(tick * tcfg.num_units) + inx] = t_nets[inx];
 }
 // ------------------------------------------------------------------------
 
@@ -954,7 +815,7 @@ void restore_nets (uint inx, uint tick)
     io_printf (IO_BUF, "restore_nets\n");
   #endif
 
-  t_nets[inx] = t_net_history[((tick * tcfg.num_outputs) + inx)];
+  t_nets[inx] = t_net_history[((tick * tcfg.num_units) + inx)];
 }
 // ------------------------------------------------------------------------
 
@@ -964,10 +825,10 @@ void restore_nets (uint inx, uint tick)
 void store_outputs (uint inx)
 {
   #ifdef TRACE_VRB
-    io_print (IO_BUF, "store_outputs\n");
+    io_printf (IO_BUF, "store_outputs\n");
   #endif
 
-  t_output_history[(tick * tcfg.num_outputs) + inx] = t_outputs[inx];
+  t_output_history[(tick * tcfg.num_units) + inx] = t_outputs[inx];
 }
 // ------------------------------------------------------------------------
 
@@ -980,12 +841,12 @@ void restore_outputs (uint inx, uint tick)
     io_printf (IO_BUF, "restore_outputs\n");
   #endif
 
-  t_outputs[inx] = t_output_history[((tick * tcfg.num_outputs) + inx)];
+  t_outputs[inx] = t_output_history[((tick * tcfg.num_units) + inx)];
 }
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
-// compute the logistic function starting from the value received through the 
+// compute the logistic function starting from the value received through the
 // multicast packet.
 // ------------------------------------------------------------------------
 void out_logistic (uint inx)
@@ -1016,11 +877,11 @@ void out_integr (uint inx)
   activation_t new_output = t_outputs[inx];
 
   // s0.16
-  lfpreal dt = tcfg.out_integr_dt;
+  long_fpreal dt = tcfg.out_integr_dt;
 
 
   // store the output for the backward path
-  t_instant_outputs[((tick - 1) * tcfg.num_outputs) + inx] = t_outputs[inx];
+  t_instant_outputs[((tick - 1) * tcfg.num_units) + inx] = t_outputs[inx];
 
   // compute the of the output integrator and round off
   // s36.27 = (s0.16 * (s4.27 - s4.27)) >> 16
@@ -1040,7 +901,7 @@ void out_integr (uint inx)
   else
     // representation in 36.27 within the range (-1; 1) can be reduced to 4.27
     t_outputs[inx] = (activation_t) out_tmp;
-  
+
   // store the integrator state for the next iteration
   t_last_integr_output[inx] = t_outputs[inx];
 }
@@ -1069,9 +930,9 @@ void out_hard_clamp (uint inx)
   // TODO: if training, store the injected value in SDRAM. This memory area needs
   // to be allocated during initialization
 /*
-  if (mlpc.training)
+  if (ncfg.training)
   {
-    short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_outputs;
+    short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_units;
     tmp[inx] = t_outputs[inx];
   }
 */
@@ -1095,27 +956,6 @@ void out_bias (uint inx)
 // ------------------------------------------------------------------------
 
 
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
- * Lens computation of the weak clamp operator
- * 
- * static void weakClampOutput(Group G, GroupProc P) {
- *   real *originalOutput = P->unitHistoryData[HISTORY_INDEX(Net->currentTick)],
- *     strength = chooseValue(G->clampStrength, Net->clampStrength);
- *   FOR_EACH_UNIT2(G, {
- *     originalOutput[u] = U->output;
- *     if (!isNaN(U->externalInput))
- *       U->output += strength * (U->externalInput - U->output);
- *   });
- * }
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
-
-
 // ------------------------------------------------------------------------
 // compute the weak clamp, as defined by lens, and store the injected value, if
 // the network needs training
@@ -1125,37 +965,36 @@ void out_weak_clamp (uint inx)
   #ifdef TRACE_VRB
     io_printf (IO_BUF, "out_weak_clamp\n");
   #endif
-  
+
   // TODO: if training, store the injected value in SDRAM. This memory area needs
   // to be allocated during initialization
 /*
-  if (mlpc.training)
+  if (ncfg.training)
   {
     //store previous value of t_output for BACKPROP computation
-    short_activ_t * tmp = t_out_weak_clamp_data + tick * tcfg.num_outputs;
+    short_activ_t * tmp = t_out_weak_clamp_data + tick * tcfg.num_units;
     tmp[inx] = t_outputs[inx] << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
   }
 */
 
-  long_activ_t external_input = it[t_it_idx + inx];         // 49.15 repr.
-
   // compute only if input is not NaN
-  if (external_input != (long_activ_t) SPINN_ACTIV_NaN)
+  if (it[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-    lfpreal weak_clamp_strength = tcfg.weak_clamp_strength; // 48.16 repr.
-    long_activ_t output_value = t_outputs[inx];             // s36.27 repr.
-    
-    // computation of the weak clamp output following Lens implementation 
+	long_activ_t external_input = it[t_it_idx + inx];           // s36.27
+    long_fpreal weak_clamp_strength = tcfg.weak_clamp_strength; // s48.16
+    long_activ_t output_value = t_outputs[inx];                 // s36.27
+
+    // computation of the weak clamp output following Lens implementation
     // representation: s36.27 + (48.16 * (s36.27 - s36.27) >> 16) = s36.27
     long_activ_t output = output_value
                              + ((weak_clamp_strength
                                  * (external_input - output_value))
                                    >> SPINN_FPREAL_SHIFT
                                );
-    
+
     // saturate output and cast into 1.15 representation
     if (output > (long_activ_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
-      t_outputs[inx] = (activation_t) SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);  
+      t_outputs[inx] = (activation_t) SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
     else if (output < (long_activ_t) (SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
       t_outputs[inx] = (activation_t) SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
     else
@@ -1177,12 +1016,12 @@ void compute_out_back (uint inx)
 
   #ifdef DEBUG_VRB
     char* group;
-    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_outputs == 1) ? "Bias" : "Hidden"));
+    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
     io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d - Unit: %d\n", group, example, tick, inx);
   #endif
-  
+
   int i;
-  
+
   // if the output pipeline includes one or more elements, compute them in the
   // reverse order
   if (tcfg.num_out_procs >= 1)
@@ -1217,7 +1056,7 @@ void out_logistic_back (uint inx)
 
   // shift back to 27 decimal places
   tmp1 = (tmp1 >> (SPINN_ACTIV_SHIFT + SPINN_ACTIV_SHIFT - SPINN_ACTIV_SHIFT));
-  
+
   // compute error delta,
   // s36.27 = s36.27 * s36.27
   long_delta_t tmp2 = (long_delta_t) t_output_deriv[inx] * tmp1;
@@ -1225,7 +1064,7 @@ void out_logistic_back (uint inx)
   // round off,
   tmp2 += 1 << (SPINN_LONG_DERIV_SHIFT + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT - 1);
 
-  // s8.23 = s36.27 >> (27 + 27 - 23) 
+  // s8.23 = s36.27 >> (27 + 27 - 23)
   t_deltas[inx] = (delta_t) (tmp2 >> (SPINN_LONG_DERIV_SHIFT
                               + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT));
 }
@@ -1243,39 +1082,20 @@ void out_integr_back (uint inx)
 
   long_deriv_t last_output_deriv = t_last_integr_output_deriv[inx];
 
-  lfpreal dt = (lfpreal) tcfg.out_integr_dt;
+  long_fpreal dt = (long_fpreal) tcfg.out_integr_dt;
 
   // reset output to value stored during forward pass
-  t_outputs[inx] = t_instant_outputs[((tick - 1) * tcfg.num_outputs) + inx];
+  t_outputs[inx] = t_instant_outputs[((tick - 1) * tcfg.num_units) + inx];
 
   // s36.27 = (s47.16 * s36.27) >> 16
   long_deriv_t d = (dt * last_output_deriv) >> SPINN_FPREAL_SHIFT;
   last_output_deriv += t_output_deriv[inx] - d;
   t_output_deriv[inx] = d;
-  
+
   // store the integrator state for the next iteration
   t_last_integr_output_deriv[inx] = last_output_deriv;
 }
 // ------------------------------------------------------------------------
-
-
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
-static void hardClampOutputBack(Group G, GroupProc P) {
-  printf ("hardClampOutputBack\n");
-  int tick = HISTORY_INDEX(Net->currentTick);
-  real *externalInputHistory = P->unitHistoryData[tick];
-  FOR_EACH_UNIT2(G, {
-    if (!isNaN(externalInputHistory[u]))
-      U->inputDeriv = 0.0;
-  });
-}
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
 
 
 // ------------------------------------------------------------------------
@@ -1288,33 +1108,13 @@ void out_hard_clamp_back (uint inx)
   #endif
 
 /*
-  short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_outputs;
-  
+  short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_units;
+
   if (tmp[inx] != SPINN_SHORT_ACTIV_NaN)
     t_output_deriv[inx] = 0;
 */
 }
 // ------------------------------------------------------------------------
-
-
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
-static void weakClampOutputBack(Group G, GroupProc P) {
-  real *originalOutput = P->unitHistoryData[HISTORY_INDEX(Net->currentTick)],
-    scale = 1.0 - chooseValue(G->clampStrength, Net->clampStrength);
-  FOR_EACH_UNIT2(G, {
-    if (U->output != originalOutput[u]) {
-      U->output = originalOutput[u];
-      U->outputDeriv *= scale;
-    }
-  });
-}
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
 
 
 // ------------------------------------------------------------------------
@@ -1327,20 +1127,6 @@ void out_weak_clamp_back (uint inx)
   #endif
 }
 // ------------------------------------------------------------------------
-
-
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
-static void biasClampOutputBack(Group G, GroupProc P) {
-  printf ("biasClampOutputBack\n");
-  FOR_EACH_UNIT(G, U->inputDeriv = 0.0);
-}
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
 
 
 // ------------------------------------------------------------------------
@@ -1372,21 +1158,21 @@ int init_out_integr ()
   // allocate memory for integrator state
   //NOTE: these variables are initialised in function init_outputs ()
   if ((t_last_integr_output = ((activation_t *)
-       spin1_malloc (tcfg.num_outputs * sizeof(activation_t)))) == NULL
+       spin1_malloc (tcfg.num_units * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((t_last_integr_output_deriv = ((long_deriv_t *)
-       spin1_malloc (tcfg.num_outputs * sizeof(long_deriv_t)))) == NULL
+       spin1_malloc (tcfg.num_units * sizeof(long_deriv_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((t_instant_outputs = ((activation_t *)
-       spin1_malloc (tcfg.num_outputs * mlpc.global_max_ticks * sizeof(activation_t)))) == NULL
+       spin1_malloc (tcfg.num_units * ncfg.global_max_ticks * sizeof(activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -1398,7 +1184,7 @@ int init_out_integr ()
 
 
 // ------------------------------------------------------------------------
-// initialization of the hard clamp includes SDRAM memory allocation to store
+// initialisation of the hard clamp includes SDRAM memory allocation to store
 // information related to the values injected. This function is currently a stub
 // ------------------------------------------------------------------------
 int init_out_hard_clamp ()
@@ -1408,12 +1194,12 @@ int init_out_hard_clamp ()
   #endif
 
 /*
-  if (mlpc.training)
+  if (ncfg.training)
   {
     // allocate memory for outputs
     if ((t_out_hard_clamp_data = ((short_activ_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(short_activ_t),
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof(short_activ_t),
                        0, ALLOC_LOCK)
                        )) == NULL
        )
@@ -1421,7 +1207,7 @@ int init_out_hard_clamp ()
       return (SPINN_MEM_UNAVAIL);
     }
   }
-  
+
   io_printf (IO_BUF, "hc store addr %08x\n", (int) t_out_hard_clamp_data);
 */
 
@@ -1431,7 +1217,7 @@ int init_out_hard_clamp ()
 
 
 // ------------------------------------------------------------------------
-// initialization of the hard clamp includes SDRAM memory allocation to store
+// initialisation of the weak clamp includes SDRAM memory allocation to store
 // information related to the values injected. This function is currently a stub
 // ------------------------------------------------------------------------
 int init_out_weak_clamp ()
@@ -1441,12 +1227,12 @@ int init_out_weak_clamp ()
   #endif
 
 /*
-  if (mlpc.training)
+  if (ncfg.training)
   {
     // allocate memory for outputs
     if ((t_out_weak_clamp_data = ((short_activ_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_outputs * mlpc.global_max_ticks * sizeof(short_activ_t),
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof(short_activ_t),
                        0, ALLOC_LOCK)
                        )) == NULL
        )
@@ -1462,10 +1248,10 @@ int init_out_weak_clamp ()
 
 
 // ------------------------------------------------------------------------
-// evaluation of the standard convergence criteria.
+// evaluation of the standard convergence criterion
 // for each unit in the output group check if the output value is close
 // to the target value, with the "group_criterion" variable defining the
-// acceptance margin
+// acceptance margin.
 // ------------------------------------------------------------------------
 void std_stop_crit (uint inx)
 {
@@ -1476,42 +1262,24 @@ void std_stop_crit (uint inx)
   // evaluate only if target is not NaN
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
+    // s16.15 = (s4.27 - s4.27) >> (27 - 15)
+    error_t error = (error_t) ABS ((t_outputs[inx] - tt[t_it_idx + inx]) >>
+    		(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
-    //s16.15 = s4.27 - s4.27 >> 12
-    error_t error = (error_t) (ABS (t_outputs[inx] - tt[t_it_idx + inx] >> (SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT)));
-    
-    // Correction to fixed point arithmetic: tcfg.group_criterion is assumed
-    // to be in a format with 15 decimal bits, but appears to have 16, making
-    // it twice the size it should be.  Therefore divide by two.
-    error_t group_criterion = tcfg.group_criterion / 2;
-
-    tf_stop_crit = tf_stop_crit && (error < group_criterion);
+    tf_stop_crit = tf_stop_crit && (error < tcfg.group_criterion);
   }
 }
 // ------------------------------------------------------------------------
 
 
-/*
 // ------------------------------------------------------------------------
-// The following routine has only been used for debugging purposes
-// and the only scope for it is to run the simulation always for the maximum
-// number of ticks
-// ------------------------------------------------------------------------
-void max_stop_crit (uint inx)  //## DEBUGGING
-{
-  tf_stop_crit = FALSE;
-}
-*/
-
-
-// ------------------------------------------------------------------------
-// evaluation of the "max" convergence criteria.
+// evaluation of the "max" convergence criterion
 // for each unit in the output group check if both the output and target values
 // are the maximum in the group and, in this case, if their difference is less
 // or equal than the tcfg.group_criterion value.
 // TODO: this routine needs to be modified to adapt to the case in which the
-// output group is split across multiple cores, as this i sa global convergence
-// rule, rather than an individual one, as the standard convergence criterion
+// output group is split across multiple cores, as this is a global convergence
+// rule, rather than an individual one, as the standard convergence criterion.
 // ------------------------------------------------------------------------
 void max_stop_crit (uint inx)
 {
@@ -1534,17 +1302,13 @@ void max_stop_crit (uint inx)
       t_max_target_unit = inx;
     }
 
-    //s16.15 = s4.27 - s4.27 >> 12
-    error_t error = (error_t) ABS ((t_max_output - t_max_target) >> (SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
+    // s16.15 = (s4.27 - s4.27) >> (27 - 15)
+    error_t error = (error_t) ABS ((t_max_output - t_max_target) >>
+    			(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
-    // Correction to fixed point arithmetic: tcfg.group_criterion is assumed
-    // to be in a format with 15 decimal bits, but appears to have 16, making
-    // it twice the size it should be.  Therefore divide by two.
-    error_t group_criterion = tcfg.group_criterion / 2;
-    
     if ((t_max_output_unit == -1)
 	 || ((t_max_output_unit == t_max_target_unit)
-	     && (error < group_criterion)
+	     && (error < tcfg.group_criterion)
             )
        )
       tf_stop_crit = TRUE;
@@ -1565,42 +1329,13 @@ void error_squared (uint inx)
     io_printf (IO_BUF, "error_squared\n");
   #endif
 
+  // evaluate only if target is not NaN
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
     t_output_deriv[inx] = ((long_deriv_t) t_outputs[inx] - (long_deriv_t) tt[t_it_idx + inx]);
   else
     t_output_deriv[inx] = 0;
 }
 // ------------------------------------------------------------------------
-
-
-/******************************************************************************/
-/*  LENS code starts                                                          */
-/******************************************************************************/
-/*
-#define SMALL_VAL ((double) 1e-8)
-#define LARGE_VAL ((double) (SPINN_ACTIV_MAX >> SPINN_ACTIV_SHIFT)+1)
-
-#define SIMPLE_CED(y, d)\
-     ((((real) (y)*(1.0-(y))) <= SMALL_VAL) ?\
-     (((real) (y)-(d)) * LARGE_VAL) :\
-       (((real) (y)-(d))/((real) (y)*(1.0-(y)))))
-       
-#define CED_ZERO_TARGET(y)\
-     (((real) (1.0-(y)) <= SMALL_VAL) ? LARGE_VAL :\
-     ((real) 1.0/(1.0-(y))))
-     
-#define CED_ONE_TARGET(y)\
-     (((real) (y) <= SMALL_VAL) ? -LARGE_VAL :\
-     ((real) -1.0/(y)))
-     
-#define CROSS_ENTROPY_DERIV(y, d)\
-     (((real) (d) == 0.0) ? CED_ZERO_TARGET(y) :\
-       (((real) (d) == 1.0) ? CED_ONE_TARGET(y) :\
-     SIMPLE_CED(y, d)))
-*/
-/******************************************************************************/
-/*  LENS code end                                                             */
-/******************************************************************************/
 
 
 // ------------------------------------------------------------------------
@@ -1636,7 +1371,7 @@ void error_cross_entropy (uint inx)
       {
         derivative_t numerator = (derivative_t) SPINN_DERIV_ONE; //representation: 17.15
         derivative_t denominator = (derivative_t) SPINN_DERIV_ONE - (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)); //representation: 17.15
-  
+
         // the left shift needs to be done before the division, as the
         // precision reduces with the division
         // representation: s36.27
@@ -1684,7 +1419,7 @@ void error_cross_entropy (uint inx)
         derivative_t numerator = ((derivative_t) (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)) - (derivative_t) (tt[t_it_idx + inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT))); //representation: 17.15
         derivative_t one = (derivative_t) SPINN_DERIV_ONE; //representation: 17.15
         long_deriv_t denominator = ((long_deriv_t) t_outputs[inx] * (long_deriv_t) (one - (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)))) >> SPINN_ACTIV_SHIFT; //representation: 49.15
-        
+
         // representation: s36.27
         t_output_deriv[inx] = (((long_deriv_t) numerator << SPINN_LONG_DERIV_SHIFT) / (long_deriv_t) denominator);
       }

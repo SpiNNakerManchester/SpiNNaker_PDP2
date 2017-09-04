@@ -1,93 +1,57 @@
-SpiNNaker_PDP2 README
-=====================
+SpiNNaker_PDP2: MLPs on SpiNNaker
+=================================
 
------------------------------------------------
-***********************************************
------------------------------------------------
-GIT tag: final.pacman.48
+This repository contains software to implement artificial neural
+networks based on Multi-layer Perceptrons (MLP) on SpiNNaker.
+These MLP networks use back-propagation as their training mechanism.
 
-This is the FINAL commit for the pacman48-based
-version of SpiNNaker_PDP2.
+The MLPs implemented here follow the 'Lens' style, but can easily be
+adapted to a different style or feature set. For further information
+about Lens see:
 
-This code has been ported to work based on the
-SpiNNaker Graph Front End platform. Any further
-development will be on that platform.
+http://web.stanford.edu/group/mbc/LENSManual/
 
-Most of the issues reported in this file have
-now been added as issues in the GIT repository
-and will, therefore, be removed from this file.
------------------------------------------------
-***********************************************
------------------------------------------------
+The following publication describes the basic algorithm used to implement
+MLPs on SpiNNaker:
 
-This file lists bugs and issues related to the development of the
-SpiNNaker C-code to implement multi-layer perceptrons in lens
-style. There is no particular order or structure to the file.
+X Jin, M Luján, MM Khan, LA Plana, AD Rast, SR Welbourne and SB Furber,
+*Algorithm for Mapping Multilayer BP Networks onto the SpiNNaker
+Neuromorphic Hardware*,
+Ninth International Symposium on Parallel and Distributed Computing,
+Istanbul, Turkey, 2010, pp. 9-16.
+doi: 10.1109/ISPDC.2010.10
+URL: http://ieeexplore.ieee.org/document/5532476/
 
-Fixed-point representation
---------------------------
-1. Weights have now been changed to s16.15 representation, which allows
-for much greater precision, and also for the handling of much larger
-weights.  Previously, with the s3.12 representation, weights in some
-examples exceeded the [-7.0, 7.0) range.  Hopefully this is no longer
-an issue.
+Development Platform
+--------------------
 
-2. With large weights, partial nets (s4.27 representation) can get
-outside the [-16.0, 16.0) range. May need to use a longer type and
-saturate. This may also be the case for error deltas in backprop.
+This software is based on the SpiNNaker Graph-Front-End (GFE) platform.
+The GFE must be installed to use this software. For further information
+about the GFE see:
 
+http://spinnakermanchester.github.io/graph_front_end/3.0.0/index.html
 
-Stopping criteria
------------------
-1. pacman uses incorrect fixed-point representation for stopping
-criteria. Currently fixed in the places where they are used, should
-fix it in pacman or during initialization to avoid potential
-inconsistencies.
+https://github.com/SpiNNakerManchester/SpiNNakerGraphFrontEnd
 
-2. Add SpiNNaker support for grace period. It shouldn't even evaluate
-errors during that period.
+As with most SpiNNaker software, this repository contains C code that
+runs on SpiNNaker, which implements the actual MLP network, and python
+code that runs on the host machine, which manages the distribution of
+tasks across SpiNNaker cores and sets up the communications network
+to support inter-core communication. This code is also responsible for
+the downloading of data to SpiNNaker and the collection of results.
 
+Acknowledgments
+---------------
 
-Output files have differences between lens and SpiNNaker
---------------------------------------------------------
-1. Outputs reported are inconsistent in tick -1. lens reports 0 while
-SpiNNaker reports 0.5. lens itself is not consistent (output is 0 in
-rand10x40 and 0.5 in rogers - may have to do with output integrator in
-rand10x40).
+Work on Multi-layer Perceptrons on SpiNNaker started as part of the
+project 'PDP-squared: Meaningful PDP language models using parallel
+distributed processors', conducted in collaboration with researchers
+from the School of Psychology at The University of Manchester. The project
+was supported by EPSRC (the UK Engineering and Physical Sciences Research
+Council) under grant EP/F03430X/1. Ongoing development is supported by
+the EU ICT Flagship Human Brain Project (FP7-604102). We gratefully
+acknowledge these institutions for their support.
 
-2. lens reports the number of weight updates while SpiNNaker doesn't.
-
-3. lens reprots the actual number of ticks fro every example while
-SpiNNaker reports the maximum.
-
-4. target values are not reported by lens during the grace period
-while SpiNNaker does it every tick.
-
-PACMAN Changes
---------------
-In order to change weight representations from s3.12 to s16.15,
-changes to pacman were required.  Therefore the correct pacman code is
-required to be able to run this branch of PDP2.
-
-Consequences
-------------
-The changes to pacman for the weight representation had the fortunate
-side effect of changing inputs and targets from 16-bit to 32-bit
-numbers, meaning that a value of 1 can now be properly represented
-(instead of 0.999969, as previously.  This required the addition of 2
-minor "hacks" to make things consistent:
-
-1. The initOutput value for the bias units is still 0.999969.  This
-has therefore been corrected within the code at the point at which
-initial outputs are loaded into `t_outputs`, as I have been unable to
-ascertain the value of 0.999969 is being picked up from.
-
-2. Targets are now 32 bit values, rather than 16 bit values, but
-`output_mon_lens` expects them to be loaded into the array `my_data`
-as 16 bit values.  When cast to 16 bit values, a target of 1 becomes
--1 because the 16 bit activation is s0.15.  This was not previously a
-problem because a true 1 was never actually represented, 0.999969 was
-used instead.  Therefore the code at this point now checks whether the
-target is 1, and if so, loads the value `SPINN_SHORT_ACTIV_MAX`
-(0.999969) into the array.  `output_mon_lens` is then able to handle
-this as before, and outputs a target value of 1.
+Many people have contributed to the development of MLPs on SpiNNaker,
+amongst them J Moy, LA Plana, SR Welbourne, X Jin, AD Rast, S Davis
+and SB Furber.
