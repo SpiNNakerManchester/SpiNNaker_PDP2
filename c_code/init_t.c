@@ -129,17 +129,23 @@ uint t_init (void)
   {
     // get max number of ticks for first event
     if (ev[event_idx].max_time != SPINN_FP_NaN)
-      max_ticks = (ev[event_idx].max_time * ncfg.ticks_per_int)
-                    >> SPINN_FPREAL_SHIFT;
+      max_ticks = (((ev[event_idx].max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                     >> SPINN_FPREAL_SHIFT;
     else
-      max_ticks = (es->max_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      max_ticks = (((es->max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                     >> SPINN_FPREAL_SHIFT;
 
     // get min number of ticks for first event
     if (ev[event_idx].min_time != SPINN_FP_NaN)
-      min_ticks = (ev[event_idx].min_time * ncfg.ticks_per_int)
+      min_ticks = (((ev[event_idx].min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                    + (1 << (SPINN_FPREAL_SHIFT - 1)))
                     >> SPINN_FPREAL_SHIFT;
     else
-      min_ticks = (es->min_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      min_ticks = (((es->min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                    + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                    >> SPINN_FPREAL_SHIFT;
   }
 
   // initialize pointers to received errors
@@ -238,14 +244,22 @@ uint t_init (void)
       // update number of ticks for new event
       if (ev[event_idx + i].max_time != SPINN_FP_NaN)
       {
-        t_tot_ticks += (ev[event_idx + i].max_time * ncfg.ticks_per_int)
+        t_tot_ticks += (((ev[event_idx + i].max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
                          >> SPINN_FPREAL_SHIFT;
       }
       else
       {
-        t_tot_ticks += (es->max_time * ncfg.ticks_per_int)
+        t_tot_ticks += (((es->max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
                          >> SPINN_FPREAL_SHIFT;
+        io_printf (IO_BUF, "Max time: %r, ticks per interval: %d, t_tot_ticks: %d\n", ((es->max_time + SPINN_SMALL_VAL) << 1), ncfg.ticks_per_int, t_tot_ticks);
       }
+    }
+
+    if (t_tot_ticks > ncfg.global_max_ticks - 1)
+    {
+      t_tot_ticks = ncfg.global_max_ticks - 1;
     }
 
     // schedule sending of initial data to host

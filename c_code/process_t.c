@@ -270,7 +270,7 @@ void tf_advance_tick (uint null0, uint null1)
     // is this the last report?
     if ((epoch    == (ncfg.num_epochs - 1))
          && (example == (ncfg.num_examples - 1))
-         && (evt     == (num_events - 1))
+         && ((evt     == (num_events - 1)) || (tick == (ncfg.global_max_ticks - 1)))
          && (tick_stop)
        )
     {
@@ -365,8 +365,14 @@ void tf_advance_event (void)
     io_printf (IO_BUF, "tf_advance_event\n");
   #endif
 
-  // check if done with events,
-  if ((++evt >= num_events)  || (tick == ncfg.global_max_ticks - 1))
+  // check if done with ticks
+  if (tick == ncfg.global_max_ticks - 1)
+  {
+    evt = num_events - 1;
+  }
+
+  // check if done with events
+  if (++evt >= num_events)
   {
     // check if in training mode
     if (ncfg.training)
@@ -401,17 +407,23 @@ void tf_advance_event (void)
       {
         // maximum
         if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
-          max_ticks = (ev[event_idx + evt].max_time * ncfg.ticks_per_int)
-            >> SPINN_FPREAL_SHIFT;
+          max_ticks = (((ev[event_idx + evt].max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                         >> SPINN_FPREAL_SHIFT;
         else
-          max_ticks = (es->max_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+          max_ticks = (((es->max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                         >> SPINN_FPREAL_SHIFT;
 
         // minimum
         if (ev[event_idx + evt].min_time != SPINN_FP_NaN)
-          min_ticks = (ev[event_idx + evt].min_time * ncfg.ticks_per_int)
-            >> SPINN_FPREAL_SHIFT;
+          min_ticks = (((ev[event_idx + evt].min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                         >> SPINN_FPREAL_SHIFT;
         else
-          min_ticks = (es->min_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+          min_ticks = (((es->min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int) 
+                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                         >> SPINN_FPREAL_SHIFT;
       }
     }
 
@@ -468,17 +480,23 @@ void t_advance_example (void)
   {
     // maximum
     if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
-      max_ticks = (ev[event_idx + evt].max_time * ncfg.ticks_per_int)
-        >> SPINN_FPREAL_SHIFT;
+      max_ticks = (((ev[event_idx + evt].max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                     >> SPINN_FPREAL_SHIFT;
     else
-      max_ticks = (es->max_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      max_ticks = (((es->max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                     >> SPINN_FPREAL_SHIFT;
 
     // minimum
     if (ev[event_idx + evt].min_time != SPINN_FP_NaN)
-      min_ticks = (ev[event_idx + evt].min_time * ncfg.ticks_per_int)
-        >> SPINN_FPREAL_SHIFT;
+      min_ticks = (((ev[event_idx + evt].min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                     >> SPINN_FPREAL_SHIFT;
     else
-      min_ticks = (es->min_time * ncfg.ticks_per_int) >> SPINN_FPREAL_SHIFT;
+      min_ticks = (((es->min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                     >> SPINN_FPREAL_SHIFT;
   }
 
   // check if ready to send initial unit outputs,
@@ -600,7 +618,7 @@ void tf_send_stop (uint null0, uint null1)
   {
     spin1_delay_us (2000); //##
 
-    tf_stop_crit = (ev_tick == max_ticks)
+    tf_stop_crit = (ev_tick >= max_ticks)
                      || (tick == ncfg.global_max_ticks - 1)
                      || (tf_stop_crit && (ev_tick >= min_ticks));
     tick_stop = tf_stop_crit;
