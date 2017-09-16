@@ -253,7 +253,6 @@ uint t_init (void)
         t_tot_ticks += (((es->max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
                          + (1 << (SPINN_FPREAL_SHIFT - 1)))
                          >> SPINN_FPREAL_SHIFT;
-        io_printf (IO_BUF, "Max time: %r, ticks per interval: %d, t_tot_ticks: %d\n", ((es->max_time + SPINN_SMALL_VAL) << 1), ncfg.ticks_per_int, t_tot_ticks);
       }
     }
 
