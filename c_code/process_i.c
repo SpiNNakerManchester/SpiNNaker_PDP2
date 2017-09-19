@@ -311,6 +311,12 @@ void if_advance_event (void)
     io_printf (IO_BUF, "if_advance_event\n");
   #endif
 
+  // check if done with ticks
+  if (tick == ncfg.global_max_ticks - 1)
+  {
+    evt = num_events - 1;
+  }
+
   // check if done with events
   if (++evt >= num_events)
   {
