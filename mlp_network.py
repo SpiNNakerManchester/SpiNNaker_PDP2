@@ -44,6 +44,8 @@ class MLPNetwork():
         self._test_group_crit  = None
         self._timeout          = MLPConstants.DEF_TIMEOUT
         self._num_epochs       = MLPConstants.DEF_NUM_EPOCHS
+	self._learning_rate    = MLPConstants.DEF_LEARNING_RATE
+	self._weight_decay     = MLPConstants.DEF_WEIGHT_DECAY
 
         # initialise lists of groups and links
         self.groups = []
@@ -292,16 +294,23 @@ class MLPNetwork():
     def set (self,
              num_updates      = None,
              train_group_crit = None,
-             test_group_crit  = None
+             test_group_crit  = None,
+	     learning_rate    = None,
+	     weight_decay     = None
              ):
         """ set a network parameter to the given value
 
         :param num_updates: number of training epochs to be done
         :param train_group_crit: criterion used to stop training
         :param test_group_crit: criterion used to stop testing
+	:param learning_rate: amount used to scale deltas when updating weights
+	:param weight_decay: amount by which weights are scaled after being updated
 
         :type num_updates: unsigned integer
         :type train_group_crit: float
+	:type test_group_crit: float
+	:type learning_rate: float
+	:type weight_decay: float
         """
         if num_updates is not None:
             print "setting num_epochs to {}".format (num_updates)
@@ -314,6 +323,14 @@ class MLPNetwork():
         if test_group_crit is not None:
             print "setting test_group_crit to {}".format (test_group_crit)
             self._test_group_crit = test_group_crit
+
+	if learning_rate is not None:
+	    print "setting learning_rate to {}".format (learning_rate)
+	    self._learning_rate = learning_rate
+
+	if learning_rate is not None:
+	    print "setting weight_decay to {}".format (weight_decay)
+	    self._weight_decay = weight_decay
 
 
     def read_Lens_weights_file (self,

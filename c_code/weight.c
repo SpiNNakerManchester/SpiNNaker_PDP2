@@ -149,6 +149,7 @@ uint init ()
     io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
     io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
     io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
+    io_printf (IO_BUF, "lr: %k\n", wcfg.weightDecay);
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
     io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
     io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);

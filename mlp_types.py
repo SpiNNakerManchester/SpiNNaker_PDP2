@@ -6,6 +6,7 @@ class MLPConstants ():
     """
     # network parameter CONSTANTS or DEFAULT values
     DEF_LEARNING_RATE = 0.1
+    DEF_WEIGHT_DECAY = 0
 
     DEF_INIT_NET  = 0
     DEF_INIT_OUT  = 0.5

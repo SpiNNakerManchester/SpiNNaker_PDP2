@@ -56,11 +56,24 @@ class WeightVertex(
                                               self.from_group.id)
         self._fds_link = "fds_w{}_{}".format (self.group.id,
                                               self.from_group.id)
-        # weight core-specific parameters
+        # choose weight core-specific parameters
         if len (self.group.weights[self.from_group]):
-            self.learning_rate = self.group.learning_rate
+            if self.group.learning_rate is not None:
+                self.learning_rate = self.group.learning_rate
+            elif network._learning_rate is not None:
+                self.learning_rate = network._learning_rate
+            else:
+                self.learning_rate = MLPConstants.DEF_LEARNING_RATE
+
+            if self.group.weight_decay is not None:
+                self.weight_decay = self.group.weight_decay
+            elif network._weight_decay is not None:
+                self.weight_decay = network._weight_decay
+            else:
+                self.weight_decay = MLPConstants.DEF_WEIGHT_DECAY
         else:
             self.learning_rate = 0
+	    self.weight_decay = 0
 
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -153,6 +166,7 @@ class WeightVertex(
               uint           num_rows;
               uint           num_cols;
               short_fpreal_t learningRate;
+              short_fpreal_t weightDecay;
             } w_conf_t;
 
             pack: standard sizes, little-endian byte order,
@@ -162,10 +176,15 @@ class WeightVertex(
         learning_rate = int (self.learning_rate *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<2Ih2x",
+        # weight_decay is an MLP short fixed-point fpreal
+        weight_decay = int (self.weight_decay *\
+                              (1 << MLPConstants.SHORT_FPREAL_SHIFT))
+
+        return struct.pack ("<2I2h",
                             self.from_group.units,
                             self.group.units,
-                            learning_rate & 0xffff
+                            learning_rate & 0xffff,
+                            weight_decay & 0xffff
                             )
 
     @property
