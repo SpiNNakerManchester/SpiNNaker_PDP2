@@ -241,19 +241,37 @@ void w_update_weights (void)
         }
 
         // compute weight change,
-        // s51.12 = (s0.15 * s36.27) >> 30
+        // s48.15 = (s0.15 * s36.27) >> 27
         long_wchange_t change_tmp = ((long_wchange_t) -wcfg.learningRate *
                              (long_wchange_t) w_link_deltas[i][j]);
 
         // round off,
-        change_tmp += (long_wchange_t) (1 << (SPINN_SHORT_ACTIV_SHIFT
+        change_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
                                         + SPINN_LONG_DELTA_SHIFT
                                         - SPINN_WEIGHT_SHIFT - 1));
 
         // and adjust decimal point position
         w_wchanges[i][j] = change_tmp
-                             >> (SPINN_SHORT_ACTIV_SHIFT + SPINN_LONG_DELTA_SHIFT
+                             >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_LONG_DELTA_SHIFT
 		             - SPINN_WEIGHT_SHIFT);
+
+	if (wcfg.weightDecay > 0)
+	{
+	  //apply weight decay
+	  long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
+
+	  // round off
+	  weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+                                               + SPINN_WEIGHT_SHIFT
+                                               - SPINN_WEIGHT_SHIFT - 1));
+
+          // and adjust decimal point position
+          weightDecay_tmp = weightDecay_tmp
+                             >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
+		             - SPINN_WEIGHT_SHIFT);
+
+	  w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
+	}
 
         // compute new weight
         long_weight_t temp = (long_weight_t) w_weights[i][j]
