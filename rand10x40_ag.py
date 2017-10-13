@@ -1,5 +1,5 @@
 from mlp_network import MLPNetwork
-from mlp_types   import MLPNetworkTypes, MLPGroupTypes
+from mlp_types   import MLPNetworkTypes, MLPGroupTypes, MLPUpdateFuncs
 from mlp_types   import MLPInputProcs
 
 #-----------------------------------------------------------
@@ -55,7 +55,7 @@ rand10x40.read_Lens_weights_file (
     "rand10x40_train_no_recurrent_conn_weights.txt")
 
 # train the network
-rand10x40.train ()
+rand10x40.train (update_function = MLPUpdateFuncs.UPD_STEEPEST)
 
 # close the application
 rand10x40.end ()

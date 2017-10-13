@@ -11,8 +11,22 @@
 
 #include "init_w.h"
 #include "comms_w.h"
+#include "process_w.h"
 
 // main methods for the weight core
+
+// ------------------------------------------------------------------------
+// global "constants"
+// ------------------------------------------------------------------------
+
+// list of procedures for updating of weights. The order is relevant, as
+// the indexes are specified in mlp_params.h
+weight_update_t const
+  w_update_procs[SPINN_NUM_UPDATE_PROCS] =
+  {
+    steepest_update_weights, momentum_update_weights, dougsmomentum_update_weights
+  };
+// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // global variables
@@ -79,6 +93,7 @@ uint             wf_sync_key;       // FORWARD processing can start
 uchar            wb_active;         // processing deltas from queue?
 scoreboard_t     wb_arrived;        // keeps track of received deltas
 uint             wb_sync_key;       // BACKPROP processing can start
+weight_update_t  wb_update_func;    // weight update function
 
 // history arrays
 activation_t     * w_output_history;  // history array for outputs

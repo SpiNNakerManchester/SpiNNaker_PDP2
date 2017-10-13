@@ -43,6 +43,10 @@ extern t_conf_t       tcfg;       // threshold core configuration parameters
 // ------------------------------------------------------------------------
 // weight core variables
 // ------------------------------------------------------------------------
+// global "constants"
+// list of weight update procedures
+extern weight_update_t const w_update_procs[SPINN_NUM_UPDATE_PROCS];
+
 extern weight_t       * * w_weights;     // connection weights block
 extern long_wchange_t * * w_wchanges;    // accumulated weight changes
 extern activation_t     * w_outputs[2]; // unit outputs for b-d-p
@@ -58,6 +62,7 @@ extern uint               wf_sync_key;   // FORWARD processing can start
 extern uchar              wb_active;     // processing deltas from queue?
 extern scoreboard_t       wb_arrived;    // keeps track of received deltas
 extern uint               wb_sync_key;   // BACKPROP processing can start
+extern weight_update_t    wb_update_func; // weight update function
 
 // history arrays
 extern activation_t     * w_output_history;

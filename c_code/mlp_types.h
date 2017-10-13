@@ -191,6 +191,7 @@ typedef struct w_conf               // weight core configuration
   uint           num_cols;          // columns in this core's block
   short_fpreal_t learningRate;      // network learning rate
   short_fpreal_t weightDecay;       // network weight decay
+  uchar          update_function;   // function to update weights
 } w_conf_t;
 // ------------------------------------------------------------------------
 
@@ -337,3 +338,6 @@ typedef void (*stop_crit_t) (uint);  // stopping criterion comp procedures
 
 
 typedef void (*out_error_t) (uint);   // error comp procedures
+
+
+typedef void (*weight_update_t) (void);   // weight update procedures

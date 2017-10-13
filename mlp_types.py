@@ -114,6 +114,14 @@ class MLPErrorFuncs (Enum):
     ERR_SQUARED       = 2
 
 
+class MLPUpdateFuncs (Enum):
+    """ MLP weight update functions
+    """ 
+    UPD_STEEPEST      = 0
+    UPD_MOMENTUM      = 1
+    UPD_DOUGSMOMENTUM = 2
+
+
 class MLPRegions (Enum):
     """ regions used by MLP cores
     """

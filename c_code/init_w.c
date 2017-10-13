@@ -204,6 +204,10 @@ uint w_init (void)
   wf_arrived = 0;
   wb_arrived = 0;
 
+
+  // set weight update function
+  wb_update_func = w_update_procs[wcfg.update_function];
+
   // initialize packet keys
   //NOTE: colour is initialized to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);

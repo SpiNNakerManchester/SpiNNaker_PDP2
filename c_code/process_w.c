@@ -204,20 +204,22 @@ void wb_process (uint null0, uint null1)
 
 
 // ------------------------------------------------------------------------
-// perform a weight update
+// perform a weight update using steepest descent
 // a weight of 0 means that there is no connection between the two units.
 // the zero value is represented by the lowest possible (positive or negative)
-// weight. A weight value is a 4.12 variable in fixed point
+// weight. A weight value is a s16.15 variable in fixed point
 // ------------------------------------------------------------------------
-void w_update_weights (void)
+void steepest_update_weights (void)
 {
   #ifdef DEBUG
     wght_ups++;
   #endif
 
   #ifdef TRACE
-    io_printf (IO_BUF, "w_update_weights\n");
+    io_printf (IO_BUF, "steepest_update_weights\n");
   #endif
+
+  io_printf (IO_BUF, "In steepest_update_weights\n");
 
   // update weights
   for (uint j = 0; j < wcfg.num_cols; j++)
@@ -316,6 +318,55 @@ void w_update_weights (void)
       #endif
     }
   }
+
+  #if SPINN_WEIGHT_HISTORY == TRUE
+    //TODO: dump weights to SDRAM for record keeping
+  #endif
+}
+// ------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------
+// perform a weight update using momentum descent
+// a weight of 0 means that there is no connection between the two units.
+// the zero value is represented by the lowest possible (positive or negative)
+// weight. A weight value is a s16.15 variable in fixed point
+// ------------------------------------------------------------------------
+void momentum_update_weights (void)
+{
+  #ifdef DEBUG
+    wght_ups++;
+  #endif
+
+  #ifdef TRACE
+    io_printf (IO_BUF, "momentum_update_weights\n");
+  #endif
+
+  io_printf (IO_BUF, "In momentum_update_weights\n");
+
+  #if SPINN_WEIGHT_HISTORY == TRUE
+    //TODO: dump weights to SDRAM for record keeping
+  #endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// perform a weight update using doug's momentum
+// a weight of 0 means that there is no connection between the two units.
+// the zero value is represented by the lowest possible (positive or negative)
+// weight. A weight value is a s16.15 variable in fixed point
+// ------------------------------------------------------------------------
+void dougsmomentum_update_weights (void)
+{
+  #ifdef DEBUG
+    wght_ups++;
+  #endif
+
+  #ifdef TRACE
+    io_printf (IO_BUF, "dougsmomentum_update_weights\n");
+  #endif
+
+  io_printf (IO_BUF, "In dougsmomentum_update_weights\n");
 
   #if SPINN_WEIGHT_HISTORY == TRUE
     //TODO: dump weights to SDRAM for record keeping
@@ -493,7 +544,7 @@ void w_advance_example (void)
     if (ncfg.training)
     {
       //TODO: should be called or scheduled?
-      w_update_weights ();
+      wb_update_func ();
 
       #if WEIGHT_HISTORY == TRUE
         // send weight history to host

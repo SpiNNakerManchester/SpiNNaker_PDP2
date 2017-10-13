@@ -63,6 +63,13 @@
 #define SPINN_ERR_SQUARED        2
 
 
+#define SPINN_NUM_UPDATE_PROCS   3
+//--------------------------
+#define SPINN_STEEPEST_UPDATE       0
+#define SPINN_MOMENTUM_UPDATE       1
+#define SPINN_DOUGSMOMENTUM_UPDATE  2
+
+
 // ------------------------------------------------------------------------
 // activation function options
 // ------------------------------------------------------------------------

@@ -75,6 +75,9 @@ class WeightVertex(
             self.learning_rate = 0
 	    self.weight_decay = 0
 
+	# weight update function
+	self.update_function = network._update_function
+
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
@@ -167,6 +170,7 @@ class WeightVertex(
               uint           num_cols;
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
+              uchar          update_function;
             } w_conf_t;
 
             pack: standard sizes, little-endian byte order,
@@ -180,11 +184,12 @@ class WeightVertex(
         weight_decay = int (self.weight_decay *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<2I2h",
+        return struct.pack ("<2I2hB3x",
                             self.from_group.units,
                             self.group.units,
                             learning_rate & 0xffff,
-                            weight_decay & 0xffff
+                            weight_decay & 0xffff,
+                            self.update_function.value & 0xff
                             )
 
     @property

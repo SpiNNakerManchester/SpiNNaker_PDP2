@@ -15,7 +15,7 @@ from sum_vertex       import SumVertex
 from threshold_vertex import ThresholdVertex
 from weight_vertex    import WeightVertex
 
-from mlp_types    import MLPGroupTypes, MLPConstants
+from mlp_types    import MLPGroupTypes, MLPConstants, MLPUpdateFuncs
 from mlp_group    import MLPGroup
 from mlp_link     import MLPLink
 from mlp_examples import MLPExampleSet
@@ -537,10 +537,13 @@ class MLPNetwork():
                                                  grp.t_vertex.stp_link)
 
 
-    def train (self):
+    def train (self,
+               update_function = MLPUpdateFuncs.UPD_DOUGSMOMENTUM
+              ):
         """ train the application graph
         """
         self._training = 1
+	self._update_function = update_function
 
         # run the application
         self.run ()
