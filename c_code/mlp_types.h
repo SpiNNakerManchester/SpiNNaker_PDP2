@@ -191,6 +191,7 @@ typedef struct w_conf               // weight core configuration
   uint           num_cols;          // columns in this core's block
   short_fpreal_t learningRate;      // network learning rate
   short_fpreal_t weightDecay;       // network weight decay
+  short_fpreal_t momentum;          // network momentum
   uchar          update_function;   // function to update weights
 } w_conf_t;
 // ------------------------------------------------------------------------

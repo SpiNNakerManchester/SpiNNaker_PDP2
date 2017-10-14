@@ -52,6 +52,7 @@ class MLPGroup():
         # weight-related parameters
         self.learning_rate = None
         self.weight_decay = None
+        self.momentum = None
 
         # input function parameters
         self.soft_clamp_strength = MLPConstants.DEF_SOFT_CLMP

@@ -71,9 +71,17 @@ class WeightVertex(
                 self.weight_decay = network._weight_decay
             else:
                 self.weight_decay = MLPConstants.DEF_WEIGHT_DECAY
+
+            if self.group.momentum is not None:
+                self.momentum = self.group.momentum
+            elif network._momentum is not None:
+                self.momentum = network._momentum
+            else:
+                self.momentum = MLPConstants.DEF_MOMENTUM
         else:
             self.learning_rate = 0
 	    self.weight_decay = 0
+            self.momentum = 0
 
 	# weight update function
 	self.update_function = network._update_function
@@ -170,6 +178,7 @@ class WeightVertex(
               uint           num_cols;
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
+              short_fpreal_t momentum;
               uchar          update_function;
             } w_conf_t;
 
@@ -184,11 +193,16 @@ class WeightVertex(
         weight_decay = int (self.weight_decay *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<2I2hB3x",
+	# momentum is an MLP short fixed-point fpreal
+        momentum = int (self.momentum *\
+                              (1 << MLPConstants.SHORT_FPREAL_SHIFT))
+
+        return struct.pack ("<2I3hBx",
                             self.from_group.units,
                             self.group.units,
                             learning_rate & 0xffff,
                             weight_decay & 0xffff,
+                            momentum & 0xffff,
                             self.update_function.value & 0xff
                             )
 

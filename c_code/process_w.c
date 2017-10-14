@@ -342,6 +342,7 @@ void momentum_update_weights (void)
   #endif
 
   io_printf (IO_BUF, "In momentum_update_weights\n");
+  io_printf (IO_BUF, "Momentum: %r\n", wcfg.momentum);
 
   #if SPINN_WEIGHT_HISTORY == TRUE
     //TODO: dump weights to SDRAM for record keeping

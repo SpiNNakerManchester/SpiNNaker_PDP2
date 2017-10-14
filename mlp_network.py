@@ -46,6 +46,7 @@ class MLPNetwork():
         self._num_epochs       = MLPConstants.DEF_NUM_EPOCHS
 	self._learning_rate    = MLPConstants.DEF_LEARNING_RATE
 	self._weight_decay     = MLPConstants.DEF_WEIGHT_DECAY
+	self._momentum         = MLPConstants.DEF_MOMENTUM
 
         # initialise lists of groups and links
         self.groups = []
@@ -296,7 +297,8 @@ class MLPNetwork():
              train_group_crit = None,
              test_group_crit  = None,
 	     learning_rate    = None,
-	     weight_decay     = None
+	     weight_decay     = None,
+             momentum         = None
              ):
         """ set a network parameter to the given value
 
@@ -305,12 +307,14 @@ class MLPNetwork():
         :param test_group_crit: criterion used to stop testing
 	:param learning_rate: amount used to scale deltas when updating weights
 	:param weight_decay: amount by which weights are scaled after being updated
+	:param momentum: the carryover of previous weight changes to the new step
 
         :type num_updates: unsigned integer
         :type train_group_crit: float
 	:type test_group_crit: float
 	:type learning_rate: float
 	:type weight_decay: float
+	:type momentum: float
         """
         if num_updates is not None:
             print "setting num_epochs to {}".format (num_updates)
@@ -328,9 +332,13 @@ class MLPNetwork():
 	    print "setting learning_rate to {}".format (learning_rate)
 	    self._learning_rate = learning_rate
 
-	if learning_rate is not None:
+	if weight_decay is not None:
 	    print "setting weight_decay to {}".format (weight_decay)
 	    self._weight_decay = weight_decay
+
+	if momentum is not None:
+	    print "setting momentum to {}".format (momentum)
+	    self._momentum = momentum
 
 
     def read_Lens_weights_file (self,
