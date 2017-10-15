@@ -342,7 +342,115 @@ void momentum_update_weights (void)
   #endif
 
   io_printf (IO_BUF, "In momentum_update_weights\n");
-  io_printf (IO_BUF, "Momentum: %r\n", wcfg.momentum);
+    // update weights
+  for (uint j = 0; j < wcfg.num_cols; j++)
+  {
+    for (uint i = 0; i < wcfg.num_rows; i++)
+    {
+      #ifdef DEBUG_VRB
+        weight_t old_weight = w_weights[i][j];
+      #endif
+
+      // do not update weights that are 0 -- indicates no connection!
+      if (w_weights[i][j] != 0)
+      {
+        // scale the link derivatives
+        if (ncfg.net_type == SPINN_NET_CONT)
+        {
+          // s36.27 = (s36.27 * s15.16) >> 16
+          w_link_deltas[i][j] = (w_link_deltas[i][j]
+				 * (long_delta_t) w_delta_dt)
+                                 >> SPINN_FPREAL_SHIFT;
+        }
+
+        // compute weight change,
+        // s48.15 = (s0.15 * s36.27) >> 27
+        long_wchange_t change_tmp = ((long_wchange_t) -wcfg.learningRate *
+                             (long_wchange_t) w_link_deltas[i][j]);
+	
+
+        // round off,
+        change_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+                                        + SPINN_LONG_DELTA_SHIFT
+                                        - SPINN_WEIGHT_SHIFT - 1));
+
+	// compute momentum factor
+	// s48.15 = (s0.15 * s48.15) >> 15
+	long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
+
+        // round off
+        momentum_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+                                          + SPINN_WEIGHT_SHIFT
+                                          - SPINN_WEIGHT_SHIFT - 1));
+
+        // compute sum and adjust decimal point position
+        w_wchanges[i][j] = 
+                (change_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_LONG_DELTA_SHIFT
+		              - SPINN_WEIGHT_SHIFT)) 
+              + (momentum_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
+                              - SPINN_WEIGHT_SHIFT));
+
+	if (wcfg.weightDecay > 0)
+	{
+	  //apply weight decay
+	  long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
+
+	  // round off
+	  weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+                                               + SPINN_WEIGHT_SHIFT
+                                               - SPINN_WEIGHT_SHIFT - 1));
+
+          // and adjust decimal point position
+          weightDecay_tmp = weightDecay_tmp
+                             >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
+		             - SPINN_WEIGHT_SHIFT);
+
+	  w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
+	}
+
+        // compute new weight
+        long_weight_t temp = (long_weight_t) w_weights[i][j]
+                              + (long_weight_t) w_wchanges[i][j];
+
+        // saturate new weight,
+        if (temp >= (long_weight_t) SPINN_WEIGHT_MAX)
+        {
+          w_weights[i][j] = SPINN_WEIGHT_MAX;
+        }
+        else if (temp <= (long_weight_t) SPINN_WEIGHT_MIN)
+        {
+          w_weights[i][j] = SPINN_WEIGHT_MIN;
+        }
+        // and avoid (new weight == 0) -- indicates no connection!
+        else if (temp == 0)
+        {
+          if (w_weights[i][j] > 0)
+          {
+            w_weights[i][j] = SPINN_WEIGHT_POS_EPSILON;
+          }
+          else
+          {
+            w_weights[i][j] = SPINN_WEIGHT_NEG_EPSILON;
+          }
+        }
+        else
+        {
+          w_weights[i][j] = (weight_t) temp;
+        }
+      }
+
+      #ifdef DEBUG_VRB
+        io_printf (IO_BUF,
+                    "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+                    i, j,
+                    SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+                    old_weight,
+                    SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+                    w_weights[i][j]
+                  );
+      #endif
+    }
+  }
 
   #if SPINN_WEIGHT_HISTORY == TRUE
     //TODO: dump weights to SDRAM for record keeping
@@ -566,7 +674,6 @@ void w_advance_example (void)
       // if not start from first example again,
       example = 0;
 
-      // and, if training, initialize weight changes
       //TODO: find a better place for this operation
       if (ncfg.training)
       {
@@ -574,7 +681,6 @@ void w_advance_example (void)
         {
           for (uint j = 0; j < wcfg.num_cols; j++)
           {
-            w_wchanges[i][j] = 0;
             w_link_deltas[i][j] = 0;
           }
         }
