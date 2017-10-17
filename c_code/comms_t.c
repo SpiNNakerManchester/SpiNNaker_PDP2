@@ -32,12 +32,12 @@ void t_receivePacket (uint key, uint payload)
   if (stop)
   {
     // stop final decision packet
-    t_stopPacket (key, payload);
+    t_stopPacket (key);
   }
   else if (chain)
   {
     // stop decision chain packet
-    t_chainPacket (key, payload);
+    t_chainPacket (key);
   }
   else if (sync)
   {
@@ -61,7 +61,7 @@ void t_receivePacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 // process a stop final decision packet
 // ------------------------------------------------------------------------
-void t_stopPacket (uint key, uint payload)
+void t_stopPacket (uint key)
 {
   #ifdef DEBUG
     stp_recv++;
@@ -75,63 +75,56 @@ void t_stopPacket (uint key, uint payload)
   #endif
 
   // check if all threads done
-  if (tf_thrds_done == 0)
+  if (tf_thrds_pend == 0)
   {
-    // initialize semaphore
-    tf_thrds_done = tf_thrds_init;
+    // initialise semaphore
+    tf_thrds_pend = 1;
 
     // and advance tick
     spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
   }
   else
   {
-    // if not done report processing thread done
-    tf_thrds_done -= 1;
+    // if not done report stop thread done
+    tf_thrds_pend -= 1;
   }
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// process a stop decision chain packet
+// process a stop daisy chain packet
 // ------------------------------------------------------------------------
-void t_chainPacket (uint key, uint payload)
+void t_chainPacket (uint key)
 {
   #ifdef DEBUG
     stp_recv++;
   #endif
 
-  // STOP daisy chain partial decision arrived
-  if (tf_stop_done == 0)
-  {
-    // initialize semaphore,
-    tf_stop_done = tf_stop_init;
+  // STOP daisy chain partial decision arrived from previous core
+  tf_chain_prev = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
 
-    // send stop criterion packet,
+  // check if chain value can be forwarded
+  if (tf_chain_rdy)
+  {
+    // initialise flag,
+    tf_chain_rdy = tf_chain_init;
+
+    // and send stop packet
     spin1_schedule_callback (tf_send_stop, NULL, NULL, SPINN_SEND_STOP_P);
 
-    // and check if all threads done -- last group does not get a decision!
+    // last group in the chain does not get a stop decision packet
+    // so it's ready to advance tick
     if (tcfg.is_last_output_group)
     {
-      if (tf_thrds_done == 0)
-      {
-        // initialize semaphore,
-        tf_thrds_done = tf_thrds_init;
-
-        // and advance tick
-        spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
-      }
-      else
-      {
-        // if not done report stop thread done
-        tf_thrds_done -= 1;
-      }
+      // advance tick
+      spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
     }
   }
   else
   {
-    // if not done report processing thread done
-    tf_stop_done -= 1;
+    // if not, flag that the previous value arrived
+    tf_chain_rdy = 1;
   }
 }
 // ------------------------------------------------------------------------
@@ -154,7 +147,7 @@ void t_syncPacket (uint key, uint ph)
     // and check if all expected packets arrived
     if (t_sync_arrived == tcfg.fwd_sync_expected)
     {
-      // initialize for next synchronization,
+      // initialise for next synchronisation,
       t_sync_arrived = 0;
 
       // and check if can trigger sending data
@@ -181,7 +174,7 @@ void t_syncPacket (uint key, uint ph)
     }
   }
 /*
-  //NOTE: no longer using BACKPROP synchronization packets
+  //NOTE: no longer using BACKPROP synchronisation packets
   else
   {
     // keep track of BACKPROP sync packets,
@@ -275,17 +268,17 @@ void t_backpropPacket (uint key, uint payload)
   // if all expected errors have arrived may move to next tick
   if (tb_arrived == tcfg.num_units)
   {
-    // initialize arrival scoreboard for next tick,
+    // initialise arrival scoreboard for next tick,
     tb_arrived = 0;
 
     // update pointer to received errors,
     tb_comms = 1 - tb_comms;
 
     // and check if other threads are done,
-    if (tb_thrds_done == 0)
+    if (tb_thrds_pend == 0)
     {
-      // if done initialize synchronization semaphore,
-      tb_thrds_done = 1;
+      // if done initialise synchronisation semaphore,
+      tb_thrds_pend = 1;
 
       // and advance tick
       #ifdef TRACE_VRB
@@ -297,7 +290,7 @@ void t_backpropPacket (uint key, uint payload)
     else
     {
       // if not done report comms thread done
-      tb_thrds_done -= 1;
+      tb_thrds_pend -= 1;
     }
   }
 }

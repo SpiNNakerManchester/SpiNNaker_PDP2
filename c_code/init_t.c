@@ -9,11 +9,11 @@
 #include "comms_t.h"
 #include "process_t.h"
 
-// this files contains the initialization routine for T cores
+// this files contains the initialisation routine for T cores
 // the first routine of the mlp run-time code is scheduled to be executed here
 
 // ------------------------------------------------------------------------
-// allocate memory and initialize variables
+// allocate memory and initialise variables
 // ------------------------------------------------------------------------
 uint t_init (void)
 {
@@ -66,19 +66,19 @@ uint t_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // initialize output derivatives
+  // initialise output derivatives
   for (i = 0; i < tcfg.num_units; i++)
   {
     t_output_deriv[i] = 0;
   }
 
-  // initialize deltas
+  // initialise deltas
   for (i = 0; i < tcfg.num_units; i++)
   {
     t_deltas[i] = 0;
   }
 
-  // initialize errors
+  // initialise errors
   for (i = 0; i < tcfg.num_units; i++)
   {
     t_errors[0][i] = 0;
@@ -105,9 +105,9 @@ uint t_init (void)
   }
 
   // if the network requires training and elements of the pipeline require
-  // initialization, then follow the appropriate procedure
+  // initialisation, then follow the appropriate procedure
   // use the list of procedures in use from lens and call the appropriate
-  // initialization routine from the t_init_out_procs function pointer list
+  // initialisation routine from the t_init_out_procs function pointer list
   for (i = 0; i < tcfg.num_out_procs; i++)
     if (t_init_out_procs[tcfg.procs_list[i]] != NULL)
     {
@@ -120,11 +120,11 @@ uint t_init (void)
         return return_value;
     }
 
-  // intialize example and event ticks
+  // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
   ev_tick = SPINN_T_INIT_TICK;
 
-  // initialize max and min ticks
+  // initialise max and min ticks
   if (tcfg.is_last_output_group)
   {
     // get max number of ticks for first event
@@ -148,46 +148,40 @@ uint t_init (void)
                     >> SPINN_FPREAL_SHIFT;
   }
 
-  // initialize pointers to received errors
+  // initialise pointers to received errors
   tb_procs = 0;
   tb_comms = 1;
 
-  // initialize synchronization semaphores
-  tb_thrds_done = 1;
-
-  // initialize received nets and errors scoreboard
+  // initialise received net and error scoreboards
   tf_arrived = 0;
   tb_arrived = 0;
 
-  // initialize synchronization semaphores
-  //TODO: why is this necessary?
-  if (tcfg.is_last_output_group)
-    tf_thrds_init = 1;  //##
-  else
-    tf_thrds_init = 1;
+  // initialise synchronisation semaphores
+  tf_thrds_pend = 1;
+  tb_thrds_pend = 1;
 
-  tf_thrds_done = tf_thrds_init;
-
-  // initialize stop flags and function
+  // initialise stop function and related flags
   if (tcfg.output_grp)
   {
+    tf_stop_func = t_stop_procs[tcfg.criterion_function];
+
     // variables for stop criterion computation
     t_max_output_unit = -1;
     t_max_target_unit = -1;
     t_max_output = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
     t_max_target = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
 
-    // no need to wait for previous if first in chain
+    // no need to wait for previous value if first in chain
     if (tcfg.is_first_output_group)
-      tf_stop_init = 0;
+    {
+      tf_chain_init = 1;
+      tf_chain_prev = TRUE;
+    }
     else
-      tf_stop_init = 1;
-
-    tf_stop_done = tf_stop_init;
-    tf_stop_prev = TRUE;
-    tf_stop_crit = TRUE;
-
-    tf_stop_func = t_stop_procs[tcfg.criterion_function];
+    {
+      tf_chain_init = 0;
+    }
+    tf_chain_rdy = tf_chain_init;
 
     if (tcfg.is_last_output_group)
     {
@@ -205,16 +199,16 @@ uint t_init (void)
     io_printf (IO_BUF, "tsk = 0x%08x\n", tf_stop_key);
   #endif
 
-  // initialize processing thread flag
+  // initialise processing thread flag
   t_active = FALSE;
 
-  // initialize received sync packets scoreboard
+  // initialise received sync packets scoreboard
   t_sync_arrived = 0;
 
-  // initialize sync packets flag
+  // initialise sync packets flag
   t_sync_done = FALSE;
 
-  // initialize net packet queue
+  // initialise net packet queue
   t_net_pkt_q.head = 0;
   t_net_pkt_q.tail = 0;
 
@@ -225,7 +219,7 @@ uint t_init (void)
   // check if writing outputs to host
   if (tcfg.write_out)
   {
-    // initialize SDP message buffer
+    // initialise SDP message buffer
     // Fill in SDP destination fields
     t_sdp_msg.tag = SPINN_SDP_IPTAG;      // IPTag
     t_sdp_msg.dest_port = PORT_ETH;       // Ethernet
@@ -265,8 +259,8 @@ uint t_init (void)
     spin1_schedule_callback (send_info_to_host, NULL, NULL, SPINN_T_INIT_OUT_P);
   }
 
-  // initialize packet keys
-  //NOTE: colour is initialized to 0
+  // initialise packet keys
+  //NOTE: colour is initialised to 0
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 

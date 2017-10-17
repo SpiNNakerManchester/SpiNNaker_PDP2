@@ -195,7 +195,7 @@ uint w_init (void)
   wf_comms = 1;
 
   // initialize synchronization semaphores
-  wf_thrds_done = 0; // just wait for initial unit outputs
+  wf_thrds_pend = 0; // just wait for initial unit outputs
 
   // initialize processing thread flag
   wb_active = FALSE;

@@ -71,7 +71,7 @@ fpreal             w_delta_dt;        // scaling factor for link deltas
 uint             wf_procs;          // pointer to processing unit outputs
 uint             wf_comms;          // pointer to receiving unit outputs
 scoreboard_t     wf_arrived;        // keeps track of received unit outputs
-uint             wf_thrds_done;     // sync. semaphore: comms, proc & stop
+uint             wf_thrds_pend;     // sync. semaphore: comms, proc & stop
 uint             wf_sync_key;       // FORWARD processing can start
 
 // BACKPROP phase specific variables
@@ -210,7 +210,7 @@ void done (uint ec)
 
       #ifdef DEBUG_VRB
         io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-        io_printf (IO_BUF, "(fptd:%u)\n", wf_thrds_done);
+        io_printf (IO_BUF, "(fptd:%u)\n", wf_thrds_pend);
 
         io_printf (IO_BUF, "(fa:0x%08x ba:0x%08x)\n",
                    wf_arrived, wb_arrived

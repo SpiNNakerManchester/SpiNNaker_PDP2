@@ -87,58 +87,96 @@ void tf_process (uint null0, uint null1)
       // if possible, FORWARD stop criterion
       if (tcfg.output_grp)
       {
-        // check flags status in critical section
+        // last group in the chain does not get a stop decision
+        // it is ready to advance tick
+        if (tcfg.is_last_output_group)
+        {
+          // check flags status in critical section
+          uint cpsr = spin1_int_disable ();
+
+          // check if chain value can be forwarded
+          if (tf_chain_rdy)
+          {
+            // initialise semaphore,
+            tf_chain_rdy = tf_chain_init;
+
+            // restore interrupts after flag access,
+            spin1_mode_restore (cpsr);
+
+            // send stop criterion packet,
+            //TODO: check if need to schedule or can simply call
+            tf_send_stop (NULL, NULL);
+
+            // and advance tick
+            //TODO: check if need to schedule or can simply call
+            tf_advance_tick (NULL, NULL);
+          }
+          else
+          {
+            // if not, flag that local value is ready,
+            tf_chain_rdy = 1;
+
+            // and restore interrupts after flag access
+            spin1_mode_restore (cpsr);
+          }
+        }
+        else
+        {
+          // check flags status in critical section
+          uint cpsr = spin1_int_disable ();
+
+          // report processing thread done,
+          tf_thrds_pend -= 1;
+
+          // check if chain value can be forwarded
+          if (tf_chain_rdy)
+          {
+            // initialise semaphore,
+            tf_chain_rdy = tf_chain_init;
+
+            // restore interrupts after flag access,
+            spin1_mode_restore (cpsr);
+
+            // and send stop criterion packet
+            //TODO: check if need to schedule or can simply call
+            tf_send_stop (NULL, NULL);
+          }
+          else
+          {
+            // if not, flag that local value is ready,
+            tf_chain_rdy = 1;
+
+            // and restore interrupts after flag access
+            spin1_mode_restore (cpsr);
+          }
+        }
+      }
+      else
+      {
+        // access synchronisation semaphore with interrupts disabled
         uint cpsr = spin1_int_disable ();
 
-        if (tf_stop_done == 0)
+        // and check if all threads done
+        if (tf_thrds_pend == 0)
         {
-          // initialize semaphore,
-          tf_stop_done = tf_stop_init;
-
-          // report stop criterion done,
-          if (tcfg.is_last_output_group)
-            tf_thrds_done -= 1;
+          // initialise semaphore,
+          tf_thrds_pend = 1;
 
           // restore interrupts after flag access,
           spin1_mode_restore (cpsr);
 
-          // and send stop criterion packet
+          // and advance tick
           //TODO: check if need to schedule or can simply call
-          tf_send_stop (NULL, NULL);
+          tf_advance_tick (NULL, NULL);
         }
         else
         {
           // if not done report processing thread done,
-          tf_stop_done -= 1;
+          tf_thrds_pend -= 1;
 
           // and restore interrupts after flag access
           spin1_mode_restore (cpsr);
         }
-      }
-
-      // access synchronization semaphore with interrupts disabled
-      uint cpsr = spin1_int_disable ();
-
-      // and check if all threads done
-      if (tf_thrds_done == 0)
-      {
-        // initialize semaphore,
-        tf_thrds_done = tf_thrds_init;
-
-        // restore interrupts after flag access,
-        spin1_mode_restore (cpsr);
-
-        // and advance tick
-        //TODO: check if need to schedule or can simply call
-        tf_advance_tick (NULL, NULL);
-      }
-      else
-      {
-        // if not done report processing thread done,
-        tf_thrds_done -= 1;
-
-        // and restore interrupts after flag access
-        spin1_mode_restore (cpsr);
       }
     }
 
@@ -215,14 +253,14 @@ void tb_process (uint null0, uint null1)
     #endif
   }
 
-  // access synchronization semaphore with interrupts disabled
+  // access synchronisation semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
   // and check if all threads done
-  if (tb_thrds_done == 0)
+  if (tb_thrds_pend == 0)
   {
-    // if done initialize synchronization semaphore,
-    tb_thrds_done = 1;
+    // if done initialise synchronisation semaphore,
+    tb_thrds_pend = 1;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
@@ -238,7 +276,7 @@ void tb_process (uint null0, uint null1)
   else
   {
     // if not done report processing thread done,
-    tb_thrds_done -= 1;
+    tb_thrds_pend -= 1;
 
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
@@ -267,6 +305,8 @@ void tf_advance_tick (uint null0, uint null1)
   // if requested report outputs to host,
   if (tcfg.write_out)
   {
+    spin1_delay_us (2000); //##
+
     // is this the last report?
     if ((epoch    == (ncfg.num_epochs - 1))
          && (example == (ncfg.num_examples - 1))
@@ -421,7 +461,7 @@ void tf_advance_event (void)
                          + (1 << (SPINN_FPREAL_SHIFT - 1)))
                          >> SPINN_FPREAL_SHIFT;
         else
-          min_ticks = (((es->min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int) 
+          min_ticks = (((es->min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
                          + (1 << (SPINN_FPREAL_SHIFT - 1)))
                          >> SPINN_FPREAL_SHIFT;
       }
@@ -612,12 +652,10 @@ void tf_send_stop (uint null0, uint null1)
   #endif
 
   // "aggregate" criteria,
-  tf_stop_crit = tf_stop_crit && tf_stop_prev;
+  tf_stop_crit = tf_stop_crit && tf_chain_prev;
 
   if (tcfg.is_last_output_group)
   {
-    spin1_delay_us (2000); //##
-
     tf_stop_crit = (ev_tick >= max_ticks)
                      || (tick == ncfg.global_max_ticks - 1)
                      || (tf_stop_crit && (ev_tick >= min_ticks));
@@ -639,7 +677,7 @@ void tf_send_stop (uint null0, uint null1)
     stp_sent++;
   #endif
 
-  // and initialize criterion for next tick
+  // and initialise criterion for next tick
   tf_stop_crit = TRUE;
 }
 // ------------------------------------------------------------------------
@@ -1198,6 +1236,7 @@ int init_out_integr ()
 
   return SPINN_NO_ERROR;
 }
+
 // ------------------------------------------------------------------------
 
 
