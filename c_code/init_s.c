@@ -103,6 +103,8 @@ uint s_init (void)
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
+  ldsKey = rt[LDS];
+
   return (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------

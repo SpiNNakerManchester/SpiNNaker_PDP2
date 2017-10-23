@@ -36,6 +36,7 @@ uint coreID;               // 5-bit virtual core ID
 
 uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+uint ldsKey;               // 32-bit packet ID for link delta summation
 
 uint         epoch;        // current training iteration
 uint         example;      // current example in epoch
@@ -169,6 +170,7 @@ uint init ()
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
     io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
     io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
+    io_printf (IO_BUF, "sk: 0x%08x\n", rt[LDS]);
   #endif
 
   // initialize epoch, example and event counters

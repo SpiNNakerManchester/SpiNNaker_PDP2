@@ -8,6 +8,7 @@ extern uint coreID;               // 5-bit virtual core ID
 
 extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
 extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+extern uint ldsKey;               // 32-bit packet ID for link delta summation
 
 extern uint         epoch;        // current training iteration
 extern uint         example;      // current example in epoch

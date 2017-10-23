@@ -19,7 +19,8 @@ enum MLPKeys {
 	FWD,
 	BKP,
 	FDS,
-	STP
+	STP,
+	LDS
 };
 
 typedef short     short_activ_t;
@@ -208,6 +209,7 @@ typedef struct s_conf               // sum core configuration
   uint         num_units;           // this core's number of units
   scoreboard_t fwd_expected;        // num of expected partial nets
   scoreboard_t bkp_expected;        // num of expected partial errors
+  scoreboard_t lds_expected;        // num of expected partial link delta sums
   } s_conf_t;
 // ------------------------------------------------------------------------
 

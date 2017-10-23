@@ -490,6 +490,10 @@ class MLPNetwork():
                 g.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
                                              w.fds_link)
 
+                # create forward link delta summation w to s links
+                g.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
+                                             w.lds_link)
+
             # create forward s to i link
             g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                       grp.i_vertex),

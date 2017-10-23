@@ -121,7 +121,7 @@ class ThresholdVertex(
         self._N_TARGETS_BYTES = \
             len (self._group.targets) * int_size
 
-        # 4 keys / keys are integers
+        # keys are integers
         self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * int_size
 
         self._sdram_usage = (
@@ -344,7 +344,7 @@ class ThresholdVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds, stp
+        # write link keys: fwd, bkp, fds (padding), stp, lds (padding)
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
@@ -359,6 +359,8 @@ class ThresholdVertex(
                 self, self.stp_link), data_type = DataType.UINT32)
         else:
             spec.write_value (0, data_type = DataType.UINT32)
+
+        spec.write_value (0, data_type = DataType.UINT32)
 
         # End the specification
         spec.end_specification ()

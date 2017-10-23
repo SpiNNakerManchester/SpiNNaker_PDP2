@@ -85,7 +85,7 @@ class InputVertex(
         self._N_INPUTS_BYTES = \
             len (self._group.inputs) * int_size
 
-        # 4 keys / keys are integers
+        # keys are integers
         self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * int_size
 
         self._sdram_usage = (
@@ -249,12 +249,14 @@ class InputVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, padding, padding
+        # write link keys: fwd, bkp, fds (padding), stop (padding), lds (padding)
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
+
+        spec.write_value (0, data_type = DataType.UINT32)
 
         spec.write_value (0, data_type = DataType.UINT32)
 
