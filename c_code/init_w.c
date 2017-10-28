@@ -216,7 +216,7 @@ uint w_init (void)
   wf_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
   wb_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
-  ldsKey = rt[LDS];
+  ldsKey = rt[LDS] | SPINN_LDS_KEY;
 
   return (SPINN_NO_ERROR);
 }

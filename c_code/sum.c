@@ -58,6 +58,7 @@ long_net_t     * s_nets;            // unit nets computed in current tick
 long_error_t   * s_errors[2];       // errors computed in current tick
 pkt_queue_t      s_pkt_queue;       // queue to hold received b-d-ps
 uchar            s_active;          // processing b-d-ps from queue?
+long_lds_t       s_lds_part;        // partial link delta sum
 
 // FORWARD phase specific
 // (net computation)

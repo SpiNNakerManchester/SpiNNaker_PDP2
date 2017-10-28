@@ -76,6 +76,7 @@ extern long_net_t     * s_nets;        // unit nets computed in current tick
 extern long_error_t   * s_errors[2];   // errors computed in current tick
 extern pkt_queue_t      s_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            s_active;      // processing b-d-ps from queue?
+extern long_lds_t       s_lds_part;    // partial link delta sum
 extern scoreboard_t   * sf_arrived;    // keep track of expected net b-d-p
 extern scoreboard_t     sf_done;       // current tick net computation done
 extern uint             sf_thrds_done; // sync. semaphore: proc & stop

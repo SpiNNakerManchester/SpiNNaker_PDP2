@@ -128,6 +128,9 @@ void wb_process (uint null0, uint null1)
     // update scoreboard,
     wb_arrived++;
 
+    long_lds_t link_delta_sum = 0;
+    long_lds_t link_delta_tmp;
+
     // partially compute error dot products,
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
@@ -141,6 +144,35 @@ void wb_process (uint null0, uint null1)
                                  * (long_delta_t) delta)
                                  >> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
                                  - SPINN_LONG_DELTA_SHIFT);
+
+      // if we are using Doug's Momentum, and we have reached the end of the epoch, 
+      // we need to start accumulating link delta sums
+      if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE 
+            && example == (ncfg.num_examples - 1) 
+            && tick == SPINN_WB_END_TICK)
+      {
+	// only use link derivatives for links whose weights are non-zero
+        // as zero weights indicate no connection
+      	if (w_weights[i][inx] != 0)
+        {
+          // scale the link derivatives
+          if (ncfg.net_type == SPINN_NET_CONT)
+          {
+            // s48.15 = (s36.27 * s15.16) >> 28
+            link_delta_tmp = (w_link_deltas[i][inx] * (long_delta_t) w_delta_dt)
+                                 >> (SPINN_LONG_DELTA_SHIFT + SPINN_FPREAL_SHIFT - SPINN_LONG_LDS_SHIFT);
+	  }
+	  else
+	  {
+	    link_delta_tmp = w_link_deltas[i][inx];
+          }
+
+	  // square the link derivatives
+	  // s48.15 = (s48.15 * s48.15) >> 15
+	  link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT); 
+  	  link_delta_sum = link_delta_sum + link_delta_tmp;
+        }
+      }
 
       //NOTE: may need to make w_errors a long_error_t type and saturate!
       // s16.15 = s16.15 + (s3.12 * s8.23) >> 20
@@ -171,6 +203,21 @@ void wb_process (uint null0, uint null1)
         w_errors[i] = 0;
       }
     }
+
+    // if we are using Doug's Momentum, and we have reached the end of the epoch,
+    // we need to forward the accumumated link delta sums to the s cores
+    if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE 
+            && example == (ncfg.num_examples - 1) 
+            && tick == SPINN_WB_END_TICK)
+    {
+      // cast to a 32-bit value
+      lds_t link_delta_sum_short = (lds_t) link_delta_sum;
+      // send partial link delta sum,
+      while (!spin1_send_mc_packet (ldsKey,
+                (uint) link_delta_sum_short, WITH_PAYLOAD)
+            );
+    }
+
 
     // if done with all deltas advance tick
     if (wb_arrived == wcfg.num_cols)

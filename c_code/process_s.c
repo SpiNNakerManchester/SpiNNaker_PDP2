@@ -38,9 +38,15 @@ void s_process (uint null0, uint null1)
     // restore interrupts after queue access,
     spin1_mode_restore (cpsr);
 
-    // and check packet phase and process accordingly
     uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
-    if (ph == SPINN_FORWARD)
+
+    // check for an LDS packet
+    if ((key & SPINN_LDS_MASK) == SPINN_LDS_KEY)
+    {
+      s_lds_part += (long_lds_t) payload;
+    }
+    // else check packet phase and process accordingly
+    else if (ph == SPINN_FORWARD)
     {
       #ifdef DEBUG
         recv_fwd++;
@@ -383,6 +389,12 @@ void s_advance_example (void)
     {
       // start from first example again
       example = 0;
+
+      // reset the partial link delta sum
+      if (ncfg.training)
+      {
+        s_lds_part = 0;
+      }
     }
   }
 

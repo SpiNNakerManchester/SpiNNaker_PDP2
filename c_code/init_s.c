@@ -94,6 +94,9 @@ uint s_init (void)
   // initialize processing thread flag
   s_active = FALSE;
 
+  // initialize partial lds
+  s_lds_part = 0;
+
   // initialize packet queue
   s_pkt_queue.head = 0;
   s_pkt_queue.tail = 0;
