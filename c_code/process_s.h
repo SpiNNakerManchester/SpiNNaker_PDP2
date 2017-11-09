@@ -4,6 +4,7 @@
 void  s_process         (uint null0, uint null1);
 void  s_forward_packet  (uint key,   uint payload);
 void  s_backprop_packet (uint key,   uint payload);
+void  s_lds_packet      (uint key,   uint payload);
 void  sf_advance_tick   (uint null0, uint null1);
 void  sb_advance_tick   (uint null0, uint null1);
 void  sf_advance_event  (void);

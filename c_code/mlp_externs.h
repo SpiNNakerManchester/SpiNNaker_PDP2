@@ -82,6 +82,8 @@ extern scoreboard_t     sf_done;       // current tick net computation done
 extern uint             sf_thrds_done; // sync. semaphore: proc & stop
 extern scoreboard_t   * sb_arrived[2]; // keep track of expected error b-d-p
 extern scoreboard_t     sb_done;       // current tick error computation done
+extern uint             sb_thrds_done; // sync. semaphore: proc & stop
+extern scoreboard_t     s_lds_arrived; // keep track of the number of link delta sums
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

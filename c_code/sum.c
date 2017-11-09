@@ -22,7 +22,6 @@ uint coreID;               // 5-bit virtual core ID
 
 uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-uint ldsKey;               // 32-bit packet ID for link delta summation
 
 uint         epoch;        // current training iteration
 uint         example;      // current example in epoch
@@ -70,6 +69,8 @@ uint             sf_thrds_done;     // sync. semaphore: proc & stop
 // (error computation)
 scoreboard_t   * sb_arrived[2];     // keep track of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
+uint             sb_thrds_done;     // sync. semaphore: proc & stop
+scoreboard_t     s_lds_arrived;     // keep track of the number of link delta sums
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -133,6 +134,9 @@ uint init ()
     io_printf (IO_BUF, "nn: %d\n", scfg.num_units);
     io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
     io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
+    io_printf (IO_BUF, "le: %d\n", scfg.lds_expected);
+    io_printf (IO_BUF, "uf: %d\n", scfg.update_function);
+    io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
     io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
   #endif

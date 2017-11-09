@@ -47,6 +47,12 @@ class SumVertex(
         self._group   = group
         self._ex_cfg  = network._ex_set.example_config
 
+        # check if first group in the network
+        if self.group.id == network.groups[0].id:
+            self._is_first_group = 1
+        else:
+            self._is_first_group = 0
+
         # forward, backprop, and link delta summation link partition names
         self._fwd_link = "fwd_s{}".format (self.group.id)
         self._bkp_link = "bkp_s{}".format (self.group.id)
@@ -56,7 +62,10 @@ class SumVertex(
         # NOTE: if all-zero w cores are optimised out this need reviewing
         self._fwd_expect = len (network.groups)
         self._bkp_expect = len (network.groups)
-        self._lds_expect = len (network.groups)
+        self._lds_expect = len (network.groups) * self.group.units
+        
+        # weight update function
+        self.update_function = network._update_function
 
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -117,16 +126,21 @@ class SumVertex(
               scoreboard_t fwd_expect;
               scoreboard_t bkp_expect;
               scoreboard_t lds_expect;
+              uchar        update_function;
+              uchar        is_first_group;
             } s_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        return struct.pack ("<4I",
+
+        return struct.pack ("<4I2B2x",
                             self.group.units,
                             self._fwd_expect,
                             self._bkp_expect,
-                            self._lds_expect
+                            self._lds_expect,
+                            self.update_function.value & 0xff,
+                            self._is_first_group & 0xff
                             )
     @property
     @overrides (MachineVertex.resources_required)
@@ -194,7 +208,7 @@ class SumVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds (padding), stop (padding), lds
+        # write link keys: fwd, bkp, fds (padding), stop (padding), lds (padding)
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
@@ -206,9 +220,6 @@ class SumVertex(
         spec.write_value (0, data_type = DataType.UINT32)
 
         spec.write_value (0, data_type = DataType.UINT32)
-
-        #spec.write_value (routing_info.get_first_key_from_pre_vertex (
-        #    self, self.lds_link), data_type = DataType.UINT32)
 
         # End the specification
         spec.end_specification ()
