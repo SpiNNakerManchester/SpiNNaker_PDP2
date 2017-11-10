@@ -138,7 +138,8 @@
 #define SPINN_SYNC_KEY       SPINN_SYNC_MASK
 #define SPINN_STPF_KEY       (SPINN_STOP_MASK & ~SPINN_STPF_MASK)
 #define SPINN_STPR_KEY       SPINN_STOP_MASK
-#define SPINN_LDS_KEY        0x00003000
+#define SPINN_LDSA_KEY       0x00003000
+#define SPINN_LDST_KEY       0x00002000
 // ------------------------------------------------------------------------
 
 

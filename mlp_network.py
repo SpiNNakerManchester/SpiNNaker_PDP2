@@ -464,6 +464,7 @@ class MLPNetwork():
             grp.t_vertex = tv
             g.add_machine_vertex_instance (tv)
 
+        inx = 0
         # create associated forward, backprop, synchronisation and
         # stop machine edges for every network group
         for grp in self.groups:
@@ -490,7 +491,7 @@ class MLPNetwork():
                 g.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
                                              w.fds_link)
 
-                # create forward link delta summation w to s links
+                # create link delta summation w to s links
                 g.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
                                              w.lds_link)
 
@@ -513,6 +514,16 @@ class MLPNetwork():
             g.add_machine_edge_instance (MachineEdge (grp.t_vertex,
                                                       grp.i_vertex),
                                          grp.t_vertex.bkp_link)
+
+            # create link delta summation s to s links - all s cores 
+            # (except the first) send to the first s core
+            if inx == 0:
+                first = grp
+            else:
+                print "Creating machine edge from group {} to group {}".format (grp.label, first.label)
+                g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
+                                                          first.s_vertex),
+                                             grp.s_vertex.lds_link)
 
             # create stop links, if OUTPUT group
             if grp in self.output_chain:
@@ -547,6 +558,7 @@ class MLPNetwork():
                     g.add_machine_edge_instance (MachineEdge (grp.t_vertex,
                                                               _stpg.t_vertex),
                                                  grp.t_vertex.stp_link)
+            inx += 1
 
 
     def train (self,

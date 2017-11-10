@@ -221,5 +221,8 @@ class SumVertex(
 
         spec.write_value (0, data_type = DataType.UINT32)
 
+        #spec.write_value (routing_info.get_first_key_from_pre_vertex (
+        #    self, self.lds_link), data_type = DataType.UINT32)
+
         # End the specification
         spec.end_specification ()

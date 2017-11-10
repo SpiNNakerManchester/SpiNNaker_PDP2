@@ -107,6 +107,7 @@ uint s_init (void)
   //NOTE: colour is initialized to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  ldsKey = rt[LDS] | SPINN_LDST_KEY;
 
   return (SPINN_NO_ERROR);
 }

@@ -40,11 +40,16 @@ void s_process (uint null0, uint null1)
 
     uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
-    // check for an LDS packet
-    if ((key & SPINN_LDS_MASK) == SPINN_LDS_KEY)
+    // check for an LDS "accumulation" packet
+    if ((key & SPINN_LDS_MASK) == SPINN_LDSA_KEY)
     {
-      // process LDS packet
-      s_lds_packet (key, payload);
+      // process LDS "accumulation" packet
+      s_ldsa_packet (key, payload);
+    }
+    // check for LDS "total" packet
+    if ((key & SPINN_LDS_MASK) == SPINN_LDST_KEY)
+    {
+      io_printf (IO_BUF, "Received LDS "total" packet: %r\n", payload);
     }
     // else check packet phase and process accordingly
     else if (ph == SPINN_FORWARD)
@@ -84,9 +89,9 @@ void s_process (uint null0, uint null1)
 
 
 // ------------------------------------------------------------------------
-// process LDS packet: accumulate the received partial link delta sums
+// process LDSA packet: accumulate the received partial link delta sums
 // ------------------------------------------------------------------------
-void s_lds_packet (uint key, uint payload)
+void s_ldsa_packet (uint key, uint payload)
 {
   // add the received value to the total so far,
   s_lds_part += (long_lds_t) payload;
@@ -103,7 +108,9 @@ void s_lds_packet (uint key, uint payload)
     {
       // this is where we will send the result to the rest first s core
       // to give a total across the whole network
-      io_printf (IO_BUF, "sending partial link delta sum: %r\n", s_lds_part);
+      io_printf (IO_BUF, "Epoch %d sending partial link delta sum: ", epoch);
+      io_printf (IO_BUF, "%r\n", s_lds_part);
+      while (!spin1_send_mc_packet (ldsKey, s_lds_part, WITH_PAYLOAD));
     }
 
     // check if all threads done
@@ -316,10 +323,6 @@ void s_backprop_packet (uint key, uint payload)
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
       }
-
-      // advance tick
-      //TODO: check if need to schedule or can simply call
-      //sb_advance_tick (NULL, NULL);
     }
   }
 }
