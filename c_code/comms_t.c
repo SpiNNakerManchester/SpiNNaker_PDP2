@@ -20,13 +20,13 @@ void t_receivePacket (uint key, uint payload)
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
   // packet is stop type
-  uint stop = ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY);
+  uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
 
   // packet is chain type
-  uint chain = ((key & SPINN_STOP_MASK) == SPINN_STPF_KEY);
+  uint chain = ((key & SPINN_TYPE_MASK) == SPINN_STPC_KEY);
 
   // packet is sync type
-  uint sync = key & SPINN_SYNC_MASK;
+  uint sync = ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY);
 
   // check packet type
   if (stop)
@@ -41,7 +41,7 @@ void t_receivePacket (uint key, uint payload)
   }
   else if (sync)
   {
-    // tick synchronization packet
+    // tick synchronisation packet
     t_syncPacket (key, ph);
   }
   else if (ph == SPINN_FORWARD)
@@ -68,7 +68,7 @@ void t_stopPacket (uint key, uint payload)
   #endif
 
   // STOP decision arrived
-  tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
+  tick_stop = key & SPINN_STPD_MASK;
 
   #ifdef DEBUG_VRB
     io_printf (IO_BUF, "sc:%x\n", tick_stop);
@@ -77,7 +77,7 @@ void t_stopPacket (uint key, uint payload)
   // check if all threads done
   if (tf_thrds_done == 0)
   {
-    // initialize semaphore
+    // initialise semaphore
     tf_thrds_done = tf_thrds_init;
 
     // and advance tick
@@ -181,7 +181,7 @@ void t_syncPacket (uint key, uint ph)
     }
   }
 /*
-  //NOTE: no longer using BACKPROP synchronization packets
+  //NOTE: no longer using BACKPROP synchronisation packets
   else
   {
     // keep track of BACKPROP sync packets,
@@ -190,7 +190,7 @@ void t_syncPacket (uint key, uint ph)
     // and check if all expected packets arrived,
     if (t_sync_arrived == tcfg.bkp_sync_expected)
     {
-      // initialize for next synchronization,
+      // initialise for next synchronisation,
       t_sync_arrived = 0;
 
       // check if can trigger sending data
@@ -275,7 +275,7 @@ void t_backpropPacket (uint key, uint payload)
   // if all expected errors have arrived may move to next tick
   if (tb_arrived == tcfg.num_units)
   {
-    // initialize arrival scoreboard for next tick,
+    // initialise arrival scoreboard for next tick,
     tb_arrived = 0;
 
     // update pointer to received errors,
@@ -284,7 +284,7 @@ void t_backpropPacket (uint key, uint payload)
     // and check if other threads are done,
     if (tb_thrds_done == 0)
     {
-      // if done initialize synchronization semaphore,
+      // if done initialise synchronisation semaphore,
       tb_thrds_done = 1;
 
       // and advance tick

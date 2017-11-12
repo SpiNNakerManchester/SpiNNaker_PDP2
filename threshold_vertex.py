@@ -344,7 +344,7 @@ class ThresholdVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds (padding), stp, lds (padding)
+        # write link keys: fwd, bkp, fds (padding), stp, and lds (padding)
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 

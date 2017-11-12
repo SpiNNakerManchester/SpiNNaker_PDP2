@@ -53,15 +53,15 @@ uchar        tick_stop;    // current tick stop decision
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
-weight_t         *wt; // initial connection weights
-mlp_example_t    *ex; // example data
-uint             *rt; // multicast routing keys data
+weight_t         * wt;     // initial connection weights
+mlp_example_t    * ex;     // example data
+uint             * rt;     // multicast routing keys data
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
 // ------------------------------------------------------------------------
-network_conf_t ncfg;           // network-wide configuration parameters
-w_conf_t      wcfg;           // weight core configuration parameters
+network_conf_t     ncfg;   // network-wide configuration parameters
+w_conf_t           wcfg;   // weight core configuration parameters
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -97,7 +97,7 @@ uint             wb_sync_key;       // BACKPROP processing can start
 weight_update_t  wb_update_func;    // weight update function
 
 // history arrays
-activation_t     * w_output_history;  // history array for outputs
+activation_t   * w_output_history;  // history array for outputs
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

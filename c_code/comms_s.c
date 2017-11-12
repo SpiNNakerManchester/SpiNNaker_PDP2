@@ -17,7 +17,7 @@
 void s_receivePacket (uint key, uint payload)
 {
   // check if stop packet
-  if ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY)
+  if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
     // stop packet received
     #ifdef DEBUG
@@ -25,7 +25,7 @@ void s_receivePacket (uint key, uint payload)
     #endif
 
     // STOP decision arrived
-    tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
+    tick_stop = key & SPINN_STPD_MASK;
 
     #ifdef DEBUG_VRB
       io_printf (IO_BUF, "sc:%x\n", tick_stop);
@@ -34,7 +34,7 @@ void s_receivePacket (uint key, uint payload)
     // check if all threads done
     if (sf_thrds_done == 0)
     {
-      // if done initialize semaphore
+      // if done initialise semaphore
       sf_thrds_done = 1;
 
       // and advance tick

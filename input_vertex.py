@@ -1,6 +1,4 @@
 import struct
-import numpy as np
-import os
 
 from data_specification.enums.data_type import DataType
 
@@ -249,7 +247,8 @@ class InputVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds (padding), stop (padding), lds (padding)
+        # write link keys: fwd, bkp, fds (padding), stop (padding),
+        # and lds (padding)
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 

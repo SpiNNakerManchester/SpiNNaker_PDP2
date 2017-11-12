@@ -145,10 +145,10 @@ void wb_process (uint null0, uint null1)
                                  >> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
                                  - SPINN_LONG_DELTA_SHIFT);
 
-      // if we are using Doug's Momentum, and we have reached the end of the epoch, 
+      // if we are using Doug's Momentum, and we have reached the end of the epoch,
       // we need to start accumulating link delta sums
-      if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE 
-            && example == (ncfg.num_examples - 1) 
+      if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+            && example == (ncfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
       {
 	// only use link derivatives for links whose weights are non-zero
@@ -169,7 +169,7 @@ void wb_process (uint null0, uint null1)
 
 	  // square the link derivatives
 	  // s48.15 = (s48.15 * s48.15) >> 15
-	  link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT); 
+	  link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT);
   	  link_delta_sum = link_delta_sum + link_delta_tmp;
         }
       }
@@ -205,19 +205,19 @@ void wb_process (uint null0, uint null1)
     }
 
     // if we are using Doug's Momentum, and we have reached the end of the epoch,
-    // we need to forward the accumumated link delta sums to the s cores
-    if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE 
-            && example == (ncfg.num_examples - 1) 
+    // we need to forward the accumulated link delta sums to the s cores
+    if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+            && example == (ncfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
     {
-      // cast to a 32-bit value
+      // cast to a 32-bit value,
       lds_t link_delta_sum_short = (lds_t) link_delta_sum;
-      // send partial link delta sum,
+
+      // and send partial link delta sum
       while (!spin1_send_mc_packet (ldsKey,
                 (uint) link_delta_sum_short, WITH_PAYLOAD)
             );
     }
-
 
     // if done with all deltas advance tick
     if (wb_arrived == wcfg.num_cols)
@@ -414,7 +414,7 @@ void momentum_update_weights (void)
         // s48.15 = (s0.15 * s36.27) >> 27
         long_wchange_t change_tmp = ((long_wchange_t) -wcfg.learningRate *
                              (long_wchange_t) w_link_deltas[i][j]);
-	
+
 
         // round off,
         change_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
@@ -431,9 +431,9 @@ void momentum_update_weights (void)
                                           - SPINN_WEIGHT_SHIFT - 1));
 
         // compute sum and adjust decimal point position
-        w_wchanges[i][j] = 
+        w_wchanges[i][j] =
                 (change_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_LONG_DELTA_SHIFT
-		              - SPINN_WEIGHT_SHIFT)) 
+		              - SPINN_WEIGHT_SHIFT))
               + (momentum_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
                               - SPINN_WEIGHT_SHIFT));
 

@@ -20,7 +20,7 @@ void w_receivePacket (uint key, uint payload)
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
   // check if packet is stop type
-  uint stop = ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY);
+  uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
 
   // check packet type
   if (stop)
@@ -54,7 +54,7 @@ void w_stopPacket (uint key, uint payload)
   #endif
 
   // STOP decision arrived
-  tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
+  tick_stop = key & SPINN_STPD_MASK;
 
   #ifdef DEBUG_VRB
     io_printf (IO_BUF, "sc:%x\n", tick_stop);

@@ -86,11 +86,11 @@ class WeightVertex(
                 self.momentum = MLPConstants.DEF_MOMENTUM
         else:
             self.learning_rate = 0
-	    self.weight_decay = 0
+            self.weight_decay = 0
             self.momentum = 0
 
-	# weight update function
-	self.update_function = network._update_function
+        # weight update function
+        self.update_function = network._update_function
 
         # binary, configuration and data files
         self._aplx_file = "binaries/weight.aplx"
@@ -200,7 +200,7 @@ class WeightVertex(
         weight_decay = int (self.weight_decay *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-	# momentum is an MLP short fixed-point fpreal
+        # momentum is an MLP short fixed-point fpreal
         momentum = int (self.momentum *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
@@ -299,7 +299,7 @@ class WeightVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds, stop (padding), lds
+        # write link keys: fwd, bkp, fds, stop (padding), and lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 

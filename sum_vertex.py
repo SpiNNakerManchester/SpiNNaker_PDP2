@@ -1,6 +1,4 @@
 import struct
-import numpy as np
-import os
 
 from data_specification.enums.data_type import DataType
 
@@ -63,7 +61,7 @@ class SumVertex(
         self._fwd_expect = len (network.groups)
         self._bkp_expect = len (network.groups)
         self._lds_expect = len (network.groups) * self.group.units
-        
+
         # weight update function
         self.update_function = network._update_function
 
@@ -208,7 +206,8 @@ class SumVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds (padding), stop (padding), lds (padding)
+        # write link keys: fwd, bkp, fds (padding), stop (padding),
+        # and lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
@@ -219,10 +218,8 @@ class SumVertex(
 
         spec.write_value (0, data_type = DataType.UINT32)
 
-        spec.write_value (0, data_type = DataType.UINT32)
-
-        #spec.write_value (routing_info.get_first_key_from_pre_vertex (
-        #    self, self.lds_link), data_type = DataType.UINT32)
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.lds_link), data_type = DataType.UINT32)
 
         # End the specification
         spec.end_specification ()

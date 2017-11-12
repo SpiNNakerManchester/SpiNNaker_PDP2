@@ -99,47 +99,32 @@
 // ------------------------------------------------------------------------
 // multicast packet routing keys and masks
 // ------------------------------------------------------------------------
-#define SPINN_BLK_R_MASK     0xff000000
-#define SPINN_BLK_C_MASK     0x00ff0000
-#define SPINN_SUM_B_MASK     0x00ff0000
-#define SPINN_THD_B_MASK     0x00ff0000
-#define SPINN_STOP_MASK      0x00003a00
-#define SPINN_STPF_MASK      0x00000800
-#define SPINN_SYNC_MASK      0x00001000
-#define SPINN_PHASE_MASK     0x00000800
-#define SPINN_COLOUR_MASK    0x00000400
-#define SPINN_FUNCT_MASK     0x00000300
+// packet type keys
+#define SPINN_SYNC_KEY       0x00001000
+#define SPINN_LDST_KEY       0x00002000
+#define SPINN_LDSA_KEY       0x00003000
+#define SPINN_STPC_KEY       0x00003200
+#define SPINN_STOP_KEY       0x00003a00
+
+// packet type mask
+#define SPINN_TYPE_MASK      0x00003a00
+
+// packet condition keys
+#define SPINN_PHASE_KEY(p)   (p << SPINN_PHASE_SHIFT)
+#define SPINN_COLOUR_KEY     SPINN_COLOUR_MASK
+
+// packet condition masks
+#define SPINN_PHASE_SHIFT    11
+#define SPINN_PHASE_MASK     (1 << SPINN_PHASE_SHIFT)
+#define SPINN_COLOUR_SHIFT   10
+#define SPINN_COLOUR_MASK    (1 << SPINN_COLOUR_SHIFT)
+
+// packet data masks
 #define SPINN_OUTPUT_MASK    0x000000ff
 #define SPINN_NET_MASK       0x000000ff
 #define SPINN_DELTA_MASK     0x000000ff
 #define SPINN_ERROR_MASK     0x000000ff
 #define SPINN_STPD_MASK      0x000000ff
-#define SPINN_LDS_MASK       SPINN_STOP_MASK
-
-#define SPINN_BLK_R_SHIFT    24
-#define SPINN_BLK_C_SHIFT    16
-#define SPINN_SUM_B_SHIFT    16
-#define SPINN_THD_B_SHIFT    16
-#define SPINN_STOP_SHIFT     13
-#define SPINN_SYNC_SHIFT     12
-#define SPINN_PHASE_SHIFT    11
-#define SPINN_COLOUR_SHIFT   10
-#define SPINN_FUNCT_SHIFT    8
-#define SPINN_STPD_SHIFT     0
-
-#define SPINN_BR_KEY(br)     (br << SPINN_BLK_R_SHIFT)
-#define SPINN_BC_KEY(bc)     (bc << SPINN_BLK_C_SHIFT)
-#define SPINN_SB_KEY(bc)     (bc << SPINN_SUM_B_SHIFT)
-#define SPINN_TB_KEY(bc)     (bc << SPINN_THD_B_SHIFT)
-#define SPINN_PHASE_KEY(p)   (p << SPINN_PHASE_SHIFT)
-#define SPINN_FUNCT_KEY(f)   (f << SPINN_FUNCT_SHIFT)
-#define SPINN_COLOUR_KEY     SPINN_COLOUR_MASK
-#define SPINN_CORETYPE_KEY   (coreType << SPINN_FUNCT_SHIFT)
-#define SPINN_SYNC_KEY       SPINN_SYNC_MASK
-#define SPINN_STPF_KEY       (SPINN_STOP_MASK & ~SPINN_STPF_MASK)
-#define SPINN_STPR_KEY       SPINN_STOP_MASK
-#define SPINN_LDSA_KEY       0x00003000
-#define SPINN_LDST_KEY       0x00002000
 // ------------------------------------------------------------------------
 
 
