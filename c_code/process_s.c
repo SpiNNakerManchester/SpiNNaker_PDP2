@@ -49,7 +49,8 @@ void s_process (uint null0, uint null1)
     // check for LDS "total" packet
     else if ((key & SPINN_TYPE_MASK) == SPINN_LDST_KEY)
     {
-      io_printf (IO_BUF, "Received LDS \"total\" packet: %r\n", payload);
+      // process LDS "total" packet
+      s_ldst_packet (key, payload);
     }
     // else check packet phase and process accordingly
     else if (ph == SPINN_FORWARD)
@@ -96,20 +97,68 @@ void s_ldsa_packet (uint key, uint payload)
   // add the received value to the total so far,
   s_lds_part += (long_lds_t) payload;
 
-  // increment the count of link delta sums arrived,
-  s_lds_arrived++;
+  // increment the count of partial link delta sums arrived,
+  s_ldsa_arrived++;
 
   // check whether all the partial sums have arrived
-  if (s_lds_arrived == scfg.lds_expected)
+  if (s_ldsa_arrived == scfg.ldsa_expected)
   {
-	// send the result to the first s core
+    // send the result to the first s core
     // to give a total across the whole network
     if (scfg.is_first_group == 0)
     {
       io_printf (IO_BUF, "Epoch %d sending partial link delta sum: ", epoch);
       io_printf (IO_BUF, "%r\n", s_lds_part);
-      while (!spin1_send_mc_packet (ldsKey, s_lds_part, WITH_PAYLOAD));
+      while (!spin1_send_mc_packet (ldstKey, (lds_t) s_lds_part, WITH_PAYLOAD));
     }
+
+    // access synchronisation semaphore with interrupts disabled
+    uint cpsr = spin1_int_disable ();
+
+    // check if all threads done
+    if (sb_thrds_done == 0)
+    {
+      // if done initialise semaphore
+      sb_thrds_done = 0;
+
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // and advance tick
+      //TODO: check if need to schedule or can simply call
+      sb_advance_tick (NULL, NULL);
+    }
+    else
+    {
+      // if not done report processing thread done,
+      sb_thrds_done -= 1;
+
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process LDST packet: accumulate the received link delta sum totals
+// ------------------------------------------------------------------------
+void s_ldst_packet (uint key, uint payload)
+{
+  // add the received value to the total so far,
+  s_lds_part += (long_lds_t) payload;
+
+  // increment the count of link delta sums arrived,
+  s_ldst_arrived++;
+
+  // check whether all the partial sums have arrived
+  if (s_ldst_arrived == scfg.ldst_expected)
+  {
+    io_printf (IO_BUF, "Epoch %d ", epoch);
+    io_printf (IO_BUF, "final link delta sum / 100: %r\n", (s_lds_part/100));
+    // send the final value of s_lds_part back to the w cores
+    //while (!spin1_send_mc_packet (ldsrKey, (lds_t) s_lds_part, WITH_PAYLOAD));
 
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
@@ -299,12 +348,23 @@ void s_backprop_packet (uint key, uint payload)
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we need have to wait for the partial link delta sums
-        // to arrive, so increment the thread count by 1
+        // to arrive
         if (scfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
             && example == (ncfg.num_examples - 1)
             && tick == SPINN_SB_END_TICK + 1)
         {
-          sb_thrds_done = 1;
+          // if this s core relates to the first group in the network, then we
+          // also need to wait for the link delta sum totals, so set the threads 
+          // pending to 2
+          if (scfg.is_first_group == 1)
+          {
+            sb_thrds_done = 2;
+          }
+          // for all other groups, set threads pending to 1
+          else
+          {
+            sb_thrds_done = 1;
+          }
         }
         else
         {
@@ -485,7 +545,8 @@ void s_advance_example (void)
       if (ncfg.training)
       {
         s_lds_part = 0;
-        s_lds_arrived = 0;
+        s_ldsa_arrived = 0;
+        s_ldst_arrived = 0;
       }
     }
   }

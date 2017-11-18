@@ -36,7 +36,7 @@ uint coreID;               // 5-bit virtual core ID
 
 uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-uint ldsKey;               // 32-bit packet ID for link delta summation
+uint ldsaKey;              // 32-bit packet ID for link delta summation
 
 uint         epoch;        // current training iteration
 uint         example;      // current example in epoch

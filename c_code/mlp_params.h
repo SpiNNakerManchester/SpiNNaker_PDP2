@@ -103,6 +103,7 @@
 #define SPINN_SYNC_KEY       0x00001000
 #define SPINN_LDST_KEY       0x00002000
 #define SPINN_LDSA_KEY       0x00003000
+#define SPINN_LDSR_KEY       0x00002800
 #define SPINN_STPC_KEY       0x00003200
 #define SPINN_STOP_KEY       0x00003a00
 

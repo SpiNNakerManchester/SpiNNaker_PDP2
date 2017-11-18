@@ -205,7 +205,7 @@ void wb_process (uint null0, uint null1)
     }
 
     // if we are using Doug's Momentum, and we have reached the end of the epoch,
-    // we need to forward the accumulated link delta sums to the s cores
+    // we need to forward the accumulated partial link delta sums to the s cores
     if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
             && example == (ncfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
@@ -214,7 +214,7 @@ void wb_process (uint null0, uint null1)
       lds_t link_delta_sum_short = (lds_t) link_delta_sum;
 
       // and send partial link delta sum
-      while (!spin1_send_mc_packet (ldsKey,
+      while (!spin1_send_mc_packet (ldsaKey,
                 (uint) link_delta_sum_short, WITH_PAYLOAD)
             );
     }

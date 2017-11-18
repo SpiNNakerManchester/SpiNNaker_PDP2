@@ -8,7 +8,9 @@ extern uint coreID;               // 5-bit virtual core ID
 
 extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
 extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-extern uint ldsKey;               // 32-bit packet ID for link delta summation
+extern uint ldsaKey;              // 32-bit packet ID for link delta summation accumulators
+extern uint ldstKey;              // 32-bit packet ID for link delta summation totals
+extern uint ldsrKey;              // 32-bit packet ID for link delta summation reports
 
 extern uint         epoch;        // current training iteration
 extern uint         example;      // current example in epoch
@@ -83,7 +85,8 @@ extern uint             sf_thrds_done; // sync. semaphore: proc & stop
 extern scoreboard_t   * sb_arrived[2]; // keep track of expected error b-d-p
 extern scoreboard_t     sb_done;       // current tick error computation done
 extern uint             sb_thrds_done; // sync. semaphore: proc & stop
-extern scoreboard_t     s_lds_arrived; // keep track of the number of link delta sums
+extern scoreboard_t     s_ldsa_arrived; // keep track of the number of partial link delta sums
+extern scoreboard_t     s_ldst_arrived; // keep track of the number of link delta sum totals
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

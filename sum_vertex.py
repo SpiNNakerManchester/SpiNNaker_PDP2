@@ -60,7 +60,8 @@ class SumVertex(
         # NOTE: if all-zero w cores are optimised out this need reviewing
         self._fwd_expect = len (network.groups)
         self._bkp_expect = len (network.groups)
-        self._lds_expect = len (network.groups) * self.group.units
+        self._ldsa_expect = len (network.groups) * self.group.units
+        self._ldst_expect = len (network.groups) - 1
 
         # weight update function
         self.update_function = network._update_function
@@ -123,7 +124,8 @@ class SumVertex(
               uint         num_units;
               scoreboard_t fwd_expect;
               scoreboard_t bkp_expect;
-              scoreboard_t lds_expect;
+              scoreboard_t ldsa_expect;
+              scoreboard_t ldst_expect;
               uchar        update_function;
               uchar        is_first_group;
             } s_conf_t;
@@ -132,11 +134,12 @@ class SumVertex(
             explicit padding
         """
 
-        return struct.pack ("<4I2B2x",
+        return struct.pack ("<5I2B2x",
                             self.group.units,
                             self._fwd_expect,
                             self._bkp_expect,
-                            self._lds_expect,
+                            self._ldsa_expect,
+                            self._ldst_expect,
                             self.update_function.value & 0xff,
                             self._is_first_group & 0xff
                             )

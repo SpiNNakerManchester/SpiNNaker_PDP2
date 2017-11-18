@@ -217,7 +217,8 @@ typedef struct s_conf               // sum core configuration
   uint         num_units;           // this core's number of units
   scoreboard_t fwd_expected;        // num of expected partial nets
   scoreboard_t bkp_expected;        // num of expected partial errors
-  scoreboard_t lds_expected;        // num of expected partial link delta sums
+  scoreboard_t ldsa_expected;       // num of expected partial link delta sums
+  scoreboard_t ldst_expected;       // num of expected link delta sum totals
   uchar        update_function;     // function to update weights
   uchar        is_first_group;      // is this the first group in the network?
 } s_conf_t;

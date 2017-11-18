@@ -87,7 +87,8 @@ uint s_init (void)
   }
   sf_done = 0;
   sb_done = 0;
-  s_lds_arrived = 0;
+  s_ldsa_arrived = 0;
+  s_ldst_arrived = 0;
 
   // initialize synchronization semaphores
   sf_thrds_done = 1;
@@ -107,7 +108,8 @@ uint s_init (void)
   //NOTE: colour is initialized to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  ldsKey = rt[LDS] | SPINN_LDST_KEY;
+  ldstKey = rt[LDS] | SPINN_LDST_KEY;
+  ldsrKey = rt[LDS] | SPINN_LDSR_KEY;
 
   return (SPINN_NO_ERROR);
 }
