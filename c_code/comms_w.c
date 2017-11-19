@@ -22,11 +22,19 @@ void w_receivePacket (uint key, uint payload)
   // check if packet is stop type
   uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
 
+  // check if packet is ldsr type
+  uint ldsr = ((key & SPINN_TYPE_MASK) == SPINN_LDSR_KEY);
+
   // check packet type
   if (stop)
   {
     // stop packet
     w_stopPacket (key, payload);
+  }
+  else if (ldsr)
+  {
+    // ldsr packet
+    w_ldsrPacket (key, payload);
   }
   else if (ph == SPINN_FORWARD)
   {
@@ -77,6 +85,49 @@ void w_stopPacket (uint key, uint payload)
   {
     // if not done report stop thread done
     wf_thrds_done -= 1;
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process an ldsr packet
+// ------------------------------------------------------------------------
+void w_ldsrPacket (uint key, uint payload)
+{
+  // the final link delta sum for the epoch arrived
+  w_lds_final = (lds_t) payload;
+
+  // access synchronization semaphore with interrupts disabled
+  uint cpsr = spin1_int_disable ();
+
+  // check if all threads done
+  if (wb_thrds_done == 0)
+  {
+    // if done initialize semaphore
+    wb_thrds_done = 0;
+
+    // restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+
+    // initialize arrival scoreboard for next tick,
+    wb_arrived = 0;  
+
+    #ifdef TRACE_VRB
+      io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
+    #endif
+
+    // and advance tick
+    //TODO: check if need to schedule or can simply call
+    wb_advance_tick (NULL, NULL);
+  }
+  else
+  {
+    // if not done report processing thread done,
+    wb_thrds_done -= 1;
+
+    // and restore interrupts after flag access
+    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------

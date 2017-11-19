@@ -77,6 +77,7 @@ long_delta_t   * * w_link_deltas;     // computed link deltas
 error_t          * w_errors;          // computed errors next tick
 pkt_queue_t        w_delta_pkt_q;     // queue to hold received deltas
 fpreal             w_delta_dt;        // scaling factor for link deltas
+lds_t              w_lds_final;       // final link delta sum
 
 // FORWARD phase specific variables
 // (net b-d-p computation)
@@ -93,6 +94,7 @@ uint             wf_sync_key;       // FORWARD processing can start
 // (error b-d-p computation)
 uchar            wb_active;         // processing deltas from queue?
 scoreboard_t     wb_arrived;        // keeps track of received deltas
+uint             wb_thrds_done;     // sync. semaphore: comms, proc & stop
 uint             wb_sync_key;       // BACKPROP processing can start
 weight_update_t  wb_update_func;    // weight update function
 

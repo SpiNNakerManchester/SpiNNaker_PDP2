@@ -57,6 +57,7 @@ extern long_delta_t   * * w_link_deltas; // computed link deltas
 extern error_t          * w_errors;      // computed errors next tick
 extern pkt_queue_t        w_delta_pkt_q; // queue to hold received deltas
 extern fpreal             w_delta_dt;    // scaling factor for link deltas
+extern lds_t              w_lds_final;   // final link delta sum
 extern uint               wf_procs;      // pointer to processing unit outputs
 extern uint               wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t       wf_arrived;    // keeps track of received unit outputs
@@ -64,6 +65,7 @@ extern uint               wf_thrds_done; // sync. semaphore: comms, proc & stop
 extern uint               wf_sync_key;   // FORWARD processing can start
 extern uchar              wb_active;     // processing deltas from queue?
 extern scoreboard_t       wb_arrived;    // keeps track of received deltas
+extern uint               wb_thrds_done; // sync. semaphore: comms, proc & stop
 extern uint               wb_sync_key;   // BACKPROP processing can start
 extern weight_update_t    wb_update_func; // weight update function
 

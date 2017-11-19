@@ -222,15 +222,50 @@ void wb_process (uint null0, uint null1)
     // if done with all deltas advance tick
     if (wb_arrived == wcfg.num_cols)
     {
-      // initialize arrival scoreboard for next tick,
-      wb_arrived = 0;
 
-      #ifdef TRACE_VRB
-        io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
-      #endif
+      // access synchronization semaphore with interrupts disabled
+      uint cpsr = spin1_int_disable ();
 
-      //TODO: check if need to schedule or can simply call
-      wb_advance_tick (NULL, NULL);
+      // and check if all threads done
+      if (wb_thrds_done == 0)
+      {
+        // if done initialize synchronization semaphore,
+        // if we are using Doug's Momentum, and we have reached the end of the
+        // epoch (i.e. we are on the last example, and are about to move on to
+        // the last tick, we need have to wait for the total link delta sum to
+        // arrive
+        if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+            && example == (ncfg.num_examples - 1)
+            && tick == SPINN_WB_END_TICK + 1)
+        {
+          wb_thrds_done = 1;
+        }
+        else
+        {
+          wb_thrds_done = 0;
+        }
+
+        // restore interrupts after flag access,
+        spin1_mode_restore (cpsr);
+
+        // initialize arrival scoreboard for next tick,
+        wb_arrived = 0;  
+
+        #ifdef TRACE_VRB
+          io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
+        #endif
+
+        //TODO: check if need to schedule or can simply call
+        wb_advance_tick (NULL, NULL);
+      }
+      else
+      {
+        // if not done report processing thread done,
+        wb_thrds_done -= 1;
+
+        // and restore interrupts after flag access
+        spin1_mode_restore (cpsr);
+      }
     }
 
     // access queue with interrupts disabled
@@ -522,7 +557,8 @@ void dougsmomentum_update_weights (void)
     io_printf (IO_BUF, "dougsmomentum_update_weights\n");
   #endif
 
-  io_printf (IO_BUF, "In dougsmomentum_update_weights\n");
+  io_printf (IO_BUF, "Epoch %d, ", epoch);
+  io_printf (IO_BUF, "dougsmomentum_update_weights, w_lds_final: %r\n", w_lds_final);
 
   #if SPINN_WEIGHT_HISTORY == TRUE
     //TODO: dump weights to SDRAM for record keeping

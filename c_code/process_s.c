@@ -158,7 +158,7 @@ void s_ldst_packet (uint key, uint payload)
     io_printf (IO_BUF, "Epoch %d ", epoch);
     io_printf (IO_BUF, "final link delta sum / 100: %r\n", (s_lds_part/100));
     // send the final value of s_lds_part back to the w cores
-    //while (!spin1_send_mc_packet (ldsrKey, (lds_t) s_lds_part, WITH_PAYLOAD));
+    while (!spin1_send_mc_packet (ldsrKey, (lds_t) s_lds_part, WITH_PAYLOAD));
 
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
