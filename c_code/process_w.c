@@ -158,7 +158,7 @@ void wb_process (uint null0, uint null1)
           // scale the link derivatives
           if (ncfg.net_type == SPINN_NET_CONT)
           {
-            // s48.15 = (s36.27 * s15.16) >> 28
+            // 60.4 = (s36.27 * s15.16) >> 39
             link_delta_tmp = (w_link_deltas[i][inx] * (long_delta_t) w_delta_dt)
                                  >> (SPINN_LONG_DELTA_SHIFT + SPINN_FPREAL_SHIFT - SPINN_LONG_LDS_SHIFT);
 	  }
@@ -168,7 +168,7 @@ void wb_process (uint null0, uint null1)
           }
 
 	  // square the link derivatives
-	  // s48.15 = (s48.15 * s48.15) >> 15
+	  // 60.4 = (60.4 * 60.4) >> 4
 	  link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT);
   	  link_delta_sum = link_delta_sum + link_delta_tmp;
         }
@@ -558,7 +558,7 @@ void dougsmomentum_update_weights (void)
   #endif
 
   io_printf (IO_BUF, "Epoch %d, ", epoch);
-  io_printf (IO_BUF, "dougsmomentum_update_weights, w_lds_final: %r\n", w_lds_final);
+  io_printf (IO_BUF, "dougsmomentum_update_weights, w_lds_final / 100: %r\n", ((w_lds_final << (15 - SPINN_LDS_SHIFT))/100));
 
   #if SPINN_WEIGHT_HISTORY == TRUE
     //TODO: dump weights to SDRAM for record keeping

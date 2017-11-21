@@ -95,7 +95,7 @@ void s_process (uint null0, uint null1)
 void s_ldsa_packet (uint key, uint payload)
 {
   // add the received value to the total so far,
-  s_lds_part += (long_lds_t) payload;
+  s_lds_part += (lds_t) payload;
 
   // increment the count of partial link delta sums arrived,
   s_ldsa_arrived++;
@@ -109,7 +109,7 @@ void s_ldsa_packet (uint key, uint payload)
     {
       io_printf (IO_BUF, "Epoch %d sending partial link delta sum: ", epoch);
       io_printf (IO_BUF, "%r\n", s_lds_part);
-      while (!spin1_send_mc_packet (ldstKey, (lds_t) s_lds_part, WITH_PAYLOAD));
+      while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
     }
 
     // access synchronisation semaphore with interrupts disabled
@@ -147,7 +147,7 @@ void s_ldsa_packet (uint key, uint payload)
 void s_ldst_packet (uint key, uint payload)
 {
   // add the received value to the total so far,
-  s_lds_part += (long_lds_t) payload;
+  s_lds_part += (lds_t) payload;
 
   // increment the count of link delta sums arrived,
   s_ldst_arrived++;
@@ -156,9 +156,9 @@ void s_ldst_packet (uint key, uint payload)
   if (s_ldst_arrived == scfg.ldst_expected)
   {
     io_printf (IO_BUF, "Epoch %d ", epoch);
-    io_printf (IO_BUF, "final link delta sum / 100: %r\n", (s_lds_part/100));
+    io_printf (IO_BUF, "final link delta sum / 100: %r\n", ((s_lds_part << (15 - SPINN_LDS_SHIFT))/100));
     // send the final value of s_lds_part back to the w cores
-    while (!spin1_send_mc_packet (ldsrKey, (lds_t) s_lds_part, WITH_PAYLOAD));
+    while (!spin1_send_mc_packet (ldsrKey, s_lds_part, WITH_PAYLOAD));
 
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();

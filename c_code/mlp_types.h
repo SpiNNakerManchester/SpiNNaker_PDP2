@@ -119,13 +119,13 @@ typedef long long long_delta_t;     // used for delta intermediate calc
 //~#define SPINN_LONG_DELTA_MAX     SPINN_LONG_ERR_MAX
 //~#define SPINN_LONG_DELTA_MIN     SPINN_LONG_ERR_MIN
 
-typedef int       lds_t;            // link delta sum
-typedef long long long_lds_t;       // used for intermediate link delta sum calc
+typedef uint               lds_t;       // link delta sum
+typedef unsigned long long long_lds_t;  // long link delta sum for intermediate calculations
 
-// lds values are s16.15
-#define SPINN_LDS_SHIFT          15
-// long lds values are s48.15
-#define SPINN_LONG_LDS_SHIFT     15
+// lds values are 28.4
+#define SPINN_LDS_SHIFT          4
+// long lds values are 60.4
+#define SPINN_LONG_LDS_SHIFT     4
 
 // weights are s16.15
 // long weights are s48.15
