@@ -126,6 +126,7 @@ typedef unsigned long long long_lds_t;  // long link delta sum for intermediate 
 #define SPINN_LDS_SHIFT          4
 // long lds values are 60.4
 #define SPINN_LONG_LDS_SHIFT     4
+#define SPINN_LDS_ONE            (1 << SPINN_LDS_SHIFT)
 
 // weights are s16.15
 // long weights are s48.15
@@ -141,6 +142,7 @@ typedef long long long_wchange_t;   // intermediate connection weight change
 #define SPINN_WEIGHT_MIN         ((weight_t) -(0xffff << SPINN_WEIGHT_SHIFT))
 #define SPINN_WEIGHT_POS_EPSILON ((weight_t)  1)
 #define SPINN_WEIGHT_NEG_EPSILON ((weight_t) -1)
+#define SPINN_WEIGHT_ONE         (1 << SPINN_WEIGHT_SHIFT)
 
 typedef short     short_fpreal_t;
 typedef int       fpreal;           // 32-bit fixed-point number

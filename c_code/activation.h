@@ -3,5 +3,6 @@
 
 activation_t sigmoid       (net_t input);
 net_t        inv_sigmoid   (activation_t input);
+wchange_t    sqrt_custom   (lds_t x);
 
 #endif

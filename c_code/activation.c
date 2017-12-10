@@ -1,5 +1,7 @@
 // SpiNNaker API
 #include "spin1_api.h"
+// square root function
+#include "sqrt.h"
 
 // mlp
 #include "mlp_params.h"
@@ -153,4 +155,41 @@ net_t inv_sigmoid (activation_t input)
     else
       return (temp);
   }
+}
+
+
+
+// This function calculates the square-root of the argument x.
+// x is an lds_t, in the format u28.4.  The return value is a
+// wchange_t in format s16.15.
+
+wchange_t sqrt_custom (lds_t x)
+{   
+  unsigned long long tmp;
+  int n;
+  int n2;
+  uint u;
+
+  assert(x >= 0);
+
+  // if x is zero or one return x
+  if ((x == 0) || x == 16) {
+    return (x << (SPINN_WEIGHT_SHIFT - SPINN_LDS_SHIFT));	
+  }
+
+  n = __builtin_clz(x);
+  n2 = n - (28 - 17);
+  u = x << n;
+
+  tmp = recip_normalized_root(u);
+
+  tmp = newton_xlr(u, tmp);
+
+  tmp >>= 17 + ((n2 - 17) >> 1);
+
+  if (odd(n2)) {
+    tmp = (__x_u64_ulr(tmp, __SQRT_HALF) << 1);
+  }
+
+  return (wchange_t) (tmp >> 32);
 }

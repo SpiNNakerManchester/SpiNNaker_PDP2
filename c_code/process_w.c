@@ -424,7 +424,7 @@ void momentum_update_weights (void)
   #endif
 
   io_printf (IO_BUF, "In momentum_update_weights\n");
-    // update weights
+  // update weights
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
@@ -557,8 +557,24 @@ void dougsmomentum_update_weights (void)
     io_printf (IO_BUF, "dougsmomentum_update_weights\n");
   #endif
 
-  io_printf (IO_BUF, "Epoch %d, ", epoch);
-  io_printf (IO_BUF, "dougsmomentum_update_weights, w_lds_final / 100: %r\n", ((w_lds_final << (15 - SPINN_LDS_SHIFT))/100));
+  io_printf (IO_BUF, "Epoch %d w_lds_final: %r\n", epoch, (w_lds_final << (15 - SPINN_LDS_SHIFT)));
+
+  wchange_t scale;
+
+  if (w_lds_final > SPINN_LDS_ONE)
+  {
+    // calculate scale = 1/sqrt(w_lds_final)
+    wchange_t w_lds_sqrt = sqrt_custom(w_lds_final);
+    // s16.15 = (s16.15 << 15) / s15.16
+    scale = ((SPINN_WEIGHT_ONE << SPINN_WEIGHT_SHIFT)/w_lds_sqrt);
+    io_printf (IO_BUF, "w_lds_sqrt: %r\n", w_lds_sqrt);
+  }
+  else
+  {
+    scale = SPINN_WEIGHT_ONE;
+  }
+
+  io_printf (IO_BUF, "scale: %r\n", scale);
 
   #if SPINN_WEIGHT_HISTORY == TRUE
     //TODO: dump weights to SDRAM for record keeping
