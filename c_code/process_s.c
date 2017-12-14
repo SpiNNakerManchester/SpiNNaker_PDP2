@@ -107,8 +107,6 @@ void s_ldsa_packet (uint key, uint payload)
     // to give a total across the whole network
     if (scfg.is_first_group == 0)
     {
-      io_printf (IO_BUF, "Epoch %d sending partial link delta sum: ", epoch);
-      io_printf (IO_BUF, "%r\n", s_lds_part);
       while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
     }
 
@@ -155,8 +153,6 @@ void s_ldst_packet (uint key, uint payload)
   // check whether all the partial sums have arrived
   if (s_ldst_arrived == scfg.ldst_expected)
   {
-    io_printf (IO_BUF, "Epoch %d ", epoch);
-    io_printf (IO_BUF, "final link delta sum / 100: %r\n", ((s_lds_part << (15 - SPINN_LDS_SHIFT))/100));
     // send the final value of s_lds_part back to the w cores
     while (!spin1_send_mc_packet (ldsrKey, s_lds_part, WITH_PAYLOAD));
 
