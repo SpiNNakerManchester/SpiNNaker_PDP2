@@ -17,7 +17,7 @@ LFLAGS += -Ofast
 LIBRARIES += -lm
 
 SOURCE_DIRS = .
-SOURCES = weight.c comms_w.c process_w.c init_w.c
+SOURCES = weight.c comms_w.c process_w.c init_w.c activation.c
 
 # The spinnaker_tools standard makefile
 include $(SPINN_DIRS)/make/Makefile.SpiNNFrontEndCommon
