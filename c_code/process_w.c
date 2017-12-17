@@ -301,7 +301,6 @@ void steepest_update_weights (void)
     io_printf (IO_BUF, "steepest_update_weights\n");
   #endif
 
-  io_printf (IO_BUF, "In steepest_update_weights\n");
 
   // update weights
   for (uint j = 0; j < wcfg.num_cols; j++)
@@ -423,7 +422,6 @@ void momentum_update_weights (void)
     io_printf (IO_BUF, "momentum_update_weights\n");
   #endif
 
-  io_printf (IO_BUF, "In momentum_update_weights\n");
   // update weights
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
@@ -573,8 +571,7 @@ void dougsmomentum_update_weights (void)
 
   // multiply learning scale by learning rate
   // s16.15 = (s16.15 * s0.15) >> 15
-  //scale = (scale * wcfg.learningRate) >> SPINN_SHORT_FPREAL_SHIFT;
-  //io_printf (IO_BUF, "scale * learningRate: %r\n", scale);
+  scale = (scale * wcfg.learningRate) >> SPINN_SHORT_FPREAL_SHIFT;
 
   // update weights
   for (uint j = 0; j < wcfg.num_cols; j++)
