@@ -29,12 +29,12 @@ void w_receivePacket (uint key, uint payload)
   if (stop)
   {
     // stop packet
-    w_stopPacket (key, payload);
+    w_stopPacket (key);
   }
   else if (ldsr)
   {
     // ldsr packet
-    w_ldsrPacket (key, payload);
+    w_ldsrPacket (payload);
   }
   else if (ph == SPINN_FORWARD)
   {
@@ -53,7 +53,7 @@ void w_receivePacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 // process a stop packet
 // ------------------------------------------------------------------------
-void w_stopPacket (uint key, uint payload)
+void w_stopPacket (uint key)
 {
   #ifdef DEBUG
     stp_recv++;
@@ -93,41 +93,29 @@ void w_stopPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 // process an ldsr packet
 // ------------------------------------------------------------------------
-void w_ldsrPacket (uint key, uint payload)
+void w_ldsrPacket (uint payload)
 {
   // the final link delta sum for the epoch arrived
   w_lds_final = (lds_t) payload;
 
-  // access synchronization semaphore with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
   // check if all threads done
   if (wb_thrds_done == 0)
   {
-    // if done initialize semaphore
-    wb_thrds_done = 0;
-
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
-
-    // initialize arrival scoreboard for next tick,
-    wb_arrived = 0;  
+    //NOTE: no need to initialize semaphore
+    //wb_thrds_done = 0;
 
     #ifdef TRACE_VRB
-      io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
+      io_printf (IO_BUF, "ldsr calling wb_advance_tick\n");
     #endif
 
     // and advance tick
     //TODO: check if need to schedule or can simply call
-    wb_advance_tick (NULL, NULL);
+    spin1_schedule_callback (wb_advance_tick, NULL, NULL, SPINN_WB_TICK_P);
   }
   else
   {
     // if not done report processing thread done,
     wb_thrds_done -= 1;
-
-    // and restore interrupts after flag access
-    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------
@@ -154,7 +142,7 @@ void w_forwardPacket (uint key, uint payload)
   // store output for use in backprop phase,
   if (tick > 0)
   {
-    store_outputs (inx);
+    store_output (inx);
   }
 
   // and update scoreboard,
@@ -232,12 +220,12 @@ void w_backpropPacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
-// stores the outputs received for the current tick
+// stores output received for the current tick
 // ------------------------------------------------------------------------
-void store_outputs (uint inx)
+void store_output (uint inx)
 {
   #ifdef TRACE
-    io_printf (IO_BUF, "store_outputs\n");
+    io_printf (IO_BUF, "store_output\n");
   #endif
 
   w_output_history[(tick * wcfg.num_rows) + inx] = w_outputs[wf_comms][inx];

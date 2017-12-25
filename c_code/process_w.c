@@ -128,16 +128,12 @@ void wb_process (uint null0, uint null1)
     // update scoreboard,
     wb_arrived++;
 
+    // partial value used to compute Doug's Momentum
     long_lds_t link_delta_sum = 0;
-    long_lds_t link_delta_tmp;
 
-    // partially compute error dot products,
+    // compute link derivatives and partial error dot products,
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-
-      // restore output of previous tick,
-      restore_outputs (i, tick - 1);
-
       // compute link derivatives,
       // s36.27 = (s4.27 * s8.23) >> 23
       w_link_deltas[i][inx] += ((long_delta_t) w_outputs[0][i]
@@ -145,8 +141,8 @@ void wb_process (uint null0, uint null1)
                                  >> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
                                  - SPINN_LONG_DELTA_SHIFT);
 
-      // if we are using Doug's Momentum, and we have reached the end of the epoch,
-      // we need to start accumulating link delta sums
+      // if using Doug's Momentum and reached the end of an epoch
+      // accumulate partial link delta sum (to send to s core),
       if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
             && example == (ncfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
@@ -155,12 +151,15 @@ void wb_process (uint null0, uint null1)
         // as zero weights indicate no connection
       	if (w_weights[i][inx] != 0)
         {
+	  long_lds_t link_delta_tmp;
+
           // scale the link derivatives
           if (ncfg.net_type == SPINN_NET_CONT)
           {
             // 60.4 = (s36.27 * s15.16) >> 39
             link_delta_tmp = (w_link_deltas[i][inx] * (long_delta_t) w_delta_dt)
-                                 >> (SPINN_LONG_DELTA_SHIFT + SPINN_FPREAL_SHIFT - SPINN_LONG_LDS_SHIFT);
+                                 >> (SPINN_LONG_DELTA_SHIFT + SPINN_FPREAL_SHIFT
+				     - SPINN_LONG_LDS_SHIFT);
 	  }
 	  else
 	  {
@@ -174,8 +173,9 @@ void wb_process (uint null0, uint null1)
         }
       }
 
-      //NOTE: may need to make w_errors a long_error_t type and saturate!
+      // partially compute error dot products,
       // s16.15 = s16.15 + (s3.12 * s8.23) >> 20
+      //NOTE: may need to make w_errors a long_error_t type and saturate!
       w_errors[i] += (error_t) (((long_error_t) w_weights[i][inx]
                        * (long_error_t) delta)
                        >> (SPINN_WEIGHT_SHIFT + SPINN_DELTA_SHIFT
@@ -204,8 +204,8 @@ void wb_process (uint null0, uint null1)
       }
     }
 
-    // if we are using Doug's Momentum, and we have reached the end of the epoch,
-    // we need to forward the accumulated partial link delta sums to the s cores
+    // if using Doug's Momentum and reached the end of an epoch,
+    // forward the accumulated partial link delta sums to the s core
     if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
             && example == (ncfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
@@ -222,6 +222,8 @@ void wb_process (uint null0, uint null1)
     // if done with all deltas advance tick
     if (wb_arrived == wcfg.num_cols)
     {
+      // initialize arrival scoreboard for next tick,
+      wb_arrived = 0;  
 
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
@@ -232,7 +234,7 @@ void wb_process (uint null0, uint null1)
         // if done initialize synchronization semaphore,
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
-        // the last tick, we need have to wait for the total link delta sum to
+        // the last tick, we have to wait for the total link delta sum to
         // arrive
         if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
             && example == (ncfg.num_examples - 1)
@@ -247,9 +249,6 @@ void wb_process (uint null0, uint null1)
 
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
-
-        // initialize arrival scoreboard for next tick,
-        wb_arrived = 0;  
 
         #ifdef TRACE_VRB
           io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
@@ -561,7 +560,7 @@ void dougsmomentum_update_weights (void)
   {
     // calculate scale = 1/sqrt(w_lds_final)
     wchange_t w_lds_sqrt = sqrt_custom(w_lds_final);
-    // s16.15 = (s16.15 << 15) / s15.16
+    // s16.15 = (s16.15 << 15) / s16.15
     scale = ((SPINN_WEIGHT_ONE << SPINN_WEIGHT_SHIFT)/w_lds_sqrt);
   }
   else
@@ -767,8 +766,8 @@ void wb_advance_tick (uint null0, uint null1)
     // if not decrement tick,
     tick--;
 
-    // and trigger computation
-    spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);
+    // and restore previous tick outputs
+    restore_outputs (tick - 1);
 
     #ifdef DEBUG
       io_printf (IO_BUF, "wb_tick: %d/%d\n", tick, tot_tick);
@@ -935,8 +934,8 @@ void w_switch_to_bp (void)
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 
-  // and trigger BACKPROP computation
-  spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);
+  // and restore previous tick outputs
+  restore_outputs (tick - 1);
 
   // and send sync packet to allow unit outputs to be sent
 //#  while (!spin1_send_mc_packet (wb_sync_key, 0, NO_PAYLOAD));
@@ -951,12 +950,15 @@ void w_switch_to_bp (void)
 // ------------------------------------------------------------------------
 // restores the output of the specified unit for requested tick
 // ------------------------------------------------------------------------
-void restore_outputs (uint inx, uint tick)
+void restore_outputs (uint tick)
 {
   #ifdef TRACE
     io_printf (IO_BUF, "restore_outputs\n");
   #endif
 
-  w_outputs[0][inx] = w_output_history[(tick * wcfg.num_rows) + inx];
+  for (uint inx = 0; inx < wcfg.num_rows; inx++)
+  {
+    w_outputs[0][inx] = w_output_history[(tick * wcfg.num_rows) + inx];
+  }
 }
 // ------------------------------------------------------------------------
