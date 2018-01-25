@@ -8,6 +8,9 @@ extern uint coreID;               // 5-bit virtual core ID
 
 extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
 extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+extern uint ldsaKey;              // 32-bit packet ID for link delta summation accumulators
+extern uint ldstKey;              // 32-bit packet ID for link delta summation totals
+extern uint ldsrKey;              // 32-bit packet ID for link delta summation reports
 
 extern uint         epoch;        // current training iteration
 extern uint         example;      // current example in epoch
@@ -43,6 +46,10 @@ extern t_conf_t       tcfg;       // threshold core configuration parameters
 // ------------------------------------------------------------------------
 // weight core variables
 // ------------------------------------------------------------------------
+// global "constants"
+// list of weight update procedures
+extern weight_update_t const w_update_procs[SPINN_NUM_UPDATE_PROCS];
+
 extern weight_t       * * w_weights;     // connection weights block
 extern long_wchange_t * * w_wchanges;    // accumulated weight changes
 extern activation_t     * w_outputs[2]; // unit outputs for b-d-p
@@ -50,6 +57,7 @@ extern long_delta_t   * * w_link_deltas; // computed link deltas
 extern error_t          * w_errors;      // computed errors next tick
 extern pkt_queue_t        w_delta_pkt_q; // queue to hold received deltas
 extern fpreal             w_delta_dt;    // scaling factor for link deltas
+extern lds_t              w_lds_final;   // final link delta sum
 extern uint               wf_procs;      // pointer to processing unit outputs
 extern uint               wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t       wf_arrived;    // keeps track of received unit outputs
@@ -57,7 +65,9 @@ extern uint               wf_thrds_done; // sync. semaphore: comms, proc & stop
 extern uint               wf_sync_key;   // FORWARD processing can start
 extern uchar              wb_active;     // processing deltas from queue?
 extern scoreboard_t       wb_arrived;    // keeps track of received deltas
+extern uint               wb_thrds_done; // sync. semaphore: comms, proc & stop
 extern uint               wb_sync_key;   // BACKPROP processing can start
+extern weight_update_t    wb_update_func; // weight update function
 
 // history arrays
 extern activation_t     * w_output_history;
@@ -70,11 +80,15 @@ extern long_net_t     * s_nets;        // unit nets computed in current tick
 extern long_error_t   * s_errors[2];   // errors computed in current tick
 extern pkt_queue_t      s_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            s_active;      // processing b-d-ps from queue?
+extern lds_t            s_lds_part;    // partial link delta sum
 extern scoreboard_t   * sf_arrived;    // keep track of expected net b-d-p
 extern scoreboard_t     sf_done;       // current tick net computation done
 extern uint             sf_thrds_done; // sync. semaphore: proc & stop
 extern scoreboard_t   * sb_arrived[2]; // keep track of expected error b-d-p
 extern scoreboard_t     sb_done;       // current tick error computation done
+extern uint             sb_thrds_done; // sync. semaphore: proc & stop
+extern scoreboard_t     s_ldsa_arrived; // keep track of the number of partial link delta sums
+extern scoreboard_t     s_ldst_arrived; // keep track of the number of link delta sum totals
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

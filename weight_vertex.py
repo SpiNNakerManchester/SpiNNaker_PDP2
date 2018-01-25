@@ -49,13 +49,19 @@ class WeightVertex(
         self._from_group = from_group
         self._ex_cfg     = network._ex_set.example_config
 
-        # forward, backprop and synchronisation link partition names
+        # forward, backprop, synchronisation, and link delta summation link partition names
         self._fwd_link = "fwd_w{}_{}".format (self.group.id,
                                               self.from_group.id)
         self._bkp_link = "bkp_w{}_{}".format (self.group.id,
                                               self.from_group.id)
         self._fds_link = "fds_w{}_{}".format (self.group.id,
                                               self.from_group.id)
+        self._lds_link = "lds_w{}_{}".format (self.group.id,
+                                              self.from_group.id)
+
+        # reserve key space for every link
+        self._n_keys = MLPConstants.KEY_SPACE_SIZE
+
         # choose weight core-specific parameters
         if len (self.group.weights[self.from_group]):
             if self.group.learning_rate is not None:
@@ -71,12 +77,20 @@ class WeightVertex(
                 self.weight_decay = network._weight_decay
             else:
                 self.weight_decay = MLPConstants.DEF_WEIGHT_DECAY
+
+            if self.group.momentum is not None:
+                self.momentum = self.group.momentum
+            elif network._momentum is not None:
+                self.momentum = network._momentum
+            else:
+                self.momentum = MLPConstants.DEF_MOMENTUM
         else:
             self.learning_rate = 0
-	    self.weight_decay = 0
+            self.weight_decay = 0
+            self.momentum = 0
 
-        # reserve key space for every link
-        self._n_keys = MLPConstants.KEY_SPACE_SIZE
+        # weight update function
+        self.update_function = network._update_function
 
         # binary, configuration and data files
         self._aplx_file = "binaries/weight.aplx"
@@ -101,7 +115,7 @@ class WeightVertex(
         self._N_WEIGHTS_BYTES = \
             self.group.units * self.from_group.units * int_size
 
-        # 4 keys / keys are integers
+        # keys are integers
         self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * int_size
 
         self._sdram_usage = (
@@ -131,6 +145,10 @@ class WeightVertex(
     @property
     def fds_link (self):
         return self._fds_link
+
+    @property
+    def lds_link (self):
+        return self._lds_link
 
     def cast_float_to_weight (self,
                               wt_float
@@ -167,6 +185,8 @@ class WeightVertex(
               uint           num_cols;
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
+              short_fpreal_t momentum;
+              uchar          update_function;
             } w_conf_t;
 
             pack: standard sizes, little-endian byte order,
@@ -180,11 +200,17 @@ class WeightVertex(
         weight_decay = int (self.weight_decay *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<2I2h",
+        # momentum is an MLP short fixed-point fpreal
+        momentum = int (self.momentum *\
+                              (1 << MLPConstants.SHORT_FPREAL_SHIFT))
+
+        return struct.pack ("<2I3hBx",
                             self.from_group.units,
                             self.group.units,
                             learning_rate & 0xffff,
-                            weight_decay & 0xffff
+                            weight_decay & 0xffff,
+                            momentum & 0xffff,
+                            self.update_function.value & 0xff
                             )
 
     @property
@@ -273,7 +299,7 @@ class WeightVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds, stp
+        # write link keys: fwd, bkp, fds, stop (padding), and lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
@@ -284,6 +310,9 @@ class WeightVertex(
             self, self.fds_link), data_type = DataType.UINT32)
 
         spec.write_value (0, data_type = DataType.UINT32)
+
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.lds_link), data_type = DataType.UINT32)
 
         # End the specification
         spec.end_specification ()

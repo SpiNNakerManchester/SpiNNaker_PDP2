@@ -17,7 +17,7 @@
 void i_receivePacket (uint key, uint payload)
 {
   // check if stop packet
-  if ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY)
+  if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
     // sync packet received
     #ifdef DEBUG
@@ -25,7 +25,7 @@ void i_receivePacket (uint key, uint payload)
     #endif
 
     // STOP decision arrived
-    tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
+    tick_stop = key & SPINN_STPD_MASK;
 
     #ifdef DEBUG_VRB
       io_printf (IO_BUF, "sc:%x\n", tick_stop);

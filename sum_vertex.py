@@ -1,6 +1,4 @@
 import struct
-import numpy as np
-import os
 
 from data_specification.enums.data_type import DataType
 
@@ -47,14 +45,26 @@ class SumVertex(
         self._group   = group
         self._ex_cfg  = network._ex_set.example_config
 
-        # forward and backprop link partition names
+        # check if first group in the network
+        if self.group.id == network.groups[0].id:
+            self._is_first_group = 1
+        else:
+            self._is_first_group = 0
+
+        # forward, backprop, and link delta summation link partition names
         self._fwd_link = "fwd_s{}".format (self.group.id)
         self._bkp_link = "bkp_s{}".format (self.group.id)
+        self._lds_link = "lds_s{}".format (self.group.id)
 
         # sum core-specific parameters
         # NOTE: if all-zero w cores are optimised out this need reviewing
         self._fwd_expect = len (network.groups)
         self._bkp_expect = len (network.groups)
+        self._ldsa_expect = len (network.groups) * self.group.units
+        self._ldst_expect = len (network.groups) - 1
+
+        # weight update function
+        self.update_function = network._update_function
 
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -101,6 +111,10 @@ class SumVertex(
         return self._bkp_link
 
     @property
+    def lds_link (self):
+        return self._lds_link
+
+    @property
     def config (self):
         """ returns a packed string that corresponds to
             (C struct) s_conf in mlp_types.h:
@@ -110,15 +124,24 @@ class SumVertex(
               uint         num_units;
               scoreboard_t fwd_expect;
               scoreboard_t bkp_expect;
+              scoreboard_t ldsa_expect;
+              scoreboard_t ldst_expect;
+              uchar        update_function;
+              uchar        is_first_group;
             } s_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        return struct.pack ("<3I",
+
+        return struct.pack ("<5I2B2x",
                             self.group.units,
                             self._fwd_expect,
-                            self._bkp_expect
+                            self._bkp_expect,
+                            self._ldsa_expect,
+                            self._ldst_expect,
+                            self.update_function.value & 0xff,
+                            self._is_first_group & 0xff
                             )
     @property
     @overrides (MachineVertex.resources_required)
@@ -186,7 +209,8 @@ class SumVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, padding, padding
+        # write link keys: fwd, bkp, fds (padding), stop (padding),
+        # and lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
@@ -196,6 +220,9 @@ class SumVertex(
         spec.write_value (0, data_type = DataType.UINT32)
 
         spec.write_value (0, data_type = DataType.UINT32)
+
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.lds_link), data_type = DataType.UINT32)
 
         # End the specification
         spec.end_specification ()

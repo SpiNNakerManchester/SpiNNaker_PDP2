@@ -7,6 +7,7 @@ class MLPConstants ():
     # network parameter CONSTANTS or DEFAULT values
     DEF_LEARNING_RATE = 0.1
     DEF_WEIGHT_DECAY = 0
+    DEF_MOMENTUM = 0.9
 
     DEF_INIT_NET  = 0
     DEF_INIT_OUT  = 0.5
@@ -29,7 +30,7 @@ class MLPConstants ():
 
     # core configuration CONSTANTS
     KEY_SPACE_SIZE = 65536
-    NUM_KEYS_REQ   = 4
+    NUM_KEYS_REQ   = 5
 
     # MLP fixed-point fpreal type CONSTANTS
     FPREAL_SIZE      = 32
@@ -112,6 +113,14 @@ class MLPErrorFuncs (Enum):
     ERR_NONE          = 0
     ERR_CROSS_ENTROPY = 1
     ERR_SQUARED       = 2
+
+
+class MLPUpdateFuncs (Enum):
+    """ MLP weight update functions
+    """ 
+    UPD_STEEPEST      = 0
+    UPD_MOMENTUM      = 1
+    UPD_DOUGSMOMENTUM = 2
 
 
 class MLPRegions (Enum):

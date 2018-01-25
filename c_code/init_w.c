@@ -196,6 +196,7 @@ uint w_init (void)
 
   // initialize synchronization semaphores
   wf_thrds_done = 0; // just wait for initial unit outputs
+  wb_thrds_done = 0; // just wait for initial deltas
 
   // initialize processing thread flag
   wb_active = FALSE;
@@ -204,6 +205,10 @@ uint w_init (void)
   wf_arrived = 0;
   wb_arrived = 0;
 
+
+  // set weight update function
+  wb_update_func = w_update_procs[wcfg.update_function];
+
   // initialize packet keys
   //NOTE: colour is initialized to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
@@ -211,6 +216,8 @@ uint w_init (void)
 
   wf_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
   wb_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
+
+  ldsaKey = rt[LDS] | SPINN_LDSA_KEY;
 
   return (SPINN_NO_ERROR);
 }

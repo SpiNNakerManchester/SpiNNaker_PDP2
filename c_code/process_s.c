@@ -38,9 +38,22 @@ void s_process (uint null0, uint null1)
     // restore interrupts after queue access,
     spin1_mode_restore (cpsr);
 
-    // and check packet phase and process accordingly
     uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
-    if (ph == SPINN_FORWARD)
+
+    // check for an LDS "accumulation" packet
+    if ((key & SPINN_TYPE_MASK) == SPINN_LDSA_KEY)
+    {
+      // process LDS "accumulation" packet
+      s_ldsa_packet (key, payload);
+    }
+    // check for LDS "total" packet
+    else if ((key & SPINN_TYPE_MASK) == SPINN_LDST_KEY)
+    {
+      // process LDS "total" packet
+      s_ldst_packet (key, payload);
+    }
+    // else check packet phase and process accordingly
+    else if (ph == SPINN_FORWARD)
     {
       #ifdef DEBUG
         recv_fwd++;
@@ -72,6 +85,102 @@ void s_process (uint null0, uint null1)
 
   // restore interrupts and leave
   spin1_mode_restore (cpsr);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process LDSA packet: accumulate the received partial link delta sums
+// ------------------------------------------------------------------------
+void s_ldsa_packet (uint key, uint payload)
+{
+  // add the received value to the total so far,
+  s_lds_part += (lds_t) payload;
+
+  // increment the count of partial link delta sums arrived,
+  s_ldsa_arrived++;
+
+  // check whether all the partial sums have arrived
+  if (s_ldsa_arrived == scfg.ldsa_expected)
+  {
+    // send the result to the first s core
+    // to give a total across the whole network
+    if (scfg.is_first_group == 0)
+    {
+      while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
+    }
+
+    // access synchronisation semaphore with interrupts disabled
+    uint cpsr = spin1_int_disable ();
+
+    // check if all threads done
+    if (sb_thrds_done == 0)
+    {
+      // if done initialise semaphore
+      sb_thrds_done = 0;
+
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // and advance tick
+      //TODO: check if need to schedule or can simply call
+      sb_advance_tick (NULL, NULL);
+    }
+    else
+    {
+      // if not done report processing thread done,
+      sb_thrds_done -= 1;
+
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process LDST packet: accumulate the received link delta sum totals
+// ------------------------------------------------------------------------
+void s_ldst_packet (uint key, uint payload)
+{
+  // add the received value to the total so far,
+  s_lds_part += (lds_t) payload;
+
+  // increment the count of link delta sums arrived,
+  s_ldst_arrived++;
+
+  // check whether all the partial sums have arrived
+  if (s_ldst_arrived == scfg.ldst_expected)
+  {
+    // send the final value of s_lds_part back to the w cores
+    while (!spin1_send_mc_packet (ldsrKey, s_lds_part, WITH_PAYLOAD));
+
+    // access synchronisation semaphore with interrupts disabled
+    uint cpsr = spin1_int_disable ();
+
+    // check if all threads done
+    if (sb_thrds_done == 0)
+    {
+      // if done initialise semaphore
+      sb_thrds_done = 0;
+
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // and advance tick
+      //TODO: check if need to schedule or can simply call
+      sb_advance_tick (NULL, NULL);
+    }
+    else
+    {
+      // if not done report processing thread done,
+      sb_thrds_done -= 1;
+
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
+    }
+  }
 }
 // ------------------------------------------------------------------------
 
@@ -225,9 +334,53 @@ void s_backprop_packet (uint key, uint payload)
     // and check if all errors done
     if (sb_done == scfg.num_units)
     {
-      // advance tick
-      //TODO: check if need to schedule or can simply call
-      sb_advance_tick (NULL, NULL);
+      // access synchronization semaphore with interrupts disabled
+      uint cpsr = spin1_int_disable ();
+
+      // check if all threads done
+      if (sb_thrds_done == 0)
+      {
+        // if done initialize semaphore:
+        // if we are using Doug's Momentum, and we have reached the end of the
+        // epoch (i.e. we are on the last example, and are about to move on to
+        // the last tick, we need have to wait for the partial link delta sums
+        // to arrive
+        if (scfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+            && example == (ncfg.num_examples - 1)
+            && tick == SPINN_SB_END_TICK + 1)
+        {
+          // if this s core relates to the first group in the network, then we
+          // also need to wait for the link delta sum totals, so set the threads 
+          // pending to 2
+          if (scfg.is_first_group == 1)
+          {
+            sb_thrds_done = 2;
+          }
+          // for all other groups, set threads pending to 1
+          else
+          {
+            sb_thrds_done = 1;
+          }
+        }
+        else
+        {
+          sb_thrds_done = 0;
+        }
+        // restore interrupts after flag access,
+        spin1_mode_restore (cpsr);
+
+        // and advance tick
+        //TODO: check if need to schedule or can simply call
+        sb_advance_tick (NULL, NULL);
+      }
+      else
+      {
+        // if not done report processing thread done,
+        sb_thrds_done -= 1;
+
+        // and restore interrupts after flag access
+        spin1_mode_restore (cpsr);
+      }
     }
   }
 }
@@ -383,6 +536,14 @@ void s_advance_example (void)
     {
       // start from first example again
       example = 0;
+
+      // reset the partial link delta sum
+      if (ncfg.training)
+      {
+        s_lds_part = 0;
+        s_ldsa_arrived = 0;
+        s_ldst_arrived = 0;
+      }
     }
   }
 
