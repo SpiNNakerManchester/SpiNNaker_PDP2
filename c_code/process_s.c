@@ -44,13 +44,13 @@ void s_process (uint null0, uint null1)
     if ((key & SPINN_TYPE_MASK) == SPINN_LDSA_KEY)
     {
       // process LDS "accumulation" packet
-      s_ldsa_packet (key, payload);
+      s_ldsa_packet (payload);
     }
     // check for LDS "total" packet
     else if ((key & SPINN_TYPE_MASK) == SPINN_LDST_KEY)
     {
       // process LDS "total" packet
-      s_ldst_packet (key, payload);
+      s_ldst_packet (payload);
     }
     // else check packet phase and process accordingly
     else if (ph == SPINN_FORWARD)
@@ -92,7 +92,7 @@ void s_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 // process LDSA packet: accumulate the received partial link delta sums
 // ------------------------------------------------------------------------
-void s_ldsa_packet (uint key, uint payload)
+void s_ldsa_packet (uint payload)
 {
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
@@ -142,7 +142,7 @@ void s_ldsa_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 // process LDST packet: accumulate the received link delta sum totals
 // ------------------------------------------------------------------------
-void s_ldst_packet (uint key, uint payload)
+void s_ldst_packet (uint payload)
 {
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;

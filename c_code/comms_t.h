@@ -6,7 +6,7 @@ void t_forwardPacket  (uint, uint);
 void t_backpropPacket (uint, uint);
 void t_stopPacket     (uint);
 void t_chainPacket    (uint);
-void t_syncPacket     (uint, uint);
+void t_syncPacket     (uint);
 
 //#void t_sendDeltas    (uint, uint);
 void send_info_to_host    (uint, uint);

@@ -42,7 +42,7 @@ void t_receivePacket (uint key, uint payload)
   else if (sync)
   {
     // tick synchronisation packet
-    t_syncPacket (key, ph);
+    t_syncPacket (ph);
   }
   else if (ph == SPINN_FORWARD)
   {
@@ -133,7 +133,7 @@ void t_chainPacket (uint key)
 // ------------------------------------------------------------------------
 // process a sync packet
 // ------------------------------------------------------------------------
-void t_syncPacket (uint key, uint ph)
+void t_syncPacket (uint ph)
 {
   #ifdef DEBUG
     spk_recv++;
