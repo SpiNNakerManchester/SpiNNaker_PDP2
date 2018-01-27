@@ -9,7 +9,7 @@
 #include "comms_t.h"
 #include "process_t.h"
 
-// this files contains the communication routines used by T cores
+// this file contains the communication routines used by T cores
 
 // ------------------------------------------------------------------------
 // process received packets (stop, chain, sync, FORWARD and BACKPROP types)
@@ -20,13 +20,13 @@ void t_receivePacket (uint key, uint payload)
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
   // packet is stop type
-  uint stop = ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY);
+  uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
 
   // packet is chain type
-  uint chain = ((key & SPINN_STOP_MASK) == SPINN_STPF_KEY);
+  uint chain = ((key & SPINN_TYPE_MASK) == SPINN_STPC_KEY);
 
   // packet is sync type
-  uint sync = key & SPINN_SYNC_MASK;
+  uint sync = ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY);
 
   // check packet type
   if (stop)
@@ -41,7 +41,7 @@ void t_receivePacket (uint key, uint payload)
   }
   else if (sync)
   {
-    // tick synchronization packet
+    // tick synchronisation packet
     t_syncPacket (key, ph);
   }
   else if (ph == SPINN_FORWARD)
@@ -77,7 +77,7 @@ void t_stopPacket (uint key)
   // check if all threads done
   if (tf_thrds_done == 0)
   {
-    // initialize semaphore
+    // initialise semaphore
     tf_thrds_done = 1;
 
     // and advance tick
@@ -183,7 +183,7 @@ void t_syncPacket (uint key, uint ph)
     // and check if all expected packets arrived,
     if (t_sync_arrived == tcfg.bkp_sync_expected)
     {
-      // initialize for next synchronization,
+      // initialise for next synchronisation,
       t_sync_arrived = 0;
 
       // check if can trigger sending data

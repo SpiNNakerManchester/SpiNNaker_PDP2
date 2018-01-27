@@ -11,8 +11,22 @@
 
 #include "init_w.h"
 #include "comms_w.h"
+#include "process_w.h"
 
 // main methods for the weight core
+
+// ------------------------------------------------------------------------
+// global "constants"
+// ------------------------------------------------------------------------
+
+// list of procedures for updating of weights. The order is relevant, as
+// the indexes are specified in mlp_params.h
+weight_update_t const
+  w_update_procs[SPINN_NUM_UPDATE_PROCS] =
+  {
+    steepest_update_weights, momentum_update_weights, dougsmomentum_update_weights
+  };
+// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // global variables
@@ -22,6 +36,7 @@ uint coreID;               // 5-bit virtual core ID
 
 uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+uint ldsaKey;              // 32-bit packet ID for link delta summation
 
 uint         epoch;        // current training iteration
 uint         example;      // current example in epoch
@@ -38,15 +53,15 @@ uchar        tick_stop;    // current tick stop decision
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
-weight_t         *wt; // initial connection weights
-mlp_example_t    *ex; // example data
-uint             *rt; // multicast routing keys data
+weight_t         * wt;     // initial connection weights
+mlp_example_t    * ex;     // example data
+uint             * rt;     // multicast routing keys data
 
 // ------------------------------------------------------------------------
 // network and core configurations (DTCM)
 // ------------------------------------------------------------------------
-network_conf_t ncfg;           // network-wide configuration parameters
-w_conf_t      wcfg;           // weight core configuration parameters
+network_conf_t     ncfg;   // network-wide configuration parameters
+w_conf_t           wcfg;   // weight core configuration parameters
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -62,6 +77,7 @@ long_delta_t   * * w_link_deltas;     // computed link deltas
 error_t          * w_errors;          // computed errors next tick
 pkt_queue_t        w_delta_pkt_q;     // queue to hold received deltas
 fpreal             w_delta_dt;        // scaling factor for link deltas
+lds_t              w_lds_final;       // final link delta sum
 
 // FORWARD phase specific variables
 // (net b-d-p computation)
@@ -78,10 +94,12 @@ uint             wf_sync_key;       // FORWARD processing can start
 // (error b-d-p computation)
 uchar            wb_active;         // processing deltas from queue?
 scoreboard_t     wb_arrived;        // keeps track of received deltas
+uint             wb_thrds_done;     // sync. semaphore: comms, proc & stop
 uint             wb_sync_key;       // BACKPROP processing can start
+weight_update_t  wb_update_func;    // weight update function
 
 // history arrays
-activation_t     * w_output_history;  // history array for outputs
+activation_t   * w_output_history;  // history array for outputs
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -149,9 +167,12 @@ uint init ()
     io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
     io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
     io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
+    io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
+    io_printf (IO_BUF, "mm: %l\n", wcfg.momentum);
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
     io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
     io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
+    io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
   #endif
 
   // initialize epoch, example and event counters

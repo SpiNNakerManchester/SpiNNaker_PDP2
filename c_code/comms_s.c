@@ -9,7 +9,7 @@
 #include "comms_s.h"
 #include "process_s.h"
 
-// this files contains the communication routines used by S cores
+// this file contains the communication routines used by S cores
 
 // ------------------------------------------------------------------------
 // process received packets (stop, FORWARD and BACKPROP types)
@@ -17,7 +17,7 @@
 void s_receivePacket (uint key, uint payload)
 {
   // check if stop packet
-  if ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY)
+  if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
     // stop packet received
     #ifdef DEBUG
@@ -34,7 +34,7 @@ void s_receivePacket (uint key, uint payload)
     // check if all threads done
     if (sf_thrds_done == 0)
     {
-      // if done initialize semaphore
+      // if done initialise semaphore
       sf_thrds_done = 1;
 
       // and advance tick

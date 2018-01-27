@@ -19,7 +19,8 @@ enum MLPKeys {
 	FWD,
 	BKP,
 	FDS,
-	STP
+	STP,
+	LDS
 };
 
 typedef short     short_activ_t;
@@ -118,6 +119,15 @@ typedef long long long_delta_t;     // used for delta intermediate calc
 //~#define SPINN_LONG_DELTA_MAX     SPINN_LONG_ERR_MAX
 //~#define SPINN_LONG_DELTA_MIN     SPINN_LONG_ERR_MIN
 
+typedef uint               lds_t;       // link delta sum
+typedef unsigned long long long_lds_t;  // long link delta sum for intermediate calculations
+
+// lds values are 28.4
+#define SPINN_LDS_SHIFT          4
+// long lds values are 60.4
+#define SPINN_LONG_LDS_SHIFT     4
+#define SPINN_LDS_ONE            (1 << SPINN_LDS_SHIFT)
+
 // weights are s16.15
 // long weights are s48.15
 // weight changes are s16.15
@@ -132,6 +142,7 @@ typedef long long long_wchange_t;   // intermediate connection weight change
 #define SPINN_WEIGHT_MIN         ((weight_t) -(0xffff << SPINN_WEIGHT_SHIFT))
 #define SPINN_WEIGHT_POS_EPSILON ((weight_t)  1)
 #define SPINN_WEIGHT_NEG_EPSILON ((weight_t) -1)
+#define SPINN_WEIGHT_ONE         (1 << SPINN_WEIGHT_SHIFT)
 
 typedef short     short_fpreal_t;
 typedef int       fpreal;           // 32-bit fixed-point number
@@ -190,6 +201,9 @@ typedef struct w_conf               // weight core configuration
   uint           num_rows;          // rows in this core's block
   uint           num_cols;          // columns in this core's block
   short_fpreal_t learningRate;      // network learning rate
+  short_fpreal_t weightDecay;       // network weight decay
+  short_fpreal_t momentum;          // network momentum
+  uchar          update_function;   // function to update weights
 } w_conf_t;
 // ------------------------------------------------------------------------
 
@@ -205,7 +219,11 @@ typedef struct s_conf               // sum core configuration
   uint         num_units;           // this core's number of units
   scoreboard_t fwd_expected;        // num of expected partial nets
   scoreboard_t bkp_expected;        // num of expected partial errors
-  } s_conf_t;
+  scoreboard_t ldsa_expected;       // num of expected partial link delta sums
+  scoreboard_t ldst_expected;       // num of expected link delta sum totals
+  uchar        update_function;     // function to update weights
+  uchar        is_first_group;      // is this the first group in the network?
+} s_conf_t;
 // ------------------------------------------------------------------------
 
 
@@ -336,3 +354,6 @@ typedef void (*stop_crit_t) (uint);  // stopping criterion comp procedures
 
 
 typedef void (*out_error_t) (uint);   // error comp procedures
+
+
+typedef void (*weight_update_t) (void);   // weight update procedures

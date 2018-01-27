@@ -9,7 +9,7 @@
 #include "comms_w.h"
 #include "process_w.h"
 
-// this files contains the communication routines used by W cores
+// this file contains the communication routines used by W cores
 
 // ------------------------------------------------------------------------
 // process received packets (stop, FORWARD and BACKPROP types)
@@ -20,13 +20,21 @@ void w_receivePacket (uint key, uint payload)
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
   // check if packet is stop type
-  uint stop = ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY);
+  uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
+
+  // check if packet is ldsr type
+  uint ldsr = ((key & SPINN_TYPE_MASK) == SPINN_LDSR_KEY);
 
   // check packet type
   if (stop)
   {
     // stop packet
-    w_stopPacket (key, payload);
+    w_stopPacket (key);
+  }
+  else if (ldsr)
+  {
+    // ldsr packet
+    w_ldsrPacket (payload);
   }
   else if (ph == SPINN_FORWARD)
   {
@@ -45,7 +53,7 @@ void w_receivePacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 // process a stop packet
 // ------------------------------------------------------------------------
-void w_stopPacket (uint key, uint payload)
+void w_stopPacket (uint key)
 {
   #ifdef DEBUG
     stp_recv++;
@@ -83,6 +91,37 @@ void w_stopPacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
+// process an ldsr packet
+// ------------------------------------------------------------------------
+void w_ldsrPacket (uint payload)
+{
+  // the final link delta sum for the epoch arrived
+  w_lds_final = (lds_t) payload;
+
+  // check if all threads done
+  if (wb_thrds_done == 0)
+  {
+    //NOTE: no need to initialize semaphore
+    //wb_thrds_done = 0;
+
+    #ifdef TRACE_VRB
+      io_printf (IO_BUF, "ldsr calling wb_advance_tick\n");
+    #endif
+
+    // and advance tick
+    //TODO: check if need to schedule or can simply call
+    spin1_schedule_callback (wb_advance_tick, NULL, NULL, SPINN_WB_TICK_P);
+  }
+  else
+  {
+    // if not done report processing thread done,
+    wb_thrds_done -= 1;
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // process a FORWARD phase packet
 // ------------------------------------------------------------------------
 void w_forwardPacket (uint key, uint payload)
@@ -103,7 +142,7 @@ void w_forwardPacket (uint key, uint payload)
   // store output for use in backprop phase,
   if (tick > 0)
   {
-    store_outputs (inx);
+    store_output (inx);
   }
 
   // and update scoreboard,
@@ -181,12 +220,12 @@ void w_backpropPacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
-// stores the outputs received for the current tick
+// stores output received for the current tick
 // ------------------------------------------------------------------------
-void store_outputs (uint inx)
+void store_output (uint inx)
 {
   #ifdef TRACE
-    io_printf (IO_BUF, "store_outputs\n");
+    io_printf (IO_BUF, "store_output\n");
   #endif
 
   w_output_history[(tick * wcfg.num_rows) + inx] = w_outputs[wf_comms][inx];

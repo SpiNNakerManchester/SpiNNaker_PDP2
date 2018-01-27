@@ -9,7 +9,7 @@
 #include "comms_t.h"
 #include "process_t.h"
 
-// this files contains the initialisation routine for T cores
+// this file contains the initialisation routine for T cores
 // the first routine of the mlp run-time code is scheduled to be executed here
 
 // ------------------------------------------------------------------------
@@ -186,12 +186,12 @@ uint t_init (void)
     if (tcfg.is_last_output_group)
     {
       // "broadcast" key
-      tf_stop_key = rt[STP] | SPINN_STPR_KEY;
+      tf_stop_key = rt[STP] | SPINN_STOP_KEY;
     }
     else
     {
       // "daisy chain" key
-      tf_stop_key = rt[STP] | SPINN_STPF_KEY;
+      tf_stop_key = rt[STP] | SPINN_STPC_KEY;
     }
   }
 

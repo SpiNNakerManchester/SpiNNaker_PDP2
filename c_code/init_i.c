@@ -8,7 +8,7 @@
 
 #include "comms_i.h"
 
-// this files contains the initialization routine for I cores
+// this file contains the initialization routine for I cores
 
 // ------------------------------------------------------------------------
 // allocate memory and initialize variables

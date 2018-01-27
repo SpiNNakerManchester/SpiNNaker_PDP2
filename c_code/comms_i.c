@@ -9,7 +9,7 @@
 #include "comms_i.h"
 #include "process_i.h"
 
-// this files contains the communication routines used by I cores
+// this file contains the communication routines used by I cores
 
 // ------------------------------------------------------------------------
 // process received packets (stop, FORWARD and BACKPROP types)
@@ -17,7 +17,7 @@
 void i_receivePacket (uint key, uint payload)
 {
   // check if stop packet
-  if ((key & SPINN_STOP_MASK) == SPINN_STPR_KEY)
+  if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
     // sync packet received
     #ifdef DEBUG

@@ -15,7 +15,7 @@ from sum_vertex       import SumVertex
 from threshold_vertex import ThresholdVertex
 from weight_vertex    import WeightVertex
 
-from mlp_types    import MLPGroupTypes, MLPConstants
+from mlp_types    import MLPGroupTypes, MLPConstants, MLPUpdateFuncs
 from mlp_group    import MLPGroup
 from mlp_link     import MLPLink
 from mlp_examples import MLPExampleSet
@@ -44,6 +44,9 @@ class MLPNetwork():
         self._test_group_crit  = None
         self._timeout          = MLPConstants.DEF_TIMEOUT
         self._num_epochs       = MLPConstants.DEF_NUM_EPOCHS
+        self._learning_rate    = MLPConstants.DEF_LEARNING_RATE
+        self._weight_decay     = MLPConstants.DEF_WEIGHT_DECAY
+        self._momentum         = MLPConstants.DEF_MOMENTUM
 
         # initialise lists of groups and links
         self.groups = []
@@ -292,16 +295,26 @@ class MLPNetwork():
     def set (self,
              num_updates      = None,
              train_group_crit = None,
-             test_group_crit  = None
+             test_group_crit  = None,
+             learning_rate    = None,
+             weight_decay     = None,
+             momentum         = None
              ):
         """ set a network parameter to the given value
 
         :param num_updates: number of training epochs to be done
         :param train_group_crit: criterion used to stop training
         :param test_group_crit: criterion used to stop testing
+        :param learning_rate: amount used to scale deltas when updating weights
+        :param weight_decay: amount by which weights are scaled after being updated
+        :param momentum: the carryover of previous weight changes to the new step
 
         :type num_updates: unsigned integer
         :type train_group_crit: float
+        :type test_group_crit: float
+        :type learning_rate: float
+        :type weight_decay: float
+        :type momentum: float
         """
         if num_updates is not None:
             print "setting num_epochs to {}".format (num_updates)
@@ -314,6 +327,18 @@ class MLPNetwork():
         if test_group_crit is not None:
             print "setting test_group_crit to {}".format (test_group_crit)
             self._test_group_crit = test_group_crit
+
+        if learning_rate is not None:
+            print "setting learning_rate to {}".format (learning_rate)
+            self._learning_rate = learning_rate
+
+        if weight_decay is not None:
+            print "setting weight_decay to {}".format (weight_decay)
+            self._weight_decay = weight_decay
+
+        if momentum is not None:
+            print "setting momentum to {}".format (momentum)
+            self._momentum = momentum
 
 
     def read_Lens_weights_file (self,
@@ -441,6 +466,7 @@ class MLPNetwork():
 
         # create associated forward, backprop, synchronisation and
         # stop machine edges for every network group
+        first = self.groups[0]
         for grp in self.groups:
             for w in grp.w_vertices:
                 _frmg = w.from_group
@@ -465,6 +491,14 @@ class MLPNetwork():
                 g.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
                                              w.fds_link)
 
+                # create link delta summation w to s links
+                g.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
+                                             w.lds_link)
+
+                # create link delta summation result s (first) to w links
+                g.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
+                                             first.s_vertex.lds_link)
+
             # create forward s to i link
             g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                       grp.i_vertex),
@@ -484,6 +518,15 @@ class MLPNetwork():
             g.add_machine_edge_instance (MachineEdge (grp.t_vertex,
                                                       grp.i_vertex),
                                          grp.t_vertex.bkp_link)
+
+            # create link delta summation s to s links - all s cores
+            # (except the first) send to the first s core
+            if grp != first:
+                print "Creating lds s-s edge from group {} to group {}".\
+                    format (grp.label, first.label)
+                g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
+                                                          first.s_vertex),
+                                             grp.s_vertex.lds_link)
 
             # create stop links, if OUTPUT group
             if grp in self.output_chain:
@@ -520,10 +563,13 @@ class MLPNetwork():
                                                  grp.t_vertex.stp_link)
 
 
-    def train (self):
+    def train (self,
+               update_function = MLPUpdateFuncs.UPD_DOUGSMOMENTUM
+              ):
         """ train the application graph
         """
         self._training = 1
+        self._update_function = update_function
 
         # run the application
         self.run ()
