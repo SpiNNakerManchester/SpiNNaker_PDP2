@@ -66,10 +66,10 @@ void wf_process (uint null0, uint null1)
   uint cpsr = spin1_int_disable ();
 
   // and check if all threads done
-  if (wf_thrds_pend == 0)
+  if (wf_thrds_done == 0)
   {
-    // if done initialise synchronisation semaphore,
-    wf_thrds_pend = 2;
+    // if done initialize synchronization semaphore,
+    wf_thrds_done = 2;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
@@ -85,7 +85,7 @@ void wf_process (uint null0, uint null1)
   else
   {
     // if not done report processing thread done,
-    wf_thrds_pend -= 1;
+    wf_thrds_done -= 1;
 
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
@@ -419,7 +419,7 @@ void wf_advance_event (void)
     uint cpsr = spin1_int_disable ();
 
     // initialise synchronisation semaphore,
-    wf_thrds_pend = 0;  // no processing and no stop in tick 0
+    wf_thrds_done = 0;  // no processing and no stop in tick 0
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);

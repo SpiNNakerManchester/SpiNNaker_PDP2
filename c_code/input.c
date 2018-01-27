@@ -103,7 +103,7 @@ uint             i_it_idx;          // index into current inputs/targets
 // FORWARD phase specific
 // (net processing)
 scoreboard_t     if_done;           // current tick net computation done
-uint             if_thrds_pend;     // sync. semaphore: proc & stop
+uint             if_thrds_done;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
 // (delta processing)

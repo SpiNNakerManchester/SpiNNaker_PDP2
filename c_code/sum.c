@@ -62,7 +62,7 @@ uchar            s_active;          // processing b-d-ps from queue?
 // (net computation)
 scoreboard_t   * sf_arrived[2];     // keep track of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
-uint             sf_thrds_pend;     // sync. semaphore: proc & stop
+uint             sf_thrds_done;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
 // (error computation)

@@ -61,10 +61,10 @@ void w_stopPacket (uint key, uint payload)
   #endif
 
   // check if all threads done
-  if (wf_thrds_pend == 0)
+  if (wf_thrds_done == 0)
   {
     // if done initialize synchronization semaphore,
-    wf_thrds_pend = 2;
+    wf_thrds_done = 2;
 
     // and advance tick
     #ifdef TRACE_VRB
@@ -76,7 +76,7 @@ void w_stopPacket (uint key, uint payload)
   else
   {
     // if not done report stop thread done
-    wf_thrds_pend -= 1;
+    wf_thrds_done -= 1;
   }
 }
 // ------------------------------------------------------------------------
@@ -119,10 +119,10 @@ void w_forwardPacket (uint key, uint payload)
     wf_comms = 1 - wf_comms;
 
     // and check if other threads are done,
-    if (wf_thrds_pend == 0)
+    if (wf_thrds_done == 0)
     {
       // if done initialize synchronization semaphore,
-      wf_thrds_pend = 2;
+      wf_thrds_done = 2;
 
       // and advance tick
       #ifdef TRACE_VRB
@@ -134,7 +134,7 @@ void w_forwardPacket (uint key, uint payload)
     else
     {
       // if not done report comms thread done
-      wf_thrds_pend -= 1;
+      wf_thrds_done -= 1;
     }
   }
 }

@@ -104,8 +104,8 @@ uint s_init (void)
   sf_done = 0;
   sb_done = 0;
 
-  // initialize synchronization semaphores
-  sf_thrds_pend = 1;
+  // initialise synchronisation semaphores
+  sf_thrds_done = 1;
 
   // initialize processing thread flag
   s_active = FALSE;

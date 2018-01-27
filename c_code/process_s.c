@@ -142,10 +142,10 @@ void s_forward_packet (uint key, uint payload)
       uint cpsr = spin1_int_disable ();
 
       // check if all threads done
-      if (sf_thrds_pend == 0)
+      if (sf_thrds_done == 0)
       {
         // if done initialize semaphore
-        sf_thrds_pend = 1;
+        sf_thrds_done = 1;
 
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
@@ -157,7 +157,7 @@ void s_forward_packet (uint key, uint payload)
       else
       {
         // if not done report processing thread done,
-        sf_thrds_pend -= 1;
+        sf_thrds_done -= 1;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
