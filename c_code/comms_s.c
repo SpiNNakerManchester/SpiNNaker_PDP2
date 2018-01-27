@@ -25,7 +25,7 @@ void s_receivePacket (uint key, uint payload)
     #endif
 
     // STOP decision arrived
-    tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
+    tick_stop = key & SPINN_STPD_MASK;
 
     #ifdef DEBUG_VRB
       io_printf (IO_BUF, "sc:%x\n", tick_stop);

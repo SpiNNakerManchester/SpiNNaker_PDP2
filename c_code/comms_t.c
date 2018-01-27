@@ -68,7 +68,7 @@ void t_stopPacket (uint key)
   #endif
 
   // STOP decision arrived
-  tick_stop = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
+  tick_stop = key & SPINN_STPD_MASK;
 
   #ifdef DEBUG_VRB
     io_printf (IO_BUF, "sc:%x\n", tick_stop);
@@ -102,7 +102,7 @@ void t_chainPacket (uint key)
   #endif
 
   // STOP daisy chain partial decision arrived from previous core
-  tf_chain_prev = (key & SPINN_STPD_MASK) >> SPINN_STPD_SHIFT;
+  tf_chain_prev = key & SPINN_STPD_MASK;
 
   // check if chain value can be forwarded
   if (tf_chain_rdy)
