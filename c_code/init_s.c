@@ -8,7 +8,7 @@
 
 #include "comms_s.h"
 
-// this files contains the initialization routine for S cores
+// this file contains the initialization routine for S cores
 
 // ------------------------------------------------------------------------
 // allocate memory and initialize variables
@@ -18,7 +18,14 @@ uint s_init (void)
   uint i;
 
   // allocate memory for nets
-  if ((s_nets = ((long_net_t *)
+  if ((s_nets[0] = ((long_net_t *)
+         spin1_malloc (scfg.num_units * sizeof(long_net_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((s_nets[1] = ((long_net_t *)
          spin1_malloc (scfg.num_units * sizeof(long_net_t)))) == NULL
      )
   {
@@ -49,7 +56,14 @@ uint s_init (void)
   }
 
   // allocate memory for received net b-d-ps scoreboards
-  if ((sf_arrived = ((scoreboard_t *)
+  if ((sf_arrived[0] = ((scoreboard_t *)
+          spin1_malloc (scfg.num_units * sizeof(scoreboard_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((sf_arrived[1] = ((scoreboard_t *)
           spin1_malloc (scfg.num_units * sizeof(scoreboard_t)))) == NULL
      )
   {
@@ -78,10 +92,12 @@ uint s_init (void)
   // initialize nets, errors and scoreboards
   for (i = 0; i < scfg.num_units; i++)
   {
-    s_nets[i] = 0;
+    s_nets[0][i] = 0;
+    s_nets[1][i] = 0;
     s_errors[0][i] = 0;
     s_errors[1][i] = 0;
-    sf_arrived[i] = 0;
+    sf_arrived[0][i] = 0;
+    sf_arrived[1][i] = 0;
     sb_arrived[0][i] = 0;
     sb_arrived[1][i] = 0;
   }
@@ -90,7 +106,7 @@ uint s_init (void)
   s_ldsa_arrived = 0;
   s_ldst_arrived = 0;
 
-  // initialize synchronization semaphores
+  // initialise synchronisation semaphores
   sf_thrds_done = 1;
   sb_thrds_done = 0;
 

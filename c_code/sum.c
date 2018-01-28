@@ -55,7 +55,7 @@ s_conf_t       scfg;           // sum core configuration parameters
 // ------------------------------------------------------------------------
 // sum cores compute unit nets and errors (acummulate b-d-ps).
 // ------------------------------------------------------------------------
-long_net_t     * s_nets;            // unit nets computed in current tick
+long_net_t     * s_nets[2];         // unit nets computed in current tick
 long_error_t   * s_errors[2];       // errors computed in current tick
 pkt_queue_t      s_pkt_queue;       // queue to hold received b-d-ps
 uchar            s_active;          // processing b-d-ps from queue?
@@ -63,7 +63,7 @@ lds_t            s_lds_part;        // partial link delta sum
 
 // FORWARD phase specific
 // (net computation)
-scoreboard_t   * sf_arrived;        // keep track of expected net b-d-p
+scoreboard_t   * sf_arrived[2];     // keep track of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
 uint             sf_thrds_done;     // sync. semaphore: proc & stop
 

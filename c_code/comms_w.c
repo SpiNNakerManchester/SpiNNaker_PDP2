@@ -9,7 +9,7 @@
 #include "comms_w.h"
 #include "process_w.h"
 
-// this files contains the communication routines used by W cores
+// this file contains the communication routines used by W cores
 
 // ------------------------------------------------------------------------
 // process received packets (stop, FORWARD and BACKPROP types)

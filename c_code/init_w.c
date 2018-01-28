@@ -8,7 +8,7 @@
 
 #include "comms_w.h"
 
-// this files contains the initialization routine for W cores
+// this file contains the initialization routine for W cores
 
 // ------------------------------------------------------------------------
 // allocate memory and initialize variables

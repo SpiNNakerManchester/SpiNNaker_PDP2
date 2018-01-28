@@ -134,12 +134,11 @@ sdp_msg_t        t_sdp_msg;         // SDP message buffer for host comms.
 // FORWARD phase specific
 // (output computation)
 scoreboard_t     tf_arrived;        // keep track of expected nets
-uint             tf_thrds_init;     // sync. semaphore: proc & stop
 uint             tf_thrds_done;     // sync. semaphore: proc & stop
-uchar            tf_stop_prev;      // previous group stop criterion met?
+uchar            tf_chain_prev;     // previous daisy chain (DC) value
+uchar            tf_chain_init;     // previous DC received init
+uchar            tf_chain_rdy;      // local DC value can be forwarded
 uchar            tf_stop_crit;      // stop criterion met?
-uchar            tf_stop_init;      // sync. semaphore: stop daisy chain
-uchar            tf_stop_done;      // sync. semaphore: stop daisy chain
 stop_crit_t      tf_stop_func;      // stop evaluation function
 uint             tf_stop_key;       // stop criterion packet key
 

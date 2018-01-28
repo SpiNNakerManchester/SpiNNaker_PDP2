@@ -76,12 +76,12 @@ extern activation_t     * w_output_history;
 // ------------------------------------------------------------------------
 // sum core variables
 // ------------------------------------------------------------------------
-extern long_net_t     * s_nets;        // unit nets computed in current tick
+extern long_net_t     * s_nets[2];     // unit nets computed in current tick
 extern long_error_t   * s_errors[2];   // errors computed in current tick
 extern pkt_queue_t      s_pkt_queue;   // queue to hold received b-d-ps
 extern uchar            s_active;      // processing b-d-ps from queue?
 extern lds_t            s_lds_part;    // partial link delta sum
-extern scoreboard_t   * sf_arrived;    // keep track of expected net b-d-p
+extern scoreboard_t   * sf_arrived[2]; // keep track of expected net b-d-p
 extern scoreboard_t     sf_done;       // current tick net computation done
 extern uint             sf_thrds_done; // sync. semaphore: proc & stop
 extern scoreboard_t   * sb_arrived[2]; // keep track of expected error b-d-p
@@ -146,12 +146,11 @@ extern scoreboard_t     t_sync_arrived; // keep track of expected sync packets
 extern uchar            t_sync_done;   // have expected sync packets arrived?
 extern sdp_msg_t        t_sdp_msg;     // SDP message buffer for host comms.
 extern scoreboard_t     tf_arrived;    // keep track of expected nets
-extern uint             tf_thrds_init; // sync. semaphore initial value
 extern uint             tf_thrds_done; // sync. semaphore: proc & stop
-extern uchar            tf_stop_prev;  // previous group stop criterion met?
+extern uchar            tf_chain_prev; // previous daisy chain (DC) value
+extern uchar            tf_chain_init; // previous DC received init
+extern uchar            tf_chain_rdy;  // local DC value can be forwarded
 extern uchar            tf_stop_crit;  // stop criterion met?
-extern uchar            tf_stop_init;  // sync. semaphore: stop daisy chain
-extern uchar            tf_stop_done;  // sync. semaphore: stop daisy chain
 extern stop_crit_t      tf_stop_func;  // stop evaluation function
 extern uint             tf_stop_key;   // stop criterion packet key
 extern uint             tb_procs;      // pointer to processing errors

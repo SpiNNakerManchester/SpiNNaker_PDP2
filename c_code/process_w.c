@@ -62,7 +62,7 @@ void wf_process (uint null0, uint null1)
     #endif
   }
 
-  // access synchronization semaphore with interrupts disabled
+  // access synchronisation semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
   // and check if all threads done
@@ -699,6 +699,9 @@ void wf_advance_tick (uint null0, uint null1)
     io_printf (IO_BUF, "wf_advance_tick\n");
   #endif
 
+  // change packet key colour,
+  fwdKey ^= SPINN_COLOUR_KEY;
+
   // update pointer to processing unit outputs,
   wf_procs = 1 - wf_procs;
 
@@ -795,16 +798,16 @@ void wf_advance_event (void)
   // check if done with events -- end of example's FORWARD phase
   if (++evt >= num_events)
   {
-    // access synchronization semaphore with interrupts disabled
+    // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-    // initialize synchronization semaphore,
+    // initialise synchronisation semaphore,
     wf_thrds_done = 0;  // no processing and no stop in tick 0
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
 
-    // initialize crit for next example,
+    // initialise stop criterion for next example,
     // first tick does not get a stop packet!
     tick_stop = FALSE;
 
@@ -819,7 +822,7 @@ void wf_advance_event (void)
     }
     else
     {
-      // if not training initialize tick for next example,
+      // if not training initialise tick for next example,
       tick = SPINN_W_INIT_TICK;
 
       // and move to next example
@@ -879,6 +882,7 @@ void w_advance_example (void)
       // if not start from first example again,
       example = 0;
 
+      // and, if training, initialise weight changes
       //TODO: find a better place for this operation
       if (ncfg.training)
       {

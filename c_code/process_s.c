@@ -44,13 +44,13 @@ void s_process (uint null0, uint null1)
     if ((key & SPINN_TYPE_MASK) == SPINN_LDSA_KEY)
     {
       // process LDS "accumulation" packet
-      s_ldsa_packet (key, payload);
+      s_ldsa_packet (payload);
     }
     // check for LDS "total" packet
     else if ((key & SPINN_TYPE_MASK) == SPINN_LDST_KEY)
     {
       // process LDS "total" packet
-      s_ldst_packet (key, payload);
+      s_ldst_packet (payload);
     }
     // else check packet phase and process accordingly
     else if (ph == SPINN_FORWARD)
@@ -92,7 +92,7 @@ void s_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 // process LDSA packet: accumulate the received partial link delta sums
 // ------------------------------------------------------------------------
-void s_ldsa_packet (uint key, uint payload)
+void s_ldsa_packet (uint payload)
 {
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
@@ -142,7 +142,7 @@ void s_ldsa_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 // process LDST packet: accumulate the received link delta sum totals
 // ------------------------------------------------------------------------
-void s_ldst_packet (uint key, uint payload)
+void s_ldst_packet (uint payload)
 {
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
@@ -193,30 +193,33 @@ void s_forward_packet (uint key, uint payload)
   // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
 
+  // get error colour: mask out block, phase and net index data,
+  uint clr = (key & SPINN_COLOUR_MASK) >> SPINN_COLOUR_SHIFT;
+
   // accumulate new net b-d-p,
   // s40.23 = s40.23 + s8.23
-  s_nets[inx] += (long_net_t) ((net_t) payload);
+  s_nets[clr][inx] += (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,
-  sf_arrived[inx]++;
+  sf_arrived[clr][inx]++;
 
   // and check if dot product complete to compute net
-  if (sf_arrived[inx] == scfg.fwd_expected)
+  if (sf_arrived[clr][inx] == scfg.fwd_expected)
   {
     net_t net_tmp;
 
     // saturate and cast the long nets before sending,
-    if (s_nets[inx] >= (long_net_t) SPINN_NET_MAX)
+    if (s_nets[clr][inx] >= (long_net_t) SPINN_NET_MAX)
     {
       net_tmp = (net_t) SPINN_NET_MAX;
     }
-    else if (s_nets[inx] <= (long_net_t) SPINN_NET_MIN)
+    else if (s_nets[clr][inx] <= (long_net_t) SPINN_NET_MIN)
     {
       net_tmp = (net_t) SPINN_NET_MIN;
     }
     else
     {
-      net_tmp = (net_t) s_nets[inx];
+      net_tmp = (net_t) s_nets[clr][inx];
     }
 
     // incorporate net index to the packet key and send,
@@ -232,8 +235,8 @@ void s_forward_packet (uint key, uint payload)
     #endif
 
     // prepare for next tick,
-    s_nets[inx] = 0;
-    sf_arrived[inx] = 0;
+    s_nets[clr][inx] = 0;
+    sf_arrived[clr][inx] = 0;
 
     // mark net as done,
     sf_done++;
@@ -241,6 +244,9 @@ void s_forward_packet (uint key, uint payload)
     // and check if all nets done
     if (sf_done == scfg.num_units)
     {
+       // prepare for next tick,
+       sf_done = 0;
+
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
@@ -396,9 +402,6 @@ void sf_advance_tick (uint null0, uint null1)
   #ifdef TRACE
     io_printf (IO_BUF, "sf_advance_tick\n");
   #endif
-
-  // prepare for next tick,
-  sf_done = 0;
 
   #ifdef DEBUG
     tot_tick++;

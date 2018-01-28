@@ -9,7 +9,7 @@
 #include "comms_s.h"
 #include "process_s.h"
 
-// this files contains the communication routines used by S cores
+// this file contains the communication routines used by S cores
 
 // ------------------------------------------------------------------------
 // process received packets (stop, FORWARD and BACKPROP types)
