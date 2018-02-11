@@ -91,6 +91,7 @@ uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
 uint         ev_tick;      // current tick in event
 uchar        tick_stop;    // current tick stop decision
+uchar        network_stop; // network_stop decision
 
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
@@ -139,8 +140,12 @@ uchar            tf_chain_prev;     // previous daisy chain (DC) value
 uchar            tf_chain_init;     // previous DC received init
 uchar            tf_chain_rdy;      // local DC value can be forwarded
 uchar            tf_stop_crit;      // stop criterion met?
+uchar            tf_group_crit;     // stop criterion met for all groups?
+uchar            tf_event_crit;     // stop criterion met for all events?
+uchar            tf_example_crit;   // stop criterion met for all examples?
 stop_crit_t      tf_stop_func;      // stop evaluation function
 uint             tf_stop_key;       // stop criterion packet key
+uint             tf_stpn_key;       // stop network packet key
 
 // BACKPROP phase specific
 // (error delta computation)
@@ -178,6 +183,8 @@ long_deriv_t   * t_output_deriv_history;
   uint spk_recv = 0;  // sync packets received
   uint stp_sent = 0;  // stop packets sent
   uint stp_recv = 0;  // stop packets received
+  uint stn_sent = 0;  // network_stop packets sent
+  uint stn_recv = 0;  // network_stop packets received
   uint wrng_phs = 0;  // packets received in wrong phase
   uint wrng_tck = 0;  // FORWARD packets received in wrong tick
   uint wrng_btk = 0;  // BACKPROP packets received in wrong tick

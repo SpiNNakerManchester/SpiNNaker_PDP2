@@ -164,6 +164,10 @@ uint t_init (void)
   if (tcfg.output_grp)
   {
     tf_stop_func = t_stop_procs[tcfg.criterion_function];
+    tf_stop_crit = TRUE;
+    tf_group_crit = TRUE;
+    tf_event_crit = TRUE;
+    tf_example_crit = TRUE;
 
     // variables for stop criterion computation
     t_max_output_unit = -1;
@@ -187,6 +191,9 @@ uint t_init (void)
     {
       // "broadcast" key
       tf_stop_key = rt[STP] | SPINN_STOP_KEY;
+      
+      // "stop final" key
+      tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
     }
     else
     {

@@ -116,6 +116,7 @@ activation_t   * w_output_history;  // history array for outputs
   uint spk_recv = 0;  // sync packets received
   uint stp_sent = 0;  // stop packets sent
   uint stp_recv = 0;  // stop packets received
+  uint stn_recv = 0;  // network_stop packets received
   uint wrng_phs = 0;  // packets received in wrong phase
   uint wrng_tck = 0;  // FORWARD packets received in wrong tick
   uint wrng_btk = 0;  // BACKPROP packets received in wrong tick

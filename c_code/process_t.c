@@ -157,10 +157,10 @@ void tf_process (uint null0, uint null1)
         uint cpsr = spin1_int_disable ();
 
         // and check if all threads done
-      if (tf_thrds_done == 0)
+        if (tf_thrds_done == 0)
         {
-        // initialize semaphore,
-        tf_thrds_done = 1;
+          // initialize semaphore,
+          tf_thrds_done = 1;
 
           // restore interrupts after flag access,
           spin1_mode_restore (cpsr);
@@ -172,7 +172,7 @@ void tf_process (uint null0, uint null1)
         else
         {
           // if not done report processing thread done,
-        tf_thrds_done -= 1;
+          tf_thrds_done -= 1;
 
           // and restore interrupts after flag access
           spin1_mode_restore (cpsr);
@@ -329,6 +329,10 @@ void tf_advance_tick (uint null0, uint null1)
   // and check if done with FORWARD phase
   if (tick_stop)
   {
+    if (tcfg.is_last_output_group)
+    {
+      tf_event_crit = tf_event_crit && tf_group_crit;
+    }
     tf_advance_event ();
   }
   else
@@ -375,6 +379,10 @@ void tb_advance_tick (uint null0, uint null1)
     t_switch_to_fw ();
 
     // advance to next example,
+    if (tcfg.is_last_output_group)
+    {
+      tf_example_crit = tf_example_crit && tf_event_crit;
+    }
     t_advance_example ();
 
     // and stop processing queue in this phase
@@ -490,6 +498,28 @@ void t_advance_example (void)
   //TODO: alternative algorithms for chosing example order!
   if (++example >= ncfg.num_examples)
   {
+    if (tcfg.is_last_output_group)
+    {
+      network_stop = tf_example_crit;
+      if (network_stop)
+      {
+        //broadcast network_stop decision
+        while (!spin1_send_mc_packet ((tf_stpn_key | network_stop),
+                                   0,
+                                   NO_PAYLOAD
+                                   )
+          );
+
+        #ifdef DEBUG
+          stn_sent++;
+        #endif
+
+        //done
+        spin1_exit (SPINN_NO_ERROR);
+        return;
+      }
+    }
+
     // check if done with epochs
     if (++epoch >= ncfg.num_epochs)
     {
@@ -501,6 +531,8 @@ void t_advance_example (void)
     {
       // start from first example again
       example = 0;
+      tf_event_crit = 1;
+      tf_example_crit = 1;
     }
   }
 
@@ -508,6 +540,7 @@ void t_advance_example (void)
   evt = 0;
   num_events = ex[example].num_events;
   event_idx = ex[example].ev_idx;
+  tf_event_crit = 1;
 
   // if input or output group initialise new event input/target index
   if (tcfg.input_grp || tcfg.output_grp)
@@ -656,6 +689,8 @@ void tf_send_stop (uint null0, uint null1)
 
   if (tcfg.is_last_output_group)
   {
+    tf_group_crit = tf_stop_crit;
+
     tf_stop_crit = (ev_tick >= max_ticks)
                      || (tick == ncfg.global_max_ticks - 1)
                      || (tf_stop_crit && (ev_tick >= min_ticks));

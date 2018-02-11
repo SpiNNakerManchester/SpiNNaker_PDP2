@@ -22,6 +22,9 @@ void w_receivePacket (uint key, uint payload)
   // check if packet is stop type
   uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
 
+  // packet is network stop type
+  uint stpn = ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY);
+
   // check if packet is ldsr type
   uint ldsr = ((key & SPINN_TYPE_MASK) == SPINN_LDSR_KEY);
 
@@ -30,6 +33,11 @@ void w_receivePacket (uint key, uint payload)
   {
     // stop packet
     w_stopPacket (key);
+  }
+  else if (stpn)
+  {
+    // network stop decision packet
+    w_networkStopPacket (key);
   }
   else if (ldsr)
   {
@@ -86,6 +94,22 @@ void w_stopPacket (uint key)
     // if not done report stop thread done
     wf_thrds_done -= 1;
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a network stop decision packet
+// ------------------------------------------------------------------------
+void w_networkStopPacket (uint key)
+{
+  #ifdef DEBUG
+    stn_recv++;
+  #endif
+
+  //done
+  spin1_exit (SPINN_NO_ERROR);
+  return;
 }
 // ------------------------------------------------------------------------
 
