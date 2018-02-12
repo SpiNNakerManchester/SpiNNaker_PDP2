@@ -314,10 +314,12 @@ void tf_advance_tick (uint null0, uint null1)
          && (tick_stop)
        )
     {
+      io_printf (IO_BUF, "epoch %d example %d tick %d doing write out (final)\n", epoch, example, tick);
       send_outputs_to_host (SPINN_HOST_FINAL, tick);
     }
     else
     {
+      io_printf (IO_BUF, "epoch %d example %d tick %d doing write out (normal)\n", epoch, example, tick);
       send_outputs_to_host (SPINN_HOST_NORMAL, tick);
     }
   }
@@ -503,6 +505,15 @@ void t_advance_example (void)
       network_stop = tf_example_crit;
       if (network_stop)
       {
+        // we have decided to terminate training, so write out final data
+        if (tcfg.write_out)
+        {
+          spin1_delay_us (2000); //##
+
+          io_printf (IO_BUF, "epoch %d example %d tick %d doing write out (final)\n", epoch, example, tick);
+          send_outputs_to_host (SPINN_HOST_FINAL, tick);
+        }
+
         //broadcast network_stop decision
         while (!spin1_send_mc_packet ((tf_stpn_key | network_stop),
                                    0,
@@ -514,7 +525,10 @@ void t_advance_example (void)
           stn_sent++;
         #endif
 
+        io_printf (IO_BUF, "Waiting.....\n");
+        spin1_delay_us (1000000);
         //done
+        io_printf (IO_BUF, "Calling spin1_exit\n");
         spin1_exit (SPINN_NO_ERROR);
         return;
       }
