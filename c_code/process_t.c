@@ -511,7 +511,7 @@ void t_advance_example (void)
           spin1_delay_us (2000); //##
 
           io_printf (IO_BUF, "epoch %d example %d tick %d doing write out (final)\n", epoch, example, tick);
-          send_outputs_to_host (SPINN_HOST_FINAL, tick);
+          send_outputs_to_host (SPINN_HOST_FINAL, 0);
         }
 
         //broadcast network_stop decision

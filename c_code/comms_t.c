@@ -45,7 +45,7 @@ void t_receivePacket (uint key, uint payload)
   else if (stpn)
   {
     // network stop decision packet
-    t_networkStopPacket (key);
+    t_networkStopPacket ();
   }
   else if (sync)
   {
@@ -141,7 +141,7 @@ void t_chainPacket (uint key)
 // ------------------------------------------------------------------------
 // process a network stop decision packet
 // ------------------------------------------------------------------------
-void t_networkStopPacket (uint key)
+void t_networkStopPacket (void)
 {
   #ifdef DEBUG
     stn_recv++;

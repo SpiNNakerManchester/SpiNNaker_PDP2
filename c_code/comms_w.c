@@ -37,7 +37,7 @@ void w_receivePacket (uint key, uint payload)
   else if (stpn)
   {
     // network stop decision packet
-    w_networkStopPacket (key);
+    w_networkStopPacket ();
   }
   else if (ldsr)
   {
@@ -101,7 +101,7 @@ void w_stopPacket (uint key)
 // ------------------------------------------------------------------------
 // process a network stop decision packet
 // ------------------------------------------------------------------------
-void w_networkStopPacket (uint key)
+void w_networkStopPacket (void)
 {
   #ifdef DEBUG
     stn_recv++;
