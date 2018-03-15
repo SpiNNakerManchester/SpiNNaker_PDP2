@@ -15,6 +15,7 @@ extern uint ldsrKey;              // 32-bit packet ID for link delta summation r
 extern uint         epoch;        // current training iteration
 extern uint         example;      // current example in epoch
 extern uint         evt;          // current event in example
+extern uint         max_evt;      // the last event reached in the current example
 extern uint         num_events;   // number of events in current example
 extern uint         event_idx;    // index into current event
 extern uint         num_ticks;    // number of ticks in current event

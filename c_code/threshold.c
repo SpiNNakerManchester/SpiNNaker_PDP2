@@ -82,6 +82,7 @@ uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 uint         epoch;        // current training iteration
 uint         example;      // current example in epoch
 uint         evt;          // current event in example
+uint         max_evt;      // the last event reached in the current example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP

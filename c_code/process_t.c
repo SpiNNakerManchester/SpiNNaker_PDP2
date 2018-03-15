@@ -314,12 +314,10 @@ void tf_advance_tick (uint null0, uint null1)
          && (tick_stop)
        )
     {
-      io_printf (IO_BUF, "epoch %d example %d tick %d doing write out (final)\n", epoch, example, tick);
       send_outputs_to_host (SPINN_HOST_FINAL, tick);
     }
     else
     {
-      io_printf (IO_BUF, "epoch %d example %d tick %d doing write out (normal)\n", epoch, example, tick);
       send_outputs_to_host (SPINN_HOST_NORMAL, tick);
     }
   }
@@ -333,7 +331,8 @@ void tf_advance_tick (uint null0, uint null1)
   {
     if (tcfg.is_last_output_group)
     {
-      tf_event_crit = tf_event_crit && tf_group_crit;
+      tf_event_crit = tf_event_crit && tf_group_crit && (ev_tick >= min_ticks);
+      max_evt = evt;
     }
     tf_advance_event ();
   }
@@ -383,7 +382,7 @@ void tb_advance_tick (uint null0, uint null1)
     // advance to next example,
     if (tcfg.is_last_output_group)
     {
-      tf_example_crit = tf_example_crit && tf_event_crit;
+      tf_example_crit = tf_example_crit && tf_event_crit && (max_evt >= num_events - 1);
     }
     t_advance_example ();
 
@@ -510,7 +509,6 @@ void t_advance_example (void)
         {
           spin1_delay_us (2000); //##
 
-          io_printf (IO_BUF, "epoch %d example %d tick %d doing write out (final)\n", epoch, example, tick);
           send_outputs_to_host (SPINN_HOST_FINAL, 0);
         }
 
@@ -525,10 +523,7 @@ void t_advance_example (void)
           stn_sent++;
         #endif
 
-        io_printf (IO_BUF, "Waiting.....\n");
-        spin1_delay_us (1000000);
         //done
-        io_printf (IO_BUF, "Calling spin1_exit\n");
         spin1_exit (SPINN_NO_ERROR);
         return;
       }
