@@ -72,6 +72,9 @@ class MLPNetwork():
                                        label        = "Bias"
                                        )
 
+        # keep track of the number of vertices in the graph
+        self._num_vertices = 0
+
 
     @property
     def net_type (self):
@@ -448,21 +451,25 @@ class MLPNetwork():
                 wv = WeightVertex (self, grp, from_grp)
                 grp.w_vertices.append (wv)
                 g.add_machine_vertex_instance (wv)
+                self._num_vertices += 1
 
             # create one sum core per group
             sv = SumVertex (self, grp)
             grp.s_vertex = sv
             g.add_machine_vertex_instance (sv)
+            self._num_vertices += 1
 
             # create one input core per group
             iv = InputVertex (self, grp)
             grp.i_vertex = iv
             g.add_machine_vertex_instance (iv)
+            self._num_vertices += 1
 
             # create one sum core per group
             tv = ThresholdVertex (self, grp)
             grp.t_vertex = tv
             g.add_machine_vertex_instance (tv)
+            self._num_vertices += 1
 
         # create associated forward, backprop, synchronisation and
         # stop machine edges for every network group
@@ -624,17 +631,19 @@ class MLPNetwork():
         print "running: waiting for application to finish"
         _txrx = g.transceiver ()
         _app_id = globals_variables.get_simulator ()._app_id
-        _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
-        while _running > 0:
+#lap        _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)  
+        _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)  
+        while _finished < self._num_vertices:
             time.sleep (0.5)
             _error = _txrx.get_core_state_count\
-                    (_app_id, CPUState.RUN_TIME_EXCEPTION)
+                     (_app_id, CPUState.RUN_TIME_EXCEPTION)
             _wdog = _txrx.get_core_state_count (_app_id, CPUState.WATCHDOG)
             if _error > 0 or _wdog > 0:
                 print "application stopped: cores failed ({}\
                      RTE, {} WDOG)".format (_error, _wdog)
                 break
-            _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
+#lap            _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
+            _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)  
 
 
     def end (self):

@@ -9,8 +9,8 @@ from pacman.model.decorators.overrides import overrides
 from pacman.model.resources.resource_container import ResourceContainer
 from pacman.model.resources.sdram_resource import SDRAMResource
 
-from spinn_front_end_common.utilities.utility_objs.executable_start_type \
-    import ExecutableStartType
+from spinn_front_end_common.utilities.utility_objs \
+    import ExecutableType
 from spinn_front_end_common.abstract_models.abstract_has_associated_binary \
     import AbstractHasAssociatedBinary
 from spinn_front_end_common.abstract_models\
@@ -228,7 +228,7 @@ class WeightVertex(
 
     @overrides (AbstractHasAssociatedBinary.get_binary_start_type)
     def get_binary_start_type (self):
-        return ExecutableStartType.SYNC
+        return ExecutableType.SYNC
 
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
