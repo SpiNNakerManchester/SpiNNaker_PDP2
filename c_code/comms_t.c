@@ -25,6 +25,9 @@ void t_receivePacket (uint key, uint payload)
   // packet is chain type
   uint chain = ((key & SPINN_TYPE_MASK) == SPINN_STPC_KEY);
 
+  // packet is network stop type
+  uint stpn = ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY);
+
   // packet is sync type
   uint sync = ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY);
 
@@ -38,6 +41,11 @@ void t_receivePacket (uint key, uint payload)
   {
     // stop decision chain packet
     t_chainPacket (key);
+  }
+  else if (stpn)
+  {
+    // network stop decision packet
+    t_networkStopPacket ();
   }
   else if (sync)
   {
@@ -129,6 +137,21 @@ void t_chainPacket (uint key)
 }
 // ------------------------------------------------------------------------
 
+
+// ------------------------------------------------------------------------
+// process a network stop decision packet
+// ------------------------------------------------------------------------
+void t_networkStopPacket (void)
+{
+  #ifdef DEBUG
+    stn_recv++;
+  #endif
+
+  //done
+  spin1_exit (SPINN_NO_ERROR);
+  return;
+}
+// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // process a sync packet

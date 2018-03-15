@@ -15,6 +15,7 @@ extern uint ldsrKey;              // 32-bit packet ID for link delta summation r
 extern uint         epoch;        // current training iteration
 extern uint         example;      // current example in epoch
 extern uint         evt;          // current event in example
+extern uint         max_evt;      // the last event reached in the current example
 extern uint         num_events;   // number of events in current example
 extern uint         event_idx;    // index into current event
 extern uint         num_ticks;    // number of ticks in current event
@@ -22,6 +23,7 @@ extern uint         max_ticks;    // maximum number of ticks in current event
 extern uint         min_ticks;    // minimum number of ticks in current event
 extern uint         tick;         // current tick in phase
 extern uchar        tick_stop;    // current tick stop decision
+extern uchar        network_stop; // network_stop decision
 extern uint         ev_tick;      // current tick in event
 extern proc_phase_t phase;        // FORWARD or BACKPROP
 
@@ -151,8 +153,12 @@ extern uchar            tf_chain_prev; // previous daisy chain (DC) value
 extern uchar            tf_chain_init; // previous DC received init
 extern uchar            tf_chain_rdy;  // local DC value can be forwarded
 extern uchar            tf_stop_crit;  // stop criterion met?
+extern uchar            tf_group_crit;     // stop criterion met for all groups?
+extern uchar            tf_event_crit;     // stop criterion met for all events?
+extern uchar            tf_example_crit;   // stop criterion met for all examples?
 extern stop_crit_t      tf_stop_func;  // stop evaluation function
 extern uint             tf_stop_key;   // stop criterion packet key
+extern uint             tf_stpn_key;   // stop network packet key
 extern uint             tb_procs;      // pointer to processing errors
 extern uint             tb_comms;      // pointer to receiving errors
 extern scoreboard_t     tb_arrived;    // keep track of expected errors
@@ -185,6 +191,8 @@ extern long_deriv_t   * t_output_deriv_history;
   extern uint spk_recv;  // sync packets received
   extern uint stp_sent;  // stop packets sent
   extern uint stp_recv;  // stop packets received
+  extern uint stn_sent;  // network_stop packets sent
+  extern uint stn_recv;  // network_stop packets received
   extern uint tot_tick;  // total number of ticks executed
   extern uint wght_ups;  // number of weight updates done
   extern uint wrng_phs;  // packets received in wrong phase

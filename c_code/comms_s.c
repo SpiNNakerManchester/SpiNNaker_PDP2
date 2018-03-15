@@ -46,6 +46,18 @@ void s_receivePacket (uint key, uint payload)
       sf_thrds_done -= 1;
     }
   }
+  // check if network stop packet
+  else if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
+  {
+    // network stop packet received
+    #ifdef DEBUG
+      stn_recv++;
+    #endif
+
+    //done
+    spin1_exit (SPINN_NO_ERROR);
+    return;
+  }
   else
   {
     #ifdef DEBUG
