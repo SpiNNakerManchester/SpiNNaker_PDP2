@@ -1,5 +1,5 @@
-SpiNNaker_PDP2: MLPs on SpiNNaker
-=================================
+SpiNNaker_PDP2: Multi-layer Perceptrons on SpiNNaker
+====================================================
 
 This repository contains software to implement artificial neural
 networks based on Multi-layer Perceptrons (MLP) on SpiNNaker.
