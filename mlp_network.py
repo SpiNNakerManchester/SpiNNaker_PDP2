@@ -68,7 +68,7 @@ class MLPNetwork():
 
         # create single-unit Bias group by default
         self._bias_group = self.group (units        = 1,
-                                       group_type   = MLPGroupTypes.BIAS,
+                                       group_type   = [MLPGroupTypes.BIAS],
                                        label        = "Bias"
                                        )
 
@@ -150,7 +150,7 @@ class MLPNetwork():
 
     def group (self,
                units        = None,
-               group_type   = MLPGroupTypes.HIDDEN,
+               group_type   = [MLPGroupTypes.HIDDEN],
                input_funcs  = None,
                output_funcs = None,
                label        = None
@@ -158,7 +158,7 @@ class MLPNetwork():
         """ add a group to the network
 
         :param units: number of units that form the group
-        :param group_type: Lens-style group type
+        :param group_type: list of Lens-style group types
         :param input_funcs: functions applied in the input pipeline
         :param output_funcs: functions appllied in the output pipeline
         :param label: human-readable group identifier
@@ -174,7 +174,7 @@ class MLPNetwork():
         _id = len (self.groups)
 
         # set properties for OUTPUT group
-        if (group_type == MLPGroupTypes.OUTPUT):
+        if (MLPGroupTypes.OUTPUT in group_type):
             _write_blk = len (self.output_chain)
             if len (self.output_chain):
                 _is_first_out = 0
@@ -204,17 +204,17 @@ class MLPNetwork():
                 )
 
         # if it's an INPUT group add to list
-        if (group_type == MLPGroupTypes.INPUT):
+        if (MLPGroupTypes.INPUT in group_type):
             self.in_grps.append (_group)
 
         # if it's an OUTPUT group add to list and to the tail of the chain
-        if (group_type == MLPGroupTypes.OUTPUT):
+        if (MLPGroupTypes.OUTPUT in group_type):
             self.out_grps.append (_group)
             self.output_chain.append (_group)
 
         # OUTPUT and HIDDEN groups instantiate BIAS links by default
-        if (group_type == MLPGroupTypes.OUTPUT or\
-            group_type == MLPGroupTypes.HIDDEN):
+        if (MLPGroupTypes.OUTPUT in group_type or\
+            MLPGroupTypes.HIDDEN in group_type):
             self.link (self.bias_group, _group)
 
         # a new group forces reloading of initial weights file
@@ -396,7 +396,7 @@ class MLPNetwork():
 
         # check that the file contains the right number of weights
         if int (_wf.readline ()) != _num_wts:
-            print "error: incorrect number of weights in file"
+            print "error: incorrect number of weights in file; expected {}".format (_num_wts)
             _wf.close ()
             return False
 

@@ -9,7 +9,7 @@ class MLPGroup():
     def __init__(self,
                  gid,
                  units        = None,
-                 gtype        = MLPGroupTypes.HIDDEN,
+                 gtype        = [MLPGroupTypes.HIDDEN],
                  input_funcs  = None,
                  output_funcs = None,
                  write_blk    = None,
@@ -46,8 +46,8 @@ class MLPGroup():
         self.t_vertex   = None
 
         # group function parameters
-        self.output_grp = (self.type == MLPGroupTypes.OUTPUT)
-        self.input_grp  = (self.type == MLPGroupTypes.INPUT)
+        self.output_grp = (MLPGroupTypes.OUTPUT in self.type)
+        self.input_grp  = (MLPGroupTypes.INPUT in self.type)
 
         # weight-related parameters
         self.learning_rate = None
@@ -120,23 +120,23 @@ class MLPGroup():
         self.init_output = MLPConstants.DEF_INIT_OUT
 
         # host communication parameters
-        self.write_out = (self.type == MLPGroupTypes.OUTPUT)
+        self.write_out = (MLPGroupTypes.OUTPUT in self.type)
 
         # group type modifies default values
-        if (self.type == MLPGroupTypes.BIAS):
+        if (MLPGroupTypes.BIAS in self.type):
             self.out_integr_en      = 0
             self.num_out_procs      = 1
             self.out_procs_list [0] = MLPOutputProcs.OUT_BIAS
             self.out_procs_list [1] = MLPOutputProcs.OUT_NONE
             self.init_output        = MLPConstants.BIAS_INIT_OUT
 
-        elif (self.type == MLPGroupTypes.INPUT):
+        elif (MLPGroupTypes.INPUT in self.type):
             self.out_integr_en      = 0
             self.num_out_procs      = 1
             self.out_procs_list [0] = MLPOutputProcs.OUT_HARD_CLAMP
             self.out_procs_list [1] = MLPOutputProcs.OUT_NONE
 
-        elif (self.type == MLPGroupTypes.OUTPUT):
+        elif (MLPGroupTypes.OUTPUT in self.type):
             self.write_out          = 1
             self.group_criterion    = MLPConstants.DEF_GRP_CRIT
             self.criterion_function = MLPStopCriteria.STOP_STD
