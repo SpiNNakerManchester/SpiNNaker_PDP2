@@ -36,6 +36,7 @@ class MLPNetwork():
         """
         # assign network parameter values from arguments
         self._net_type           = net_type.value
+        self._intervals          = intervals
         self._ticks_per_interval = ticks_per_interval
 
         # default network parameter values
@@ -285,7 +286,9 @@ class MLPNetwork():
         self.label = label
 
         # instantiate a new example set
-        _set = MLPExampleSet (label = label)
+        _set = MLPExampleSet (label = label,
+                              max_time = self._intervals
+                             )
 
         # add example set to the network list
         self._ex_set = _set
