@@ -76,6 +76,9 @@ class MLPNetwork():
         # keep track of the number of vertices in the graph
         self._num_vertices = 0
 
+        # keep track if errors have occured
+        self._aborted = False
+
 
     @property
     def net_type (self):
@@ -600,6 +603,7 @@ class MLPNetwork():
         # cannot run unless weights file exists
         if self._weights_file is None:
             print "run aborted: weights file not given"
+            self._aborted = True
             return
 
         # may need to reload initial weights file if
@@ -607,21 +611,26 @@ class MLPNetwork():
         if not self._weights_loaded:
             if not self.read_Lens_weights_file (self._weights_file):
                 print "run aborted: error reading weights file"
+                self._aborted = True
+                return
 
         # cannot run unless example set exists
         if self._ex_set is None:
             print "run aborted: no example set"
+            self._aborted = True
             return
 
         # cannot run unless examples have been loaded
         if not self._ex_set.examples_loaded:
             print "run aborted: examples not loaded"
+            self._aborted = True
             return
 
         # generate summary set, example and event data
         self._num_examples = self._ex_set.compile (self)
         if self._num_examples == 0:
             print "run aborted: error compiling example set"
+            self._aborted = True
             return
 
         # generate machine graph
@@ -634,8 +643,8 @@ class MLPNetwork():
         print "running: waiting for application to finish"
         _txrx = g.transceiver ()
         _app_id = globals_variables.get_simulator ()._app_id
-#lap        _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)  
-        _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)  
+#lap        _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
+        _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)
         while _finished < self._num_vertices:
             time.sleep (0.5)
             _error = _txrx.get_core_state_count\
@@ -646,15 +655,16 @@ class MLPNetwork():
                      RTE, {} WDOG)".format (_error, _wdog)
                 break
 #lap            _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
-            _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)  
+            _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)
 
 
     def end (self):
         """ clean up before exiting
         """
-        # pause to allow debugging
-        raw_input ('paused: press enter to exit')
+        if not self._aborted:
+            # pause to allow debugging
+            raw_input ('paused: press enter to exit')
 
-        print "exit: application finished"
-        # let the gfe clean up
-        g.stop()
+            print "exit: application finished"
+            # let the gfe clean up
+            g.stop()

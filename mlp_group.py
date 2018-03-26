@@ -130,14 +130,15 @@ class MLPGroup():
             self.out_procs_list [1] = MLPOutputProcs.OUT_NONE
             self.init_output        = MLPConstants.BIAS_INIT_OUT
 
-        elif (MLPGroupTypes.INPUT in self.type):
-            self.out_integr_en      = 0
-            self.num_out_procs      = 1
-            self.out_procs_list [0] = MLPOutputProcs.OUT_HARD_CLAMP
-            self.out_procs_list [1] = MLPOutputProcs.OUT_NONE
+        else:
+            if (MLPGroupTypes.INPUT in self.type):
+                self.out_integr_en      = 0
+                self.num_out_procs      = 1
+                self.out_procs_list [0] = MLPOutputProcs.OUT_HARD_CLAMP
+                self.out_procs_list [1] = MLPOutputProcs.OUT_NONE
 
-        elif (MLPGroupTypes.OUTPUT in self.type):
-            self.write_out          = 1
-            self.group_criterion    = MLPConstants.DEF_GRP_CRIT
-            self.criterion_function = MLPStopCriteria.STOP_STD
-            self.error_function     = MLPErrorFuncs.ERR_CROSS_ENTROPY
+            if (MLPGroupTypes.OUTPUT in self.type):
+                self.write_out          = 1
+                self.group_criterion    = MLPConstants.DEF_GRP_CRIT
+                self.criterion_function = MLPStopCriteria.STOP_STD
+                self.error_function     = MLPErrorFuncs.ERR_CROSS_ENTROPY
