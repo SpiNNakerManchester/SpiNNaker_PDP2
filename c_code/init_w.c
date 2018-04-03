@@ -112,8 +112,8 @@ uint w_init (void)
   }
 
   // allocate memory for errors
-  if ((w_errors = ((error_t*)
-         spin1_malloc (wcfg.num_rows * sizeof(delta_t)))) == NULL
+  if ((w_errors = ((error_t *)
+         spin1_malloc (wcfg.num_rows * sizeof(error_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -211,8 +211,10 @@ uint w_init (void)
 
   // initialize packet keys
   //NOTE: colour is initialized to 0.
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD)
+		  | SPINN_BLOCK_KEY(wcfg.col_blk);
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP)
+		  | SPINN_BLOCK_KEY(wcfg.row_blk);
 
   wf_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
   wb_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);

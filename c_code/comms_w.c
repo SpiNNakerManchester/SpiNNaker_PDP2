@@ -16,43 +16,51 @@
 // ------------------------------------------------------------------------
 void w_receivePacket (uint key, uint payload)
 {
-  // get packet phase
-  uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
-
   // check if packet is stop type
   uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
+  if (stop)
+  {
+    // process stop packet
+    w_stopPacket (key);
+    return;
+  }
 
-  // packet is network stop type
+  // check if packet is network stop type
   uint stpn = ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY);
+  if (stpn)
+  {
+    // process network stop decision packet
+    w_networkStopPacket ();
+    return;
+  }
 
   // check if packet is ldsr type
   uint ldsr = ((key & SPINN_TYPE_MASK) == SPINN_LDSR_KEY);
-
-  // check packet type
-  if (stop)
+  if (ldsr)
   {
-    // stop packet
-    w_stopPacket (key);
-  }
-  else if (stpn)
-  {
-    // network stop decision packet
-    w_networkStopPacket ();
-  }
-  else if (ldsr)
-  {
-    // ldsr packet
+    // process ldsr packet
     w_ldsrPacket (payload);
+    return;
   }
-  else if (ph == SPINN_FORWARD)
+
+  // computation packet - get packet phase and block
+  uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
+  uint blk = (key & SPINN_BLOCK_MASK) >> SPINN_BLOCK_SHIFT;
+  if (ph == SPINN_FORWARD)
   {
-    // FORWARD phase
-    w_forwardPacket (key, payload);
+    // FORWARD phase packet in my block
+	if (blk == wcfg.row_blk)
+	{
+	  w_forwardPacket (key, payload);
+	}
   }
   else
   {
-    // BACKPROP phase
-    w_backpropPacket (key, payload);
+    // BACKPROP phase packet in my block
+	if (blk == wcfg.col_blk)
+	{
+	  w_backpropPacket (key, payload);
+	}
   }
 }
 // ------------------------------------------------------------------------
@@ -158,7 +166,7 @@ void w_forwardPacket (uint key, uint payload)
   #endif
 
   // get output index: mask out phase, core and block data,
-  uint inx = key & SPINN_OUTPUT_MASK;
+  uint inx = key & SPINN_BLKOUT_MASK;
 
   // store received unit output,
   w_outputs[wf_comms][inx] = (activation_t) payload;

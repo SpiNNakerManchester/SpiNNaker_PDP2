@@ -585,10 +585,10 @@ void t_advance_example (void)
   // access flags with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
-  if (t_sync_done)
+  if (t_sync_rdy)
   {
     // if ready clear synchronisation flag,
-    t_sync_done = FALSE;
+    t_sync_rdy = FALSE;
 
     // restore interrupts,
     spin1_mode_restore (cpsr);
@@ -607,6 +607,9 @@ void t_advance_example (void)
   }
   else
   {
+    // if not flag sync as ready
+    t_sync_rdy = TRUE;
+
     // restore interrupts
     spin1_mode_restore (cpsr);
   }

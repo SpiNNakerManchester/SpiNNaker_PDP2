@@ -145,7 +145,7 @@ extern uint             t_tot_ticks;   // total ticks on current example
 extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
 extern uchar            t_active;      // processing nets/errors from queue?
 extern scoreboard_t     t_sync_arrived; // keep track of expected sync packets
-extern uchar            t_sync_done;   // have expected sync packets arrived?
+extern uchar            t_sync_rdy;    // have expected sync packets arrived?
 extern sdp_msg_t        t_sdp_msg;     // SDP message buffer for host comms.
 extern scoreboard_t     tf_arrived;    // keep track of expected nets
 extern uint             tf_thrds_done; // sync. semaphore: proc & stop
@@ -193,6 +193,10 @@ extern long_deriv_t   * t_output_deriv_history;
   extern uint stp_recv;  // stop packets received
   extern uint stn_sent;  // network_stop packets sent
   extern uint stn_recv;  // network_stop packets received
+  extern uint lda_sent;  // partial link_delta packets sent
+  extern uint lda_recv;  // partial link_delta packets received
+  extern uint ldt_sent;  // total link_delta packets sent
+  extern uint ldt_recv;  // total link_delta packets received
   extern uint tot_tick;  // total number of ticks executed
   extern uint wght_ups;  // number of weight updates done
   extern uint wrng_phs;  // packets received in wrong phase

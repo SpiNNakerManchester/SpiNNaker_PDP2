@@ -43,23 +43,11 @@ void i_process (uint null0, uint null1)
     if (ph == SPINN_FORWARD)
     {
       // process FORWARD phase packet
-      #ifdef DEBUG
-        recv_fwd++;
-        if (phase != SPINN_FORWARD)
-          wrng_phs++;
-      #endif
-
       i_forward_packet (key, payload);
     }
     else
     {
       // process BACKPROP phase packet
-      #ifdef DEBUG
-        recv_bkp++;
-        if (phase != SPINN_BACKPROP)
-          wrng_phs++;
-      #endif
-
       i_backprop_packet (key, payload);
     }
 
@@ -81,6 +69,13 @@ void i_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void i_forward_packet (uint key, uint payload)
 {
+  #ifdef DEBUG
+    pkt_recv++;
+    recv_fwd++;
+    if (phase != SPINN_FORWARD)
+      wrng_phs++;
+  #endif
+
   // get net index: mask out block, phase and colour data,
   uint inx = key & SPINN_NET_MASK;
 
@@ -160,6 +155,13 @@ void i_forward_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void i_backprop_packet (uint key, uint payload)
 {
+  #ifdef DEBUG
+    pkt_recv++;
+    recv_bkp++;
+    if (phase != SPINN_BACKPROP)
+      wrng_phs++;
+  #endif
+
   // get delta index: mask out block, phase and colour data,
   uint inx = key & SPINN_DELTA_MASK;
 

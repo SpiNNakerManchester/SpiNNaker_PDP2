@@ -200,6 +200,8 @@ typedef struct w_conf               // weight core configuration
 {
   uint           num_rows;          // rows in this core's block
   uint           num_cols;          // columns in this core's block
+  uint           row_blk;           // this core's row block number
+  uint           col_blk;           // this core's column block number
   short_fpreal_t learningRate;      // network learning rate
   short_fpreal_t weightDecay;       // network weight decay
   short_fpreal_t momentum;          // network momentum

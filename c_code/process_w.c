@@ -122,8 +122,8 @@ void wb_process (uint null0, uint null1)
     // restore interrupts after queue access,
     spin1_mode_restore (cpsr);
 
-    // get delta index: mask out phase, core and block data,
-    inx &= SPINN_DELTA_MASK;
+    // get delta index: mask out phase and block data,
+    inx &= SPINN_BLKDLT_MASK;
 
     // update scoreboard,
     wb_arrived++;
@@ -217,13 +217,16 @@ void wb_process (uint null0, uint null1)
       while (!spin1_send_mc_packet (ldsaKey,
                 (uint) link_delta_sum_short, WITH_PAYLOAD)
             );
+      #ifdef DEBUG
+        lda_sent++;
+      #endif
     }
 
     // if done with all deltas advance tick
     if (wb_arrived == wcfg.num_cols)
     {
       // initialize arrival scoreboard for next tick,
-      wb_arrived = 0;  
+      wb_arrived = 0;
 
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();

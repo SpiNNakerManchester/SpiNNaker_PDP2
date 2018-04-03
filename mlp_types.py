@@ -17,6 +17,9 @@ class MLPConstants ():
     MAX_IN_PROCS  = 2
     DEF_IN_PROCS  = 0
 
+    MAX_GRP_UNITS = 128
+    MAX_BLK_UNITS = 32
+
     MAX_OUT_PROCS = 5
     DEF_OUT_PROCS = 2
 
@@ -117,7 +120,7 @@ class MLPErrorFuncs (Enum):
 
 class MLPUpdateFuncs (Enum):
     """ MLP weight update functions
-    """ 
+    """
     UPD_STEEPEST      = 0
     UPD_MOMENTUM      = 1
     UPD_DOUGSMOMENTUM = 2

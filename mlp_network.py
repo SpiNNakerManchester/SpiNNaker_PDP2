@@ -76,6 +76,9 @@ class MLPNetwork():
         # keep track of the number of vertices in the graph
         self._num_vertices = 0
 
+        # keep track of the number of partitions
+        self.partitions = 0
+
         # keep track if errors have occured
         self._aborted = False
 
@@ -448,16 +451,23 @@ class MLPNetwork():
         # set the number of write blocks before generating vertices
         self._num_write_blks = len (self.output_chain)
 
+        # compute number of partitions
+        for grp in self.groups:
+            self.partitions = self.partitions + grp.partitions
+
         # create associated weight, sum, input and threshold
         # machine vertices for every network group
         for grp in self.groups:
-            # create one weight core per (from_group, group) pair
+            # create one weight core per partition
+            # of every (from_group, group) pair
             # NOTE: all-zero cores can be optimised out
             for from_grp in self.groups:
-                wv = WeightVertex (self, grp, from_grp)
-                grp.w_vertices.append (wv)
-                g.add_machine_vertex_instance (wv)
-                self._num_vertices += 1
+                for _tp in range (grp.partitions):
+                    for _fp in range (from_grp.partitions):
+                        wv = WeightVertex (self, grp, from_grp, _tp, _fp)
+                        grp.w_vertices.append (wv)
+                        g.add_machine_vertex_instance (wv)
+                        self._num_vertices += 1
 
             # create one sum core per group
             sv = SumVertex (self, grp)
@@ -471,7 +481,7 @@ class MLPNetwork():
             g.add_machine_vertex_instance (iv)
             self._num_vertices += 1
 
-            # create one sum core per group
+            # create one threshold core per group
             tv = ThresholdVertex (self, grp)
             grp.t_vertex = tv
             g.add_machine_vertex_instance (tv)
@@ -632,6 +642,14 @@ class MLPNetwork():
             print "run aborted: error compiling example set"
             self._aborted = True
             return
+
+        # check that no group is too big
+        for grp in self.groups:
+            if grp.units > MLPConstants.MAX_GRP_UNITS:
+                print "run aborted: group {} has more than {} units.".\
+                    format (grp.id, MLPConstants.MAX_GRP_UNITS)
+                self._aborted = True
+                return
 
         # generate machine graph
         self.generate_machine_graph ()

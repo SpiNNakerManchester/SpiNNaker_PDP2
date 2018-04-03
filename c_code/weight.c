@@ -117,6 +117,7 @@ activation_t   * w_output_history;  // history array for outputs
   uint stp_sent = 0;  // stop packets sent
   uint stp_recv = 0;  // stop packets received
   uint stn_recv = 0;  // network_stop packets received
+  uint lda_sent = 0;  // partial link_delta packets sent
   uint wrng_phs = 0;  // packets received in wrong phase
   uint wrng_tck = 0;  // FORWARD packets received in wrong tick
   uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
@@ -167,9 +168,11 @@ uint init ()
   #ifdef DEBUG_CFG0
     io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
     io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
+    io_printf (IO_BUF, "rb: %d\n", wcfg.row_blk);
+    io_printf (IO_BUF, "cb: %d\n", wcfg.col_blk);
     io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
     io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
-    io_printf (IO_BUF, "mm: %l\n", wcfg.momentum);
+    io_printf (IO_BUF, "mm: %k\n", wcfg.momentum);
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
     io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
     io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
@@ -226,7 +229,7 @@ void done (uint ec)
       break;
 
     case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_BUF, "timeout (h: %u e:%u p:%u t:%u) - abort!\n",
+      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                  epoch, example, phase, tick
                 );
 
@@ -254,6 +257,8 @@ void done (uint ec)
     io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
+    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+    io_printf (IO_BUF, "ldsa sent:%d\n", lda_sent);
     io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
   #endif
 }

@@ -19,7 +19,7 @@ void i_receivePacket (uint key, uint payload)
   // check if stop packet
   if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
-    // sync packet received
+    // stop packet received
     #ifdef DEBUG
       stp_recv++;
     #endif
@@ -49,6 +49,7 @@ void i_receivePacket (uint key, uint payload)
     return;
   }
 
+  // check if network stop packet
   if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
   {
     // network stop packet received
@@ -61,13 +62,8 @@ void i_receivePacket (uint key, uint payload)
     return;
   }
 
-  #ifdef DEBUG
-    pkt_recv++;
-  #endif
-
-  // check if space in packet queue,
+  // queue packet - if space available
   uint new_tail = (i_pkt_queue.tail + 1) % SPINN_INPUT_PQ_LEN;
-
   if (new_tail == i_pkt_queue.head)
   {
     // if queue full exit and report failure

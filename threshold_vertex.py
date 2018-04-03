@@ -79,9 +79,10 @@ class ThresholdVertex(
         self._stp_link = "stp_s{}".format (self.group.id)
 
         # threshold core-specific parameters
-        # NOTE: if all-zero w cores are optimised out this need reviewing
-        self._fwd_sync_expect = len (network.groups)
-        self._bkp_sync_expect = len (network.groups)
+        # NOTE: if all-zero w cores are optimised out these need reviewing
+        self._fwd_sync_expect = len (self._group.w_vertices)
+        # NOTE: not used any more, may need reviewing if re-introduced
+        self._bkp_sync_expect = 0
 
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE

@@ -42,7 +42,7 @@ void s_process (uint null0, uint null1)
 
     // check for an LDS "accumulation" packet
     if ((key & SPINN_TYPE_MASK) == SPINN_LDSA_KEY)
-    {
+   {
       // process LDS "accumulation" packet
       s_ldsa_packet (payload);
     }
@@ -55,23 +55,11 @@ void s_process (uint null0, uint null1)
     // else check packet phase and process accordingly
     else if (ph == SPINN_FORWARD)
     {
-      #ifdef DEBUG
-        recv_fwd++;
-        if (phase != SPINN_FORWARD)
-          wrng_phs++;
-      #endif
-
       // process FORWARD phase packet
       s_forward_packet (key, payload);
     }
     else
     {
-      #ifdef DEBUG
-        recv_bkp++;
-        if (phase != SPINN_BACKPROP)
-          wrng_phs++;
-      #endif
-
       // process BACKPROP phase packet
       s_backprop_packet (key, payload);
     }
@@ -94,6 +82,10 @@ void s_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void s_ldsa_packet (uint payload)
 {
+  #ifdef DEBUG
+    lda_recv++;
+  #endif
+
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
 
@@ -108,6 +100,10 @@ void s_ldsa_packet (uint payload)
     if (scfg.is_first_group == 0)
     {
       while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
+
+      #ifdef DEBUG
+        ldt_sent++;
+      #endif
     }
 
     // access synchronisation semaphore with interrupts disabled
@@ -144,6 +140,10 @@ void s_ldsa_packet (uint payload)
 // ------------------------------------------------------------------------
 void s_ldst_packet (uint payload)
 {
+  #ifdef DEBUG
+    ldt_recv++;
+  #endif
+
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
 
@@ -190,6 +190,13 @@ void s_ldst_packet (uint payload)
 // ------------------------------------------------------------------------
 void s_forward_packet (uint key, uint payload)
 {
+  #ifdef DEBUG
+    pkt_recv++;
+    recv_fwd++;
+    if (phase != SPINN_FORWARD)
+      wrng_phs++;
+  #endif
+
   // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
 
@@ -282,6 +289,13 @@ void s_forward_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void s_backprop_packet (uint key, uint payload)
 {
+  #ifdef DEBUG
+    pkt_recv++;
+    recv_bkp++;
+    if (phase != SPINN_BACKPROP)
+      wrng_phs++;
+  #endif
+
   // get error index: mask out block, phase and colour data,
   uint inx = key & SPINN_ERROR_MASK;
 
@@ -356,7 +370,7 @@ void s_backprop_packet (uint key, uint payload)
             && tick == SPINN_SB_END_TICK + 1)
         {
           // if this s core relates to the first group in the network, then we
-          // also need to wait for the link delta sum totals, so set the threads 
+          // also need to wait for the link delta sum totals, so set the threads
           // pending to 2
           if (scfg.is_first_group == 1)
           {
