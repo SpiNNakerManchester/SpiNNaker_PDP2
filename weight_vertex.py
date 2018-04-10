@@ -310,6 +310,7 @@ class WeightVertex(
         # weight matrix is kept in column-major order
         # and has to be written out in row-major order
         _wts = self.group.weights[self.from_group]
+        _nrows = self.from_group.units
         _nr = self._num_rows
         _nc = self._num_cols
         _rb = self._row_blk * MLPConstants.MAX_BLK_UNITS
@@ -318,7 +319,7 @@ class WeightVertex(
             for _r in range (_nr):
                 for _c in range (_nc):
                     _wt = self.cast_float_to_weight (
-                        _wts[(_cb + _c) * _nr + (_rb + _r)])
+                        _wts[(_cb + _c) * _nrows + (_rb + _r)])
                     spec.write_value (_wt, data_type = DataType.INT32)
         else:
             for _ in range (_nr * _nc):
