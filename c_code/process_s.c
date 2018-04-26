@@ -19,9 +19,9 @@
 // ------------------------------------------------------------------------
 void s_process (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "s_process\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "s_process\n");
+#endif
 
   // process packet queue
   // access queue with interrupts disabled
@@ -82,9 +82,9 @@ void s_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void s_ldsa_packet (uint payload)
 {
-  #ifdef DEBUG
-    lda_recv++;
-  #endif
+#ifdef DEBUG
+  lda_recv++;
+#endif
 
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
@@ -101,9 +101,9 @@ void s_ldsa_packet (uint payload)
     {
       while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
 
-      #ifdef DEBUG
-        ldt_sent++;
-      #endif
+#ifdef DEBUG
+      ldt_sent++;
+#endif
     }
 
     // access synchronisation semaphore with interrupts disabled
@@ -140,9 +140,9 @@ void s_ldsa_packet (uint payload)
 // ------------------------------------------------------------------------
 void s_ldst_packet (uint payload)
 {
-  #ifdef DEBUG
-    ldt_recv++;
-  #endif
+#ifdef DEBUG
+  ldt_recv++;
+#endif
 
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
@@ -190,12 +190,12 @@ void s_ldst_packet (uint payload)
 // ------------------------------------------------------------------------
 void s_forward_packet (uint key, uint payload)
 {
-  #ifdef DEBUG
-    pkt_recv++;
-    recv_fwd++;
-    if (phase != SPINN_FORWARD)
-      wrng_phs++;
-  #endif
+#ifdef DEBUG
+  pkt_recv++;
+  recv_fwd++;
+  if (phase != SPINN_FORWARD)
+    wrng_phs++;
+#endif
 
   // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
@@ -229,17 +229,17 @@ void s_forward_packet (uint key, uint payload)
       net_tmp = (net_t) s_nets[clr][inx];
     }
 
+#ifdef DEBUG_CFG3
+    io_printf (IO_BUF, "sn[%u]: 0x%08x\n", inx, net_tmp);
+#endif
+
     // incorporate net index to the packet key and send,
     while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
-    #ifdef DEBUG_CFG3
-      io_printf (IO_BUF, "sn[%u]: 0x%08x\n", inx, net_tmp);
-    #endif
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_fwd++;
-    #endif
+#ifdef DEBUG
+    pkt_sent++;
+    sent_fwd++;
+#endif
 
     // prepare for next tick,
     s_nets[clr][inx] = 0;
@@ -289,12 +289,12 @@ void s_forward_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void s_backprop_packet (uint key, uint payload)
 {
-  #ifdef DEBUG
-    pkt_recv++;
-    recv_bkp++;
-    if (phase != SPINN_BACKPROP)
-      wrng_phs++;
-  #endif
+#ifdef DEBUG
+  pkt_recv++;
+  recv_bkp++;
+  if (phase != SPINN_BACKPROP)
+    wrng_phs++;
+#endif
 
   // get error index: mask out block, phase and colour data,
   uint inx = key & SPINN_ERROR_MASK;
@@ -332,17 +332,17 @@ void s_backprop_packet (uint key, uint payload)
     }
 */
 
+#ifdef DEBUG_CFG4
+    io_printf (IO_BUF, "se[%u]: 0x%08x\n", inx, error);
+#endif
+
     // incorporate error index to the packet key and send,
     while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
 
-    #ifdef DEBUG_CFG4
-      io_printf (IO_BUF, "se[%u]: 0x%08x\n", inx, error);
-    #endif
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_bkp++;
-    #endif
+#ifdef DEBUG
+    pkt_sent++;
+    sent_bkp++;
+#endif
 
     // prepare for next tick,
     s_errors[clr][inx] = 0;
@@ -413,13 +413,14 @@ void s_backprop_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void sf_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "sf_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "sf_advance_tick\n");
+#endif
 
-  #ifdef DEBUG
-    tot_tick++;
-  #endif
+#ifdef DEBUG
+  tot_tick++;
+  io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
+#endif
 
   // and check if end of example's FORWARD phase
   if (tick_stop)
@@ -430,10 +431,6 @@ void sf_advance_tick (uint null0, uint null1)
   {
     // if not done increment tick
     tick++;
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -445,16 +442,17 @@ void sf_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void sb_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "sb_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "sb_advance_tick\n");
+#endif
+
+#ifdef DEBUG
+  tot_tick++;
+  io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
+#endif
 
   // prepare for next tick,
   sb_done = 0;
-
-  #ifdef DEBUG
-    tot_tick++;
-  #endif
 
   // and check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)
@@ -462,9 +460,9 @@ void sb_advance_tick (uint null0, uint null1)
     // initialize the tick count
     tick = SPINN_S_INIT_TICK;
 
-    #ifdef TRACE
-      io_printf (IO_BUF, "s_switch_to_fw\n");
-    #endif
+#ifdef TRACE
+    io_printf (IO_BUF, "s_switch_to_fw\n");
+#endif
 
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
@@ -476,10 +474,6 @@ void sb_advance_tick (uint null0, uint null1)
   {
     // if not done decrement tick
     tick--;
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -490,9 +484,9 @@ void sb_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void sf_advance_event (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "sf_advance_event\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "sf_advance_event\n");
+#endif
 
   // check if done with ticks
   if (tick == ncfg.global_max_ticks - 1)
@@ -535,9 +529,9 @@ void sf_advance_event (void)
 // ------------------------------------------------------------------------
 void s_advance_example (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "s_advance_example\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "s_advance_example\n");
+#endif
 
   // check if done with examples
   if (++example >= ncfg.num_examples)

@@ -19,6 +19,10 @@
 // ------------------------------------------------------------------------
 void tf_process (uint null0, uint null1)
 {
+#ifdef TRACE
+  io_printf (IO_BUF, "tb_process\n");
+#endif
+
   // process packet queue
   // access queue with interrupts disabled
   uint cpsr = spin1_int_disable ();
@@ -55,6 +59,13 @@ void tf_process (uint null0, uint null1)
       store_outputs (inx);
     }
 
+#ifdef DEBUG_VRB
+    io_printf (IO_BUF, "o[%2d]:%11.7f (0x%08x)\n", inx,
+	       SPINN_CONV_TO_PRINT(activation, SPINN_SHORT_ACTIV_SHIFT),
+	       activation
+      );
+#endif
+
     // incorporate output index into packet key and send to next stage,
     while (!spin1_send_mc_packet ((fwdKey | inx),
                                    (uint) activation,
@@ -62,17 +73,10 @@ void tf_process (uint null0, uint null1)
                                  )
           );
 
-    #ifdef DEBUG_VRB
-      io_printf (IO_BUF, "o[%2d]:%11.7f (0x%08x)\n", inx,
-                  SPINN_CONV_TO_PRINT(activation, SPINN_SHORT_ACTIV_SHIFT),
-                  activation
-                );
-    #endif
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_fwd++;
-    #endif
+#ifdef DEBUG
+    pkt_sent++;
+    sent_fwd++;
+#endif
 
     // evaluate stop criterion,
     if (tcfg.output_grp)
@@ -198,9 +202,9 @@ void tf_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void tb_process (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "tb_process\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "tb_process\n");
+#endif
 
   // compute deltas based on pre-computed errors,
   //TODO: this needs checking!
@@ -233,24 +237,24 @@ void tb_process (uint null0, uint null1)
 
     restore_outputs (inx, tick - 1);
 
+#ifdef DEBUG_CFG4
+    io_printf (IO_BUF, "td[%u]: 0x%08x\n", inx, delta);
+#endif
+
+#ifdef DEBUG_VRB
+    io_printf(IO_BUF, "d[%2d] = %10.7f (%08x)\n", inx,
+	      SPINN_CONV_TO_PRINT (delta, SPINN_DELTA_SHIFT),
+	      delta
+      );
+#endif
+
     // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
 
-    #ifdef DEBUG_CFG4
-      io_printf (IO_BUF, "td[%u]: 0x%08x\n", inx, delta);
-    #endif
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_bkp++;
-    #endif
-
-    #ifdef DEBUG_VRB
-      io_printf(IO_BUF, "d[%2d] = %10.7f (%08x)\n", inx,
-                 SPINN_CONV_TO_PRINT (delta, SPINN_DELTA_SHIFT),
-                 delta
-               );
-    #endif
+#ifdef DEBUG
+    pkt_sent++;
+    sent_bkp++;
+#endif
   }
 
   // access synchronisation semaphore with interrupts disabled
@@ -267,9 +271,9 @@ void tb_process (uint null0, uint null1)
 
     // and advance tick
     //TODO: check if need to schedule or can simply call
-    #ifdef TRACE_VRB
-      io_printf (IO_BUF, "tbp calling tb_advance_tick\n");
-    #endif
+#ifdef TRACE_VRB
+    io_printf (IO_BUF, "tbp calling tb_advance_tick\n");
+#endif
 
     tb_advance_tick (NULL, NULL);
   }
@@ -291,16 +295,21 @@ void tb_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void tf_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "tf_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "tf_advance_tick\n");
+#endif
+
+#ifdef DEBUG
+  tot_tick++;
+  io_printf (IO_BUF, "tf_tick: %d/%d\n", tick, tot_tick);
+#endif
+
+#if SPINN_OUTPUT_HISTORY == TRUE
+  //TODO: dump outputs to SDRAM for record keeping,
+#endif
 
   // initialize scoreboard for next tick,
   tf_arrived = 0;
-
-  #if SPINN_OUTPUT_HISTORY == TRUE
-    //TODO: dump outputs to SDRAM for record keeping,
-  #endif
 
   // if requested report outputs to host,
   if (tcfg.write_out)
@@ -322,10 +331,6 @@ void tf_advance_tick (uint null0, uint null1)
     }
   }
 
-  #ifdef DEBUG
-    tot_tick++;
-  #endif
-
   // and check if done with FORWARD phase
   if (tick_stop)
   {
@@ -341,10 +346,6 @@ void tf_advance_tick (uint null0, uint null1)
     // if not done increment ticks
     tick++;
     ev_tick++;
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "tf_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -356,13 +357,14 @@ void tf_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void tb_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "tb_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "tb_advance_tick\n");
+#endif
 
-  #ifdef DEBUG
-    tot_tick++;
-  #endif
+#ifdef DEBUG
+  tot_tick++;
+  io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
+#endif
 
   // update pointer to processing unit outputs,
   tb_procs = 1 - tb_procs;
@@ -396,10 +398,6 @@ void tb_advance_tick (uint null0, uint null1)
 
     // and trigger computation
     spin1_schedule_callback (tb_process, NULL, NULL, SPINN_TB_PROCESS_P);
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -410,9 +408,9 @@ void tb_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void tf_advance_event (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "tf_advance_event\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "tf_advance_event\n");
+#endif
 
   // check if done with ticks
   if (tick == ncfg.global_max_ticks - 1)
@@ -491,9 +489,9 @@ void tf_advance_event (void)
 // ------------------------------------------------------------------------
 void t_advance_example (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "t_advance_example\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "t_advance_example\n");
+#endif
 
   // check if done with examples
   //TODO: alternative algorithms for chosing example order!
@@ -519,9 +517,9 @@ void t_advance_example (void)
                                    )
           );
 
-        #ifdef DEBUG
-          stn_sent++;
-        #endif
+#ifdef DEBUG
+	stn_sent++;
+#endif
 
         //done
         spin1_exit (SPINN_NO_ERROR);
@@ -623,9 +621,9 @@ void t_advance_example (void)
 // ------------------------------------------------------------------------
 void t_switch_to_fw (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "t_switch_to_fw\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "t_switch_to_fw\n");
+#endif
 
   // access queues with interrupts disabled
   uint cpsr = spin1_int_disable ();
@@ -658,9 +656,9 @@ void t_switch_to_fw (void)
 // ------------------------------------------------------------------------
 void t_switch_to_bp (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "t_switch_to_bp\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "t_switch_to_bp\n");
+#endif
 
   // access flags and queues with interrupts disabled
   uint cpsr = spin1_int_disable ();
@@ -692,9 +690,9 @@ void t_switch_to_bp (void)
 // ------------------------------------------------------------------------
 void tf_send_stop (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "tf_send_stop\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "tf_send_stop\n");
+#endif
 
   // "aggregate" criteria,
   tf_stop_crit = tf_stop_crit && tf_chain_prev;
@@ -709,9 +707,9 @@ void tf_send_stop (uint null0, uint null1)
     tick_stop = tf_stop_crit;
   }
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "M:%d t:%d sc:%x\n", max_ticks, ev_tick, tf_stop_crit);
-  #endif
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "M:%d t:%d sc:%x\n", max_ticks, ev_tick, tf_stop_crit);
+#endif
 
   // FORWARD aggregated criterion,
   while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit),
@@ -720,9 +718,9 @@ void tf_send_stop (uint null0, uint null1)
                                )
         );
 
-  #ifdef DEBUG
-    stp_sent++;
-  #endif
+#ifdef DEBUG
+  stp_sent++;
+#endif
 
   // and initialise criterion for next tick
   tf_stop_crit = TRUE;
@@ -738,9 +736,9 @@ void tf_send_stop (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void t_init_outputs (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "t_init_outputs\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "t_init_outputs\n");
+#endif
 
   // initialize every unit output and send for processing
   for (uint i = 0; i < tcfg.num_units; i++)
@@ -765,6 +763,10 @@ void t_init_outputs (uint null0, uint null1)
       t_last_integr_output_deriv[i] = 0;
     }
 
+#ifdef DEBUG_CFG3
+    io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
+#endif
+
     // and send unit output to weight cores
     while (!spin1_send_mc_packet ((fwdKey | i),
                                    (uint) t_outputs[i],
@@ -772,14 +774,10 @@ void t_init_outputs (uint null0, uint null1)
                                  )
           );
 
-    #ifdef DEBUG_CFG3
-      io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
-    #endif
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_fwd++;
-    #endif
+#ifdef DEBUG
+    pkt_sent++;
+    sent_fwd++;
+#endif
   }
 }
 // ------------------------------------------------------------------------
@@ -800,15 +798,15 @@ void t_init_outputs (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void compute_out (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "compute_out\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "compute_out\n");
+#endif
 
-  #ifdef DEBUG_VRB
-    char* group;
-    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
-    io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example, tick, inx);
-  #endif
+#ifdef DEBUG_VRB
+  char* group;
+  group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
+  io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example, tick, inx);
+#endif
 
   // initialize the array element where to store the output value for the
   t_outputs[inx] = 0;
@@ -827,9 +825,9 @@ void compute_out (uint inx)
   // using the appropriate function
   if (ncfg.training && tcfg.output_grp)
   {
-    #ifdef TRACE_VRB
-      io_printf (IO_BUF, "compute output deriv\n");
-    #endif
+#ifdef TRACE_VRB
+    io_printf (IO_BUF, "compute output deriv\n");
+#endif
 
     // if the error function to be called is not null,
     // compute the output derivative
@@ -857,9 +855,9 @@ void compute_out (uint inx)
 // ------------------------------------------------------------------------
 void store_targets (uint inx)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "store_targets\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "store_targets\n");
+#endif
 
   t_target_history[(tick * tcfg.num_units) + inx] = tt[t_it_idx + inx];
 }
@@ -871,9 +869,9 @@ void store_targets (uint inx)
 // ------------------------------------------------------------------------
 void store_output_deriv (uint inx)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "store_output_deriv\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "store_output_deriv\n");
+#endif
 
   t_output_deriv_history[(tick * tcfg.num_units) + inx] = t_output_deriv[inx];
 }
@@ -885,9 +883,9 @@ void store_output_deriv (uint inx)
 // ------------------------------------------------------------------------
 void restore_output_deriv (uint inx, uint tick)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "restore_output_deriv\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_output_deriv\n");
+#endif
 
   t_output_deriv[inx] =
     t_output_deriv_history[(tick * tcfg.num_units) + inx];
@@ -900,9 +898,9 @@ void restore_output_deriv (uint inx, uint tick)
 // ------------------------------------------------------------------------
 void store_nets (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "store_nets\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "store_nets\n");
+#endif
 
   t_net_history[(tick * tcfg.num_units) + inx] = t_nets[inx];
 }
@@ -914,9 +912,9 @@ void store_nets (uint inx)
 // ------------------------------------------------------------------------
 void restore_nets (uint inx, uint tick)
 {
-  #ifdef TRACE
+#ifdef TRACE
     io_printf (IO_BUF, "restore_nets\n");
-  #endif
+#endif
 
   t_nets[inx] = t_net_history[((tick * tcfg.num_units) + inx)];
 }
@@ -927,9 +925,9 @@ void restore_nets (uint inx, uint tick)
 // ------------------------------------------------------------------------
 void store_outputs (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "store_outputs\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "store_outputs\n");
+#endif
 
   t_output_history[(tick * tcfg.num_units) + inx] = t_outputs[inx];
 }
@@ -940,9 +938,9 @@ void store_outputs (uint inx)
 // ------------------------------------------------------------------------
 void restore_outputs (uint inx, uint tick)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "restore_outputs\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_outputs\n");
+#endif
 
   t_outputs[inx] = t_output_history[((tick * tcfg.num_units) + inx)];
 }
@@ -954,9 +952,9 @@ void restore_outputs (uint inx, uint tick)
 // ------------------------------------------------------------------------
 void out_logistic (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_logistic\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_logistic\n");
+#endif
 
   // compute the sigmoid using a lookup table and an interpolation function
   t_outputs[inx] = sigmoid (t_nets[inx]);
@@ -969,9 +967,9 @@ void out_logistic (uint inx)
 // ------------------------------------------------------------------------
 void out_integr (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_integr\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_integr\n");
+#endif
 
   // s4.27
   activation_t last_output = t_last_integr_output[inx];
@@ -1019,9 +1017,9 @@ void out_integr (uint inx)
 // ------------------------------------------------------------------------
 void out_hard_clamp (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_hard_clamp\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_hard_clamp\n");
+#endif
 
   // compute only if input is not NaN
   if (it[t_it_idx + inx] != SPINN_ACTIV_NaN)
@@ -1049,9 +1047,9 @@ void out_hard_clamp (uint inx)
 // ------------------------------------------------------------------------
 void out_bias (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_bias\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_bias\n");
+#endif
 
   // set output value to 1
   t_outputs[inx] = SPINN_ACTIV_ONE;
@@ -1113,15 +1111,15 @@ void out_weak_clamp (uint inx)
 // ------------------------------------------------------------------------
 void compute_out_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "compute_out_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "compute_out_back\n");
+#endif
 
-  #ifdef DEBUG_VRB
-    char* group;
-    group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
-    io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d - Unit: %d\n", group, example, tick, inx);
-  #endif
+#ifdef DEBUG_VRB
+  char* group;
+  group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
+  io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d - Unit: %d\n", group, example, tick, inx);
+#endif
 
   int i;
 
@@ -1146,9 +1144,9 @@ void compute_out_back (uint inx)
 // ------------------------------------------------------------------------
 void out_logistic_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_logistic_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_logistic_back\n");
+#endif
 
   // compute o * (1 - o),
   // s36.27 = s4.27 * s4.27
@@ -1179,9 +1177,9 @@ void out_logistic_back (uint inx)
 // ------------------------------------------------------------------------
 void out_integr_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_integr_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_integr_back\n");
+#endif
 
   long_deriv_t last_output_deriv = t_last_integr_output_deriv[inx];
 
@@ -1206,9 +1204,9 @@ void out_integr_back (uint inx)
 // ------------------------------------------------------------------------
 void out_hard_clamp_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_hard_clamp_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_hard_clamp_back\n");
+#endif
 
 /*
   short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_units;
@@ -1225,9 +1223,9 @@ void out_hard_clamp_back (uint inx)
 // ------------------------------------------------------------------------
 void out_weak_clamp_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_weak_clamp_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_weak_clamp_back\n");
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -1237,9 +1235,9 @@ void out_weak_clamp_back (uint inx)
 // ------------------------------------------------------------------------
 void out_bias_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_bias_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_bias_back\n");
+#endif
 
   t_output_deriv[inx] = 0;
 }
@@ -1254,9 +1252,9 @@ void out_bias_back (uint inx)
 // ------------------------------------------------------------------------
 int init_out_integr ()
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "init_out_integr\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "init_out_integr\n");
+#endif
 
   // allocate memory for integrator state
   //NOTE: these variables are initialised in function init_outputs ()
@@ -1292,9 +1290,9 @@ int init_out_integr ()
 // ------------------------------------------------------------------------
 int init_out_hard_clamp ()
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "init_out_hard_clamp\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "init_out_hard_clamp\n");
+#endif
 
 /*
   if (ncfg.training)
@@ -1325,9 +1323,9 @@ int init_out_hard_clamp ()
 // ------------------------------------------------------------------------
 int init_out_weak_clamp ()
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "init_out_weak_clamp\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "init_out_weak_clamp\n");
+#endif
 
 /*
   if (ncfg.training)
@@ -1358,9 +1356,9 @@ int init_out_weak_clamp ()
 // ------------------------------------------------------------------------
 void std_stop_crit (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "std_stop_crit\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "std_stop_crit\n");
+#endif
 
   // evaluate only if target is not NaN
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
@@ -1386,9 +1384,9 @@ void std_stop_crit (uint inx)
 // ------------------------------------------------------------------------
 void max_stop_crit (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "max_stop_crit\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "max_stop_crit\n");
+#endif
 
   // evaluate only if target is not NaN
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
@@ -1428,9 +1426,9 @@ void max_stop_crit (uint inx)
 // ------------------------------------------------------------------------
 void error_squared (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "error_squared\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "error_squared\n");
+#endif
 
   // evaluate only if target is not NaN
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
@@ -1451,9 +1449,9 @@ void error_squared (uint inx)
 // ------------------------------------------------------------------------
 void error_cross_entropy (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "error_cross_entropy\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "error_cross_entropy\n");
+#endif
 
   // if the target is defined, compute the output derivative, otherwise set it to 0
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
