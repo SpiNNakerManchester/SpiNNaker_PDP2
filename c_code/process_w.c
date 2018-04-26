@@ -65,11 +65,11 @@ void wf_process (uint null0, uint null1)
   // access synchronisation semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
-  // and check if all threads done
-  if (wf_thrds_done == 0)
+  // and check if all other threads done
+  if (wf_thrds_pend == 0)
   {
     // if done initialize synchronization semaphore,
-    wf_thrds_done = 2;
+    wf_thrds_pend = 2;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
@@ -85,7 +85,7 @@ void wf_process (uint null0, uint null1)
   else
   {
     // if not done report processing thread done,
-    wf_thrds_done -= 1;
+    wf_thrds_pend -= 1;
 
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
@@ -231,8 +231,8 @@ void wb_process (uint null0, uint null1)
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-      // and check if all threads done
-      if (wb_thrds_done == 0)
+      // and check if all other threads done
+      if (wb_thrds_pend == 0)
       {
         // if done initialize synchronization semaphore,
         // if we are using Doug's Momentum, and we have reached the end of the
@@ -243,11 +243,11 @@ void wb_process (uint null0, uint null1)
             && example == (ncfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK + 1)
         {
-          wb_thrds_done = 1;
+          wb_thrds_pend = 1;
         }
         else
         {
-          wb_thrds_done = 0;
+          wb_thrds_pend = 0;
         }
 
         // restore interrupts after flag access,
@@ -263,7 +263,7 @@ void wb_process (uint null0, uint null1)
       else
       {
         // if not done report processing thread done,
-        wb_thrds_done -= 1;
+        wb_thrds_pend -= 1;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
@@ -789,20 +789,14 @@ void wf_advance_event (void)
   io_printf (IO_BUF, "wf_advance_event\n");
 #endif
 
-  // check if done with ticks
-  if (tick == ncfg.global_max_ticks - 1)
-  {
-    evt = num_events - 1;
-  }
-
-  // check if done with events -- end of example's FORWARD phase
-  if (++evt >= num_events)
+  // check if done with example's FORWARD phase
+  if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
     // initialise synchronisation semaphore,
-    wf_thrds_done = 0;  // no processing and no stop in tick 0
+    wf_thrds_pend = 0;  // no processing and no stop in tick 0
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);

@@ -87,10 +87,10 @@ void t_stopPacket (uint key)
   #endif
 
   // check if all threads done
-  if (tf_thrds_done == 0)
+  if (tf_thrds_pend == 0)
   {
     // initialise semaphore
-    tf_thrds_done = 1;
+    tf_thrds_pend = 1;
 
     // and advance tick
     spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
@@ -98,7 +98,7 @@ void t_stopPacket (uint key)
   else
   {
     // if not done report stop thread done
-    tf_thrds_done -= 1;
+    tf_thrds_pend -= 1;
   }
 }
 // ------------------------------------------------------------------------
@@ -304,11 +304,11 @@ void t_backpropPacket (uint key, uint payload)
     // update pointer to received errors,
     tb_comms = 1 - tb_comms;
 
-    // and check if other threads are done,
-    if (tb_thrds_done == 0)
+    // and check if all other threads are done,
+    if (tb_thrds_pend == 0)
     {
       // if done initialise synchronisation semaphore,
-      tb_thrds_done = 1;
+      tb_thrds_pend = 1;
 
       // and advance tick
       #ifdef TRACE_VRB
@@ -320,7 +320,7 @@ void t_backpropPacket (uint key, uint payload)
     else
     {
       // if not done report comms thread done
-      tb_thrds_done -= 1;
+      tb_thrds_pend -= 1;
     }
   }
 }

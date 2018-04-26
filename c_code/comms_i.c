@@ -32,10 +32,10 @@ void i_receivePacket (uint key, uint payload)
     #endif
 
     // check if all threads done
-    if (if_thrds_done == 0)
+    if (if_thrds_pend == 0)
     {
       // if done initialize semaphore,
-      if_thrds_done = 1;
+      if_thrds_pend = 1;
 
       // and advance tick
       spin1_schedule_callback (if_advance_tick, NULL, NULL, SPINN_I_TICK_P);
@@ -43,7 +43,7 @@ void i_receivePacket (uint key, uint payload)
     else
     {
       // if not done report processing thread done
-      if_thrds_done -= 1;
+      if_thrds_pend -= 1;
     }
 
     return;

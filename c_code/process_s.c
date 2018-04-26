@@ -109,11 +109,11 @@ void s_ldsa_packet (uint payload)
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-    // check if all threads done
-    if (sb_thrds_done == 0)
+    // check if all other threads done
+    if (sb_thrds_pend == 0)
     {
       // if done initialise semaphore
-      sb_thrds_done = 0;
+      sb_thrds_pend = 0;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
@@ -125,7 +125,7 @@ void s_ldsa_packet (uint payload)
     else
     {
       // if not done report processing thread done,
-      sb_thrds_done -= 1;
+      sb_thrds_pend -= 1;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -159,11 +159,11 @@ void s_ldst_packet (uint payload)
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-    // check if all threads done
-    if (sb_thrds_done == 0)
+    // check if all other threads done
+    if (sb_thrds_pend == 0)
     {
       // if done initialise semaphore
-      sb_thrds_done = 0;
+      sb_thrds_pend = 0;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
@@ -175,7 +175,7 @@ void s_ldst_packet (uint payload)
     else
     {
       // if not done report processing thread done,
-      sb_thrds_done -= 1;
+      sb_thrds_pend -= 1;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -257,11 +257,11 @@ void s_forward_packet (uint key, uint payload)
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-      // check if all threads done
-      if (sf_thrds_done == 0)
+      // check if all other threads done
+      if (sf_thrds_pend == 0)
       {
         // if done initialize semaphore
-        sf_thrds_done = 1;
+        sf_thrds_pend = 1;
 
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
@@ -273,7 +273,7 @@ void s_forward_packet (uint key, uint payload)
       else
       {
         // if not done report processing thread done,
-        sf_thrds_done -= 1;
+        sf_thrds_pend -= 1;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
@@ -357,8 +357,8 @@ void s_backprop_packet (uint key, uint payload)
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-      // check if all threads done
-      if (sb_thrds_done == 0)
+      // check if all other threads done
+      if (sb_thrds_pend == 0)
       {
         // if done initialize semaphore:
         // if we are using Doug's Momentum, and we have reached the end of the
@@ -374,17 +374,17 @@ void s_backprop_packet (uint key, uint payload)
           // pending to 2
           if (scfg.is_first_group == 1)
           {
-            sb_thrds_done = 2;
+            sb_thrds_pend = 2;
           }
           // for all other groups, set threads pending to 1
           else
           {
-            sb_thrds_done = 1;
+            sb_thrds_pend = 1;
           }
         }
         else
         {
-          sb_thrds_done = 0;
+          sb_thrds_pend = 0;
         }
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
@@ -396,7 +396,7 @@ void s_backprop_packet (uint key, uint payload)
       else
       {
         // if not done report processing thread done,
-        sb_thrds_done -= 1;
+        sb_thrds_pend -= 1;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
@@ -488,14 +488,8 @@ void sf_advance_event (void)
   io_printf (IO_BUF, "sf_advance_event\n");
 #endif
 
-  // check if done with ticks
-  if (tick == ncfg.global_max_ticks - 1)
-  {
-    evt = num_events - 1;
-  }
-
-  // check if done with events
-  if (++evt >= num_events)
+  // check if done with example's FORWARD phase
+  if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // and check if in training mode
     if (ncfg.training)

@@ -157,8 +157,8 @@ uint t_init (void)
   tb_arrived = 0;
 
   // initialise synchronisation semaphores
-  tf_thrds_done = 1;
-  tb_thrds_done = 1;
+  tf_thrds_pend = 1;
+  tb_thrds_pend = 1;
 
   // initialise stop function and related flags
   if (tcfg.output_grp)

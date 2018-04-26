@@ -63,11 +63,11 @@ extern lds_t              w_lds_final;   // final link delta sum
 extern uint               wf_procs;      // pointer to processing unit outputs
 extern uint               wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t       wf_arrived;    // keeps track of received unit outputs
-extern uint               wf_thrds_done; // sync. semaphore: comms, proc & stop
+extern uint               wf_thrds_pend; // sync. semaphore: comms, proc & stop
 extern uint               wf_sync_key;   // FORWARD processing can start
 extern uchar              wb_active;     // processing deltas from queue?
 extern scoreboard_t       wb_arrived;    // keeps track of received deltas
-extern uint               wb_thrds_done; // sync. semaphore: comms, proc & stop
+extern uint               wb_thrds_pend; // sync. semaphore: comms, proc & stop
 extern uint               wb_sync_key;   // BACKPROP processing can start
 extern weight_update_t    wb_update_func; // weight update function
 
@@ -85,10 +85,10 @@ extern uchar            s_active;      // processing b-d-ps from queue?
 extern lds_t            s_lds_part;    // partial link delta sum
 extern scoreboard_t   * sf_arrived[2]; // keep track of expected net b-d-p
 extern scoreboard_t     sf_done;       // current tick net computation done
-extern uint             sf_thrds_done; // sync. semaphore: proc & stop
+extern uint             sf_thrds_pend; // sync. semaphore: proc & stop
 extern scoreboard_t   * sb_arrived[2]; // keep track of expected error b-d-p
 extern scoreboard_t     sb_done;       // current tick error computation done
-extern uint             sb_thrds_done; // sync. semaphore: proc & stop
+extern uint             sb_thrds_pend; // sync. semaphore: proc & stop
 extern scoreboard_t     s_ldsa_arrived; // keep track of the number of partial link delta sums
 extern scoreboard_t     s_ldst_arrived; // keep track of the number of link delta sum totals
 // ------------------------------------------------------------------------
@@ -110,7 +110,7 @@ extern pkt_queue_t      i_pkt_queue;   // queue to hold received nets/deltas
 extern uchar            i_active;      // processing b-d-ps from queue?
 extern uint             i_it_idx;      // index into current inputs/targets
 extern scoreboard_t     if_done;       // current tick net computation done
-extern uint             if_thrds_done; // sync. semaphore: proc & stop
+extern uint             if_thrds_pend; // sync. semaphore: proc & stop
 extern long_delta_t   * ib_init_delta; // initial delta value for every tick
 extern scoreboard_t     ib_done;       // current tick delta computation done
 extern long_net_t     * i_last_integr_net;   //last integrator output value
@@ -148,7 +148,7 @@ extern scoreboard_t     t_sync_arrived; // keep track of expected sync packets
 extern uchar            t_sync_rdy;    // have expected sync packets arrived?
 extern sdp_msg_t        t_sdp_msg;     // SDP message buffer for host comms.
 extern scoreboard_t     tf_arrived;    // keep track of expected nets
-extern uint             tf_thrds_done; // sync. semaphore: proc & stop
+extern uint             tf_thrds_pend; // sync. semaphore: proc & stop
 extern uchar            tf_chain_prev; // previous daisy chain (DC) value
 extern uchar            tf_chain_init; // previous DC received init
 extern uchar            tf_chain_rdy;  // local DC value can be forwarded
@@ -162,7 +162,7 @@ extern uint             tf_stpn_key;   // stop network packet key
 extern uint             tb_procs;      // pointer to processing errors
 extern uint             tb_comms;      // pointer to receiving errors
 extern scoreboard_t     tb_arrived;    // keep track of expected errors
-extern uint             tb_thrds_done; // sync. semaphore: proc & stop
+extern uint             tb_thrds_pend; // sync. semaphore: proc & stop
 extern int              t_max_output_unit; // unit with highest output
 extern int              t_max_target_unit; // unit with highest target
 extern activation_t     t_max_output;      // highest output value

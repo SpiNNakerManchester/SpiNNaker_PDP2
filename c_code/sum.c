@@ -69,13 +69,13 @@ lds_t            s_lds_part;        // partial link delta sum
 // (net computation)
 scoreboard_t   * sf_arrived[2];     // keep track of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
-uint             sf_thrds_done;     // sync. semaphore: proc & stop
+uint             sf_thrds_pend;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
 // (error computation)
 scoreboard_t   * sb_arrived[2];     // keep track of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
-uint             sb_thrds_done;     // sync. semaphore: proc & stop
+uint             sb_thrds_pend;     // sync. semaphore: proc & stop
 scoreboard_t     s_ldsa_arrived;    // keep track of the number of partial link delta sums
 scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta sum totals
 // ------------------------------------------------------------------------

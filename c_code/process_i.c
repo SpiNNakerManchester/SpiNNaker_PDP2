@@ -124,11 +124,11 @@ void i_forward_packet (uint key, uint payload)
     // access synchronization semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-    // check if all threads done
-    if (if_thrds_done == 0)
+    // check if all other threads done
+    if (if_thrds_pend == 0)
     {
       // if done initialize semaphore,
-      if_thrds_done = 1;
+      if_thrds_pend = 1;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
@@ -140,7 +140,7 @@ void i_forward_packet (uint key, uint payload)
     else
     {
       // if not done report processing thread done,
-      if_thrds_done -= 1;
+      if_thrds_pend -= 1;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -307,14 +307,8 @@ void if_advance_event (void)
   io_printf (IO_BUF, "if_advance_event\n");
 #endif
 
-  // check if done with ticks
-  if (tick == ncfg.global_max_ticks - 1)
-  {
-    evt = num_events - 1;
-  }
-
-  // check if done with events
-  if (++evt >= num_events)
+  // check if done with example's FORWARD phase
+  if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // and check if in training mode
     if (ncfg.training)
@@ -329,6 +323,7 @@ void if_advance_event (void)
     {
       // if not training, initialize ticks for the next example
       tick = SPINN_I_INIT_TICK;
+
       // then move to next example
       i_advance_example ();
     }
