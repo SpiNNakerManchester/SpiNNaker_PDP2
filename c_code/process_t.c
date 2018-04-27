@@ -88,6 +88,9 @@ void tf_process (uint null0, uint null1)
     // and check if all nets arrived (i.e., all outputs done)
     if (tf_arrived == tcfg.num_units)
     {
+      // initialize scoreboard for next tick,
+      tf_arrived = 0;
+
       // if possible, FORWARD stop criterion
       if (tcfg.output_grp)
       {
@@ -308,9 +311,6 @@ void tf_advance_tick (uint null0, uint null1)
   //TODO: dump outputs to SDRAM for record keeping,
 #endif
 
-  // initialize scoreboard for next tick,
-  tf_arrived = 0;
-
   // if requested report outputs to host,
   if (tcfg.write_out)
   {
@@ -334,11 +334,14 @@ void tf_advance_tick (uint null0, uint null1)
   // and check if done with FORWARD phase
   if (tick_stop)
   {
+    // update event criterion
     if (tcfg.is_last_output_group)
     {
       tf_event_crit = tf_event_crit && tf_group_crit && (ev_tick >= min_ticks);
       max_evt = evt;
     }
+
+    // and move to next event
     tf_advance_event ();
   }
   else
@@ -381,15 +384,14 @@ void tb_advance_tick (uint null0, uint null1)
     // switch to FORWARD phase,
     t_switch_to_fw ();
 
-    // advance to next example,
+    // update example criterion,
     if (tcfg.is_last_output_group)
     {
       tf_example_crit = tf_example_crit && tf_event_crit && (max_evt >= num_events - 1);
     }
-    t_advance_example ();
 
-    // and stop processing queue in this phase
-    return;
+    // and advance to next example,
+    t_advance_example ();
   }
   else
   {

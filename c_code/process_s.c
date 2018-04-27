@@ -354,6 +354,9 @@ void s_backprop_packet (uint key, uint payload)
     // and check if all errors done
     if (sb_done == scfg.num_units)
     {
+      // prepare for next tick,
+      sb_done = 0;
+
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
@@ -422,7 +425,7 @@ void sf_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  // and check if end of example's FORWARD phase
+  // check if end of example's FORWARD phase
   if (tick_stop)
   {
     sf_advance_event ();
@@ -451,10 +454,7 @@ void sb_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  // prepare for next tick,
-  sb_done = 0;
-
-  // and check if end of BACKPROP phase
+  // check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)
   {
     // initialize the tick count

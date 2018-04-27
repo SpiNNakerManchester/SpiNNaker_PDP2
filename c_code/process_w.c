@@ -716,7 +716,7 @@ void wf_advance_tick (uint null0, uint null1)
   // update pointer to processing unit outputs,
   wf_procs = 1 - wf_procs;
 
-  // check if end of example's FORWARD phase
+  // and check if end of example's FORWARD phase
   if (tick_stop)
   {
     wf_advance_event ();

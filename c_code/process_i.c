@@ -121,6 +121,9 @@ void i_forward_packet (uint key, uint payload)
   // and check if all nets done
   if (if_done == icfg.num_units)
   {
+    // prepare for next tick,
+    if_done = 0;
+
     // access synchronization semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
@@ -211,7 +214,10 @@ void i_backprop_packet (uint key, uint payload)
   // and check if all deltas done
   if (ib_done == icfg.num_units)
   {
-    // advance tick
+    // prepare for next tick,
+    ib_done = 0;
+
+    // and advance tick
     //TODO: check if need to schedule or can simply call
     ib_advance_tick (NULL, NULL);
   }
@@ -234,10 +240,7 @@ void if_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  // prepare for next tick,
-  if_done = 0;
-
-  // and check if end of example's FORWARD phase
+  // check if end of example's FORWARD phase
   if (tick_stop)
   {
     if_advance_event ();
@@ -270,10 +273,7 @@ void ib_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
 #endif
 
-  // prepare for next tick,
-  ib_done = 0;
-
-  // and check if end of BACKPROP phase
+  // check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
   {
     // initialize the tick count
