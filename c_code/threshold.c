@@ -186,6 +186,8 @@ long_deriv_t   * t_output_deriv_history;
   uint recv_bkp = 0;  // packets received in BACKPROP phase
   uint spk_sent = 0;  // sync packets sent
   uint spk_recv = 0;  // sync packets received
+  uint chn_sent = 0;  // chain packets sent
+  uint chn_recv = 0;  // chain packets received
   uint stp_sent = 0;  // stop packets sent
   uint stp_recv = 0;  // stop packets received
   uint stn_sent = 0;  // network_stop packets sent
@@ -399,6 +401,8 @@ void done (uint ec)
     io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
     io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
     io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
+    io_printf (IO_BUF, "chain recv:%d\n", chn_recv);
+    io_printf (IO_BUF, "chain sent:%d\n", chn_sent);
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
   #endif

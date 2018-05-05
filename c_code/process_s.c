@@ -425,7 +425,7 @@ void sf_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  // check if end of example's FORWARD phase
+  // check if end of event
   if (tick_stop)
   {
     sf_advance_event ();

@@ -74,9 +74,9 @@ class ThresholdVertex(
             self._is_last_output_group = 0
 
         # forward, backprop and stop link partition names
-        self._fwd_link = "fwd_s{}".format (self.group.id)
-        self._bkp_link = "bkp_s{}".format (self.group.id)
-        self._stp_link = "stp_s{}".format (self.group.id)
+        self._fwd_link = "fwd_t{}".format (self.group.id)
+        self._bkp_link = "bkp_t{}".format (self.group.id)
+        self._stp_link = "stp_t{}".format (self.group.id)
 
         # threshold core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing

@@ -84,7 +84,7 @@ void w_stopPacket (uint key)
     io_printf (IO_BUF, "sc:%x\n", tick_stop);
   #endif
 
-  // check if all threads done
+  // check if all other threads done
   if (wf_thrds_pend == 0)
   {
     // if done initialize synchronization semaphore,
@@ -130,7 +130,7 @@ void w_ldsrPacket (uint payload)
   // the final link delta sum for the epoch arrived
   w_lds_final = (lds_t) payload;
 
-  // check if all threads done
+  // check if all other threads done
   if (wb_thrds_pend == 0)
   {
     //NOTE: no need to initialize semaphore
@@ -189,7 +189,7 @@ void w_forwardPacket (uint key, uint payload)
     // update pointer to received unit outputs,
     wf_comms = 1 - wf_comms;
 
-    // and check if other threads are done,
+    // and check if all other threads are done,
     if (wf_thrds_pend == 0)
     {
       // if done initialize synchronization semaphore,

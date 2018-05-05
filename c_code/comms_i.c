@@ -31,7 +31,7 @@ void i_receivePacket (uint key, uint payload)
       io_printf (IO_BUF, "sc:%x\n", tick_stop);
     #endif
 
-    // check if all threads done
+    // check if all other threads done
     if (if_thrds_pend == 0)
     {
       // if done initialize semaphore,

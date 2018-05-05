@@ -33,7 +33,7 @@ void i_process (uint null0, uint null1)
     // if not empty dequeue packet,
     uint key = i_pkt_queue.queue[i_pkt_queue.head].key;
     uint payload = i_pkt_queue.queue[i_pkt_queue.head].payload;
-    i_pkt_queue.head = (i_pkt_queue.head + 1) % SPINN_SUM_PQ_LEN;
+    i_pkt_queue.head = (i_pkt_queue.head + 1) % SPINN_INPUT_PQ_LEN;
 
     // restore interrupts after queue access,
     spin1_mode_restore (cpsr);
@@ -240,7 +240,7 @@ void if_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  // check if end of example's FORWARD phase
+  // check if end of event
   if (tick_stop)
   {
     if_advance_event ();

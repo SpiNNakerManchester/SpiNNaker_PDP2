@@ -262,6 +262,11 @@ void done (uint ec)
       #endif
 
       break;
+
+    case SPINN_PKT_QUEUE_ERROR:
+      io_printf (IO_BUF, "unexpected packet in queue - abort!\n");
+
+      break;
   }
 
   // report diagnostics

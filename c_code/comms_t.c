@@ -86,7 +86,7 @@ void t_stopPacket (uint key)
     io_printf (IO_BUF, "sc:%x\n", tick_stop);
   #endif
 
-  // check if all threads done
+  // check if all other threads done
   if (tf_thrds_pend == 0)
   {
     // initialise semaphore
@@ -110,7 +110,7 @@ void t_stopPacket (uint key)
 void t_chainPacket (uint key)
 {
   #ifdef DEBUG
-    stp_recv++;
+    chn_recv++;
   #endif
 
   // STOP daisy chain partial decision arrived from previous core

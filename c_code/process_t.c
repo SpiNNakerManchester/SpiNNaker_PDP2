@@ -331,7 +331,7 @@ void tf_advance_tick (uint null0, uint null1)
     }
   }
 
-  // and check if done with FORWARD phase
+  // and check if done with event
   if (tick_stop)
   {
     // update event criterion
@@ -714,7 +714,14 @@ void tf_send_stop (uint null0, uint null1)
         );
 
 #ifdef DEBUG
-  stp_sent++;
+  if (tcfg.is_last_output_group)
+  {
+    stp_sent++;
+  }
+  else
+  {
+    chn_sent++;
+  }
 #endif
 
   // and initialise criterion for next tick

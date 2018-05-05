@@ -100,16 +100,17 @@
 // multicast packet routing keys and masks
 // ------------------------------------------------------------------------
 // packet type keys
+#define SPINN_DATA_KEY       0x00000000
 #define SPINN_SYNC_KEY       0x00001000
 #define SPINN_LDST_KEY       0x00002000
 #define SPINN_LDSA_KEY       0x00003000
-#define SPINN_LDSR_KEY       0x00002800
-#define SPINN_STPC_KEY       0x00003200
-#define SPINN_STPN_KEY       0x00003800
-#define SPINN_STOP_KEY       0x00003a00
+#define SPINN_LDSR_KEY       0x00004000
+#define SPINN_STPC_KEY       0x00005000
+#define SPINN_STPN_KEY       0x00006000
+#define SPINN_STOP_KEY       0x00007000
 
 // packet type mask
-#define SPINN_TYPE_MASK      0x00003a00
+#define SPINN_TYPE_MASK      0x0000f000
 
 // packet condition keys
 #define SPINN_PHASE_KEY(p)   (p << SPINN_PHASE_SHIFT)
@@ -154,7 +155,7 @@
 //TODO: check if size is appropriate
 #define SPINN_THLD_PQ_LEN    256
 #define SPINN_WEIGHT_PQ_LEN  512
-#define SPINN_SUM_PQ_LEN     512
+#define SPINN_SUM_PQ_LEN     2048
 #define SPINN_INPUT_PQ_LEN   512
 // ------------------------------------------------------------------------
 
@@ -218,7 +219,6 @@
 #define SPINN_QUEUE_FULL       2
 #define SPINN_TIMEOUT_EXIT     3
 #define SPINN_UNXPD_PKT        4
-#define SPINN_CORE_TYPE_ERROR  5
 // ------------------------------------------------------------------------
 
 #endif

@@ -189,6 +189,8 @@ extern long_deriv_t   * t_output_deriv_history;
   extern uint recv_bkp;  // packets received in BACKPROP phase
   extern uint spk_sent;  // sync packets sent
   extern uint spk_recv;  // sync packets received
+  extern uint chn_sent;  // chain packets sent
+  extern uint chn_recv;  // chain packets received
   extern uint stp_sent;  // stop packets sent
   extern uint stp_recv;  // stop packets received
   extern uint stn_sent;  // network_stop packets sent
