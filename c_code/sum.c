@@ -37,6 +37,10 @@ uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
 uchar        tick_stop;    // current tick stop decision
 
+uint         to_epoch   = 0;
+uint         to_example = 0;
+uint         to_tick    = 0;
+
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
@@ -65,13 +69,13 @@ lds_t            s_lds_part;        // partial link delta sum
 // (net computation)
 scoreboard_t   * sf_arrived[2];     // keep track of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
-uint             sf_thrds_done;     // sync. semaphore: proc & stop
+uint             sf_thrds_pend;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
 // (error computation)
 scoreboard_t   * sb_arrived[2];     // keep track of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
-uint             sb_thrds_done;     // sync. semaphore: proc & stop
+uint             sb_thrds_pend;     // sync. semaphore: proc & stop
 scoreboard_t     s_ldsa_arrived;    // keep track of the number of partial link delta sums
 scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta sum totals
 // ------------------------------------------------------------------------
@@ -91,6 +95,9 @@ scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta su
   uint stp_sent = 0;  // stop packets sent
   uint stp_recv = 0;  // stop packets received
   uint stn_recv = 0;  // network_stop packets received
+  uint lda_recv = 0;  // partial link_delta packets received
+  uint ldt_sent = 0;  // total link_delta packets snet
+  uint ldt_recv = 0;  // total link_delta packets received
   uint wrng_phs = 0;  // packets received in wrong phase
   uint wrng_tck = 0;  // FORWARD packets received in wrong tick
   uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
@@ -144,7 +151,7 @@ uint init ()
     io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
     io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-    io_prtinf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
+    io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
   #endif
 
   // initialize epoch, example and event counters
@@ -227,21 +234,33 @@ void done (uint ec)
     io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
+    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+    io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
+    io_printf (IO_BUF, "ldst sent:%d\n", ldt_sent);
+    io_printf (IO_BUF, "ldst recv:%d\n", ldt_recv);
   #endif
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// timer callback: if the execution takes too long it probably deadlocked.
-// Therefore the execution is terminated with SPINN_TIMEOUT_EXIT exit code.
+// timer callback: check that there has been progress in execution.
+// If no progress has been made terminate with SPINN_TIMEOUT_EXIT exit code.
 // ------------------------------------------------------------------------
 void timeout (uint ticks, uint null)
 {
-  if (ticks == ncfg.timeout)
+  // check if progress has been made
+  if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
   {
     // exit and report timeout
     spin1_exit (SPINN_TIMEOUT_EXIT);
+  }
+  else
+  {
+    // update checked variables
+    to_epoch   = epoch;
+    to_example = example;
+    to_tick    = tick;
   }
 }
 // ------------------------------------------------------------------------

@@ -19,7 +19,7 @@ void i_receivePacket (uint key, uint payload)
   // check if stop packet
   if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
-    // sync packet received
+    // stop packet received
     #ifdef DEBUG
       stp_recv++;
     #endif
@@ -31,11 +31,11 @@ void i_receivePacket (uint key, uint payload)
       io_printf (IO_BUF, "sc:%x\n", tick_stop);
     #endif
 
-    // check if all threads done
-    if (if_thrds_done == 0)
+    // check if all other threads done
+    if (if_thrds_pend == 0)
     {
       // if done initialize semaphore,
-      if_thrds_done = 1;
+      if_thrds_pend = 1;
 
       // and advance tick
       spin1_schedule_callback (if_advance_tick, NULL, NULL, SPINN_I_TICK_P);
@@ -43,12 +43,13 @@ void i_receivePacket (uint key, uint payload)
     else
     {
       // if not done report processing thread done
-      if_thrds_done -= 1;
+      if_thrds_pend -= 1;
     }
 
     return;
   }
 
+  // check if network stop packet
   if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
   {
     // network stop packet received
@@ -61,13 +62,8 @@ void i_receivePacket (uint key, uint payload)
     return;
   }
 
-  #ifdef DEBUG
-    pkt_recv++;
-  #endif
-
-  // check if space in packet queue,
+  // queue packet - if space available
   uint new_tail = (i_pkt_queue.tail + 1) % SPINN_INPUT_PQ_LEN;
-
   if (new_tail == i_pkt_queue.head)
   {
     // if queue full exit and report failure

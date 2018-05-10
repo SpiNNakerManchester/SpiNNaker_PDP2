@@ -16,43 +16,47 @@
 // ------------------------------------------------------------------------
 void t_receivePacket (uint key, uint payload)
 {
+  // check if packet is stop type
+  uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
+  if (stop)
+  {
+    // process stop final decision packet
+    t_stopPacket (key);
+    return;
+  }
+
+  // check if packet is chain type
+  uint chain = ((key & SPINN_TYPE_MASK) == SPINN_STPC_KEY);
+  if (chain)
+  {
+    // process stop decision chain packet
+    t_chainPacket (key);
+    return;
+  }
+
+  // check if packet is network stop type
+  uint stpn = ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY);
+  if (stpn)
+  {
+    // process network stop decision packet
+    t_networkStopPacket ();
+    return;
+  }
+
   // get packet phase
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
-  // packet is stop type
-  uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
-
-  // packet is chain type
-  uint chain = ((key & SPINN_TYPE_MASK) == SPINN_STPC_KEY);
-
-  // packet is network stop type
-  uint stpn = ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY);
-
-  // packet is sync type
+  // check if packet is sync type
   uint sync = ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY);
-
-  // check packet type
-  if (stop)
+  if (sync)
   {
-    // stop final decision packet
-    t_stopPacket (key);
-  }
-  else if (chain)
-  {
-    // stop decision chain packet
-    t_chainPacket (key);
-  }
-  else if (stpn)
-  {
-    // network stop decision packet
-    t_networkStopPacket ();
-  }
-  else if (sync)
-  {
-    // tick synchronisation packet
+    // process tick synchronisation packet
     t_syncPacket (ph);
+    return;
   }
-  else if (ph == SPINN_FORWARD)
+
+  // computation packet
+    if (ph == SPINN_FORWARD)
   {
     // FORWARD phase packet
     t_forwardPacket (key, payload);
@@ -82,11 +86,11 @@ void t_stopPacket (uint key)
     io_printf (IO_BUF, "sc:%x\n", tick_stop);
   #endif
 
-  // check if all threads done
-  if (tf_thrds_done == 0)
+  // check if all other threads done
+  if (tf_thrds_pend == 0)
   {
     // initialise semaphore
-    tf_thrds_done = 1;
+    tf_thrds_pend = 1;
 
     // and advance tick
     spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
@@ -94,7 +98,7 @@ void t_stopPacket (uint key)
   else
   {
     // if not done report stop thread done
-    tf_thrds_done -= 1;
+    tf_thrds_pend -= 1;
   }
 }
 // ------------------------------------------------------------------------
@@ -106,7 +110,7 @@ void t_stopPacket (uint key)
 void t_chainPacket (uint key)
 {
   #ifdef DEBUG
-    stp_recv++;
+    chn_recv++;
   #endif
 
   // STOP daisy chain partial decision arrived from previous core
@@ -174,9 +178,12 @@ void t_syncPacket (uint ph)
       t_sync_arrived = 0;
 
       // and check if can trigger sending data
-      if (phase == SPINN_FORWARD)
+      if (t_sync_rdy)
       {
-        // schedule sending of unit outputs
+        // clear synchronisation flag,
+        t_sync_rdy = FALSE;
+
+        // schedule sending of unit outputs,
         spin1_schedule_callback (t_init_outputs,
                                   NULL, NULL, SPINN_T_INIT_OUT_P
                                 );
@@ -191,8 +198,8 @@ void t_syncPacket (uint ph)
       }
       else
       {
-        // if not ready flag sync done
-        t_sync_done = TRUE;
+        // if not flag sync as ready
+        t_sync_rdy = TRUE;
       }
     }
   }
@@ -218,7 +225,7 @@ void t_syncPacket (uint ph)
       else
       {
         // if not ready flag sync done
-        t_sync_done = TRUE;
+        t_sync_rdy = TRUE;
       }
     }
   }
@@ -297,11 +304,11 @@ void t_backpropPacket (uint key, uint payload)
     // update pointer to received errors,
     tb_comms = 1 - tb_comms;
 
-    // and check if other threads are done,
-    if (tb_thrds_done == 0)
+    // and check if all other threads are done,
+    if (tb_thrds_pend == 0)
     {
       // if done initialise synchronisation semaphore,
-      tb_thrds_done = 1;
+      tb_thrds_pend = 1;
 
       // and advance tick
       #ifdef TRACE_VRB
@@ -313,7 +320,7 @@ void t_backpropPacket (uint key, uint payload)
     else
     {
       // if not done report comms thread done
-      tb_thrds_done -= 1;
+      tb_thrds_pend -= 1;
     }
   }
 }

@@ -19,9 +19,9 @@
 // ------------------------------------------------------------------------
 void s_process (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "s_process\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "s_process\n");
+#endif
 
   // process packet queue
   // access queue with interrupts disabled
@@ -42,7 +42,7 @@ void s_process (uint null0, uint null1)
 
     // check for an LDS "accumulation" packet
     if ((key & SPINN_TYPE_MASK) == SPINN_LDSA_KEY)
-    {
+   {
       // process LDS "accumulation" packet
       s_ldsa_packet (payload);
     }
@@ -55,23 +55,11 @@ void s_process (uint null0, uint null1)
     // else check packet phase and process accordingly
     else if (ph == SPINN_FORWARD)
     {
-      #ifdef DEBUG
-        recv_fwd++;
-        if (phase != SPINN_FORWARD)
-          wrng_phs++;
-      #endif
-
       // process FORWARD phase packet
       s_forward_packet (key, payload);
     }
     else
     {
-      #ifdef DEBUG
-        recv_bkp++;
-        if (phase != SPINN_BACKPROP)
-          wrng_phs++;
-      #endif
-
       // process BACKPROP phase packet
       s_backprop_packet (key, payload);
     }
@@ -94,6 +82,10 @@ void s_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void s_ldsa_packet (uint payload)
 {
+#ifdef DEBUG
+  lda_recv++;
+#endif
+
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
 
@@ -108,16 +100,20 @@ void s_ldsa_packet (uint payload)
     if (scfg.is_first_group == 0)
     {
       while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
+
+#ifdef DEBUG
+      ldt_sent++;
+#endif
     }
 
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-    // check if all threads done
-    if (sb_thrds_done == 0)
+    // check if all other threads done
+    if (sb_thrds_pend == 0)
     {
       // if done initialise semaphore
-      sb_thrds_done = 0;
+      sb_thrds_pend = 0;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
@@ -129,7 +125,7 @@ void s_ldsa_packet (uint payload)
     else
     {
       // if not done report processing thread done,
-      sb_thrds_done -= 1;
+      sb_thrds_pend -= 1;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -144,6 +140,10 @@ void s_ldsa_packet (uint payload)
 // ------------------------------------------------------------------------
 void s_ldst_packet (uint payload)
 {
+#ifdef DEBUG
+  ldt_recv++;
+#endif
+
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
 
@@ -159,11 +159,11 @@ void s_ldst_packet (uint payload)
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-    // check if all threads done
-    if (sb_thrds_done == 0)
+    // check if all other threads done
+    if (sb_thrds_pend == 0)
     {
       // if done initialise semaphore
-      sb_thrds_done = 0;
+      sb_thrds_pend = 0;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
@@ -175,7 +175,7 @@ void s_ldst_packet (uint payload)
     else
     {
       // if not done report processing thread done,
-      sb_thrds_done -= 1;
+      sb_thrds_pend -= 1;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -190,6 +190,13 @@ void s_ldst_packet (uint payload)
 // ------------------------------------------------------------------------
 void s_forward_packet (uint key, uint payload)
 {
+#ifdef DEBUG
+  pkt_recv++;
+  recv_fwd++;
+  if (phase != SPINN_FORWARD)
+    wrng_phs++;
+#endif
+
   // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
 
@@ -222,17 +229,17 @@ void s_forward_packet (uint key, uint payload)
       net_tmp = (net_t) s_nets[clr][inx];
     }
 
+#ifdef DEBUG_CFG3
+    io_printf (IO_BUF, "sn[%u]: 0x%08x\n", inx, net_tmp);
+#endif
+
     // incorporate net index to the packet key and send,
     while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
-    #ifdef DEBUG_CFG3
-      io_printf (IO_BUF, "sn[%u]: 0x%08x\n", inx, net_tmp);
-    #endif
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_fwd++;
-    #endif
+#ifdef DEBUG
+    pkt_sent++;
+    sent_fwd++;
+#endif
 
     // prepare for next tick,
     s_nets[clr][inx] = 0;
@@ -250,11 +257,11 @@ void s_forward_packet (uint key, uint payload)
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-      // check if all threads done
-      if (sf_thrds_done == 0)
+      // check if all other threads done
+      if (sf_thrds_pend == 0)
       {
         // if done initialize semaphore
-        sf_thrds_done = 1;
+        sf_thrds_pend = 1;
 
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
@@ -266,7 +273,7 @@ void s_forward_packet (uint key, uint payload)
       else
       {
         // if not done report processing thread done,
-        sf_thrds_done -= 1;
+        sf_thrds_pend -= 1;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
@@ -282,6 +289,13 @@ void s_forward_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void s_backprop_packet (uint key, uint payload)
 {
+#ifdef DEBUG
+  pkt_recv++;
+  recv_bkp++;
+  if (phase != SPINN_BACKPROP)
+    wrng_phs++;
+#endif
+
   // get error index: mask out block, phase and colour data,
   uint inx = key & SPINN_ERROR_MASK;
 
@@ -318,17 +332,17 @@ void s_backprop_packet (uint key, uint payload)
     }
 */
 
+#ifdef DEBUG_CFG4
+    io_printf (IO_BUF, "se[%u]: 0x%08x\n", inx, error);
+#endif
+
     // incorporate error index to the packet key and send,
     while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
 
-    #ifdef DEBUG_CFG4
-      io_printf (IO_BUF, "se[%u]: 0x%08x\n", inx, error);
-    #endif
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_bkp++;
-    #endif
+#ifdef DEBUG
+    pkt_sent++;
+    sent_bkp++;
+#endif
 
     // prepare for next tick,
     s_errors[clr][inx] = 0;
@@ -340,11 +354,14 @@ void s_backprop_packet (uint key, uint payload)
     // and check if all errors done
     if (sb_done == scfg.num_units)
     {
+      // prepare for next tick,
+      sb_done = 0;
+
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-      // check if all threads done
-      if (sb_thrds_done == 0)
+      // check if all other threads done
+      if (sb_thrds_pend == 0)
       {
         // if done initialize semaphore:
         // if we are using Doug's Momentum, and we have reached the end of the
@@ -356,21 +373,21 @@ void s_backprop_packet (uint key, uint payload)
             && tick == SPINN_SB_END_TICK + 1)
         {
           // if this s core relates to the first group in the network, then we
-          // also need to wait for the link delta sum totals, so set the threads 
+          // also need to wait for the link delta sum totals, so set the threads
           // pending to 2
           if (scfg.is_first_group == 1)
           {
-            sb_thrds_done = 2;
+            sb_thrds_pend = 2;
           }
           // for all other groups, set threads pending to 1
           else
           {
-            sb_thrds_done = 1;
+            sb_thrds_pend = 1;
           }
         }
         else
         {
-          sb_thrds_done = 0;
+          sb_thrds_pend = 0;
         }
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
@@ -382,7 +399,7 @@ void s_backprop_packet (uint key, uint payload)
       else
       {
         // if not done report processing thread done,
-        sb_thrds_done -= 1;
+        sb_thrds_pend -= 1;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
@@ -399,15 +416,16 @@ void s_backprop_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void sf_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "sf_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "sf_advance_tick\n");
+#endif
 
-  #ifdef DEBUG
-    tot_tick++;
-  #endif
+#ifdef DEBUG
+  tot_tick++;
+  io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
+#endif
 
-  // and check if end of example's FORWARD phase
+  // check if end of event
   if (tick_stop)
   {
     sf_advance_event ();
@@ -416,10 +434,6 @@ void sf_advance_tick (uint null0, uint null1)
   {
     // if not done increment tick
     tick++;
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -431,26 +445,24 @@ void sf_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void sb_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "sb_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "sb_advance_tick\n");
+#endif
 
-  // prepare for next tick,
-  sb_done = 0;
+#ifdef DEBUG
+  tot_tick++;
+  io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
+#endif
 
-  #ifdef DEBUG
-    tot_tick++;
-  #endif
-
-  // and check if end of BACKPROP phase
+  // check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)
   {
     // initialize the tick count
     tick = SPINN_S_INIT_TICK;
 
-    #ifdef TRACE
-      io_printf (IO_BUF, "s_switch_to_fw\n");
-    #endif
+#ifdef TRACE
+    io_printf (IO_BUF, "s_switch_to_fw\n");
+#endif
 
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
@@ -462,10 +474,6 @@ void sb_advance_tick (uint null0, uint null1)
   {
     // if not done decrement tick
     tick--;
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -476,18 +484,12 @@ void sb_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void sf_advance_event (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "sf_advance_event\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "sf_advance_event\n");
+#endif
 
-  // check if done with ticks
-  if (tick == ncfg.global_max_ticks - 1)
-  {
-    evt = num_events - 1;
-  }
-
-  // check if done with events
-  if (++evt >= num_events)
+  // check if done with example's FORWARD phase
+  if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // and check if in training mode
     if (ncfg.training)
@@ -521,9 +523,9 @@ void sf_advance_event (void)
 // ------------------------------------------------------------------------
 void s_advance_example (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "s_advance_example\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "s_advance_example\n");
+#endif
 
   // check if done with examples
   if (++example >= ncfg.num_examples)

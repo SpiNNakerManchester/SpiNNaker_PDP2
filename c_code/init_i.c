@@ -59,7 +59,7 @@ uint i_init (void)
   ib_done = 0;
 
   // initialize synchronization semaphores
-  if_thrds_done = 1;
+  if_thrds_pend = 1;
 
   // initialize processing thread flag
   i_active = FALSE;

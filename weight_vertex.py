@@ -34,20 +34,44 @@ class WeightVertex(
     def __init__(self,
                  network,
                  group,
-                 from_group
+                 from_group,
+                 col_blk,
+                 row_blk
                  ):
         """
         """
         MachineVertex.__init__(self, label =\
-                               "w{}_{} core".format (
-                                   group.id, from_group.id)
+                               "w{}_{}_{}_{} core".format (
+                                   group.id, from_group.id,
+                                   row_blk, col_blk)
                                )
 
         # application-level data
         self._network    = network
         self._group      = group
         self._from_group = from_group
+        self._col_blk    = col_blk
+        self._row_blk    = row_blk
         self._ex_cfg     = network._ex_set.example_config
+
+        # compute number of rows and columns
+        if self._row_blk != (self.from_group.partitions - 1):
+            self._num_rows = MLPConstants.MAX_BLK_UNITS
+        else:
+            _r = self.from_group.units % MLPConstants.MAX_BLK_UNITS
+            if _r == 0:
+                self._num_rows = MLPConstants.MAX_BLK_UNITS
+            else:
+                self._num_rows = _r
+
+        if self._col_blk != (self.group.partitions - 1):
+            self._num_cols = MLPConstants.MAX_BLK_UNITS
+        else:
+            _r = self.group.units % MLPConstants.MAX_BLK_UNITS
+            if _r == 0:
+                self._num_cols = MLPConstants.MAX_BLK_UNITS
+            else:
+                self._num_cols = _r
 
         # forward, backprop, synchronisation, and link delta summation link partition names
         self._fwd_link = "fwd_w{}_{}".format (self.group.id,
@@ -183,6 +207,8 @@ class WeightVertex(
             {
               uint           num_rows;
               uint           num_cols;
+              uint           row_blk;
+              uint           col_blk;
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
               short_fpreal_t momentum;
@@ -204,9 +230,11 @@ class WeightVertex(
         momentum = int (self.momentum *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<2I3hBx",
-                            self.from_group.units,
-                            self.group.units,
+        return struct.pack ("<4I3hBx",
+                            self._num_rows,
+                            self._num_cols,
+                            self._row_blk,
+                            self._col_blk,
                             learning_rate & 0xffff,
                             weight_decay & 0xffff,
                             momentum & 0xffff,
@@ -283,14 +311,18 @@ class WeightVertex(
         # and has to be written out in row-major order
         _wts = self.group.weights[self.from_group]
         _nrows = self.from_group.units
-        _ncols = self.group.units
+        _nr = self._num_rows
+        _nc = self._num_cols
+        _rb = self._row_blk * MLPConstants.MAX_BLK_UNITS
+        _cb = self._col_blk * MLPConstants.MAX_BLK_UNITS
         if len (_wts):
-            for row in range (_nrows):
-                for col in range (_ncols):
-                    _wt = self.cast_float_to_weight (_wts[col * _nrows + row])
+            for _r in range (_nr):
+                for _c in range (_nc):
+                    _wt = self.cast_float_to_weight (
+                        _wts[(_cb + _c) * _nrows + (_rb + _r)])
                     spec.write_value (_wt, data_type = DataType.INT32)
         else:
-            for _ in range (_nrows * _ncols):
+            for _ in range (_nr * _nc):
                 spec.write_value (0, data_type = DataType.INT32)
 
         # Reserve and write the routing region

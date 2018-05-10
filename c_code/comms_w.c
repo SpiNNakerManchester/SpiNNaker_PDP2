@@ -16,43 +16,51 @@
 // ------------------------------------------------------------------------
 void w_receivePacket (uint key, uint payload)
 {
-  // get packet phase
-  uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
-
   // check if packet is stop type
   uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
+  if (stop)
+  {
+    // process stop packet
+    w_stopPacket (key);
+    return;
+  }
 
-  // packet is network stop type
+  // check if packet is network stop type
   uint stpn = ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY);
+  if (stpn)
+  {
+    // process network stop decision packet
+    w_networkStopPacket ();
+    return;
+  }
 
   // check if packet is ldsr type
   uint ldsr = ((key & SPINN_TYPE_MASK) == SPINN_LDSR_KEY);
-
-  // check packet type
-  if (stop)
+  if (ldsr)
   {
-    // stop packet
-    w_stopPacket (key);
-  }
-  else if (stpn)
-  {
-    // network stop decision packet
-    w_networkStopPacket ();
-  }
-  else if (ldsr)
-  {
-    // ldsr packet
+    // process ldsr packet
     w_ldsrPacket (payload);
+    return;
   }
-  else if (ph == SPINN_FORWARD)
+
+  // computation packet - get packet phase and block
+  uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
+  uint blk = (key & SPINN_BLOCK_MASK) >> SPINN_BLOCK_SHIFT;
+  if (ph == SPINN_FORWARD)
   {
-    // FORWARD phase
-    w_forwardPacket (key, payload);
+    // FORWARD phase packet in my block
+	if (blk == wcfg.row_blk)
+	{
+	  w_forwardPacket (key, payload);
+	}
   }
   else
   {
-    // BACKPROP phase
-    w_backpropPacket (key, payload);
+    // BACKPROP phase packet in my block
+	if (blk == wcfg.col_blk)
+	{
+	  w_backpropPacket (key, payload);
+	}
   }
 }
 // ------------------------------------------------------------------------
@@ -76,11 +84,11 @@ void w_stopPacket (uint key)
     io_printf (IO_BUF, "sc:%x\n", tick_stop);
   #endif
 
-  // check if all threads done
-  if (wf_thrds_done == 0)
+  // check if all other threads done
+  if (wf_thrds_pend == 0)
   {
     // if done initialize synchronization semaphore,
-    wf_thrds_done = 2;
+    wf_thrds_pend = 2;
 
     // and advance tick
     #ifdef TRACE_VRB
@@ -92,7 +100,7 @@ void w_stopPacket (uint key)
   else
   {
     // if not done report stop thread done
-    wf_thrds_done -= 1;
+    wf_thrds_pend -= 1;
   }
 }
 // ------------------------------------------------------------------------
@@ -122,11 +130,11 @@ void w_ldsrPacket (uint payload)
   // the final link delta sum for the epoch arrived
   w_lds_final = (lds_t) payload;
 
-  // check if all threads done
-  if (wb_thrds_done == 0)
+  // check if all other threads done
+  if (wb_thrds_pend == 0)
   {
     //NOTE: no need to initialize semaphore
-    //wb_thrds_done = 0;
+    //wb_thrds_pend = 0;
 
     #ifdef TRACE_VRB
       io_printf (IO_BUF, "ldsr calling wb_advance_tick\n");
@@ -139,7 +147,7 @@ void w_ldsrPacket (uint payload)
   else
   {
     // if not done report processing thread done,
-    wb_thrds_done -= 1;
+    wb_thrds_pend -= 1;
   }
 }
 // ------------------------------------------------------------------------
@@ -158,7 +166,7 @@ void w_forwardPacket (uint key, uint payload)
   #endif
 
   // get output index: mask out phase, core and block data,
-  uint inx = key & SPINN_OUTPUT_MASK;
+  uint inx = key & SPINN_BLKOUT_MASK;
 
   // store received unit output,
   w_outputs[wf_comms][inx] = (activation_t) payload;
@@ -181,11 +189,11 @@ void w_forwardPacket (uint key, uint payload)
     // update pointer to received unit outputs,
     wf_comms = 1 - wf_comms;
 
-    // and check if other threads are done,
-    if (wf_thrds_done == 0)
+    // and check if all other threads are done,
+    if (wf_thrds_pend == 0)
     {
       // if done initialize synchronization semaphore,
-      wf_thrds_done = 2;
+      wf_thrds_pend = 2;
 
       // and advance tick
       #ifdef TRACE_VRB
@@ -197,7 +205,7 @@ void w_forwardPacket (uint key, uint payload)
     else
     {
       // if not done report comms thread done
-      wf_thrds_done -= 1;
+      wf_thrds_pend -= 1;
     }
   }
 }

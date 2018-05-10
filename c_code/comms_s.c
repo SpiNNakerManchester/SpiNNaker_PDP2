@@ -31,11 +31,11 @@ void s_receivePacket (uint key, uint payload)
       io_printf (IO_BUF, "sc:%x\n", tick_stop);
     #endif
 
-    // check if all threads done
-    if (sf_thrds_done == 0)
+    // check if all other threads done
+    if (sf_thrds_pend == 0)
     {
       // if done initialise semaphore
-      sf_thrds_done = 1;
+      sf_thrds_pend = 1;
 
       // and advance tick
       spin1_schedule_callback (sf_advance_tick, NULL, NULL, SPINN_S_TICK_P);
@@ -43,11 +43,14 @@ void s_receivePacket (uint key, uint payload)
     else
     {
       // if not done report processing thread done
-      sf_thrds_done -= 1;
+      sf_thrds_pend -= 1;
     }
+
+    return;
   }
+
   // check if network stop packet
-  else if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
+  if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
   {
     // network stop packet received
     #ifdef DEBUG
@@ -58,33 +61,26 @@ void s_receivePacket (uint key, uint payload)
     spin1_exit (SPINN_NO_ERROR);
     return;
   }
+
+  // queue packet - if space available
+  uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
+  if (new_tail == s_pkt_queue.head)
+  {
+    // if queue full exit and report failure
+    spin1_exit (SPINN_QUEUE_FULL);
+  }
   else
   {
-    #ifdef DEBUG
-      pkt_recv++;
-    #endif
+    // if not full queue packet,
+    s_pkt_queue.queue[s_pkt_queue.tail].key = key;
+    s_pkt_queue.queue[s_pkt_queue.tail].payload = payload;
+    s_pkt_queue.tail = new_tail;
 
-    // check if space in packet queue,
-    uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
-
-    if (new_tail == s_pkt_queue.head)
+    // and schedule processing thread -- if not active already
+    if (!s_active)
     {
-      // if queue full exit and report failure
-      spin1_exit (SPINN_QUEUE_FULL);
-    }
-    else
-    {
-      // if not full queue packet,
-      s_pkt_queue.queue[s_pkt_queue.tail].key = key;
-      s_pkt_queue.queue[s_pkt_queue.tail].payload = payload;
-      s_pkt_queue.tail = new_tail;
-
-      // and schedule processing thread -- if not active already
-      if (!s_active)
-      {
-        s_active = TRUE;
-        spin1_schedule_callback (s_process, NULL, NULL, SPINN_S_PROCESS_P);
-      }
+      s_active = TRUE;
+      spin1_schedule_callback (s_process, NULL, NULL, SPINN_S_PROCESS_P);
     }
   }
 }

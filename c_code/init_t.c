@@ -157,8 +157,8 @@ uint t_init (void)
   tb_arrived = 0;
 
   // initialise synchronisation semaphores
-  tf_thrds_done = 1;
-  tb_thrds_done = 1;
+  tf_thrds_pend = 1;
+  tb_thrds_pend = 1;
 
   // initialise stop function and related flags
   if (tcfg.output_grp)
@@ -191,7 +191,7 @@ uint t_init (void)
     {
       // "broadcast" key
       tf_stop_key = rt[STP] | SPINN_STOP_KEY;
-      
+
       // "stop final" key
       tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
     }
@@ -213,7 +213,7 @@ uint t_init (void)
   t_sync_arrived = 0;
 
   // initialise sync packets flag
-  t_sync_done = FALSE;
+  t_sync_rdy = FALSE;
 
   // initialise net packet queue
   t_net_pkt_q.head = 0;
