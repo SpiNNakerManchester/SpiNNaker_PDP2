@@ -147,7 +147,6 @@ class MLPGroup():
                 self.out_procs_list [1] = MLPOutputProcs.OUT_NONE
 
             if (MLPGroupTypes.OUTPUT in self.type):
-                self.write_out          = 1
                 self.group_criterion    = MLPConstants.DEF_GRP_CRIT
                 self.criterion_function = MLPStopCriteria.STOP_STD
                 self.error_function     = MLPErrorFuncs.ERR_CROSS_ENTROPY
