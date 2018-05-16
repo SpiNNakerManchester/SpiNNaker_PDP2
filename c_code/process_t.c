@@ -91,80 +91,49 @@ void tf_process (uint null0, uint null1)
       // initialize scoreboard for next tick,
       tf_arrived = 0;
 
-      // if possible, FORWARD stop criterion
+      // access synchronisation flags with interrupts disabled
+      cpsr = spin1_int_disable ();
+
+      // report processing done and forward stop criterion if OUTPUT group
       if (tcfg.output_grp)
       {
-        // last group in the chain does not get a stop decision
-        // it is ready to advance tick
-        if (tcfg.is_last_output_group)
-        {
-          // check flags status in critical section
-          uint cpsr = spin1_int_disable ();
+	// report processing thread done,
+	//NOTE: stop criterion cannot have arrived!
+	tf_thrds_pend -= 1;
 
-          // check if chain value can be forwarded
-          if (tf_chain_rdy)
-          {
-            // initialise semaphore,
-            tf_chain_rdy = tf_chain_init;
+	// check if chain value can be forwarded
+	if (tf_chain_rdy)
+	{
+	  // initialise semaphore,
+	  tf_chain_rdy = tf_chain_init;
 
-            // restore interrupts after flag access,
-            spin1_mode_restore (cpsr);
+	  // restore interrupts after flag access,
+	  spin1_mode_restore (cpsr);
 
-            // send stop criterion packet,
-            //TODO: check if need to schedule or can simply call
-            tf_send_stop (NULL, NULL);
+	  // send stop criterion packet,
+	  //TODO: check if need to schedule or can simply call
+	  tf_send_stop (NULL, NULL);
 
-            // and advance tick
+	  // and advance tick if last group
+	  //NOTE: last group in the chain does not get a stop decision
+	  if (tcfg.is_last_output_group)
+	  {
             //TODO: check if need to schedule or can simply call
             tf_advance_tick (NULL, NULL);
           }
-          else
-          {
-            // if not, flag that local value is ready,
-            tf_chain_rdy = 1;
+	}
+	else
+	{
+	  // flag that local value is ready,
+	  tf_chain_rdy = 1;
 
-            // and restore interrupts after flag access
-            spin1_mode_restore (cpsr);
-          }
-        }
-        else
-        {
-          // check flags status in critical section
-          uint cpsr = spin1_int_disable ();
-
-          // report processing thread done,
-	  //NOTE: stop criterion cannot have arrived!
-          tf_thrds_pend -= 1;
-
-          // check if chain value can be forwarded
-          if (tf_chain_rdy)
-          {
-            // initialise semaphore,
-            tf_chain_rdy = tf_chain_init;
-
-            // restore interrupts after flag access,
-            spin1_mode_restore (cpsr);
-
-            // and send stop criterion packet
-            //TODO: check if need to schedule or can simply call
-            tf_send_stop (NULL, NULL);
-          }
-          else
-          {
-            // if not, flag that local value is ready,
-            tf_chain_rdy = 1;
-
-            // and restore interrupts after flag access
-            spin1_mode_restore (cpsr);
-          }
-        }
+	  // and restore interrupts after flag access
+	  spin1_mode_restore (cpsr);
+	}
       }
       else
       {
-        // access synchronisation semaphore with interrupts disabled
-        uint cpsr = spin1_int_disable ();
-
-        // and check if all other threads done
+        // check if all other threads done
         if (tf_thrds_pend == 0)
         {
           // initialize semaphore,
