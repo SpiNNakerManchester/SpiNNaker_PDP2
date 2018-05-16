@@ -168,7 +168,6 @@
 #define SPINN_TIMER_P        0
 
 // queueable callbacks
-#define SPINN_UPDT_WEIGHT_P  1
 #define SPINN_WF_TICK_P      1
 #define SPINN_WB_TICK_P      1
 #define SPINN_WF_PROCESS_P   2
@@ -181,14 +180,14 @@
 #define SPINN_I_PROCESS_P    2
 
 //TODO: review priorities
-#define SPINN_T_INIT_OUT_P   1
-#define SPINN_SEND_OUTS_P    1
-#define SPINN_SEND_DELTAS_P  1
-#define SPINN_SEND_STOP_P    1
-#define SPINN_TF_TICK_P      1
-#define SPINN_TB_TICK_P      1
-#define SPINN_TF_PROCESS_P   2
-#define SPINN_TB_PROCESS_P   2
+#define SPINN_T_SEND_OUTS_P  1
+#define SPINN_T_SEND_STOP_P  2
+#define SPINN_T_INIT_OUT_P   2
+#define SPINN_T_INIT_DLT_P   2
+#define SPINN_TF_TICK_P      2
+#define SPINN_TB_TICK_P      2
+#define SPINN_TF_PROCESS_P   3
+#define SPINN_TB_PROCESS_P   3
 // ------------------------------------------------------------------------
 
 

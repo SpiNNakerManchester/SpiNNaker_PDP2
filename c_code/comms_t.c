@@ -123,7 +123,7 @@ void t_chainPacket (uint key)
     tf_chain_rdy = tf_chain_init;
 
     // and send stop packet
-    spin1_schedule_callback (tf_send_stop, NULL, NULL, SPINN_SEND_STOP_P);
+    spin1_schedule_callback (tf_send_stop, NULL, NULL, SPINN_T_SEND_STOP_P);
 
     // last group in the chain does not get a stop decision packet
     // so it's ready to advance tick
@@ -183,7 +183,7 @@ void t_syncPacket (uint ph)
         // clear synchronisation flag,
         t_sync_rdy = FALSE;
 
-        // schedule sending of unit outputs,
+        // schedule sending of unit outputs to w cores,
         spin1_schedule_callback (t_init_outputs,
                                   NULL, NULL, SPINN_T_INIT_OUT_P
                                 );
@@ -192,7 +192,7 @@ void t_syncPacket (uint ph)
         if (tcfg.write_out)
         {
           spin1_schedule_callback (send_outputs_to_host,
-                                    SPINN_HOST_NORMAL, 0, SPINN_SEND_OUTS_P
+                                    SPINN_HOST_NORMAL, 0, SPINN_T_SEND_OUTS_P
                                   );
         }
       }
@@ -220,7 +220,7 @@ void t_syncPacket (uint ph)
       if (phase == SPINN_BACKPROP)
       {
         // schedule sending of deltas
-        //#spin1_schedule_callback (t_init_deltas, NULL, NULL, SPINN_SEND_DELTAS_P);
+        //#spin1_schedule_callback (t_init_deltas, NULL, NULL, SPINN_T_INIT_DLT_P);
       }
       else
       {
@@ -380,8 +380,8 @@ void send_outputs_to_host (uint cmd, uint tick)
 // ------------------------------------------------------------------------
 // send an sdp packet to the host with information related to
 // various parameters of the simulation: id of the output group sending the
-// data, number of output units, number of units writing outputs an dnumber of
-// ticks of simulation
+// data, number of output units, number of groups writing outputs and number
+// of ticks of simulation
 // ------------------------------------------------------------------------
 void send_info_to_host (uint null0, uint null1)
 {

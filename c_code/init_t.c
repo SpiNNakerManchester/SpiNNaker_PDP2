@@ -263,7 +263,7 @@ uint t_init (void)
     }
 
     // schedule sending of initial data to host
-    spin1_schedule_callback (send_info_to_host, NULL, NULL, SPINN_T_INIT_OUT_P);
+    spin1_schedule_callback (send_info_to_host, NULL, NULL, SPINN_T_SEND_OUTS_P);
   }
 
   // initialise packet keys
@@ -335,7 +335,7 @@ uint t_init (void)
   if (tcfg.write_out)
   {
     spin1_schedule_callback (send_outputs_to_host,
-                              SPINN_HOST_NORMAL, 0, SPINN_SEND_OUTS_P
+                              SPINN_HOST_NORMAL, 0, SPINN_T_SEND_OUTS_P
                             );
 
   }

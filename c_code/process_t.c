@@ -133,6 +133,7 @@ void tf_process (uint null0, uint null1)
           uint cpsr = spin1_int_disable ();
 
           // report processing thread done,
+	  //NOTE: stop criterion cannot have arrived!
           tf_thrds_pend -= 1;
 
           // check if chain value can be forwarded
@@ -314,7 +315,8 @@ void tf_advance_tick (uint null0, uint null1)
   // if requested report outputs to host,
   if (tcfg.write_out)
   {
-    spin1_delay_us (2000); //##
+    //spin1_delay_us (2000); //##
+    spin1_delay_us (100000); //##
 
     // is this the last report?
     if ((epoch    == (ncfg.num_epochs - 1))
@@ -500,7 +502,7 @@ void t_advance_example (void)
         // we have decided to terminate training, so write out final data
         if (tcfg.write_out)
         {
-          spin1_delay_us (2000); //##
+          //spin1_delay_us (2000); //##
 
           send_outputs_to_host (SPINN_HOST_FINAL, 0);
         }
@@ -594,7 +596,7 @@ void t_advance_example (void)
     if (tcfg.write_out)
     {
       spin1_schedule_callback (send_outputs_to_host,
-                                SPINN_HOST_NORMAL, 0, SPINN_SEND_OUTS_P
+                                SPINN_HOST_NORMAL, 0, SPINN_T_SEND_OUTS_P
                               );
     }
   }
