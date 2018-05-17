@@ -110,6 +110,13 @@ void tf_process (uint null0, uint null1)
 	  // restore interrupts after flag access,
 	  spin1_mode_restore (cpsr);
 
+	  // report outputs to host if requested,
+	  if (tcfg.write_out)
+	  {
+	    //TODO: check if need to schedule or can simply call
+	    send_outputs_to_host (SPINN_HOST_NORMAL, tick);
+	  }
+
 	  // send stop criterion packet,
 	  //TODO: check if need to schedule or can simply call
 	  tf_send_stop (NULL, NULL);
@@ -281,28 +288,7 @@ void tf_advance_tick (uint null0, uint null1)
   //TODO: dump outputs to SDRAM for record keeping,
 #endif
 
-  // if requested report outputs to host,
-  if (tcfg.write_out)
-  {
-    //spin1_delay_us (2000); //##
-    spin1_delay_us (100000); //##
-
-    // is this the last report?
-    if ((epoch    == (ncfg.num_epochs - 1))
-         && (example == (ncfg.num_examples - 1))
-         && ((evt     == (num_events - 1)) || (tick == (ncfg.global_max_ticks - 1)))
-         && (tick_stop)
-       )
-    {
-      send_outputs_to_host (SPINN_HOST_FINAL, tick);
-    }
-    else
-    {
-      send_outputs_to_host (SPINN_HOST_NORMAL, tick);
-    }
-  }
-
-  // and check if done with event
+  // check if done with event
   if (tick_stop)
   {
     // update event criterion
@@ -471,8 +457,6 @@ void t_advance_example (void)
         // we have decided to terminate training, so write out final data
         if (tcfg.write_out)
         {
-          //spin1_delay_us (2000); //##
-
           send_outputs_to_host (SPINN_HOST_FINAL, 0);
         }
 
@@ -496,7 +480,13 @@ void t_advance_example (void)
     // check if done with epochs
     if (++epoch >= ncfg.num_epochs)
     {
-      // done
+      // send final output packet to host,
+      if (tcfg.is_last_output_group && tcfg.write_out)
+      {
+	send_outputs_to_host (SPINN_HOST_FINAL, 0);
+      }
+
+      // and exit
       spin1_exit (SPINN_NO_ERROR);
       return;
     }
@@ -557,17 +547,16 @@ void t_advance_example (void)
     // restore interrupts,
     spin1_mode_restore (cpsr);
 
-    // schedule sending of unit outputs,
-    //TODO: check if need to schedule or can simply call
-    spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
-
-    // and, if required, send outputs to host
+    // send outputs to host if requested,
     if (tcfg.write_out)
     {
-      spin1_schedule_callback (send_outputs_to_host,
-                                SPINN_HOST_NORMAL, 0, SPINN_T_SEND_OUTS_P
-                              );
+      //TODO: check if need to schedule or can simply call
+      send_outputs_to_host (SPINN_HOST_NORMAL, 0);
     }
+
+    // and send unit outputs to w cores
+    //TODO: check if need to schedule or can simply call
+    t_init_outputs (NULL, NULL);
   }
   else
   {

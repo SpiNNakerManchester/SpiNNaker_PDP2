@@ -122,14 +122,21 @@ void t_chainPacket (uint key)
     // initialise flag,
     tf_chain_rdy = tf_chain_init;
 
-    // and send stop packet
+    // report outputs to host if requested,
+    if (tcfg.write_out)
+    {
+      spin1_schedule_callback (send_outputs_to_host, SPINN_HOST_NORMAL, tick,
+			       SPINN_T_SEND_OUTS_P);
+    }
+
+    // send stop packet,
     spin1_schedule_callback (tf_send_stop, NULL, NULL, SPINN_T_SEND_STOP_P);
 
-    // last group in the chain does not get a stop decision packet
-    // so it's ready to advance tick
+    // and advance tick if last_output_group
+    //NOTE: this group does not get a stop decision packet
+    //      so it's ready to advance tick
     if (tcfg.is_last_output_group)
     {
-      // advance tick
       spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
     }
   }
@@ -333,8 +340,11 @@ void t_backpropPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void send_outputs_to_host (uint cmd, uint tick)
 {
-  int le;
-  le = (tick == 0) ? -1 : (int) evt;
+  // spread SDP messages to avoid congestion and possible loss,
+  spin1_delay_us (1000); //##
+
+  // adjust event according to Lens reporting,
+  int le = (tick == 0) ? -1 : (int) evt;
 
   // report epoch, example and tick,
   t_sdp_msg.cmd_rc = cmd;
@@ -354,14 +364,18 @@ void send_outputs_to_host (uint cmd, uint tick)
     }
     else
     {
-      my_data[2 * i]     = (short_activ_t) (t_outputs[i] >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+      my_data[2 * i]     = (short_activ_t) (t_outputs[i]
+					    >> (SPINN_ACTIV_SHIFT
+						- SPINN_SHORT_ACTIV_SHIFT));
       if (tt[t_it_idx + i] == SPINN_ACTIV_ONE)
       {
         my_data[2 * i + 1] = SPINN_SHORT_ACTIV_MAX;
       }
       else
       {
-        my_data[2 * i + 1] = (short_activ_t) (tt[t_it_idx + i] >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+        my_data[2 * i + 1] = (short_activ_t) (tt[t_it_idx + i]
+					      >> (SPINN_ACTIV_SHIFT
+						  - SPINN_SHORT_ACTIV_SHIFT));
       }
     }
   }
@@ -371,8 +385,7 @@ void send_outputs_to_host (uint cmd, uint tick)
   t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message
-  while (!spin1_send_sdp_msg (&t_sdp_msg, SPINN_SDP_TMOUT))
-    io_printf (IO_STD, "sdp!\n");
+  while (!spin1_send_sdp_msg (&t_sdp_msg, SPINN_SDP_TMOUT));
 }
 // ------------------------------------------------------------------------
 
@@ -393,17 +406,26 @@ void send_info_to_host (uint null0, uint null1)
   t_sdp_msg.arg2   = ncfg.num_write_blks;
   t_sdp_msg.arg3   = t_tot_ticks + 1;
 
+  // copy initial outputs and targets into msg buffer,
+  short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
+  for (uint i = 0; i < tcfg.num_units; i++)
+  {
+    my_data[2 * i]     = 0;
+    my_data[2 * i + 1] = 0;
+  }
+
   // set message length,
-  t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t);
+  uint len = 2 * tcfg.num_units * sizeof(short_activ_t);
+  t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message
   while (!spin1_send_sdp_msg (&t_sdp_msg, SPINN_SDP_TMOUT));
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "sent info to host: nb:%d wb:%d no:%d tt:%d\n",
-                ncfg.num_write_blks, tcfg.write_blk,
-                tcfg.num_units, t_tot_ticks
-              );
-  #endif
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "sent info to host: nb:%d wb:%d no:%d tt:%d\n",
+	     ncfg.num_write_blks, tcfg.write_blk,
+	     tcfg.num_units, t_tot_ticks
+    );
+#endif
 }
 // ------------------------------------------------------------------------
