@@ -91,79 +91,56 @@ void tf_process (uint null0, uint null1)
       // initialize scoreboard for next tick,
       tf_arrived = 0;
 
-      // if possible, FORWARD stop criterion
+      // access synchronisation flags with interrupts disabled
+      cpsr = spin1_int_disable ();
+
+      // report processing done and forward stop criterion if OUTPUT group
       if (tcfg.output_grp)
       {
-        // last group in the chain does not get a stop decision
-        // it is ready to advance tick
-        if (tcfg.is_last_output_group)
-        {
-          // check flags status in critical section
-          uint cpsr = spin1_int_disable ();
+	// report processing thread done,
+	//NOTE: stop criterion cannot have arrived!
+	tf_thrds_pend -= 1;
 
-          // check if chain value can be forwarded
-          if (tf_chain_rdy)
-          {
-            // initialise semaphore,
-            tf_chain_rdy = tf_chain_init;
+	// check if chain value can be forwarded
+	if (tf_chain_rdy)
+	{
+	  // initialise semaphore,
+	  tf_chain_rdy = tf_chain_init;
 
-            // restore interrupts after flag access,
-            spin1_mode_restore (cpsr);
+	  // restore interrupts after flag access,
+	  spin1_mode_restore (cpsr);
 
-            // send stop criterion packet,
-            //TODO: check if need to schedule or can simply call
-            tf_send_stop (NULL, NULL);
+	  // report outputs to host if requested,
+	  if (tcfg.write_out)
+	  {
+	    //TODO: check if need to schedule or can simply call
+	    send_outputs_to_host (SPINN_HOST_NORMAL, tick);
+	  }
 
-            // and advance tick
+	  // send stop criterion packet,
+	  //TODO: check if need to schedule or can simply call
+	  tf_send_stop (NULL, NULL);
+
+	  // and advance tick if last group
+	  //NOTE: last group in the chain does not get a stop decision
+	  if (tcfg.is_last_output_group)
+	  {
             //TODO: check if need to schedule or can simply call
             tf_advance_tick (NULL, NULL);
           }
-          else
-          {
-            // if not, flag that local value is ready,
-            tf_chain_rdy = 1;
+	}
+	else
+	{
+	  // flag that local value is ready,
+	  tf_chain_rdy = 1;
 
-            // and restore interrupts after flag access
-            spin1_mode_restore (cpsr);
-          }
-        }
-        else
-        {
-          // check flags status in critical section
-          uint cpsr = spin1_int_disable ();
-
-          // report processing thread done,
-          tf_thrds_pend -= 1;
-
-          // check if chain value can be forwarded
-          if (tf_chain_rdy)
-          {
-            // initialise semaphore,
-            tf_chain_rdy = tf_chain_init;
-
-            // restore interrupts after flag access,
-            spin1_mode_restore (cpsr);
-
-            // and send stop criterion packet
-            //TODO: check if need to schedule or can simply call
-            tf_send_stop (NULL, NULL);
-          }
-          else
-          {
-            // if not, flag that local value is ready,
-            tf_chain_rdy = 1;
-
-            // and restore interrupts after flag access
-            spin1_mode_restore (cpsr);
-          }
-        }
+	  // and restore interrupts after flag access
+	  spin1_mode_restore (cpsr);
+	}
       }
       else
       {
-        // access synchronisation semaphore with interrupts disabled
-        uint cpsr = spin1_int_disable ();
-
-        // and check if all other threads done
+        // check if all other threads done
         if (tf_thrds_pend == 0)
         {
           // initialize semaphore,
@@ -311,27 +288,7 @@ void tf_advance_tick (uint null0, uint null1)
   //TODO: dump outputs to SDRAM for record keeping,
 #endif
 
-  // if requested report outputs to host,
-  if (tcfg.write_out)
-  {
-    spin1_delay_us (2000); //##
-
-    // is this the last report?
-    if ((epoch    == (ncfg.num_epochs - 1))
-         && (example == (ncfg.num_examples - 1))
-         && ((evt     == (num_events - 1)) || (tick == (ncfg.global_max_ticks - 1)))
-         && (tick_stop)
-       )
-    {
-      send_outputs_to_host (SPINN_HOST_FINAL, tick);
-    }
-    else
-    {
-      send_outputs_to_host (SPINN_HOST_NORMAL, tick);
-    }
-  }
-
-  // and check if done with event
+  // check if done with event
   if (tick_stop)
   {
     // update event criterion
@@ -500,8 +457,6 @@ void t_advance_example (void)
         // we have decided to terminate training, so write out final data
         if (tcfg.write_out)
         {
-          spin1_delay_us (2000); //##
-
           send_outputs_to_host (SPINN_HOST_FINAL, 0);
         }
 
@@ -525,7 +480,13 @@ void t_advance_example (void)
     // check if done with epochs
     if (++epoch >= ncfg.num_epochs)
     {
-      // done
+      // send final output packet to host,
+      if (tcfg.is_last_output_group && tcfg.write_out)
+      {
+	send_outputs_to_host (SPINN_HOST_FINAL, 0);
+      }
+
+      // and exit
       spin1_exit (SPINN_NO_ERROR);
       return;
     }
@@ -586,17 +547,16 @@ void t_advance_example (void)
     // restore interrupts,
     spin1_mode_restore (cpsr);
 
-    // schedule sending of unit outputs,
-    //TODO: check if need to schedule or can simply call
-    spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
-
-    // and, if required, send outputs to host
+    // send outputs to host if requested,
     if (tcfg.write_out)
     {
-      spin1_schedule_callback (send_outputs_to_host,
-                                SPINN_HOST_NORMAL, 0, SPINN_SEND_OUTS_P
-                              );
+      //TODO: check if need to schedule or can simply call
+      send_outputs_to_host (SPINN_HOST_NORMAL, 0);
     }
+
+    // and send unit outputs to w cores
+    //TODO: check if need to schedule or can simply call
+    t_init_outputs (NULL, NULL);
   }
   else
   {
