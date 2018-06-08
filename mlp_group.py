@@ -87,20 +87,22 @@ class MLPGroup():
         self.weak_clamp_strength = MLPConstants.DEF_WEAK_CLMP
 
         if output_funcs is None:
-            # an input integrator removes the default output integrator
-            if (self.in_integr_en == 1):
-                self.out_integr_en = 0
-                self.num_out_procs = MLPConstants.DEF_OUT_PROCS - 1
-                self.out_procs_list = [MLPOutputProcs.OUT_LOGISTIC,\
-                                       MLPOutputProcs.OUT_NONE,\
-                                       MLPOutputProcs.OUT_NONE,\
-                                       MLPOutputProcs.OUT_NONE,\
-                                       MLPOutputProcs.OUT_NONE]
-            else:
+            # output groups have a default output integrator unless there is an input integrator
+            if (MLPGroupTypes.OUTPUT in self.type and self.in_integr_en == 0):
                 self.out_integr_en  = 1
                 self.num_out_procs  = MLPConstants.DEF_OUT_PROCS
                 self.out_procs_list = [MLPOutputProcs.OUT_LOGISTIC,\
                                        MLPOutputProcs.OUT_INTEGR,\
+                                       MLPOutputProcs.OUT_NONE,\
+                                       MLPOutputProcs.OUT_NONE,\
+                                       MLPOutputProcs.OUT_NONE]
+            # an input integrator removes the default output integrator from an output group
+            # other groups have no integrator by default
+            else:
+                self.out_integr_en = 0
+                self.num_out_procs = MLPConstants.DEF_OUT_PROCS - 1
+                self.out_procs_list = [MLPOutputProcs.OUT_LOGISTIC,\
+                                       MLPOutputProcs.OUT_NONE,\
                                        MLPOutputProcs.OUT_NONE,\
                                        MLPOutputProcs.OUT_NONE,\
                                        MLPOutputProcs.OUT_NONE]
@@ -140,7 +142,7 @@ class MLPGroup():
             self.init_output        = MLPConstants.BIAS_INIT_OUT
 
         else:
-            if (MLPGroupTypes.INPUT in self.type):
+            if (MLPGroupTypes.INPUT in self.type and MLPGroupTypes.OUTPUT not in self.type):
                 self.out_integr_en      = 0
                 self.num_out_procs      = 1
                 self.out_procs_list [0] = MLPOutputProcs.OUT_HARD_CLAMP
