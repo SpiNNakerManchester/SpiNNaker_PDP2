@@ -126,6 +126,7 @@ sub print_outputs
 sub main_loop
 {
     my $run = 1;
+    my $last_tick = 0;
 
     while ($run != 0)
     {
@@ -155,7 +156,7 @@ sub main_loop
 
 	if ($cmd == $HOST_FINAL)
 	{
-	    last;
+	    $last_tick = 1;;
 	}
 
 	if ($cmd == $HOST_INFO)
@@ -230,6 +231,8 @@ sub main_loop
 	if ($grp_ctr[$inx] == $num_grps)
 	{
 	    print_outputs ();
+
+	    last if $last_tick;
 
 	    $grp_ctr[$inx] = 0;
 	    $ltick = $tick[$inx];

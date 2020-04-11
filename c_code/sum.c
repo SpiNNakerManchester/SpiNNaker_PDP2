@@ -190,17 +190,17 @@ void done (uint ec)
 
     case SPINN_QUEUE_FULL:
       io_printf (IO_BUF, "packet queue full\n");
-
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_MEM_UNAVAIL:
       io_printf (IO_BUF, "malloc failed\n");
-
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
-
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_TIMEOUT_EXIT:
@@ -208,12 +208,12 @@ void done (uint ec)
                   epoch, example, phase, tick
                 );
 
-      #ifdef DEBUG_VRB
-        io_printf (IO_BUF, "(fd:%08x bd:%08x)\n", sf_done, sb_done);
+      #ifdef DEBUG_TO
+        io_printf (IO_BUF, "(fd:%u bd:%u)\n", sf_done, sb_done);
 
         for (uint i = 0; i < scfg.num_units; i++)
         {
-          io_printf (IO_BUF, "(fa:%08x ba:%08x)\n",
+          io_printf (IO_BUF, "(fa:%u ba:%u)\n",
                       sf_arrived[i], sb_arrived[i]
                     );
         }
