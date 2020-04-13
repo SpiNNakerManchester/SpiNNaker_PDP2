@@ -401,9 +401,6 @@ void done (uint ec)
     io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
     io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
     io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-    io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-    io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-    io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
     io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
     if (tcfg.is_first_output_group)
     {
@@ -424,6 +421,9 @@ void done (uint ec)
       io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
       io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
     }
+    if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+    if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
+    if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
   #endif
 }
 // ------------------------------------------------------------------------

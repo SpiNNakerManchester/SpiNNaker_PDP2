@@ -214,7 +214,7 @@ void done (uint ec)
 
         for (uint i = 0; i < scfg.num_units; i++)
         {
-          io_printf (IO_BUF, "(fa[0]:%u ba[0]:%u fa[1]:%u ba[1]:%u)\n",
+          io_printf (IO_BUF, "%2d: (fa[0]:%u ba[0]:%u fa[1]:%u ba[1]:%u)\n", i,
                       sf_arrived[0][i], sb_arrived[0][i],
                       sf_arrived[1][i], sb_arrived[1][i]
                     );
@@ -231,9 +231,6 @@ void done (uint ec)
     io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
     io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
     io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-    io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-    io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-    io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
     io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
     if (scfg.is_first_group)
     {
@@ -246,6 +243,9 @@ void done (uint ec)
     }
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+    if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+    if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
+    if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
   #endif
 }
 // ------------------------------------------------------------------------
