@@ -70,7 +70,6 @@ void i_process (uint null0, uint null1)
 void i_forward_packet (uint key, uint payload)
 {
 #ifdef DEBUG
-  pkt_recv++;
   recv_fwd++;
   if (phase != SPINN_FORWARD)
     wrng_phs++;
@@ -159,7 +158,6 @@ void i_forward_packet (uint key, uint payload)
 void i_backprop_packet (uint key, uint payload)
 {
 #ifdef DEBUG
-  pkt_recv++;
   recv_bkp++;
   if (phase != SPINN_BACKPROP)
     wrng_phs++;
@@ -237,6 +235,9 @@ void if_advance_tick (uint null0, uint null1)
 
 #ifdef DEBUG
   tot_tick++;
+#endif
+
+#ifdef DEBUG_TICK
   io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
 #endif
 
@@ -266,6 +267,9 @@ void ib_advance_tick (uint null0, uint null1)
 
 #ifdef DEBUG
   tot_tick++;
+#endif
+
+#ifdef DEBUG_TICK
   io_printf (IO_BUF, "ib_tick: %d/%d\n", tick, tot_tick);
 #endif
 

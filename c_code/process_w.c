@@ -218,6 +218,7 @@ void wb_process (uint null0, uint null1)
                 (uint) link_delta_sum_short, WITH_PAYLOAD)
             );
 #ifdef DEBUG
+      pkt_sent++;
       lda_sent++;
 #endif
     }
@@ -706,6 +707,13 @@ void wf_advance_tick (uint null0, uint null1)
   if (tick)
   {
     tot_tick++;
+  }
+#endif
+
+#ifdef DEBUG_TICK
+  //NOTE: tick 0 is not a computation tick
+  if (tick)
+  {
     io_printf (IO_BUF, "wf_tick: %d/%d\n", tick, tot_tick);
   }
 #endif
@@ -745,6 +753,9 @@ void wb_advance_tick (uint null0, uint null1)
 
 #ifdef DEBUG
   tot_tick++;
+#endif
+
+#ifdef DEBUG_TICK
   io_printf (IO_BUF, "wb_tick: %d/%d\n", tick, tot_tick);
 #endif
 
@@ -895,6 +906,7 @@ void w_advance_example (void)
   while (!spin1_send_mc_packet (wf_sync_key, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
+  pkt_sent++;
   spk_sent++;
 #endif
 }
@@ -935,6 +947,7 @@ void w_switch_to_bp (void)
 //#  while (!spin1_send_mc_packet (wb_sync_key, 0, NO_PAYLOAD));
 
 //#  #ifdef DEBUG
+//#    pkt_sent++;
 //#    spk_sent++;
 //#  #endif
 }

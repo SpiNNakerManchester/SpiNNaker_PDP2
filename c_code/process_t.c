@@ -281,6 +281,9 @@ void tf_advance_tick (uint null0, uint null1)
 
 #ifdef DEBUG
   tot_tick++;
+#endif
+
+#ifdef DEBUG_TICK
   io_printf (IO_BUF, "tf_tick: %d/%d\n", tick, tot_tick);
 #endif
 
@@ -323,6 +326,9 @@ void tb_advance_tick (uint null0, uint null1)
 
 #ifdef DEBUG
   tot_tick++;
+#endif
+
+#ifdef DEBUG_TICK
   io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
 #endif
 
@@ -446,7 +452,7 @@ void t_advance_example (void)
 #endif
 
   // check if done with examples
-  //TODO: alternative algorithms for chosing example order!
+  //TODO: alternative algorithms for choosing example order!
   if (++example >= ncfg.num_examples)
   {
     if (tcfg.is_last_output_group)
@@ -468,6 +474,7 @@ void t_advance_example (void)
           );
 
 #ifdef DEBUG
+	pkt_sent++;
 	stn_sent++;
 #endif
 
@@ -674,6 +681,7 @@ void tf_send_stop (uint null0, uint null1)
         );
 
 #ifdef DEBUG
+  pkt_sent++;
   if (tcfg.is_last_output_group)
   {
     stp_sent++;

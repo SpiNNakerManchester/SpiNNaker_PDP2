@@ -116,12 +116,15 @@ activation_t   * w_output_history;  // history array for outputs
   uint pkt_recv = 0;  // total packets received
   uint recv_fwd = 0;  // packets received in FORWARD phase
   uint recv_bkp = 0;  // packets received in BACKPROP phase
+  uint pkt_fwbk = 0;  // unused packets received in FORWARD phase
+  uint pkt_bwbk = 0;  // unused packets received in BACKPROP phase
   uint spk_sent = 0;  // sync packets sent
   uint spk_recv = 0;  // sync packets received
   uint stp_sent = 0;  // stop packets sent
   uint stp_recv = 0;  // stop packets received
   uint stn_recv = 0;  // network_stop packets received
   uint lda_sent = 0;  // partial link_delta packets sent
+  uint ldr_recv = 0;  // link_delta packets received
   uint wrng_phs = 0;  // packets received in wrong phase
   uint wrng_tck = 0;  // FORWARD packets received in wrong tick
   uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
@@ -252,17 +255,20 @@ void done (uint ec)
   // report diagnostics
   #ifdef DEBUG
     io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-    io_printf (IO_BUF, "recv:%d fwd:%d bkp:%d\n", pkt_recv, recv_fwd, recv_bkp);
-    io_printf (IO_BUF, "sent:%d fwd:%d bkp:%d\n", pkt_sent, sent_fwd, sent_bkp);
+    io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
+    io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
+    io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
+    io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+    io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);
     io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
     io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
     io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
-    io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
     io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
-    io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
-    io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
-    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
     io_printf (IO_BUF, "ldsa sent:%d\n", lda_sent);
+    io_printf (IO_BUF, "ldsr recv:%d\n", ldr_recv);
+    io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+    io_printf (IO_BUF, "------\n");
     io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
   #endif
 }

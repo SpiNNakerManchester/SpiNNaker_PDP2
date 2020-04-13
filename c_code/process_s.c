@@ -102,6 +102,7 @@ void s_ldsa_packet (uint payload)
       while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
 
 #ifdef DEBUG
+      pkt_sent++;
       ldt_sent++;
 #endif
     }
@@ -156,6 +157,11 @@ void s_ldst_packet (uint payload)
     // send the final value of s_lds_part back to the w cores
     while (!spin1_send_mc_packet (ldsrKey, s_lds_part, WITH_PAYLOAD));
 
+#ifdef DEBUG
+    pkt_sent++;
+    ldr_sent++;
+#endif
+
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
@@ -191,7 +197,6 @@ void s_ldst_packet (uint payload)
 void s_forward_packet (uint key, uint payload)
 {
 #ifdef DEBUG
-  pkt_recv++;
   recv_fwd++;
   if (phase != SPINN_FORWARD)
     wrng_phs++;
@@ -290,7 +295,6 @@ void s_forward_packet (uint key, uint payload)
 void s_backprop_packet (uint key, uint payload)
 {
 #ifdef DEBUG
-  pkt_recv++;
   recv_bkp++;
   if (phase != SPINN_BACKPROP)
     wrng_phs++;
@@ -422,6 +426,9 @@ void sf_advance_tick (uint null0, uint null1)
 
 #ifdef DEBUG
   tot_tick++;
+#endif
+
+#ifdef DEBUG_TICK
   io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
 #endif
 
@@ -451,6 +458,9 @@ void sb_advance_tick (uint null0, uint null1)
 
 #ifdef DEBUG
   tot_tick++;
+#endif
+
+#ifdef DEBUG_TICK
   io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
 #endif
 

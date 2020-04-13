@@ -16,6 +16,10 @@
 // ------------------------------------------------------------------------
 void w_receivePacket (uint key, uint payload)
 {
+#ifdef DEBUG
+  pkt_recv++;
+#endif
+
   // check if packet is stop type
   uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
   if (stop)
@@ -53,6 +57,12 @@ void w_receivePacket (uint key, uint payload)
 	{
 	  w_forwardPacket (key, payload);
 	}
+#ifdef DEBUG
+	else
+	{
+	  pkt_fwbk++;
+	}
+#endif
   }
   else
   {
@@ -61,6 +71,12 @@ void w_receivePacket (uint key, uint payload)
 	{
 	  w_backpropPacket (key, payload);
 	}
+#ifdef DEBUG
+	else
+	{
+	  pkt_bwbk++;
+	}
+#endif
   }
 }
 // ------------------------------------------------------------------------
@@ -127,6 +143,10 @@ void w_networkStopPacket (void)
 // ------------------------------------------------------------------------
 void w_ldsrPacket (uint payload)
 {
+#ifdef DEBUG
+  ldr_recv++;
+#endif
+
   // the final link delta sum for the epoch arrived
   w_lds_final = (lds_t) payload;
 
@@ -159,7 +179,6 @@ void w_ldsrPacket (uint payload)
 void w_forwardPacket (uint key, uint payload)
 {
   #ifdef DEBUG
-    pkt_recv++;
     recv_fwd++;
     if (phase == SPINN_BACKPROP)
       wrng_phs++;
@@ -218,7 +237,6 @@ void w_forwardPacket (uint key, uint payload)
 void w_backpropPacket (uint key, uint payload)
 {
   #ifdef DEBUG
-    pkt_recv++;
     recv_bkp++;
     if (phase == SPINN_FORWARD)
       wrng_phs++;

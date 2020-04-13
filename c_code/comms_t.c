@@ -16,6 +16,10 @@
 // ------------------------------------------------------------------------
 void t_receivePacket (uint key, uint payload)
 {
+#ifdef DEBUG
+  pkt_recv++;
+#endif
+
   // check if packet is stop type
   uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
   if (stop)
@@ -247,7 +251,6 @@ void t_syncPacket (uint ph)
 void t_forwardPacket (uint key, uint payload)
 {
   #ifdef DEBUG
-    pkt_recv++;
     recv_fwd++;
     if (phase == SPINN_BACKPROP)
       wrng_phs++;
@@ -287,7 +290,6 @@ void t_forwardPacket (uint key, uint payload)
 void t_backpropPacket (uint key, uint payload)
 {
   #ifdef DEBUG
-    pkt_recv++;
     recv_bkp++;
     if (phase == SPINN_FORWARD)
       wrng_phs++;

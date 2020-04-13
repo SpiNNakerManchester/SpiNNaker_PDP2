@@ -16,6 +16,10 @@
 // ------------------------------------------------------------------------
 void s_receivePacket (uint key, uint payload)
 {
+#ifdef DEBUG
+  pkt_recv++;
+#endif
+
   // check if stop packet
   if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {

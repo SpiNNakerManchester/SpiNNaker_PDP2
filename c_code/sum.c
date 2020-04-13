@@ -96,8 +96,9 @@ scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta su
   uint stp_recv = 0;  // stop packets received
   uint stn_recv = 0;  // network_stop packets received
   uint lda_recv = 0;  // partial link_delta packets received
-  uint ldt_sent = 0;  // total link_delta packets snet
+  uint ldt_sent = 0;  // total link_delta packets sent
   uint ldt_recv = 0;  // total link_delta packets received
+  uint ldr_sent = 0;  // link_delta packets sent
   uint wrng_phs = 0;  // packets received in wrong phase
   uint wrng_tck = 0;  // FORWARD packets received in wrong tick
   uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
@@ -213,8 +214,9 @@ void done (uint ec)
 
         for (uint i = 0; i < scfg.num_units; i++)
         {
-          io_printf (IO_BUF, "(fa:%u ba:%u)\n",
-                      sf_arrived[i], sb_arrived[i]
+          io_printf (IO_BUF, "(fa[0]:%u ba[0]:%u fa[1]:%u ba[1]:%u)\n",
+                      sf_arrived[0][i], sb_arrived[0][i],
+                      sf_arrived[1][i], sb_arrived[1][i]
                     );
         }
       #endif
@@ -225,19 +227,25 @@ void done (uint ec)
   // report diagnostics
   #ifdef DEBUG
     io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-    io_printf (IO_BUF, "recv:%d fwd:%d bkp:%d\n", pkt_recv, recv_fwd, recv_bkp);
-    io_printf (IO_BUF, "sent:%d fwd:%d bkp:%d\n", pkt_sent, sent_fwd, sent_bkp);
+    io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
+    io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
+    io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
+    io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
     io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
     io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
     io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
-    io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
-    io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
-    io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
-    io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
-    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
     io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
-    io_printf (IO_BUF, "ldst sent:%d\n", ldt_sent);
-    io_printf (IO_BUF, "ldst recv:%d\n", ldt_recv);
+    if (scfg.is_first_group)
+    {
+      io_printf (IO_BUF, "ldst recv:%d\n", ldt_recv);
+      io_printf (IO_BUF, "ldsr sent:%d\n", ldr_sent);
+    }
+    else
+    {
+      io_printf (IO_BUF, "ldst sent:%d\n", ldt_sent);
+    }
+    io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   #endif
 }
 // ------------------------------------------------------------------------

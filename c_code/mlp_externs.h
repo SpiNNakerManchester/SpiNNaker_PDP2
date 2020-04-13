@@ -186,7 +186,9 @@ extern long_deriv_t   * t_output_deriv_history;
   extern uint sent_bkp;  // packets sent in BACKPROP phase
   extern uint pkt_recv;  // total packets received
   extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received in BACKPROP phase
+  extern uint recv_bkp;  // packets received  in FORWARD phase
+  extern uint pkt_fwbk;  // unused packets received in FORWARD phase
+  extern uint pkt_bwbk;  // unused packets received in FORWARD phase
   extern uint spk_sent;  // sync packets sent
   extern uint spk_recv;  // sync packets received
   extern uint chn_sent;  // chain packets sent
@@ -199,6 +201,8 @@ extern long_deriv_t   * t_output_deriv_history;
   extern uint lda_recv;  // partial link_delta packets received
   extern uint ldt_sent;  // total link_delta packets sent
   extern uint ldt_recv;  // total link_delta packets received
+  extern uint ldr_sent;  // link_delta packets sent
+  extern uint ldr_recv;  // link_delta packets received
   extern uint tot_tick;  // total number of ticks executed
   extern uint wght_ups;  // number of weight updates done
   extern uint wrng_phs;  // packets received in wrong phase
