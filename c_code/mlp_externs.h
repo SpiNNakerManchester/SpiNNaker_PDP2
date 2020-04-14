@@ -186,9 +186,9 @@ extern long_deriv_t   * t_output_deriv_history;
   extern uint sent_bkp;  // packets sent in BACKPROP phase
   extern uint pkt_recv;  // total packets received
   extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received  in FORWARD phase
+  extern uint recv_bkp;  // packets received in BACKPROP phase
   extern uint pkt_fwbk;  // unused packets received in FORWARD phase
-  extern uint pkt_bwbk;  // unused packets received in FORWARD phase
+  extern uint pkt_bwbk;  // unused packets received in BACKPROP phase
   extern uint spk_sent;  // sync packets sent
   extern uint spk_recv;  // sync packets received
   extern uint chn_sent;  // chain packets sent
