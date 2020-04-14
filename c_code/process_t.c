@@ -488,7 +488,7 @@ void t_advance_example (void)
     if (++epoch >= ncfg.num_epochs)
     {
       // send final output packet to host,
-      if (tcfg.is_last_output_group && tcfg.write_out)
+      if (tcfg.write_out)
       {
 	send_outputs_to_host (SPINN_HOST_FINAL, 0);
       }

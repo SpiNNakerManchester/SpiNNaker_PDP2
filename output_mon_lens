@@ -9,6 +9,10 @@ use warnings;
 
 use IO::Socket::INET;
 
+use IO::Handle;
+
+STDOUT->autoflush(1);
+
 my $version = '0.99';
 
 my $port = 17896;
@@ -125,10 +129,9 @@ sub print_outputs
 
 sub main_loop
 {
-    my $run = 1;
-    my $last_tick = 0;
+    my $finish = 0;
 
-    while ($run != 0)
+    while (1)
     {
 	my $rm = '';
 	vec ($rm, $socket_fd, 1) = 1;
@@ -156,7 +159,7 @@ sub main_loop
 
 	if ($cmd == $HOST_FINAL)
 	{
-	    $last_tick = 1;;
+	    $finish = 1;
 	}
 
 	if ($cmd == $HOST_INFO)
@@ -232,7 +235,7 @@ sub main_loop
 	{
 	    print_outputs ();
 
-	    last if $last_tick;
+	    last if $finish;
 
 	    $grp_ctr[$inx] = 0;
 	    $ltick = $tick[$inx];
