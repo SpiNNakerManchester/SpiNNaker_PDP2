@@ -3,12 +3,13 @@ import struct
 from data_specification.enums.data_type import DataType
 
 from pacman.executor.injection_decorator import inject_items
-
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
-from pacman.model.decorators.overrides import overrides
+#from pacman.model.decorators.overrides import overrides
 from pacman.model.resources.resource_container import ResourceContainer
-from pacman.model.resources.sdram_resource import SDRAMResource
+from pacman.model.resources.resource_container import ConstantSDRAM
 
+from spinn_front_end_common.utilities.constants \
+    import SYSTEM_BYTES_REQUIREMENT
 from spinn_front_end_common.utilities.utility_objs \
     import ExecutableType
 from spinn_front_end_common.abstract_models.abstract_has_associated_binary \
@@ -20,7 +21,9 @@ from spinn_front_end_common.abstract_models\
     .abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
 
-from mlp_types import MLPRegions, MLPConstants
+from spinn_utilities.overrides import overrides
+
+from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
 
 class WeightVertex(
@@ -188,10 +191,10 @@ class WeightVertex(
         # saturate weight
         if wt_float >= MLPConstants.WF_MAX:
             wtemp = MLPConstants.WF_MAX;
-            print "warning: input weight >= {}".format (MLPConstants.WF_MAX)
+            print (f"warning: input weight >= {MLPConstants.WF_MAX}")
         elif wt_float <= MLPConstants.WF_MIN:
             wtemp = MLPConstants.WF_MIN;
-            print "warning: input weight <= {}".format (MLPConstants.WF_MIN)
+            print (f"warning: input weight <= {MLPConstants.WF_MIN}")
         else:
             wtemp = wt_float
 
@@ -244,9 +247,8 @@ class WeightVertex(
     @property
     @overrides (MachineVertex.resources_required)
     def resources_required (self):
-
         resources = ResourceContainer (
-            sdram = SDRAMResource (self._sdram_usage),
+            sdram = ConstantSDRAM(SYSTEM_BYTES_REQUIREMENT + self._sdram_usage)
             )
         return resources
 

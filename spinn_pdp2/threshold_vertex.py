@@ -3,17 +3,15 @@ import struct
 from data_specification.enums.data_type import DataType
 
 from pacman.executor.injection_decorator import inject_items
-
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
-
 from pacman.model.constraints.placer_constraints import ChipAndCoreConstraint
-
-from pacman.model.decorators.overrides import overrides
-
-from pacman.model.resources.resource_container import ResourceContainer
-from pacman.model.resources.sdram_resource import SDRAMResource
+#from pacman.model.decorators.overrides import overrides
 from pacman.model.resources.iptag_resource import IPtagResource
+from pacman.model.resources.resource_container import ResourceContainer
+from pacman.model.resources.resource_container import ConstantSDRAM
 
+from spinn_front_end_common.utilities.constants \
+    import SYSTEM_BYTES_REQUIREMENT
 from spinn_front_end_common.utilities.utility_objs \
     import ExecutableType
 from spinn_front_end_common.abstract_models.abstract_has_associated_binary \
@@ -25,7 +23,9 @@ from spinn_front_end_common.abstract_models\
     .abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
 
-from mlp_types import MLPRegions, MLPConstants
+from spinn_utilities.overrides import overrides
+
+from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
 
 class ThresholdVertex(
@@ -231,12 +231,12 @@ class ThresholdVertex(
                             self._is_last_output_group & 0xff,
                             self.group.error_function.value & 0xff
                             )
+
     @property
     @overrides (MachineVertex.resources_required)
     def resources_required (self):
-
         resources = ResourceContainer (
-            sdram  = SDRAMResource (self._sdram_usage),
+            sdram = ConstantSDRAM(SYSTEM_BYTES_REQUIREMENT + self._sdram_usage),
             iptags = [IPtagResource (ip_address = "localhost",
                                     tag         = 2,
                                     port        = 17896,
