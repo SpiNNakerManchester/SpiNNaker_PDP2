@@ -1,6 +1,6 @@
-from mlp_types import MLPGroupTypes, MLPConstants
-from mlp_types import MLPInputProcs, MLPOutputProcs
-from mlp_types import MLPStopCriteria, MLPErrorFuncs
+from spinn_pdp2.mlp_types import MLPGroupTypes, MLPConstants
+from spinn_pdp2.mlp_types import MLPInputProcs, MLPOutputProcs
+from spinn_pdp2.mlp_types import MLPStopCriteria, MLPErrorFuncs
 
 class MLPGroup():
     """ an MLP group
@@ -30,11 +30,11 @@ class MLPGroup():
             // MLPConstants.MAX_BLK_UNITS
 
         if self.partitions == 1:
-            print "creating group {} with 1 partition".\
-                    format (self.label)
+            print (f"creating group {self.label} with 1 partition")
         else:
-            print "creating group {} with {} partitions".\
-                    format (self.label, self.partitions)
+            print (f"creating group {self.label} with "
+                   f"{self.partitions} partitions"
+                   )
 
         # keep track of associated incoming links
         self.links_from = []
