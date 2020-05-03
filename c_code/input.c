@@ -199,7 +199,7 @@ uint init ()
     io_printf (IO_BUF, "dt: %f\n", icfg.in_integr_dt);
     io_printf (IO_BUF, "sc: %f\n", icfg.soft_clamp_strength);
     io_printf (IO_BUF, "in: %d\n", icfg.initNets);
-    io_printf (IO_BUF, "io: %k\n", SPINN_LCONV_TO_PRINT(
+    io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
     		icfg.initOutput, SPINN_ACTIV_SHIFT));
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
     io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
