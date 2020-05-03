@@ -202,7 +202,7 @@ long_deriv_t   * t_output_deriv_history;
 
 
 // ------------------------------------------------------------------------
-// load configuration from SDRAM and initialize variables
+// load configuration from SDRAM and initialise variables
 // ------------------------------------------------------------------------
 uint init ()
 {
@@ -218,13 +218,13 @@ uint init ()
   // network configuration address
   address_t nt = data_specification_get_region (NETWORK, data_address);
 
-  // initialize network configuration from SDRAM
+  // initialise network configuration from SDRAM
   spin1_memcpy (&ncfg, nt, sizeof(network_conf_t));
 
   // core configuration address
   address_t dt = data_specification_get_region (CORE, data_address);
 
-  // initialize core-specific configuration from SDRAM
+  // initialise core-specific configuration from SDRAM
   spin1_memcpy (&tcfg, dt, sizeof(t_conf_t));
 
   // inputs
@@ -293,7 +293,7 @@ uint init ()
   #ifdef DEBUG_CFG0
     io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
     io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
-    io_printf (IO_BUF, "no: %d\n", tcfg.num_units);
+    io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
     io_printf (IO_BUF, "fs: %d\n", tcfg.fwd_sync_expected);
     io_printf (IO_BUF, "bs: %d\n", tcfg.bkp_sync_expected);
     io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
@@ -301,11 +301,11 @@ uint init ()
     io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
     io_printf (IO_BUF, "dt: %f\n", tcfg.out_integr_dt);
     io_printf (IO_BUF, "np: %d\n", tcfg.num_out_procs);
-    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[0]);
-    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[1]);
-    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[2]);
-    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[3]);
-    io_printf (IO_BUF, "pl: %d\n", tcfg.procs_list[4]);
+    io_printf (IO_BUF, "p0: %d\n", tcfg.procs_list[0]);
+    io_printf (IO_BUF, "p1: %d\n", tcfg.procs_list[1]);
+    io_printf (IO_BUF, "p2: %d\n", tcfg.procs_list[2]);
+    io_printf (IO_BUF, "p3: %d\n", tcfg.procs_list[3]);
+    io_printf (IO_BUF, "p4: %d\n", tcfg.procs_list[4]);
     io_printf (IO_BUF, "wc: %f\n", tcfg.weak_clamp_strength);
     io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
     			tcfg.initOutput, SPINN_ACTIV_SHIFT));
@@ -319,20 +319,20 @@ uint init ()
     io_printf (IO_BUF, "sk: 0x%08x\n", rt[STP]);
   #endif
 
-  // initialize epoch, example and event counters
-  //TODO: alternative algorithms for chosing example order!
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
   epoch   = 0;
   example = 0;
   evt     = 0;
 
-  // initialize phase
+  // initialise phase
   phase = SPINN_FORWARD;
 
-  // initialize number of events and event index
+  // initialise number of events and event index
   num_events = ex[example].num_events;
   event_idx  = ex[example].ev_idx;
 
-  // allocate memory and initialize variables
+  // allocate memory and initialise variables
   uint rcode = t_init ();
 
   return (rcode);
@@ -453,7 +453,7 @@ void timeout (uint ticks, uint null)
 
 
 // ------------------------------------------------------------------------
-// main: register callbacks and initialize basic system variables
+// main: register callbacks and initialise basic system variables
 // ------------------------------------------------------------------------
 void c_main ()
 {
@@ -464,7 +464,7 @@ void c_main ()
   chipID = spin1_get_chip_id();
   coreID = spin1_get_core_id();
 
-  // initialize application,
+  // initialise application,
   uint exit_code = init ();
 
   // check if init completed successfully,

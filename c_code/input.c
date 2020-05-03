@@ -7,6 +7,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_macros.h"
 #include "mlp_externs.h"  // allows compiler to check extern types!
 
 #include "init_i.h"
@@ -143,7 +144,7 @@ long_net_t     * i_net_history;   //sdram pointer where to store input history
 
 
 // ------------------------------------------------------------------------
-// load configuration from SDRAM and initialize variables
+// load configuration from SDRAM and initialise variables
 // ------------------------------------------------------------------------
 uint init ()
 {
@@ -159,13 +160,13 @@ uint init ()
   // network configuration address
   address_t nt = data_specification_get_region (NETWORK, data_address);
 
-  // initialize network configuration from SDRAM
+  // initialise network configuration from SDRAM
   spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
 
   // core configuration address
   address_t dt = data_specification_get_region (CORE, data_address);
 
-  // initialize core-specific configuration from SDRAM
+  // initialise core-specific configuration from SDRAM
   spin1_memcpy (&icfg, dt, sizeof (i_conf_t));
 
   // inputs iff this core receives inputs from examples file
@@ -190,33 +191,34 @@ uint init ()
   #ifdef DEBUG_CFG0
     io_printf (IO_BUF, "og: %d\n", icfg.output_grp);
     io_printf (IO_BUF, "ig: %d\n", icfg.input_grp);
-    io_printf (IO_BUF, "nn: %d\n", icfg.num_units);
+    io_printf (IO_BUF, "nu: %d\n", icfg.num_units);
     io_printf (IO_BUF, "np: %d\n", icfg.num_in_procs);
-    io_printf (IO_BUF, "pl: %d\n", icfg.procs_list[0]);
-    io_printf (IO_BUF, "pl: %d\n", icfg.procs_list[1]);
+    io_printf (IO_BUF, "p0: %d\n", icfg.procs_list[0]);
+    io_printf (IO_BUF, "p1: %d\n", icfg.procs_list[1]);
     io_printf (IO_BUF, "ie: %d\n", icfg.in_integr_en);
     io_printf (IO_BUF, "dt: %f\n", icfg.in_integr_dt);
     io_printf (IO_BUF, "sc: %f\n", icfg.soft_clamp_strength);
     io_printf (IO_BUF, "in: %d\n", icfg.initNets);
-    io_printf (IO_BUF, "io: %k\n", icfg.initOutput);
+    io_printf (IO_BUF, "io: %k\n", SPINN_LCONV_TO_PRINT(
+    		icfg.initOutput, SPINN_ACTIV_SHIFT));
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
     io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
   #endif
 
-  // initialize epoch, example and event counters
-  //TODO: alternative algorithms for chosing example order!
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
   epoch   = 0;
   example = 0;
   evt     = 0;
 
-  // initialize phase
+  // initialise phase
   phase = SPINN_FORWARD;
 
-  // initialize number of events and event index
+  // initialise number of events and event index
   num_events = ex[example].num_events;
   event_idx  = ex[example].ev_idx;
 
-  // allocate memory and initialize variables
+  // allocate memory and initialise variables
   uint rcode = i_init ();
 
   return (rcode);
@@ -305,7 +307,7 @@ void timeout (uint ticks, uint null)
 
 
 // ------------------------------------------------------------------------
-// main: register callbacks and initialize basic system variables
+// main: register callbacks and initialise basic system variables
 // ------------------------------------------------------------------------
 void c_main ()
 {
@@ -316,7 +318,7 @@ void c_main ()
   chipID = spin1_get_chip_id();
   coreID = spin1_get_core_id();
 
-  // initialize application,
+  // initialise application,
   uint exit_code = init ();
 
   // check if init completed successfully,

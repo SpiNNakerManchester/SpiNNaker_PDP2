@@ -135,7 +135,7 @@ activation_t   * w_output_history;  // history array for outputs
 
 
 // ------------------------------------------------------------------------
-// load configuration from SDRAM and initialize variables
+// load configuration from SDRAM and initialise variables
 // ------------------------------------------------------------------------
 uint init ()
 {
@@ -151,13 +151,13 @@ uint init ()
   // network configuration address
   address_t nt = data_specification_get_region (NETWORK, data_address);
 
-  // initialize network configuration from SDRAM
+  // initialise network configuration from SDRAM
   spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
 
   // core configuration address
   address_t dt = data_specification_get_region (CORE, data_address);
 
-  // initialize core-specific configuration from SDRAM
+  // initialise core-specific configuration from SDRAM
   spin1_memcpy (&wcfg, dt, sizeof (w_conf_t));
 
   // initial connection weights
@@ -186,20 +186,20 @@ uint init ()
     io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
   #endif
 
-  // initialize epoch, example and event counters
-  //TODO: alternative algorithms for chosing example order!
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
   epoch   = 0;
   example = 0;
   evt     = 0;
 
-  // initialize phase
+  // initialise phase
   phase = SPINN_FORWARD;
 
-  // initialize number of events and event index
+  // initialise number of events and event index
   num_events = ex[example].num_events;
   event_idx  = ex[example].ev_idx;
 
-  // allocate memory and initialize variables
+  // allocate memory and initialise variables
   uint rcode = w_init ();
 
   return (rcode);
@@ -299,7 +299,7 @@ void timeout (uint ticks, uint null)
 
 
 // ------------------------------------------------------------------------
-// main: register callbacks and initialize basic system variables
+// main: register callbacks and initialise basic system variables
 // ------------------------------------------------------------------------
 void c_main ()
 {
@@ -310,7 +310,7 @@ void c_main ()
   chipID = spin1_get_chip_id();
   coreID = spin1_get_core_id();
 
-  // initialize application,
+  // initialise application,
   uint exit_code = init ();
 
   // check if init completed successfully,
