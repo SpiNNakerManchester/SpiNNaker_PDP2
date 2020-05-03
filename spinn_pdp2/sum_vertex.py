@@ -4,7 +4,6 @@ from data_specification.enums.data_type import DataType
 
 from pacman.executor.injection_decorator import inject_items
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
-#from pacman.model.decorators.overrides import overrides
 from pacman.model.resources.resource_container import ResourceContainer
 from pacman.model.resources.resource_container import ConstantSDRAM
 
@@ -183,7 +182,7 @@ class SumVertex(
 
         # write the network configuration into spec
         for c in self._network.config:
-            spec.write_value (ord (c), data_type = DataType.UINT8)
+            spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
         spec.reserve_memory_region (MLPRegions.CORE.value,
@@ -193,7 +192,7 @@ class SumVertex(
 
         # write the core configuration into spec
         for c in self.config:
-            spec.write_value (ord (c), data_type = DataType.UINT8)
+            spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the examples region
         spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
@@ -204,7 +203,7 @@ class SumVertex(
         # write the example configurations into spec
         for ex in self._ex_cfg:
             for c in ex:
-                spec.write_value (ord (c), data_type = DataType.UINT8)
+                spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the routing region
         spec.reserve_memory_region (MLPRegions.ROUTING.value,

@@ -5,7 +5,6 @@ from data_specification.enums.data_type import DataType
 from pacman.executor.injection_decorator import inject_items
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.constraints.placer_constraints import ChipAndCoreConstraint
-#from pacman.model.decorators.overrides import overrides
 from pacman.model.resources.iptag_resource import IPtagResource
 from pacman.model.resources.resource_container import ResourceContainer
 from pacman.model.resources.resource_container import ConstantSDRAM
@@ -272,7 +271,7 @@ class ThresholdVertex(
 
         # write the network configuration into spec
         for c in self._network.config:
-            spec.write_value (ord (c), data_type = DataType.UINT8)
+            spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
         spec.reserve_memory_region (MLPRegions.CORE.value,
@@ -282,7 +281,7 @@ class ThresholdVertex(
 
         # write the core configuration into spec
         for c in self.config:
-            spec.write_value (ord (c), data_type = DataType.UINT8)
+            spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the example set region
         spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
@@ -292,7 +291,7 @@ class ThresholdVertex(
 
         # write the example set configuration into spec
         for c in self._set_cfg:
-            spec.write_value (ord (c), data_type = DataType.UINT8)
+            spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the examples region
         spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
@@ -303,7 +302,7 @@ class ThresholdVertex(
         # write the example configurations into spec
         for ex in self._ex_cfg:
             for c in ex:
-                spec.write_value (ord (c), data_type = DataType.UINT8)
+                spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the events region
         spec.reserve_memory_region (MLPRegions.EVENTS.value,
@@ -314,7 +313,7 @@ class ThresholdVertex(
         # write the event configurations into spec
         for ev in self._ev_cfg:
             for c in ev:
-                spec.write_value (ord (c), data_type = DataType.UINT8)
+                spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the input data region (if INPUT group)
         if self._N_INPUTS_BYTES != 0:
