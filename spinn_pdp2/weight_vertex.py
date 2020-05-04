@@ -1,3 +1,4 @@
+import os
 import struct
 
 from data_specification.enums.data_type import DataType
@@ -22,6 +23,7 @@ from spinn_front_end_common.abstract_models\
 
 from spinn_utilities.overrides import overrides
 
+import spinn_pdp2
 from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
 
@@ -119,7 +121,8 @@ class WeightVertex(
         self.update_function = network._update_function
 
         # binary, configuration and data files
-        self._aplx_file = "binaries/weight.aplx"
+        binaries_path = os.path.join(os.path.dirname(spinn_pdp2.__file__), "..", "binaries")
+        self._aplx_file = binaries_path + "/weight.aplx"
 
         # find out the size of an integer!
         _data_int=DataType.INT32
