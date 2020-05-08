@@ -599,6 +599,9 @@ class MLPNetwork():
         """
         self._training = 0
 
+        # not used but a value is needed for the weight config struct anyway
+        self._update_function = MLPUpdateFuncs.UPD_STEEPEST
+
         # run the application
         self.run ()
 
