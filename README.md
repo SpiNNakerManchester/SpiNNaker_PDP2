@@ -9,7 +9,7 @@ The MLPs implemented here follow the 'Lens' style, but can easily be
 adapted to a different style or feature set. For further information
 about Lens see:
 
-http://web.stanford.edu/group/mbc/LENSManual/
+[crcox/lens](https://github.com/crcox/lens)
 
 The following publication describes the basic algorithm used to implement
 MLPs on SpiNNaker:
