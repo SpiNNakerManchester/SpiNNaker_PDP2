@@ -5,7 +5,9 @@ from spinn_pdp2.mlp_types   import MLPInputProcs
 #-----------------------------------------------------------
 # rand10x40
 #
-# gfe implementation of Lens' example rand10x40.
+# implementation of Lens example rand10x40
+#
+# (https://github.com/crcox/lens/blob/master/Examples/rand10x40.in)
 #
 #-----------------------------------------------------------
 
