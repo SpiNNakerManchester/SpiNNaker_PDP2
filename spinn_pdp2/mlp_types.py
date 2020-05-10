@@ -129,12 +129,13 @@ class MLPUpdateFuncs (Enum):
 class MLPRegions (Enum):
     """ regions used by MLP cores
     """
-    NETWORK = 0
-    CORE = 1
-    INPUTS = 2
-    TARGETS = 3
-    EXAMPLE_SET = 4
-    EXAMPLES = 5
-    EVENTS = 6
-    WEIGHTS = 7
-    ROUTING = 8
+    SYSTEM = 0
+    NETWORK = 1
+    CORE = 2
+    INPUTS = 3
+    TARGETS = 4
+    EXAMPLE_SET = 5
+    EXAMPLES = 6
+    EVENTS = 7
+    WEIGHTS = 8
+    ROUTING = 9

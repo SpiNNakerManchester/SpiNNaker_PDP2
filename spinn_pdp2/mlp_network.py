@@ -441,8 +441,11 @@ class MLPNetwork():
         """
         print ("generating machine graph")
 
+        # path to binary files
+        binaries_path = os.path.join(os.path.dirname(__file__), "..", "binaries")
+
         # setup the machine graph
-        g.setup ()
+        g.setup (model_binary_folder = binaries_path)
 
         # set the number of write blocks before generating vertices
         self._num_write_blks = len (self.output_chain)

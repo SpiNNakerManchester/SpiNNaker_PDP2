@@ -21,6 +21,8 @@
 *.tab
 *.txt
 !/examples/*/*.txt
+**/spiNNakerGraphFrontEnd.cfg
+**/spynnaker.cfg
 **/application_generated_data_files
 **/binaries
 **/build
