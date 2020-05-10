@@ -3,6 +3,7 @@
 
 // graph-front-end
 #include <data_specification.h>
+#include <simulation.h>
 
 // mlp
 #include "mlp_params.h"
@@ -19,7 +20,6 @@
 // ------------------------------------------------------------------------
 // global "constants"
 // ------------------------------------------------------------------------
-
 // list of procedures for the FORWARD phase in the output pipeline. The order is
 // relevant, as the index is defined in mlp_params.h
 out_proc_t const
@@ -69,6 +69,13 @@ out_error_t const
   };
 // ------------------------------------------------------------------------
 
+// ------------------------------------------------------------------------
+// simulation control variables
+// ------------------------------------------------------------------------
+static uint simulation_ticks = 0;
+static uint infinite_run = 0;
+static uint time = 0;
+// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // global variables
@@ -211,10 +218,18 @@ uint init ()
   // read the data specification header
   address_t data_address = data_specification_get_data_address ();
   if (!data_specification_read_header (data_address)) {
-	  rt_error (RTE_SWERR);
+	  return (SPINN_CFG_UNAVAIL);
   }
 
-  // get addresses of all SDRAM regions
+  // set up the simulation interface (system region)
+  uint timer_period;
+  if (!simulation_initialise(
+          data_specification_get_region(SYSTEM, data_address),
+          APPLICATION_NAME_HASH, &timer_period, &simulation_ticks,
+          &infinite_run, &time, 2, 2)) {
+      return (SPINN_CFG_UNAVAIL);
+  }
+
   // network configuration address
   address_t nt = data_specification_get_region (NETWORK, data_address);
 
@@ -245,79 +260,79 @@ uint init ()
   es = (struct mlp_set *) data_specification_get_region
 		  (EXAMPLE_SET, data_address);
 
-  #ifdef DEBUG_CFG5
-    io_printf (IO_BUF, "ne: %u\n", es->num_examples);
-    io_printf (IO_BUF, "mt: %f\n", es->max_time);
-    io_printf (IO_BUF, "nt: %f\n", es->min_time);
-    io_printf (IO_BUF, "gt: %f\n", es->grace_time);
-    io_printf (IO_BUF, "NaN: 0x%08x%\n", SPINN_FP_NaN);
-  #endif
+#ifdef DEBUG_CFG5
+  io_printf (IO_BUF, "ne: %u\n", es->num_examples);
+  io_printf (IO_BUF, "mt: %f\n", es->max_time);
+  io_printf (IO_BUF, "nt: %f\n", es->min_time);
+  io_printf (IO_BUF, "gt: %f\n", es->grace_time);
+  io_printf (IO_BUF, "NaN: 0x%08x%\n", SPINN_FP_NaN);
+#endif
 
   // examples
   ex = (struct mlp_example *) data_specification_get_region
 		  (EXAMPLES, data_address);
 
-  #ifdef DEBUG_CFG5
-    for (uint i = 0; i < es->num_examples; i++)
-    {
-      io_printf (IO_BUF, "nx[%u]: %u\n", i, ex[i].num);
-      io_printf (IO_BUF, "nv[%u]: %u\n", i, ex[i].num_events);
-      io_printf (IO_BUF, "vi[%u]: %u\n", i, ex[i].ev_idx);
-      io_printf (IO_BUF, "xf[%u]: %f\n", i, ex[i].freq);
-    }
-  #endif
+#ifdef DEBUG_CFG5
+  for (uint i = 0; i < es->num_examples; i++)
+  {
+    io_printf (IO_BUF, "nx[%u]: %u\n", i, ex[i].num);
+    io_printf (IO_BUF, "nv[%u]: %u\n", i, ex[i].num_events);
+    io_printf (IO_BUF, "vi[%u]: %u\n", i, ex[i].ev_idx);
+    io_printf (IO_BUF, "xf[%u]: %f\n", i, ex[i].freq);
+  }
+#endif
 
   // events
   ev = (struct mlp_event *) data_specification_get_region
 		  (EVENTS, data_address);
 
-  #ifdef DEBUG_CFG5
-    uint evi = 0;
-    for (uint i = 0; i < es->num_examples; i++)
+#ifdef DEBUG_CFG5
+  uint evi = 0;
+  for (uint i = 0; i < es->num_examples; i++)
+  {
+    for (uint j = 0; j < ex[i].num_events; j++)
     {
-      for (uint j = 0; j < ex[i].num_events; j++)
-      {
-        io_printf (IO_BUF, "mt[%u][%u]: %f\n", i, j, ev[evi].max_time);
-        io_printf (IO_BUF, "nt[%u][%u]: %f\n", i, j, ev[evi].min_time);
-        io_printf (IO_BUF, "gt[%u][%u]: %f\n", i, j, ev[evi].grace_time);
-        io_printf (IO_BUF, "ii[%u][%u]: %u\n", i, j, ev[evi].it_idx);
-        evi++;
-      }
+      io_printf (IO_BUF, "mt[%u][%u]: %f\n", i, j, ev[evi].max_time);
+      io_printf (IO_BUF, "nt[%u][%u]: %f\n", i, j, ev[evi].min_time);
+      io_printf (IO_BUF, "gt[%u][%u]: %f\n", i, j, ev[evi].grace_time);
+      io_printf (IO_BUF, "ii[%u][%u]: %u\n", i, j, ev[evi].it_idx);
+      evi++;
     }
-  #endif
+  }
+#endif
 
   // routing keys
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
-  #ifdef DEBUG_CFG0
-    io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
-    io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
-    io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
-    io_printf (IO_BUF, "fs: %d\n", tcfg.fwd_sync_expected);
-    io_printf (IO_BUF, "bs: %d\n", tcfg.bkp_sync_expected);
-    io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
-    io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
-    io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
-    io_printf (IO_BUF, "dt: %f\n", tcfg.out_integr_dt);
-    io_printf (IO_BUF, "np: %d\n", tcfg.num_out_procs);
-    io_printf (IO_BUF, "p0: %d\n", tcfg.procs_list[0]);
-    io_printf (IO_BUF, "p1: %d\n", tcfg.procs_list[1]);
-    io_printf (IO_BUF, "p2: %d\n", tcfg.procs_list[2]);
-    io_printf (IO_BUF, "p3: %d\n", tcfg.procs_list[3]);
-    io_printf (IO_BUF, "p4: %d\n", tcfg.procs_list[4]);
-    io_printf (IO_BUF, "wc: %f\n", tcfg.weak_clamp_strength);
-    io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
-    			tcfg.initOutput, SPINN_ACTIV_SHIFT));
-    io_printf (IO_BUF, "gc: %k\n", tcfg.group_criterion);
-    io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
-    io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output_group);
-    io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output_group);
-    io_printf (IO_BUF, "ef: %d\n", tcfg.error_function);
-    io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
-    io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-    io_printf (IO_BUF, "sk: 0x%08x\n", rt[STP]);
-  #endif
+#ifdef DEBUG_CFG0
+  io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
+  io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
+  io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
+  io_printf (IO_BUF, "fs: %d\n", tcfg.fwd_sync_expected);
+  io_printf (IO_BUF, "bs: %d\n", tcfg.bkp_sync_expected);
+  io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
+  io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
+  io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
+  io_printf (IO_BUF, "dt: %f\n", tcfg.out_integr_dt);
+  io_printf (IO_BUF, "np: %d\n", tcfg.num_out_procs);
+  io_printf (IO_BUF, "p0: %d\n", tcfg.procs_list[0]);
+  io_printf (IO_BUF, "p1: %d\n", tcfg.procs_list[1]);
+  io_printf (IO_BUF, "p2: %d\n", tcfg.procs_list[2]);
+  io_printf (IO_BUF, "p3: %d\n", tcfg.procs_list[3]);
+  io_printf (IO_BUF, "p4: %d\n", tcfg.procs_list[4]);
+  io_printf (IO_BUF, "wc: %f\n", tcfg.weak_clamp_strength);
+  io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
+  			tcfg.initOutput, SPINN_ACTIV_SHIFT));
+  io_printf (IO_BUF, "gc: %k\n", tcfg.group_criterion);
+  io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
+  io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output_group);
+  io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output_group);
+  io_printf (IO_BUF, "ef: %d\n", tcfg.error_function);
+  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
+  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
+  io_printf (IO_BUF, "sk: 0x%08x\n", rt[STP]);
+#endif
 
   // initialise epoch, example and event counters
   //TODO: alternative algorithms for choosing example order!
@@ -350,7 +365,11 @@ void done (uint ec)
   {
     case SPINN_NO_ERROR:
       io_printf (IO_BUF, "simulation OK\n");
+      break;
 
+    case SPINN_CFG_UNAVAIL:
+      io_printf (IO_BUF, "core configuration failed\n");
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_QUEUE_FULL:
@@ -372,25 +391,22 @@ void done (uint ec)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                  epoch, example, phase, tick
                 );
-
-      #ifdef DEBUG_TO
-        io_printf (IO_BUF, "(tactive:%u ta:%u/%u tb:%u/%u)\n",
-                    t_active, tf_arrived, tcfg.num_units,
-                    tb_arrived, tcfg.num_units
-                  );
-        io_printf (IO_BUF, "(tsr:%u tsa:%u/%u)\n",
-                    t_sync_rdy, t_sync_arrived, tcfg.fwd_sync_expected
-                  );
-        io_printf (IO_BUF, "(tcr:%u)\n",
-                    tf_chain_rdy
-                  );
-      #endif
-
+#ifdef DEBUG_TO
+      io_printf (IO_BUF, "(tactive:%u ta:%u/%u tb:%u/%u)\n",
+                  t_active, tf_arrived, tcfg.num_units,
+                  tb_arrived, tcfg.num_units
+                );
+      io_printf (IO_BUF, "(tsr:%u tsa:%u/%u)\n",
+                  t_sync_rdy, t_sync_arrived, tcfg.fwd_sync_expected
+                );
+      io_printf (IO_BUF, "(tcr:%u)\n",
+                  tf_chain_rdy
+                );
+#endif
       if (tcfg.write_out)  // make sure the output monitor closes!
       {
         send_outputs_to_host (SPINN_HOST_FINAL, tick);
       }
-
       break;
   }
 

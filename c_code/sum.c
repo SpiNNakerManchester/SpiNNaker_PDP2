@@ -3,6 +3,7 @@
 
 // graph-front-end
 #include <data_specification.h>
+#include <simulation.h>
 
 // mlp
 #include "mlp_params.h"
@@ -13,6 +14,14 @@
 #include "comms_s.h"
 
 // main methods for the sum core
+
+// ------------------------------------------------------------------------
+// simulation control variables
+// ------------------------------------------------------------------------
+static uint simulation_ticks = 0;
+static uint infinite_run = 0;
+static uint time = 0;
+// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // global variables
@@ -118,10 +127,18 @@ uint init ()
   // read the data specification header
   address_t data_address = data_specification_get_data_address ();
   if (!data_specification_read_header (data_address)) {
-	  rt_error (RTE_SWERR);
+	  return (SPINN_CFG_UNAVAIL);
   }
 
-  // get addresses of all SDRAM regions
+  // set up the simulation interface (system region)
+  uint timer_period;
+  if (!simulation_initialise(
+          data_specification_get_region(SYSTEM, data_address),
+          APPLICATION_NAME_HASH, &timer_period, &simulation_ticks,
+          &infinite_run, &time, 2, 2)) {
+      return (SPINN_CFG_UNAVAIL);
+  }
+
   // network configuration address
   address_t nt = data_specification_get_region (NETWORK, data_address);
 
@@ -142,18 +159,18 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
-  #ifdef DEBUG_CFG0
-    io_printf (IO_BUF, "nu: %d\n", scfg.num_units);
-    io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
-    io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
-    io_printf (IO_BUF, "ae: %d\n", scfg.ldsa_expected);
-    io_printf (IO_BUF, "te: %d\n", scfg.ldst_expected);
-    io_printf (IO_BUF, "uf: %d\n", scfg.update_function);
-    io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
-    io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
-    io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-    io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
-  #endif
+#ifdef DEBUG_CFG0
+  io_printf (IO_BUF, "nu: %d\n", scfg.num_units);
+  io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
+  io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
+  io_printf (IO_BUF, "ae: %d\n", scfg.ldsa_expected);
+  io_printf (IO_BUF, "te: %d\n", scfg.ldst_expected);
+  io_printf (IO_BUF, "uf: %d\n", scfg.update_function);
+  io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
+  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
+  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
+  io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
+#endif
 
   // initialise epoch, example and event counters
   //TODO: alternative algorithms for choosing example order!
@@ -186,7 +203,11 @@ void done (uint ec)
   {
     case SPINN_NO_ERROR:
       io_printf (IO_BUF, "simulation OK\n");
+      break;
 
+    case SPINN_CFG_UNAVAIL:
+      io_printf (IO_BUF, "core configuration failed\n");
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_QUEUE_FULL:
@@ -208,45 +229,42 @@ void done (uint ec)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                   epoch, example, phase, tick
                 );
-
-      #ifdef DEBUG_TO
-        io_printf (IO_BUF, "(fd:%u bd:%u)\n", sf_done, sb_done);
-
-        for (uint i = 0; i < scfg.num_units; i++)
-        {
-          io_printf (IO_BUF, "%2d: (fa[0]:%u ba[0]:%u fa[1]:%u ba[1]:%u)\n", i,
-                      sf_arrived[0][i], sb_arrived[0][i],
-                      sf_arrived[1][i], sb_arrived[1][i]
-                    );
-        }
-      #endif
-
+#ifdef DEBUG_TO
+      io_printf (IO_BUF, "(fd:%u bd:%u)\n", sf_done, sb_done);
+      for (uint i = 0; i < scfg.num_units; i++)
+      {
+        io_printf (IO_BUF, "%2d: (fa[0]:%u ba[0]:%u fa[1]:%u ba[1]:%u)\n", i,
+                    sf_arrived[0][i], sb_arrived[0][i],
+                    sf_arrived[1][i], sb_arrived[1][i]
+                  );
+      }
+#endif
       break;
   }
 
   // report diagnostics
-  #ifdef DEBUG
-    io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-    io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-    io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
-    io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
-    io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-    io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
-    if (scfg.is_first_group)
-    {
-      io_printf (IO_BUF, "ldst recv:%d\n", ldt_recv);
-      io_printf (IO_BUF, "ldsr sent:%d\n", ldr_sent);
-    }
-    else
-    {
-      io_printf (IO_BUF, "ldst sent:%d\n", ldt_sent);
-    }
-    io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
-    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
-    if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-    if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-    if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
-  #endif
+#ifdef DEBUG
+  io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
+  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
+  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
+  io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
+  io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+  io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
+  if (scfg.is_first_group)
+  {
+    io_printf (IO_BUF, "ldst recv:%d\n", ldt_recv);
+    io_printf (IO_BUF, "ldsr sent:%d\n", ldr_sent);
+  }
+  else
+  {
+    io_printf (IO_BUF, "ldst sent:%d\n", ldt_sent);
+  }
+  io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+  io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
+  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+#endif
 }
 // ------------------------------------------------------------------------
 

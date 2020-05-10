@@ -3,6 +3,7 @@
 
 // graph-front-end
 #include <data_specification.h>
+#include <simulation.h>
 
 // mlp
 #include "mlp_params.h"
@@ -19,7 +20,6 @@
 // ------------------------------------------------------------------------
 // global "constants"
 // ------------------------------------------------------------------------
-
 // list of procedures for the FORWARD phase in the input pipeline. The order is
 // relevant, as the index is defined in mlp_params.h
 in_proc_t const
@@ -48,6 +48,13 @@ in_proc_init_t const
   };
 // ------------------------------------------------------------------------
 
+// ------------------------------------------------------------------------
+// simulation control variables
+// ------------------------------------------------------------------------
+static uint simulation_ticks = 0;
+static uint infinite_run = 0;
+static uint time = 0;
+// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // global variables
@@ -153,10 +160,18 @@ uint init ()
   // read the data specification header
   address_t data_address = data_specification_get_data_address ();
   if (!data_specification_read_header (data_address)) {
-	  rt_error (RTE_SWERR);
+	  return (SPINN_CFG_UNAVAIL);
   }
 
-  // get addresses of all SDRAM regions
+  // set up the simulation interface (system region)
+  uint timer_period;
+  if (!simulation_initialise(
+          data_specification_get_region(SYSTEM, data_address),
+          APPLICATION_NAME_HASH, &timer_period, &simulation_ticks,
+          &infinite_run, &time, 2, 2)) {
+      return (SPINN_CFG_UNAVAIL);
+  }
+
   // network configuration address
   address_t nt = data_specification_get_region (NETWORK, data_address);
 
@@ -188,22 +203,22 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
-  #ifdef DEBUG_CFG0
-    io_printf (IO_BUF, "og: %d\n", icfg.output_grp);
-    io_printf (IO_BUF, "ig: %d\n", icfg.input_grp);
-    io_printf (IO_BUF, "nu: %d\n", icfg.num_units);
-    io_printf (IO_BUF, "np: %d\n", icfg.num_in_procs);
-    io_printf (IO_BUF, "p0: %d\n", icfg.procs_list[0]);
-    io_printf (IO_BUF, "p1: %d\n", icfg.procs_list[1]);
-    io_printf (IO_BUF, "ie: %d\n", icfg.in_integr_en);
-    io_printf (IO_BUF, "dt: %f\n", icfg.in_integr_dt);
-    io_printf (IO_BUF, "sc: %f\n", icfg.soft_clamp_strength);
-    io_printf (IO_BUF, "in: %d\n", icfg.initNets);
-    io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
-    		icfg.initOutput, SPINN_ACTIV_SHIFT));
-    io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
-    io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-  #endif
+#ifdef DEBUG_CFG0
+  io_printf (IO_BUF, "og: %d\n", icfg.output_grp);
+  io_printf (IO_BUF, "ig: %d\n", icfg.input_grp);
+  io_printf (IO_BUF, "nu: %d\n", icfg.num_units);
+  io_printf (IO_BUF, "np: %d\n", icfg.num_in_procs);
+  io_printf (IO_BUF, "p0: %d\n", icfg.procs_list[0]);
+  io_printf (IO_BUF, "p1: %d\n", icfg.procs_list[1]);
+  io_printf (IO_BUF, "ie: %d\n", icfg.in_integr_en);
+  io_printf (IO_BUF, "dt: %f\n", icfg.in_integr_dt);
+  io_printf (IO_BUF, "sc: %f\n", icfg.soft_clamp_strength);
+  io_printf (IO_BUF, "in: %d\n", icfg.initNets);
+  io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
+  		icfg.initOutput, SPINN_ACTIV_SHIFT));
+  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
+  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
+#endif
 
   // initialise epoch, example and event counters
   //TODO: alternative algorithms for choosing example order!
@@ -236,7 +251,11 @@ void done (uint ec)
   {
     case SPINN_NO_ERROR:
       io_printf (IO_BUF, "simulation OK\n");
+      break;
 
+    case SPINN_CFG_UNAVAIL:
+      io_printf (IO_BUF, "core configuration failed\n");
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_QUEUE_FULL:
@@ -258,27 +277,25 @@ void done (uint ec)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                       epoch, example, phase, tick
                     );
-
-      #ifdef DEBUG_TO
-        io_printf (IO_BUF, "(fd:%u bd:%u)\n", if_done, ib_done);
-      #endif
-
+#ifdef DEBUG_TO
+      io_printf (IO_BUF, "(fd:%u bd:%u)\n", if_done, ib_done);
+#endif
       break;
   }
 
   // report diagnostics
-  #ifdef DEBUG
-    io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-    io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-    io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
-    io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
-    io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-    io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
-    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
-    if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-    if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-    if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
-  #endif
+#ifdef DEBUG
+  io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
+  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
+  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
+  io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
+  io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+  io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+  io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
+  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+#endif
 }
 // ------------------------------------------------------------------------
 

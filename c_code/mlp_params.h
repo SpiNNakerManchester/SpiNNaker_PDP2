@@ -218,6 +218,7 @@
 #define SPINN_QUEUE_FULL       2
 #define SPINN_TIMEOUT_EXIT     3
 #define SPINN_UNXPD_PKT        4
+#define SPINN_CFG_UNAVAIL      5
 // ------------------------------------------------------------------------
 
 #endif

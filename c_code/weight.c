@@ -3,6 +3,7 @@
 
 // graph-front-end
 #include <data_specification.h>
+#include <simulation.h>
 
 // mlp
 #include "mlp_params.h"
@@ -18,7 +19,6 @@
 // ------------------------------------------------------------------------
 // global "constants"
 // ------------------------------------------------------------------------
-
 // list of procedures for updating of weights. The order is relevant, as
 // the indexes are specified in mlp_params.h
 weight_update_t const
@@ -26,6 +26,14 @@ weight_update_t const
   {
     steepest_update_weights, momentum_update_weights, dougsmomentum_update_weights
   };
+// ------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------
+// simulation control variables
+// ------------------------------------------------------------------------
+static uint simulation_ticks = 0;
+static uint infinite_run = 0;
+static uint time = 0;
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -144,10 +152,18 @@ uint init ()
   // read the data specification header
   address_t data_address = data_specification_get_data_address ();
   if (!data_specification_read_header (data_address)) {
-	  rt_error (RTE_SWERR);
+	  return (SPINN_CFG_UNAVAIL);
   }
 
-  // get addresses of all SDRAM regions
+  // set up the simulation interface (system region)
+  uint timer_period;
+  if (!simulation_initialise(
+          data_specification_get_region(SYSTEM, data_address),
+          APPLICATION_NAME_HASH, &timer_period, &simulation_ticks,
+          &infinite_run, &time, 2, 2)) {
+      return (SPINN_CFG_UNAVAIL);
+  }
+
   // network configuration address
   address_t nt = data_specification_get_region (NETWORK, data_address);
 
@@ -172,20 +188,20 @@ uint init ()
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data_address);
 
-  #ifdef DEBUG_CFG0
-    io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
-    io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
-    io_printf (IO_BUF, "rb: %d\n", wcfg.row_blk);
-    io_printf (IO_BUF, "cb: %d\n", wcfg.col_blk);
-    io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
-    io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
-    io_printf (IO_BUF, "mm: %k\n", wcfg.momentum);
-    io_printf (IO_BUF, "uf: %d\n", wcfg.update_function);
-    io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
-    io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-    io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
-    io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
-  #endif
+#ifdef DEBUG_CFG0
+  io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
+  io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
+  io_printf (IO_BUF, "rb: %d\n", wcfg.row_blk);
+  io_printf (IO_BUF, "cb: %d\n", wcfg.col_blk);
+  io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
+  io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
+  io_printf (IO_BUF, "mm: %k\n", wcfg.momentum);
+  io_printf (IO_BUF, "uf: %d\n", wcfg.update_function);
+  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
+  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
+  io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
+  io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
+#endif
 
   // initialise epoch, example and event counters
   //TODO: alternative algorithms for choosing example order!
@@ -218,7 +234,11 @@ void done (uint ec)
   {
     case SPINN_NO_ERROR:
       io_printf (IO_BUF, "simulation OK\n");
+      break;
 
+    case SPINN_CFG_UNAVAIL:
+      io_printf (IO_BUF, "core configuration failed\n");
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_QUEUE_FULL:
@@ -240,38 +260,35 @@ void done (uint ec)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                  epoch, example, phase, tick
                 );
-
-      #ifdef DEBUG_TO
-        io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-        io_printf (IO_BUF, "(fptd:%u)\n", wf_thrds_pend);
-
-        io_printf (IO_BUF, "(fa:%u ba:%u)\n",
-                   wf_arrived, wb_arrived
-                  );
-      #endif
-
+#ifdef DEBUG_TO
+      io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
+      io_printf (IO_BUF, "(fptd:%u)\n", wf_thrds_pend);
+      io_printf (IO_BUF, "(fa:%u ba:%u)\n",
+                 wf_arrived, wb_arrived
+                );
+#endif
       break;
   }
 
   // report diagnostics
-  #ifdef DEBUG
-    io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-    io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-    io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
-    io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
-    io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-    io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);
-    io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
-    io_printf (IO_BUF, "ldsa sent:%d\n", lda_sent);
-    io_printf (IO_BUF, "ldsr recv:%d\n", ldr_recv);
-    io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
-    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
-    if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-    if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-    if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
-    io_printf (IO_BUF, "------\n");
-    io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
-  #endif
+#ifdef DEBUG
+  io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
+  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
+  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
+  io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
+  io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+  io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);
+  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
+  io_printf (IO_BUF, "ldsa sent:%d\n", lda_sent);
+  io_printf (IO_BUF, "ldsr recv:%d\n", ldr_recv);
+  io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+  io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
+  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+  io_printf (IO_BUF, "------\n");
+  io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
+#endif
 }
 // ------------------------------------------------------------------------
 
