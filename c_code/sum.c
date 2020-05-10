@@ -346,7 +346,8 @@ void c_main ()
   #endif
 
   // start execution and get exit code,
-  exit_code = spin1_start (SYNC_WAIT);
+//  exit_code = spin1_start (SYNC_WAIT);
+    simulation_run();
 
   #ifdef PROFILE
     uint final_time = tc[T2_COUNT];
