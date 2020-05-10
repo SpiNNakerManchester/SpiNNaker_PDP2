@@ -45,7 +45,7 @@ class ThresholdVertex(
             constraints = None
 
         super(ThresholdVertex, self).__init__(
-            label = "t{} core".format (group.id),
+            label = "t_core{}".format (group.id),
             binary_name = "threshold.aplx",
             constraints = constraints)
 

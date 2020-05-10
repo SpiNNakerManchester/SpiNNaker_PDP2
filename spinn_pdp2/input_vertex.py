@@ -37,7 +37,7 @@ class InputVertex(
                  ):
 
         super(InputVertex, self).__init__(
-            label = "i{} core".format (group.id),
+            label = "i_core{}".format (group.id),
             binary_name = "input.aplx",
             constraints = None)
 

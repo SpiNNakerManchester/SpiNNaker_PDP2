@@ -40,7 +40,7 @@ class WeightVertex(
                  ):
 
         super(WeightVertex, self).__init__(
-            label = f"w{group.id}_{from_group.id}_{row_blk}_{col_blk} core",
+            label = f"w_core{group.id}_{from_group.id}_{row_blk}_{col_blk}",
             binary_name = "weight.aplx",
             constraints = None)
 

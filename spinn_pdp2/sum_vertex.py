@@ -37,7 +37,7 @@ class SumVertex(
                  ):
 
         super(SumVertex, self).__init__(
-            label = "s{} core".format (group.id),
+            label = "s_core{}".format (group.id),
             binary_name = "sum.aplx",
             constraints = None)
 
