@@ -877,6 +877,7 @@ void w_advance_example (void)
       // if done then finish
 //      spin1_exit (SPINN_NO_ERROR);
       simulation_exit ();
+      simulation_ready_to_read();
       return;
     }
     else

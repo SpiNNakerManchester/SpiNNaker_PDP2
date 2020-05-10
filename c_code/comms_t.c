@@ -165,6 +165,7 @@ void t_networkStopPacket (void)
   //done
 //  spin1_exit (SPINN_NO_ERROR);
   simulation_exit ();
+  simulation_ready_to_read();
   return;
 }
 // ------------------------------------------------------------------------
