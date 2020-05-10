@@ -875,7 +875,8 @@ void w_advance_example (void)
     if (++epoch >= ncfg.num_epochs)
     {
       // if done then finish
-      spin1_exit (SPINN_NO_ERROR);
+//      spin1_exit (SPINN_NO_ERROR);
+      simulation_exit ();
       return;
     }
     else

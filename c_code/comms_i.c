@@ -62,7 +62,8 @@ void i_receivePacket (uint key, uint payload)
     #endif
 
     //done
-    spin1_exit (SPINN_NO_ERROR);
+//    spin1_exit (SPINN_NO_ERROR);
+    simulation_exit ();
     return;
   }
 

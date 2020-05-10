@@ -479,7 +479,8 @@ void t_advance_example (void)
 #endif
 
         //done
-        spin1_exit (SPINN_NO_ERROR);
+//        spin1_exit (SPINN_NO_ERROR);
+        simulation_exit ();
         return;
       }
     }
@@ -494,8 +495,9 @@ void t_advance_example (void)
       }
 
       // and exit
-      spin1_exit (SPINN_NO_ERROR);
-      return;
+//      spin1_exit (SPINN_NO_ERROR);
+      simulation_exit ();
+     return;
     }
     else
     {
