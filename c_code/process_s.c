@@ -543,11 +543,15 @@ void s_advance_example (void)
     // check if done with epochs
     if (++epoch >= ncfg.num_epochs)
     {
-      // done
-//      spin1_exit (SPINN_NO_ERROR);
-      simulation_exit ();
-      simulation_ready_to_read();
-      return;
+        // stop timer ticks,
+        simulation_exit ();
+
+        // report no error,
+        done(SPINN_NO_ERROR);
+
+        // and let host know that we're ready
+        simulation_ready_to_read();
+        return;
     }
     else
     {

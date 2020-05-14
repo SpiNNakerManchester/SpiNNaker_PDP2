@@ -337,7 +337,7 @@ uint t_init (void)
   }
 
   // and schedule initialization and sending of unit outputs
-  spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
+//-lap  spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
 
   return (SPINN_NO_ERROR);
 }

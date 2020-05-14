@@ -16,14 +16,6 @@
 // main methods for the sum core
 
 // ------------------------------------------------------------------------
-// simulation control variables
-// ------------------------------------------------------------------------
-static uint simulation_ticks = 0;
-static uint infinite_run = 0;
-static uint time = 0;
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
 uint chipID;               // 16-bit (x, y) chip ID
@@ -93,26 +85,26 @@ scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta su
 // DEBUG variables
 // ------------------------------------------------------------------------
 #ifdef DEBUG
-  uint pkt_sent = 0;  // total packets sent
-  uint sent_fwd = 0;  // packets sent in FORWARD phase
-  uint sent_bkp = 0;  // packets sent in BACKPROP phase
-  uint pkt_recv = 0;  // total packets received
-  uint recv_fwd = 0;  // packets received in FORWARD phase
-  uint recv_bkp = 0;  // packets received in BACKPROP phase
-  uint spk_sent = 0;  // sync packets sent
-  uint spk_recv = 0;  // sync packets received
-  uint stp_sent = 0;  // stop packets sent
-  uint stp_recv = 0;  // stop packets received
-  uint stn_recv = 0;  // network_stop packets received
-  uint lda_recv = 0;  // partial link_delta packets received
-  uint ldt_sent = 0;  // total link_delta packets sent
-  uint ldt_recv = 0;  // total link_delta packets received
-  uint ldr_sent = 0;  // link_delta packets sent
-  uint wrng_phs = 0;  // packets received in wrong phase
-  uint wrng_tck = 0;  // FORWARD packets received in wrong tick
-  uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
-  uint wght_ups = 0;  // number of weight updates done
-  uint tot_tick = 0;  // total number of ticks executed
+uint pkt_sent = 0;  // total packets sent
+uint sent_fwd = 0;  // packets sent in FORWARD phase
+uint sent_bkp = 0;  // packets sent in BACKPROP phase
+uint pkt_recv = 0;  // total packets received
+uint recv_fwd = 0;  // packets received in FORWARD phase
+uint recv_bkp = 0;  // packets received in BACKPROP phase
+uint spk_sent = 0;  // sync packets sent
+uint spk_recv = 0;  // sync packets received
+uint stp_sent = 0;  // stop packets sent
+uint stp_recv = 0;  // stop packets received
+uint stn_recv = 0;  // network_stop packets received
+uint lda_recv = 0;  // partial link_delta packets received
+uint ldt_sent = 0;  // total link_delta packets sent
+uint ldt_recv = 0;  // total link_delta packets received
+uint ldr_sent = 0;  // link_delta packets sent
+uint wrng_phs = 0;  // packets received in wrong phase
+uint wrng_tck = 0;  // FORWARD packets received in wrong tick
+uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
+uint wght_ups = 0;  // number of weight updates done
+uint tot_tick = 0;  // total number of ticks executed
 #endif
 // ------------------------------------------------------------------------
 
@@ -131,11 +123,12 @@ uint init ()
   }
 
   // set up the simulation interface (system region)
-  uint timer_period;
+  //NOTE: these variables are not used!
+  uint simulation_ticks, infinite_run, time, timer_period;
   if (!simulation_initialise(
           data_specification_get_region(SYSTEM, data_address),
           APPLICATION_NAME_HASH, &timer_period, &simulation_ticks,
-          &infinite_run, &time, 2, 2)) {
+          &infinite_run, &time, 0, 0)) {
       return (SPINN_CFG_UNAVAIL);
   }
 
@@ -207,28 +200,29 @@ void done (uint ec)
 
     case SPINN_CFG_UNAVAIL:
       io_printf (IO_BUF, "core configuration failed\n");
-      rt_error(RTE_SWERR);
+      io_printf(IO_BUF, "simulation aborted\n");
       break;
 
     case SPINN_QUEUE_FULL:
       io_printf (IO_BUF, "packet queue full\n");
-      rt_error(RTE_SWERR);
+      io_printf(IO_BUF, "simulation aborted\n");
       break;
 
     case SPINN_MEM_UNAVAIL:
       io_printf (IO_BUF, "malloc failed\n");
-      rt_error(RTE_SWERR);
+      io_printf(IO_BUF, "simulation aborted\n");
       break;
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
-      rt_error(RTE_SWERR);
+      io_printf(IO_BUF, "simulation aborted\n");
       break;
 
     case SPINN_TIMEOUT_EXIT:
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                   epoch, example, phase, tick
                 );
+      io_printf(IO_BUF, "simulation aborted\n");
 #ifdef DEBUG_TO
       io_printf (IO_BUF, "(fd:%u bd:%u)\n", sf_done, sb_done);
       for (uint i = 0; i < scfg.num_units; i++)
@@ -265,6 +259,12 @@ void done (uint ec)
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
 #endif
+
+  io_printf (IO_BUF, "stopping simulation\n");
+  io_printf (IO_BUF, "-----------------------\n");
+
+  // and say goodbye
+  io_printf (IO_BUF, "<< mlp\n");
 }
 // ------------------------------------------------------------------------
 
@@ -278,8 +278,14 @@ void timeout (uint ticks, uint null)
   // check if progress has been made
   if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
   {
-    // exit and report timeout
-    spin1_exit (SPINN_TIMEOUT_EXIT);
+      // stop timer ticks,
+      simulation_exit ();
+
+      // report timeout error,
+      done(SPINN_TIMEOUT_EXIT);
+
+      // and let host know that we're ready
+      simulation_ready_to_read();
   }
   else
   {
@@ -310,12 +316,9 @@ void c_main ()
   // check if init completed successfully,
   if (exit_code != SPINN_NO_ERROR)
   {
-
-    // if init failed report results,
-    done (exit_code);
-
-    // and abort simulation
-    return;
+      // if init failed report results and abort simulation
+      done (exit_code);
+      rt_error(RTE_SWERR);
   }
 
   // set timer tick value (in microseconds),
@@ -329,10 +332,10 @@ void c_main ()
   #endif
 
   // register callbacks,
-  // timeout escape -- in case something went wrong!
+  //NOTE: timeout escape -- in case something went wrong!
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
-  // packet received callback depends on core function
+  // packet received callbacks
   spin1_callback_on (MC_PACKET_RECEIVED, s_receivePacket, SPINN_PACKET_P);
   spin1_callback_on (MCPL_PACKET_RECEIVED, s_receivePacket, SPINN_PACKET_P);
 
@@ -345,8 +348,7 @@ void c_main ()
     io_printf (IO_BUF, "start count: %u\n", start_time);
   #endif
 
-  // start execution and get exit code,
-//  exit_code = spin1_start (SYNC_WAIT);
+    // start execution,
     simulation_run();
 
   #ifdef PROFILE

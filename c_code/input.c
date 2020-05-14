@@ -49,14 +49,6 @@ in_proc_init_t const
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
-// simulation control variables
-// ------------------------------------------------------------------------
-static uint simulation_ticks = 0;
-static uint infinite_run = 0;
-static uint time = 0;
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
 uint chipID;               // 16-bit (x, y) chip ID
@@ -164,11 +156,12 @@ uint init ()
   }
 
   // set up the simulation interface (system region)
-  uint timer_period;
+  //NOTE: these variables are not used!
+  uint simulation_ticks, infinite_run, time, timer_period;
   if (!simulation_initialise(
           data_specification_get_region(SYSTEM, data_address),
           APPLICATION_NAME_HASH, &timer_period, &simulation_ticks,
-          &infinite_run, &time, 2, 2)) {
+          &infinite_run, &time, 0, 0)) {
       return (SPINN_CFG_UNAVAIL);
   }
 
@@ -255,28 +248,29 @@ void done (uint ec)
 
     case SPINN_CFG_UNAVAIL:
       io_printf (IO_BUF, "core configuration failed\n");
-      rt_error(RTE_SWERR);
+      io_printf(IO_BUF, "simulation aborted\n");
       break;
 
     case SPINN_QUEUE_FULL:
       io_printf (IO_BUF, "packet queue full\n");
-      rt_error(RTE_SWERR);
+      io_printf(IO_BUF, "simulation aborted\n");
       break;
 
     case SPINN_MEM_UNAVAIL:
       io_printf (IO_BUF, "malloc failed\n");
-      rt_error(RTE_SWERR);
+      io_printf(IO_BUF, "simulation aborted\n");
       break;
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
-      rt_error(RTE_SWERR);
+      io_printf(IO_BUF, "simulation aborted\n");
       break;
 
     case SPINN_TIMEOUT_EXIT:
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                       epoch, example, phase, tick
                     );
+      io_printf(IO_BUF, "simulation aborted\n");
 #ifdef DEBUG_TO
       io_printf (IO_BUF, "(fd:%u bd:%u)\n", if_done, ib_done);
 #endif
@@ -296,6 +290,12 @@ void done (uint ec)
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
 #endif
+
+  io_printf (IO_BUF, "stopping simulation\n");
+  io_printf (IO_BUF, "-----------------------\n");
+
+  // and say goodbye
+  io_printf (IO_BUF, "<< mlp\n");
 }
 // ------------------------------------------------------------------------
 
@@ -309,8 +309,14 @@ void timeout (uint ticks, uint null)
   // check if progress has been made
   if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
   {
-    // exit and report timeout
-    spin1_exit (SPINN_TIMEOUT_EXIT);
+      // stop timer ticks,
+      simulation_exit ();
+
+      // report timeout error,
+      done(SPINN_TIMEOUT_EXIT);
+
+      // and let host know that we're ready
+      simulation_ready_to_read();
   }
   else
   {
@@ -341,12 +347,9 @@ void c_main ()
   // check if init completed successfully,
   if (exit_code != SPINN_NO_ERROR)
   {
-
-    // if init failed report results,
-    done (exit_code);
-
-    // and abort simulation
-    return;
+      // if init failed report results and abort simulation
+      done (exit_code);
+      rt_error(RTE_SWERR);
   }
 
   // set timer tick value (in microseconds),
@@ -360,7 +363,7 @@ void c_main ()
   #endif
 
   // register callbacks,
-  // timeout escape -- in case something went wrong!
+  //NOTE: timeout escape -- in case something went wrong!
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
   // packet received callbacks
@@ -376,8 +379,7 @@ void c_main ()
     io_printf (IO_BUF, "start count: %u\n", start_time);
   #endif
 
-  // start execution and get exit code,
-//  exit_code = spin1_start (SYNC_WAIT);
+    // start execution,
     simulation_run();
 
   #ifdef PROFILE

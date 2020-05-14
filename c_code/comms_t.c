@@ -162,11 +162,14 @@ void t_networkStopPacket (void)
     stn_recv++;
   #endif
 
-  //done
-//  spin1_exit (SPINN_NO_ERROR);
-  simulation_exit ();
-  simulation_ready_to_read();
-  return;
+    // stop timer ticks,
+    simulation_exit ();
+
+    // report no error,
+    done(SPINN_NO_ERROR);
+
+    // and let host know that we're ready
+    simulation_ready_to_read();
 }
 // ------------------------------------------------------------------------
 
@@ -263,8 +266,14 @@ void t_forwardPacket (uint key, uint payload)
 
   if (new_tail == t_net_pkt_q.head)
   {
-    // if queue full exit and report failure
-    spin1_exit (SPINN_QUEUE_FULL);
+      // stop timer ticks,
+      simulation_exit ();
+
+      // report queue full error,
+      done(SPINN_QUEUE_FULL);
+
+      // and let host know that we're ready
+      simulation_ready_to_read();
   }
   else
   {

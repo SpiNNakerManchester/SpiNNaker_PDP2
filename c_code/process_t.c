@@ -460,13 +460,13 @@ void t_advance_example (void)
       network_stop = tf_example_crit;
       if (network_stop)
       {
-        // we have decided to terminate training, so write out final data
+        // we have decided to terminate training so write out final data,
         if (tcfg.write_out)
         {
           send_outputs_to_host (SPINN_HOST_FINAL, 0);
         }
 
-        //broadcast network_stop decision
+        // broadcast network_stop decision,
         while (!spin1_send_mc_packet ((tf_stpn_key | network_stop),
                                    0,
                                    NO_PAYLOAD
@@ -478,9 +478,13 @@ void t_advance_example (void)
 	stn_sent++;
 #endif
 
-        //done
-//        spin1_exit (SPINN_NO_ERROR);
+        // stop timer ticks,
         simulation_exit ();
+
+        // report no error,
+        done(SPINN_NO_ERROR);
+
+        // and let host know that we're ready
         simulation_ready_to_read();
         return;
       }
@@ -492,14 +496,18 @@ void t_advance_example (void)
       // send final output packet to host,
       if (tcfg.write_out)
       {
-	send_outputs_to_host (SPINN_HOST_FINAL, 0);
+        send_outputs_to_host (SPINN_HOST_FINAL, 0);
       }
 
-      // and exit
-//      spin1_exit (SPINN_NO_ERROR);
+      // stop timer ticks,
       simulation_exit ();
+
+      // report no error,
+      done(SPINN_NO_ERROR);
+
+      // and let host know that we're ready
       simulation_ready_to_read();
-     return;
+      return;
     }
     else
     {

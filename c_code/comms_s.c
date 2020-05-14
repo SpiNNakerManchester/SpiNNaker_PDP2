@@ -61,19 +61,29 @@ void s_receivePacket (uint key, uint payload)
       stn_recv++;
     #endif
 
-    //done
-//    spin1_exit (SPINN_NO_ERROR);
-    simulation_exit ();
-    simulation_ready_to_read();
-    return;
+      // stop timer ticks,
+      simulation_exit ();
+
+      // report no error,
+      done(SPINN_NO_ERROR);
+
+      // and let host know that we're ready
+      simulation_ready_to_read();
+      return;
   }
 
   // queue packet - if space available
   uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
   if (new_tail == s_pkt_queue.head)
   {
-    // if queue full exit and report failure
-    spin1_exit (SPINN_QUEUE_FULL);
+      // stop timer ticks,
+      simulation_exit ();
+
+      // report queue full error,
+      done(SPINN_QUEUE_FULL);
+
+      // and let host know that we're ready
+      simulation_ready_to_read();
   }
   else
   {

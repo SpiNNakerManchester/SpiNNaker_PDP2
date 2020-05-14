@@ -29,7 +29,7 @@ This software is based on the SpiNNaker Graph-Front-End (GFE) platform.
 The GFE must be installed to use this software. For further information
 about the GFE see:
 
-http://spinnakermanchester.github.io/graph_front_end/3.0.0/index.html
+http://spinnakermanchester.github.io/graph_front_end/5.0.0/index.html
 
 https://github.com/SpiNNakerManchester/SpiNNakerGraphFrontEnd
 

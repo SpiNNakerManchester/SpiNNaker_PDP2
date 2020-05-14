@@ -657,25 +657,7 @@ class MLPNetwork():
         self.generate_machine_graph ()
 
         # run application based on the machine graph
-        g.run (None)
-
-        # wait for the application to finish
-        print ("running: waiting for application to finish")
-        _txrx = g.transceiver ()
-        _app_id = globals_variables.get_simulator ()._app_id
-#lap        _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
-        _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)
-        while _finished < self._num_vertices:
-            time.sleep (0.5)
-            _error = _txrx.get_core_state_count\
-                     (_app_id, CPUState.RUN_TIME_EXCEPTION)
-            _wdog = _txrx.get_core_state_count (_app_id, CPUState.WATCHDOG)
-            if _error > 0 or _wdog > 0:
-                print (f"application stopped: cores failed ({_error} "
-                       f"RTE, {_wdog} WDOG)")
-                break
-#lap            _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
-            _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)
+        g.run_until_complete ()
 
 
     def end (self):
