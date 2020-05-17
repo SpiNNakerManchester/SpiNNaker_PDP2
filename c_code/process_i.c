@@ -1,6 +1,9 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
+// graph-front-end
+#include <simulation.h>
+
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
@@ -22,6 +25,9 @@ void i_process (uint null0, uint null1)
 #ifdef TRACE
   io_printf (IO_BUF, "i_process\n");
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -137,7 +143,7 @@ void i_forward_packet (uint key, uint payload)
 
       // and advance tick
       //TODO: check if need to schedule or can simply call
-      if_advance_tick (NULL, NULL);
+      if_advance_tick (0, 0);
     }
     else
     {
@@ -217,7 +223,7 @@ void i_backprop_packet (uint key, uint payload)
 
     // and advance tick
     //TODO: check if need to schedule or can simply call
-    ib_advance_tick (NULL, NULL);
+    ib_advance_tick (0, 0);
   }
 }
 // ------------------------------------------------------------------------
@@ -240,6 +246,9 @@ void if_advance_tick (uint null0, uint null1)
 #ifdef DEBUG_TICK
   io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // check if end of event
   if (tick_stop)
@@ -276,6 +285,9 @@ void ib_advance_tick (uint null0, uint null1)
 #ifdef DEBUG_VRB
   io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
@@ -366,7 +378,7 @@ void i_advance_example (void)
     if (++epoch >= ncfg.num_epochs)
     {
         // stop timer ticks,
-        simulation_exit ();
+//lap        simulation_exit ();
 
         // report no error,
         done(SPINN_NO_ERROR);

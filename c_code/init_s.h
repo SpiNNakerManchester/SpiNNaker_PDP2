@@ -2,6 +2,7 @@
 #define __INIT_S_H__
 
 uint s_init (void);
+void done (uint ec);
 
 #endif
  

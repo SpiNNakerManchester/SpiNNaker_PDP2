@@ -2,6 +2,7 @@
 #include "spin1_api.h"
 
 // graph-front-end
+#include "common-typedefs.h"
 #include <data_specification.h>
 #include <simulation.h>
 
@@ -142,44 +143,46 @@ uint init ()
   io_printf (IO_BUF, "weight\n");
 
   // read the data specification header
-  address_t data_address = data_specification_get_data_address ();
-  if (!data_specification_read_header (data_address)) {
+  data_specification_metadata_t * data =
+          data_specification_get_data_address();
+  if (!data_specification_read_header (data))
+  {
 	  return (SPINN_CFG_UNAVAIL);
   }
 
   // set up the simulation interface (system region)
   //NOTE: these variables are not used!
-  uint simulation_ticks, infinite_run, time, timer_period;
-  if (!simulation_initialise(
-          data_specification_get_region(SYSTEM, data_address),
-          APPLICATION_NAME_HASH, &timer_period, &simulation_ticks,
-          &infinite_run, &time, 0, 0)) {
-      return (SPINN_CFG_UNAVAIL);
+  uint32_t n_steps, run_forever, step;
+  if (!simulation_steps_initialise(
+      data_specification_get_region(SYSTEM, data),
+      APPLICATION_NAME_HASH, &n_steps, &run_forever, &step, 0, 0))
+  {
+    return (SPINN_CFG_UNAVAIL);
   }
 
   // network configuration address
-  address_t nt = data_specification_get_region (NETWORK, data_address);
+  address_t nt = data_specification_get_region (NETWORK, data);
 
   // initialise network configuration from SDRAM
   spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
 
   // core configuration address
-  address_t dt = data_specification_get_region (CORE, data_address);
+  address_t dt = data_specification_get_region (CORE, data);
 
   // initialise core-specific configuration from SDRAM
   spin1_memcpy (&wcfg, dt, sizeof (w_conf_t));
 
   // initial connection weights
   wt = (weight_t *) data_specification_get_region
-		  (WEIGHTS, data_address);
+		  (WEIGHTS, data);
 
   // examples
   ex = (struct mlp_example *) data_specification_get_region
-		  (EXAMPLES, data_address);
+		  (EXAMPLES, data);
 
   // routing keys
   rt = (uint *) data_specification_get_region
-		  (ROUTING, data_address);
+		  (ROUTING, data);
 
 #ifdef DEBUG_CFG0
   io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
@@ -218,97 +221,24 @@ uint init ()
 
 
 // ------------------------------------------------------------------------
-// check exit code and print details of the state
-// ------------------------------------------------------------------------
-void done (uint ec)
-{
-  // report problems -- if any
-  switch (ec)
-  {
-    case SPINN_NO_ERROR:
-      io_printf (IO_BUF, "simulation OK\n");
-      break;
-
-    case SPINN_CFG_UNAVAIL:
-      io_printf (IO_BUF, "core configuration failed\n");
-      io_printf(IO_BUF, "simulation aborted\n");
-      break;
-
-    case SPINN_QUEUE_FULL:
-      io_printf (IO_BUF, "packet queue full\n");
-      io_printf(IO_BUF, "simulation aborted\n");
-      break;
-
-    case SPINN_MEM_UNAVAIL:
-      io_printf (IO_BUF, "malloc failed\n");
-      io_printf(IO_BUF, "simulation aborted\n");
-      break;
-
-    case SPINN_UNXPD_PKT:
-      io_printf (IO_BUF, "unexpected packet received - abort!\n");
-      io_printf(IO_BUF, "simulation aborted\n");
-      break;
-
-    case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
-                 epoch, example, phase, tick
-                );
-      io_printf(IO_BUF, "simulation aborted\n");
-#ifdef DEBUG_TO
-      io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-      io_printf (IO_BUF, "(fptd:%u)\n", wf_thrds_pend);
-      io_printf (IO_BUF, "(fa:%u ba:%u)\n",
-                 wf_arrived, wb_arrived
-                );
-#endif
-      break;
-  }
-
-  // report diagnostics
-#ifdef DEBUG
-  io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
-  io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
-  io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);
-  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
-  io_printf (IO_BUF, "ldsa sent:%d\n", lda_sent);
-  io_printf (IO_BUF, "ldsr recv:%d\n", ldr_recv);
-  io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
-  io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
-  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
-  io_printf (IO_BUF, "------\n");
-  io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
-#endif
-
-  io_printf (IO_BUF, "stopping simulation\n");
-  io_printf (IO_BUF, "-----------------------\n");
-
-  // and say goodbye
-  io_printf (IO_BUF, "<< mlp\n");
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
 // timer callback: check that there has been progress in execution.
 // If no progress has been made terminate with SPINN_TIMEOUT_EXIT exit code.
 // ------------------------------------------------------------------------
 void timeout (uint ticks, uint null)
 {
+  (void) ticks;
+  (void) null;
+
   // check if progress has been made
   if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
   {
-      // stop timer ticks,
+    // stop timer ticks,
     simulation_exit();
 
-      // report timeout error,
-      done(SPINN_TIMEOUT_EXIT);
+    // report timeout error,
+    done(SPINN_TIMEOUT_EXIT);
 
-      // and let host know that we're ready
+    // and let host know that we're ready
     simulation_ready_to_read();
   }
   else
@@ -318,6 +248,18 @@ void timeout (uint ticks, uint null)
     to_example = example;
     to_tick    = tick;
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// start callback: get started by sending outputs to host and w cores.
+// ------------------------------------------------------------------------
+void get_started (void)
+{
+  // go,
+  io_printf (IO_BUF, "-----------------------\n");
+  io_printf (IO_BUF, "starting simulation\n");
 }
 // ------------------------------------------------------------------------
 
@@ -346,47 +288,41 @@ void c_main ()
   }
 
   // set timer tick value (in microseconds),
-  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
+//lap  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
 
-  #ifdef PROFILE
-    // configure timer 2 for profiling
-    // enabled, 32 bit, free running, 16x pre-scaler
-    tc[T2_CONTROL] = SPINN_TIMER2_CONF;
-    tc[T2_LOAD] = SPINN_TIMER2_LOAD;
-  #endif
+#ifdef PROFILE
+  // configure timer 2 for profiling
+  // enabled, 32 bit, free running, 16x pre-scaler
+  tc[T2_CONTROL] = SPINN_TIMER2_CONF;
+  tc[T2_LOAD] = SPINN_TIMER2_LOAD;
+#endif
 
   // register callbacks,
   //NOTE: timeout escape -- in case something went wrong!
-  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
+//lap  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
   // packet received callbacks
   spin1_callback_on (MC_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);
   spin1_callback_on (MCPL_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);
 
-  // go,
-  io_printf (IO_BUF, "-----------------------\n");
-  io_printf (IO_BUF, "starting simulation\n");
+#ifdef PROFILE
+  uint start_time = tc[T2_COUNT];
+  io_printf (IO_BUF, "start count: %u\n", start_time);
+#endif
 
-  #ifdef PROFILE
-    uint start_time = tc[T2_COUNT];
-    io_printf (IO_BUF, "start count: %u\n", start_time);
-  #endif
+  // setup simulation,
+  simulation_set_start_function(get_started);
+  simulation_set_uses_timer(FALSE);
 
-    // start execution,
+  // start execution,
   simulation_run();
 
-  #ifdef PROFILE
-    uint final_time = tc[T2_COUNT];
-    io_printf (IO_BUF, "final count: %u\n", final_time);
-    io_printf (IO_BUF, "execution time: %u us\n",
-                  (start_time - final_time) / SPINN_TIMER2_DIV);
-  #endif
-
-  // report results,
-  done (exit_code);
-
-  io_printf (IO_BUF, "stopping simulation\n");
-  io_printf (IO_BUF, "-----------------------\n");
+#ifdef PROFILE
+  uint final_time = tc[T2_COUNT];
+  io_printf (IO_BUF, "final count: %u\n", final_time);
+  io_printf (IO_BUF, "execution time: %u us\n",
+      (start_time - final_time) / SPINN_TIMER2_DIV);
+#endif
 
   // and say goodbye
   io_printf (IO_BUF, "<< mlp\n");

@@ -119,3 +119,66 @@ uint i_init (void)
   return (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// check exit code and print details of the state
+// ------------------------------------------------------------------------
+void done (uint ec)
+{
+  // report problems -- if any
+  switch (ec)
+  {
+    case SPINN_NO_ERROR:
+      io_printf (IO_BUF, "simulation OK\n");
+      break;
+
+    case SPINN_CFG_UNAVAIL:
+      io_printf (IO_BUF, "core configuration failed\n");
+      io_printf(IO_BUF, "simulation aborted\n");
+      break;
+
+    case SPINN_QUEUE_FULL:
+      io_printf (IO_BUF, "packet queue full\n");
+      io_printf(IO_BUF, "simulation aborted\n");
+      break;
+
+    case SPINN_MEM_UNAVAIL:
+      io_printf (IO_BUF, "malloc failed\n");
+      io_printf(IO_BUF, "simulation aborted\n");
+      break;
+
+    case SPINN_UNXPD_PKT:
+      io_printf (IO_BUF, "unexpected packet received - abort!\n");
+      io_printf(IO_BUF, "simulation aborted\n");
+      break;
+
+    case SPINN_TIMEOUT_EXIT:
+      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
+                      epoch, example, phase, tick
+                    );
+      io_printf(IO_BUF, "simulation aborted\n");
+#ifdef DEBUG_TO
+      io_printf (IO_BUF, "(fd:%u bd:%u)\n", if_done, ib_done);
+#endif
+      break;
+  }
+
+  // report diagnostics
+#ifdef DEBUG
+  io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
+  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
+  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
+  io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
+  io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+  io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+  io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
+  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+#endif
+
+  io_printf (IO_BUF, "stopping simulation\n");
+  io_printf (IO_BUF, "-----------------------\n");
+}
+// ------------------------------------------------------------------------

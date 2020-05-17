@@ -1,6 +1,9 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
+// graph-front-end
+#include <simulation.h>
+
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
@@ -22,6 +25,9 @@ void s_process (uint null0, uint null1)
 #ifdef TRACE
   io_printf (IO_BUF, "s_process\n");
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -121,7 +127,7 @@ void s_ldsa_packet (uint payload)
 
       // and advance tick
       //TODO: check if need to schedule or can simply call
-      sb_advance_tick (NULL, NULL);
+      sb_advance_tick (0, 0);
     }
     else
     {
@@ -176,7 +182,7 @@ void s_ldst_packet (uint payload)
 
       // and advance tick
       //TODO: check if need to schedule or can simply call
-      sb_advance_tick (NULL, NULL);
+      sb_advance_tick (0, 0);
     }
     else
     {
@@ -273,7 +279,7 @@ void s_forward_packet (uint key, uint payload)
 
         // and advance tick
         //TODO: check if need to schedule or can simply call
-        sf_advance_tick (NULL, NULL);
+        sf_advance_tick (0, 0);
       }
       else
       {
@@ -398,7 +404,7 @@ void s_backprop_packet (uint key, uint payload)
 
         // and advance tick
         //TODO: check if need to schedule or can simply call
-        sb_advance_tick (NULL, NULL);
+        sb_advance_tick (0, 0);
       }
       else
       {
@@ -432,6 +438,9 @@ void sf_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
 #endif
 
+  (void) null0;
+  (void) null1;
+
   // check if end of event
   if (tick_stop)
   {
@@ -463,6 +472,9 @@ void sb_advance_tick (uint null0, uint null1)
 #ifdef DEBUG_TICK
   io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)
@@ -544,7 +556,7 @@ void s_advance_example (void)
     if (++epoch >= ncfg.num_epochs)
     {
         // stop timer ticks,
-        simulation_exit ();
+//lap        simulation_exit ();
 
         // report no error,
         done(SPINN_NO_ERROR);

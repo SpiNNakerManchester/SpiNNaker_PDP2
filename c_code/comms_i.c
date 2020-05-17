@@ -1,11 +1,15 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
+// graph-front-end
+#include <simulation.h>
+
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_externs.h"
 
+#include "init_i.h"
 #include "comms_i.h"
 #include "process_i.h"
 
@@ -38,11 +42,11 @@ void i_receivePacket (uint key, uint payload)
     // check if all other threads done
     if (if_thrds_pend == 0)
     {
-      // if done initialize semaphore,
+      // if done initialise semaphore,
       if_thrds_pend = 1;
 
       // and advance tick
-      spin1_schedule_callback (if_advance_tick, NULL, NULL, SPINN_I_TICK_P);
+      spin1_schedule_callback (if_advance_tick, 0, 0, SPINN_I_TICK_P);
     }
     else
     {
@@ -62,7 +66,7 @@ void i_receivePacket (uint key, uint payload)
     #endif
 
     // stop timer ticks,
-    simulation_exit ();
+//lap    simulation_exit ();
 
     // report no error,
     done(SPINN_NO_ERROR);
@@ -77,7 +81,7 @@ void i_receivePacket (uint key, uint payload)
   if (new_tail == i_pkt_queue.head)
   {
       // stop timer ticks,
-      simulation_exit ();
+//lap      simulation_exit ();
 
       // report queue full error,
       done(SPINN_QUEUE_FULL);
@@ -96,7 +100,7 @@ void i_receivePacket (uint key, uint payload)
     if (!i_active)
     {
       i_active = TRUE;
-      spin1_schedule_callback (i_process, NULL, NULL, SPINN_I_PROCESS_P);
+      spin1_schedule_callback (i_process, 0, 0, SPINN_I_PROCESS_P);
     }
   }
 }

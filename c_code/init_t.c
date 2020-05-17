@@ -268,7 +268,7 @@ uint t_init (void)
     }
 
     // schedule sending of initial data to host
-    spin1_schedule_callback (send_info_to_host, NULL, NULL, SPINN_T_SEND_OUTS_P);
+//lap    spin1_schedule_callback (send_info_to_host, NULL, NULL, SPINN_T_SEND_OUTS_P);
   }
 
   // initialise packet keys
@@ -340,5 +340,99 @@ uint t_init (void)
 //-lap  spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
 
   return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// check exit code and print details of the state
+// ------------------------------------------------------------------------
+void done (uint ec)
+{
+  // report problems -- if any
+  switch (ec)
+  {
+    case SPINN_NO_ERROR:
+      io_printf (IO_BUF, "simulation OK\n");
+      break;
+
+    case SPINN_CFG_UNAVAIL:
+      io_printf (IO_BUF, "core configuration failed\n");
+      io_printf(IO_BUF, "simulation aborted\n");
+      break;
+
+    case SPINN_QUEUE_FULL:
+      io_printf (IO_BUF, "packet queue full\n");
+      io_printf(IO_BUF, "simulation aborted\n");
+      break;
+
+    case SPINN_MEM_UNAVAIL:
+      io_printf (IO_BUF, "malloc failed\n");
+      io_printf(IO_BUF, "simulation aborted\n");
+      break;
+
+    case SPINN_UNXPD_PKT:
+      io_printf (IO_BUF, "unexpected packet received - abort!\n");
+      io_printf(IO_BUF, "simulation aborted\n");
+      break;
+
+    case SPINN_TIMEOUT_EXIT:
+      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
+                 epoch, example, phase, tick
+                );
+      io_printf(IO_BUF, "simulation aborted\n");
+#ifdef DEBUG_TO
+      io_printf (IO_BUF, "(tactive:%u ta:%u/%u tb:%u/%u)\n",
+                  t_active, tf_arrived, tcfg.num_units,
+                  tb_arrived, tcfg.num_units
+                );
+      io_printf (IO_BUF, "(tsr:%u tsa:%u/%u)\n",
+                  t_sync_rdy, t_sync_arrived, tcfg.fwd_sync_expected
+                );
+      io_printf (IO_BUF, "(tcr:%u)\n",
+                  tf_chain_rdy
+                );
+#endif
+      if (tcfg.write_out)  // make sure the output monitor closes!
+      {
+        send_outputs_to_host (SPINN_HOST_FINAL, tick);
+      }
+      break;
+  }
+
+  // report diagnostics
+  #ifdef DEBUG
+    io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
+    io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
+    io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
+    io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
+    io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+    io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
+    if (tcfg.is_first_output_group)
+    {
+      io_printf (IO_BUF, "chain recv: first\n");
+    }
+    else
+    {
+    io_printf (IO_BUF, "chain recv:%d\n", chn_recv);
+    }
+    if (tcfg.is_last_output_group)
+    {
+      io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
+      io_printf (IO_BUF, "stpn sent:%d\n", stn_sent);
+    }
+    else
+    {
+      io_printf (IO_BUF, "chain sent:%d\n", chn_sent);
+      io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+      io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+    }
+    if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+    if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
+    if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+  #endif
+
+  io_printf (IO_BUF, "stopping simulation\n");
+  io_printf (IO_BUF, "-----------------------\n");
 }
 // ------------------------------------------------------------------------

@@ -15,7 +15,7 @@ from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
 from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
-    import generate_system_data_region
+    import generate_steps_system_data_region
 
 from spinn_utilities.overrides import overrides
 
@@ -253,9 +253,8 @@ class WeightVertex(
             self, spec, placement, machine_graph, routing_info, iptags,
             reverse_iptags, machine_time_step, time_scale_factor):
 
-        # Generate the system data region for simulation .c requirements
-        generate_system_data_region(spec, MLPRegions.SYSTEM.value,
-                                    self, machine_time_step, time_scale_factor)
+        # Generate the system data region for simulation.c requirements
+        generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)
 
         # Reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,

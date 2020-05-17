@@ -657,7 +657,7 @@ class MLPNetwork():
         self.generate_machine_graph ()
 
         # run application based on the machine graph
-        g.run_until_complete ()
+        g.run_until_complete () ##lap
 
 
     def end (self):
