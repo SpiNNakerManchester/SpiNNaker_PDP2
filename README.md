@@ -48,9 +48,9 @@ project 'PDP-squared: Meaningful PDP language models using parallel
 distributed processors', conducted in collaboration with researchers
 from the School of Psychology at The University of Manchester. The project
 was supported by EPSRC (the UK Engineering and Physical Sciences Research
-Council) under grant EP/F03430X/1. Ongoing development is supported by
-the EU ICT Flagship Human Brain Project (FP7-604102). We gratefully
-acknowledge these institutions for their support.
+Council) under grant EP/F03430X/1. Ongoing development has been supported by
+the EU ICT Flagship Human Brain Project under Grants FP7-604102, H2020-720270
+and H2020-785907. We gratefully acknowledge these institutions for their support.
 
 Many people have contributed to the development of MLPs on SpiNNaker,
 amongst them J Moy, LA Plana, SR Welbourne, X Jin, AD Rast, S Davis
