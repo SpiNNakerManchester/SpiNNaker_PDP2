@@ -162,18 +162,12 @@ void t_chainPacket (uint key)
 // ------------------------------------------------------------------------
 void t_networkStopPacket (void)
 {
-  #ifdef DEBUG
-    stn_recv++;
-  #endif
+#ifdef DEBUG
+  stn_recv++;
+#endif
 
-    // stop timer ticks,
-//lap    simulation_exit ();
-
-    // report no error,
-    done(SPINN_NO_ERROR);
-
-    // and let host know that we're ready
-    simulation_ready_to_read();
+  // report no error
+  done(SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
 
@@ -259,25 +253,19 @@ void t_syncPacket (uint ph)
 // ------------------------------------------------------------------------
 void t_forwardPacket (uint key, uint payload)
 {
-  #ifdef DEBUG
-    recv_fwd++;
-    if (phase == SPINN_BACKPROP)
-      wrng_phs++;
-  #endif
+#ifdef DEBUG
+  recv_fwd++;
+  if (phase == SPINN_BACKPROP)
+    wrng_phs++;
+#endif
 
   // check if space in FORWARD packet queue,
   uint new_tail = (t_net_pkt_q.tail + 1) % SPINN_THLD_PQ_LEN;
 
   if (new_tail == t_net_pkt_q.head)
   {
-      // stop timer ticks,
-//lap      simulation_exit ();
-
-      // report queue full error,
-      done(SPINN_QUEUE_FULL);
-
-      // and let host know that we're ready
-      simulation_ready_to_read();
+    // report queue full error
+    done(SPINN_QUEUE_FULL);
   }
   else
   {

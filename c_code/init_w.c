@@ -1,6 +1,9 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
+// graph-front-end
+#include <simulation.h>
+
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
@@ -231,6 +234,9 @@ uint w_init (void)
 // ------------------------------------------------------------------------
 void done (uint ec)
 {
+  // disable timer1 (used for background deadlock check)
+  tc[T1_CONTROL] = 0;
+
   // report problems -- if any
   switch (ec)
   {
@@ -273,8 +279,8 @@ void done (uint ec)
       break;
   }
 
-  // report diagnostics
 #ifdef DEBUG
+  // report diagnostics
   io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
   io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
@@ -293,7 +299,11 @@ void done (uint ec)
   io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
 #endif
 
+  // close log,
   io_printf (IO_BUF, "stopping simulation\n");
   io_printf (IO_BUF, "-----------------------\n");
+
+  // and let host know that we're ready
+  simulation_ready_to_read();
 }
 // ------------------------------------------------------------------------

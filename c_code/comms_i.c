@@ -28,16 +28,16 @@ void i_receivePacket (uint key, uint payload)
   if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
     // stop packet received
-    #ifdef DEBUG
-      stp_recv++;
-    #endif
+#ifdef DEBUG
+    stp_recv++;
+#endif
 
     // STOP decision arrived
     tick_stop = key & SPINN_STPD_MASK;
 
-    #ifdef DEBUG_VRB
-      io_printf (IO_BUF, "sc:%x\n", tick_stop);
-    #endif
+#ifdef DEBUG_VRB
+    io_printf (IO_BUF, "sc:%x\n", tick_stop);
+#endif
 
     // check if all other threads done
     if (if_thrds_pend == 0)
@@ -61,18 +61,12 @@ void i_receivePacket (uint key, uint payload)
   if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
   {
     // network stop packet received
-    #ifdef DEBUG
-      stn_recv++;
-    #endif
+#ifdef DEBUG
+    stn_recv++;
+#endif
 
-    // stop timer ticks,
-//lap    simulation_exit ();
-
-    // report no error,
+    // report no error
     done(SPINN_NO_ERROR);
-
-    // and let host know that we're ready
-    simulation_ready_to_read();
     return;
   }
 
@@ -80,14 +74,8 @@ void i_receivePacket (uint key, uint payload)
   uint new_tail = (i_pkt_queue.tail + 1) % SPINN_INPUT_PQ_LEN;
   if (new_tail == i_pkt_queue.head)
   {
-      // stop timer ticks,
-//lap      simulation_exit ();
-
-      // report queue full error,
-      done(SPINN_QUEUE_FULL);
-
-      // and let host know that we're ready
-      simulation_ready_to_read();
+    // report queue full error
+    done(SPINN_QUEUE_FULL);
   }
   else
   {

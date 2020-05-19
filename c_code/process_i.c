@@ -377,15 +377,9 @@ void i_advance_example (void)
     // check if done with epochs
     if (++epoch >= ncfg.num_epochs)
     {
-        // stop timer ticks,
-//lap        simulation_exit ();
-
-        // report no error,
-        done(SPINN_NO_ERROR);
-
-        // and let host know that we're ready
-        simulation_ready_to_read();
-        return;
+      // report no error
+      done(SPINN_NO_ERROR);
+      return;
     }
     else
     {

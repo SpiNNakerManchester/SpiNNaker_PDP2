@@ -1,6 +1,9 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
+// graph-front-end
+#include <simulation.h>
+
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
@@ -223,25 +226,25 @@ uint t_init (void)
   t_net_pkt_q.head = 0;
   t_net_pkt_q.tail = 0;
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "wo:%d\n", tcfg.write_out);
-  #endif
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "wo:%d\n", tcfg.write_out);
+#endif
 
   // check if writing outputs to host
   if (tcfg.write_out)
   {
-    // initialise SDP message buffer
+    // initialise SDP message buffer,
     // Fill in SDP destination fields
     t_sdp_msg.tag = SPINN_SDP_IPTAG;      // IPTag
     t_sdp_msg.dest_port = PORT_ETH;       // Ethernet
     t_sdp_msg.dest_addr = sv->dbg_addr;   // Root chip
 
-    // Fill in SDP source & flag fields
+    // Fill in SDP source & flag fields,
     t_sdp_msg.flags = SPINN_SDP_FLAGS;
     t_sdp_msg.srce_port = coreID;
     t_sdp_msg.srce_addr = sv->p2p_addr;
 
-    // compute total ticks in first example
+    // compute total ticks in first example -- info to be sent to host,
     //TODO: cannot compute correctly -- variable if completion criteria used
     t_tot_ticks = 0;
     for (uint i = 0; i < num_events; i++)
@@ -262,13 +265,11 @@ uint t_init (void)
       }
     }
 
+    // and limit to the global maximum if required
     if (t_tot_ticks > ncfg.global_max_ticks - 1)
     {
       t_tot_ticks = ncfg.global_max_ticks - 1;
     }
-
-    // schedule sending of initial data to host
-//lap    spin1_schedule_callback (send_info_to_host, NULL, NULL, SPINN_T_SEND_OUTS_P);
   }
 
   // initialise packet keys
@@ -336,9 +337,6 @@ uint t_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // and schedule initialization and sending of unit outputs
-//-lap  spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
-
   return (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
@@ -349,6 +347,9 @@ uint t_init (void)
 // ------------------------------------------------------------------------
 void done (uint ec)
 {
+  // disable timer1 (used for background deadlock check)
+  tc[T1_CONTROL] = 0;
+
   // report problems -- if any
   switch (ec)
   {
@@ -400,39 +401,43 @@ void done (uint ec)
       break;
   }
 
-  // report diagnostics
-  #ifdef DEBUG
-    io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-    io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-    io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
-    io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
-    io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-    io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
-    if (tcfg.is_first_output_group)
-    {
-      io_printf (IO_BUF, "chain recv: first\n");
-    }
-    else
-    {
-    io_printf (IO_BUF, "chain recv:%d\n", chn_recv);
-    }
-    if (tcfg.is_last_output_group)
-    {
-      io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
-      io_printf (IO_BUF, "stpn sent:%d\n", stn_sent);
-    }
-    else
-    {
-      io_printf (IO_BUF, "chain sent:%d\n", chn_sent);
-      io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
-      io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
-    }
-    if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-    if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-    if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
-  #endif
+#ifdef DEBUG
+  // report diagnostics,
+  io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
+  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
+  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
+  io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
+  io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
+  if (tcfg.is_first_output_group)
+  {
+    io_printf (IO_BUF, "chain recv: first\n");
+  }
+  else
+  {
+  io_printf (IO_BUF, "chain recv:%d\n", chn_recv);
+  }
+  if (tcfg.is_last_output_group)
+  {
+    io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
+    io_printf (IO_BUF, "stpn sent:%d\n", stn_sent);
+  }
+  else
+  {
+    io_printf (IO_BUF, "chain sent:%d\n", chn_sent);
+    io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  }
+  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
+  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+#endif
 
+  // close log,
   io_printf (IO_BUF, "stopping simulation\n");
   io_printf (IO_BUF, "-----------------------\n");
+
+  // and let host know that we're ready
+  simulation_ready_to_read();
 }
 // ------------------------------------------------------------------------

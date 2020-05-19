@@ -107,32 +107,32 @@ weight_update_t  wb_update_func;    // weight update function
 activation_t   * w_output_history;  // history array for outputs
 // ------------------------------------------------------------------------
 
+#ifdef DEBUG
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-#ifdef DEBUG
-  uint pkt_sent = 0;  // total packets sent
-  uint sent_fwd = 0;  // packets sent in FORWARD phase
-  uint sent_bkp = 0;  // packets sent in BACKPROP phase
-  uint pkt_recv = 0;  // total packets received
-  uint recv_fwd = 0;  // packets received in FORWARD phase
-  uint recv_bkp = 0;  // packets received in BACKPROP phase
-  uint pkt_fwbk = 0;  // unused packets received in FORWARD phase
-  uint pkt_bwbk = 0;  // unused packets received in BACKPROP phase
-  uint spk_sent = 0;  // sync packets sent
-  uint spk_recv = 0;  // sync packets received
-  uint stp_sent = 0;  // stop packets sent
-  uint stp_recv = 0;  // stop packets received
-  uint stn_recv = 0;  // network_stop packets received
-  uint lda_sent = 0;  // partial link_delta packets sent
-  uint ldr_recv = 0;  // link_delta packets received
-  uint wrng_phs = 0;  // packets received in wrong phase
-  uint wrng_tck = 0;  // FORWARD packets received in wrong tick
-  uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
-  uint wght_ups = 0;  // number of weight updates done
-  uint tot_tick = 0;  // total number of ticks executed
-#endif
+uint pkt_sent = 0;  // total packets sent
+uint sent_fwd = 0;  // packets sent in FORWARD phase
+uint sent_bkp = 0;  // packets sent in BACKPROP phase
+uint pkt_recv = 0;  // total packets received
+uint recv_fwd = 0;  // packets received in FORWARD phase
+uint recv_bkp = 0;  // packets received in BACKPROP phase
+uint pkt_fwbk = 0;  // unused packets received in FORWARD phase
+uint pkt_bwbk = 0;  // unused packets received in BACKPROP phase
+uint spk_sent = 0;  // sync packets sent
+uint spk_recv = 0;  // sync packets received
+uint stp_sent = 0;  // stop packets sent
+uint stp_recv = 0;  // stop packets received
+uint stn_recv = 0;  // network_stop packets received
+uint lda_sent = 0;  // partial link_delta packets sent
+uint ldr_recv = 0;  // link_delta packets received
+uint wrng_phs = 0;  // packets received in wrong phase
+uint wrng_tck = 0;  // FORWARD packets received in wrong tick
+uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
+uint wght_ups = 0;  // number of weight updates done
+uint tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
+#endif
 
 
 // ------------------------------------------------------------------------
@@ -232,14 +232,8 @@ void timeout (uint ticks, uint null)
   // check if progress has been made
   if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
   {
-    // stop timer ticks,
-    simulation_exit();
-
-    // report timeout error,
+    // report timeout error
     done(SPINN_TIMEOUT_EXIT);
-
-    // and let host know that we're ready
-    simulation_ready_to_read();
   }
   else
   {
@@ -257,9 +251,15 @@ void timeout (uint ticks, uint null)
 // ------------------------------------------------------------------------
 void get_started (void)
 {
-  // go,
+  // start log,
   io_printf (IO_BUF, "-----------------------\n");
   io_printf (IO_BUF, "starting simulation\n");
+
+  // and enable deadlock check
+  tc[T1_INT_CLR] = 1;
+  tc[T1_LOAD] = sv->cpu_clk * SPINN_TIMER_TICK_PERIOD;
+  vic[VIC_ENABLE] = (1 << TIMER1_INT);
+  tc[T1_CONTROL] = 0xe2;
 }
 // ------------------------------------------------------------------------
 
@@ -287,9 +287,6 @@ void c_main ()
     rt_error(RTE_SWERR);
   }
 
-  // set timer tick value (in microseconds),
-//lap  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
-
 #ifdef PROFILE
   // configure timer 2 for profiling
   // enabled, 32 bit, free running, 16x pre-scaler
@@ -297,9 +294,8 @@ void c_main ()
   tc[T2_LOAD] = SPINN_TIMER2_LOAD;
 #endif
 
-  // register callbacks,
-  //NOTE: timeout escape -- in case something went wrong!
-//lap  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
+  // timer1 callback (used for background deadlock check)
+  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
   // packet received callbacks
   spin1_callback_on (MC_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);

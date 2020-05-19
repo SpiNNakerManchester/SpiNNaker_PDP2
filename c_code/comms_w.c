@@ -135,14 +135,8 @@ void w_networkStopPacket (void)
     stn_recv++;
   #endif
 
-    // stop timer ticks,
-//lap    simulation_exit ();
-
-    // report no error,
+    // report no error
     done(SPINN_NO_ERROR);
-
-    // and let host know that we're ready
-    simulation_ready_to_read();
 }
 // ------------------------------------------------------------------------
 
@@ -256,14 +250,8 @@ void w_backpropPacket (uint key, uint payload)
 
   if (new_tail == w_delta_pkt_q.head)
   {
-      // stop timer ticks,
-//lap      simulation_exit ();
-
-      // report queue full error,
+      // report queue full error
       done(SPINN_QUEUE_FULL);
-
-      // and let host know that we're ready
-      simulation_ready_to_read();
   }
   else
   {

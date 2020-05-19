@@ -65,14 +65,8 @@ void s_receivePacket (uint key, uint payload)
       stn_recv++;
     #endif
 
-      // stop timer ticks,
-//lap      simulation_exit ();
-
-      // report no error,
+      // report no error
       done(SPINN_NO_ERROR);
-
-      // and let host know that we're ready
-      simulation_ready_to_read();
       return;
   }
 
@@ -80,14 +74,8 @@ void s_receivePacket (uint key, uint payload)
   uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
   if (new_tail == s_pkt_queue.head)
   {
-      // stop timer ticks,
-//lap      simulation_exit ();
-
-      // report queue full error,
+      // report queue full error
       done(SPINN_QUEUE_FULL);
-
-      // and let host know that we're ready
-      simulation_ready_to_read();
   }
   else
   {

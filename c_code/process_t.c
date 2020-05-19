@@ -489,18 +489,12 @@ void t_advance_example (void)
           );
 
 #ifdef DEBUG
-	pkt_sent++;
-	stn_sent++;
+        pkt_sent++;
+        stn_sent++;
 #endif
 
-        // stop timer ticks,
-//lap        simulation_exit ();
-
-        // report no error,
+        // and report no error
         done(SPINN_NO_ERROR);
-
-        // and let host know that we're ready
-        simulation_ready_to_read();
         return;
       }
     }
@@ -514,14 +508,8 @@ void t_advance_example (void)
         send_outputs_to_host (SPINN_HOST_FINAL, 0);
       }
 
-      // stop timer ticks,
-//lap      simulation_exit ();
-
-      // report no error,
+      // and report no error
       done(SPINN_NO_ERROR);
-
-      // and let host know that we're ready
-      simulation_ready_to_read();
       return;
     }
     else
