@@ -253,7 +253,7 @@ uint init ()
   }
 
   // example set
-  es = (struct mlp_set *) data_specification_get_region
+  es = (mlp_set_t *) data_specification_get_region
 		  (EXAMPLE_SET, data);
 
 #ifdef DEBUG_CFG5
@@ -265,7 +265,7 @@ uint init ()
 #endif
 
   // examples
-  ex = (struct mlp_example *) data_specification_get_region
+  ex = (mlp_example_t *) data_specification_get_region
 		  (EXAMPLES, data);
 
 #ifdef DEBUG_CFG5
@@ -279,7 +279,7 @@ uint init ()
 #endif
 
   // events
-  ev = (struct mlp_event *) data_specification_get_region
+  ev = (mlp_event_t *) data_specification_get_region
 		  (EVENTS, data);
 
 #ifdef DEBUG_CFG5

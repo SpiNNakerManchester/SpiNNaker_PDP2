@@ -177,7 +177,7 @@ uint init ()
 		  (WEIGHTS, data);
 
   // examples
-  ex = (struct mlp_example *) data_specification_get_region
+  ex = (mlp_example_t *) data_specification_get_region
 		  (EXAMPLES, data);
 
   // routing keys

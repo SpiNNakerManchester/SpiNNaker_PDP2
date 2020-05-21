@@ -1,9 +1,6 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
-// graph-front-end
-#include <simulation.h>
-
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
