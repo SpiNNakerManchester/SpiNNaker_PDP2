@@ -42,6 +42,11 @@ tasks across SpiNNaker cores and sets up the communications network
 to support inter-core communication. This code is also responsible for
 the downloading of data to SpiNNaker and the collection of results.
 
+License
+-------
+
+This code is open source software released under GNU General Public License v3.0. 
+
 Acknowledgments
 ---------------
 
