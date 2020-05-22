@@ -36,6 +36,7 @@ class MLPNetwork():
         """
         # assign network parameter values from arguments
         self._net_type           = net_type.value
+        self._intervals          = intervals
         self._ticks_per_interval = ticks_per_interval
 
         # default network parameter values
@@ -68,12 +69,18 @@ class MLPNetwork():
 
         # create single-unit Bias group by default
         self._bias_group = self.group (units        = 1,
-                                       group_type   = MLPGroupTypes.BIAS,
+                                       group_type   = [MLPGroupTypes.BIAS],
                                        label        = "Bias"
                                        )
 
         # keep track of the number of vertices in the graph
         self._num_vertices = 0
+
+        # keep track of the number of partitions
+        self.partitions = 0
+
+        # keep track if errors have occured
+        self._aborted = False
 
 
     @property
@@ -150,7 +157,7 @@ class MLPNetwork():
 
     def group (self,
                units        = None,
-               group_type   = MLPGroupTypes.HIDDEN,
+               group_type   = [MLPGroupTypes.HIDDEN],
                input_funcs  = None,
                output_funcs = None,
                label        = None
@@ -158,7 +165,7 @@ class MLPNetwork():
         """ add a group to the network
 
         :param units: number of units that form the group
-        :param group_type: Lens-style group type
+        :param group_type: list of Lens-style group types
         :param input_funcs: functions applied in the input pipeline
         :param output_funcs: functions appllied in the output pipeline
         :param label: human-readable group identifier
@@ -174,7 +181,7 @@ class MLPNetwork():
         _id = len (self.groups)
 
         # set properties for OUTPUT group
-        if (group_type == MLPGroupTypes.OUTPUT):
+        if (MLPGroupTypes.OUTPUT in group_type):
             _write_blk = len (self.output_chain)
             if len (self.output_chain):
                 _is_first_out = 0
@@ -204,17 +211,17 @@ class MLPNetwork():
                 )
 
         # if it's an INPUT group add to list
-        if (group_type == MLPGroupTypes.INPUT):
+        if (MLPGroupTypes.INPUT in group_type):
             self.in_grps.append (_group)
 
         # if it's an OUTPUT group add to list and to the tail of the chain
-        if (group_type == MLPGroupTypes.OUTPUT):
+        if (MLPGroupTypes.OUTPUT in group_type):
             self.out_grps.append (_group)
             self.output_chain.append (_group)
 
         # OUTPUT and HIDDEN groups instantiate BIAS links by default
-        if (group_type == MLPGroupTypes.OUTPUT or\
-            group_type == MLPGroupTypes.HIDDEN):
+        if (MLPGroupTypes.OUTPUT in group_type or\
+            MLPGroupTypes.HIDDEN in group_type):
             self.link (self.bias_group, _group)
 
         # a new group forces reloading of initial weights file
@@ -285,7 +292,9 @@ class MLPNetwork():
         self.label = label
 
         # instantiate a new example set
-        _set = MLPExampleSet (label = label)
+        _set = MLPExampleSet (label = label,
+                              max_time = self._intervals
+                             )
 
         # add example set to the network list
         self._ex_set = _set
@@ -396,7 +405,7 @@ class MLPNetwork():
 
         # check that the file contains the right number of weights
         if int (_wf.readline ()) != _num_wts:
-            print "error: incorrect number of weights in file"
+            print "error: incorrect number of weights in file; expected {}".format (_num_wts)
             _wf.close ()
             return False
 
@@ -442,16 +451,23 @@ class MLPNetwork():
         # set the number of write blocks before generating vertices
         self._num_write_blks = len (self.output_chain)
 
+        # compute number of partitions
+        for grp in self.groups:
+            self.partitions = self.partitions + grp.partitions
+
         # create associated weight, sum, input and threshold
         # machine vertices for every network group
         for grp in self.groups:
-            # create one weight core per (from_group, group) pair
+            # create one weight core per partition
+            # of every (from_group, group) pair
             # NOTE: all-zero cores can be optimised out
             for from_grp in self.groups:
-                wv = WeightVertex (self, grp, from_grp)
-                grp.w_vertices.append (wv)
-                g.add_machine_vertex_instance (wv)
-                self._num_vertices += 1
+                for _tp in range (grp.partitions):
+                    for _fp in range (from_grp.partitions):
+                        wv = WeightVertex (self, grp, from_grp, _tp, _fp)
+                        grp.w_vertices.append (wv)
+                        g.add_machine_vertex_instance (wv)
+                        self._num_vertices += 1
 
             # create one sum core per group
             sv = SumVertex (self, grp)
@@ -465,7 +481,7 @@ class MLPNetwork():
             g.add_machine_vertex_instance (iv)
             self._num_vertices += 1
 
-            # create one sum core per group
+            # create one threshold core per group
             tv = ThresholdVertex (self, grp)
             grp.t_vertex = tv
             g.add_machine_vertex_instance (tv)
@@ -597,6 +613,7 @@ class MLPNetwork():
         # cannot run unless weights file exists
         if self._weights_file is None:
             print "run aborted: weights file not given"
+            self._aborted = True
             return
 
         # may need to reload initial weights file if
@@ -604,22 +621,35 @@ class MLPNetwork():
         if not self._weights_loaded:
             if not self.read_Lens_weights_file (self._weights_file):
                 print "run aborted: error reading weights file"
+                self._aborted = True
+                return
 
         # cannot run unless example set exists
         if self._ex_set is None:
             print "run aborted: no example set"
+            self._aborted = True
             return
 
         # cannot run unless examples have been loaded
         if not self._ex_set.examples_loaded:
             print "run aborted: examples not loaded"
+            self._aborted = True
             return
 
         # generate summary set, example and event data
         self._num_examples = self._ex_set.compile (self)
         if self._num_examples == 0:
             print "run aborted: error compiling example set"
+            self._aborted = True
             return
+
+        # check that no group is too big
+        for grp in self.groups:
+            if grp.units > MLPConstants.MAX_GRP_UNITS:
+                print "run aborted: group {} has more than {} units.".\
+                    format (grp.id, MLPConstants.MAX_GRP_UNITS)
+                self._aborted = True
+                return
 
         # generate machine graph
         self.generate_machine_graph ()
@@ -631,8 +661,8 @@ class MLPNetwork():
         print "running: waiting for application to finish"
         _txrx = g.transceiver ()
         _app_id = globals_variables.get_simulator ()._app_id
-#lap        _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)  
-        _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)  
+#lap        _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
+        _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)
         while _finished < self._num_vertices:
             time.sleep (0.5)
             _error = _txrx.get_core_state_count\
@@ -643,15 +673,16 @@ class MLPNetwork():
                      RTE, {} WDOG)".format (_error, _wdog)
                 break
 #lap            _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
-            _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)  
+            _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)
 
 
     def end (self):
         """ clean up before exiting
         """
-        # pause to allow debugging
-        raw_input ('paused: press enter to exit')
+        if not self._aborted:
+            # pause to allow debugging
+            raw_input ('paused: press enter to exit')
 
-        print "exit: application finished"
-        # let the gfe clean up
-        g.stop()
+            print "exit: application finished"
+            # let the gfe clean up
+            g.stop()

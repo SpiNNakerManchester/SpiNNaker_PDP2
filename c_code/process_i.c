@@ -19,9 +19,9 @@
 // ------------------------------------------------------------------------
 void i_process (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "i_process\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "i_process\n");
+#endif
 
   // process packet queue
   // access queue with interrupts disabled
@@ -33,7 +33,7 @@ void i_process (uint null0, uint null1)
     // if not empty dequeue packet,
     uint key = i_pkt_queue.queue[i_pkt_queue.head].key;
     uint payload = i_pkt_queue.queue[i_pkt_queue.head].payload;
-    i_pkt_queue.head = (i_pkt_queue.head + 1) % SPINN_SUM_PQ_LEN;
+    i_pkt_queue.head = (i_pkt_queue.head + 1) % SPINN_INPUT_PQ_LEN;
 
     // restore interrupts after queue access,
     spin1_mode_restore (cpsr);
@@ -43,23 +43,11 @@ void i_process (uint null0, uint null1)
     if (ph == SPINN_FORWARD)
     {
       // process FORWARD phase packet
-      #ifdef DEBUG
-        recv_fwd++;
-        if (phase != SPINN_FORWARD)
-          wrng_phs++;
-      #endif
-
       i_forward_packet (key, payload);
     }
     else
     {
       // process BACKPROP phase packet
-      #ifdef DEBUG
-        recv_bkp++;
-        if (phase != SPINN_BACKPROP)
-          wrng_phs++;
-      #endif
-
       i_backprop_packet (key, payload);
     }
 
@@ -81,6 +69,12 @@ void i_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void i_forward_packet (uint key, uint payload)
 {
+#ifdef DEBUG
+  recv_fwd++;
+  if (phase != SPINN_FORWARD)
+    wrng_phs++;
+#endif
+
   // get net index: mask out block, phase and colour data,
   uint inx = key & SPINN_NET_MASK;
 
@@ -108,17 +102,17 @@ void i_forward_packet (uint key, uint payload)
     net_tmp = (net_t) i_nets[inx];
   }
 
+#ifdef DEBUG_CFG3
+  io_printf (IO_BUF, "in[%u]: 0x%08x\n", inx, net_tmp);
+#endif
+
   // incorporate net index to the packet key and send,
   while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
-    #ifdef DEBUG_CFG3
-      io_printf (IO_BUF, "in[%u]: 0x%08x\n", inx, net_tmp);
-    #endif
-
-  #ifdef DEBUG
-    pkt_sent++;
-    sent_fwd++;
-  #endif
+#ifdef DEBUG
+  pkt_sent++;
+  sent_fwd++;
+#endif
 
   // mark net as done,
   if_done++;
@@ -126,14 +120,17 @@ void i_forward_packet (uint key, uint payload)
   // and check if all nets done
   if (if_done == icfg.num_units)
   {
+    // prepare for next tick,
+    if_done = 0;
+
     // access synchronization semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-    // check if all threads done
-    if (if_thrds_done == 0)
+    // check if all other threads done
+    if (if_thrds_pend == 0)
     {
       // if done initialize semaphore,
-      if_thrds_done = 1;
+      if_thrds_pend = 1;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
@@ -145,7 +142,7 @@ void i_forward_packet (uint key, uint payload)
     else
     {
       // if not done report processing thread done,
-      if_thrds_done -= 1;
+      if_thrds_pend -= 1;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -160,6 +157,12 @@ void i_forward_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void i_backprop_packet (uint key, uint payload)
 {
+#ifdef DEBUG
+  recv_bkp++;
+  if (phase != SPINN_BACKPROP)
+    wrng_phs++;
+#endif
+
   // get delta index: mask out block, phase and colour data,
   uint inx = key & SPINN_DELTA_MASK;
 
@@ -191,17 +194,17 @@ void i_backprop_packet (uint key, uint payload)
     delta = (delta_t) delta_tmp;
   }
 
+#ifdef DEBUG_CFG4
+  io_printf (IO_BUF, "id[%u]: 0x%08x\n", inx, delta);
+#endif
+
   // incorporate delta index to the packet key and send,
   while (!spin1_send_mc_packet ((bkpKey | inx), delta, WITH_PAYLOAD));
 
-    #ifdef DEBUG_CFG4
-      io_printf (IO_BUF, "id[%u]: 0x%08x\n", inx, delta);
-    #endif
-
-  #ifdef DEBUG
-    pkt_sent++;
-    sent_bkp++;
-  #endif
+#ifdef DEBUG
+  pkt_sent++;
+  sent_bkp++;
+#endif
 
   // mark delta as done,
   ib_done++;
@@ -209,7 +212,10 @@ void i_backprop_packet (uint key, uint payload)
   // and check if all deltas done
   if (ib_done == icfg.num_units)
   {
-    // advance tick
+    // prepare for next tick,
+    ib_done = 0;
+
+    // and advance tick
     //TODO: check if need to schedule or can simply call
     ib_advance_tick (NULL, NULL);
   }
@@ -223,18 +229,19 @@ void i_backprop_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void if_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "if_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "if_advance_tick\n");
+#endif
 
-  // prepare for next tick,
-  if_done = 0;
+#ifdef DEBUG
+  tot_tick++;
+#endif
 
-  #ifdef DEBUG
-    tot_tick++;
-  #endif
+#ifdef DEBUG_TICK
+  io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
+#endif
 
-  // and check if end of example's FORWARD phase
+  // check if end of event
   if (tick_stop)
   {
     if_advance_event ();
@@ -243,10 +250,6 @@ void if_advance_tick (uint null0, uint null1)
   {
     // if not done increment tick
     tick++;
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -258,30 +261,31 @@ void if_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void ib_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "ib_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "ib_advance_tick\n");
+#endif
 
-  // prepare for next tick,
-  ib_done = 0;
+#ifdef DEBUG
+  tot_tick++;
+#endif
 
-  #ifdef DEBUG
-    tot_tick++;
-  #endif
+#ifdef DEBUG_TICK
+  io_printf (IO_BUF, "ib_tick: %d/%d\n", tick, tot_tick);
+#endif
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
-  #endif
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
+#endif
 
-  // and check if end of BACKPROP phase
+  // check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
   {
     // initialize the tick count
     tick = SPINN_I_INIT_TICK;
 
-    #ifdef TRACE
-      io_printf (IO_BUF, "w_switch_to_fw\n");
-    #endif
+#ifdef TRACE
+    io_printf (IO_BUF, "w_switch_to_fw\n");
+#endif
 
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
@@ -293,10 +297,6 @@ void ib_advance_tick (uint null0, uint null1)
   {
     // if not done decrement tick
     tick--;
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "ib_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -307,18 +307,12 @@ void ib_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void if_advance_event (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "if_advance_event\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "if_advance_event\n");
+#endif
 
-  // check if done with ticks
-  if (tick == ncfg.global_max_ticks - 1)
-  {
-    evt = num_events - 1;
-  }
-
-  // check if done with events
-  if (++evt >= num_events)
+  // check if done with example's FORWARD phase
+  if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // and check if in training mode
     if (ncfg.training)
@@ -333,6 +327,7 @@ void if_advance_event (void)
     {
       // if not training, initialize ticks for the next example
       tick = SPINN_I_INIT_TICK;
+
       // then move to next example
       i_advance_example ();
     }
@@ -360,9 +355,9 @@ void if_advance_event (void)
 // ------------------------------------------------------------------------
 void i_advance_example (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "i_advance_example\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "i_advance_example\n");
+#endif
 
   // check if done with examples
   if (++example >= ncfg.num_examples)

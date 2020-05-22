@@ -17,7 +17,7 @@ rand10x40 = MLPNetwork (net_type = MLPNetworkTypes.CONTINUOUS,
 
 # instantiate network groups (layers)
 Input  = rand10x40.group (units = 10,
-                          group_type = MLPGroupTypes.INPUT,
+                          group_type = [MLPGroupTypes.INPUT],
                           label = "Input"
                           )
 Hidden = rand10x40.group (units = 50,
@@ -25,7 +25,7 @@ Hidden = rand10x40.group (units = 50,
                           label = "Hidden"
                           )
 Output = rand10x40.group (units = 10,
-                          group_type = MLPGroupTypes.OUTPUT,
+                          group_type = [MLPGroupTypes.OUTPUT],
                           label = "Output"
                           )
 

@@ -19,9 +19,9 @@
 // ------------------------------------------------------------------------
 void wf_process (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "wf_process\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "wf_process\n");
+#endif
 
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
@@ -49,43 +49,43 @@ void wf_process (uint null0, uint null1)
       // representation in 40.23 within the range (-255; 255) can be reduced to 8.23
       net_part = (net_t) net_part_tmp;
 
+#ifdef DEBUG_CFG3
+    io_printf (IO_BUF, "wn[%u]: 0x%08x\n", j, net_part);
+#endif
+
     // incorporate net index to the packet key and send
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));
 
-    #ifdef DEBUG_CFG3
-      io_printf (IO_BUF, "wn[%u]: 0x%08x\n", j, net_part);
-    #endif
-
-    #ifdef DEBUG
-      pkt_sent++;
-      sent_fwd++;
-    #endif
+#ifdef DEBUG
+    pkt_sent++;
+    sent_fwd++;
+#endif
   }
 
   // access synchronisation semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
-  // and check if all threads done
-  if (wf_thrds_done == 0)
+  // and check if all other threads done
+  if (wf_thrds_pend == 0)
   {
     // if done initialize synchronization semaphore,
-    wf_thrds_done = 2;
+    wf_thrds_pend = 2;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
 
     // and advance tick
     //TODO: check if need to schedule or can simply call
-    #ifdef TRACE_VRB
-      io_printf (IO_BUF, "wfp calling wf_advance_tick\n");
-    #endif
+#ifdef TRACE_VRB
+    io_printf (IO_BUF, "wfp calling wf_advance_tick\n");
+#endif
 
     wf_advance_tick (NULL, NULL);
   }
   else
   {
     // if not done report processing thread done,
-    wf_thrds_done -= 1;
+    wf_thrds_pend -= 1;
 
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
@@ -99,13 +99,13 @@ void wf_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void wb_process (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "wb_process\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "wb_process\n");
+#endif
 
-  #ifdef PROFILE
-    io_printf (IO_STD, "tin:  %u\n", tc[T2_COUNT]);
-  #endif
+#ifdef PROFILE
+  io_printf (IO_STD, "tin:  %u\n", tc[T2_COUNT]);
+#endif
 
   // process delta packet queue
   // access queue with interrupts disabled
@@ -122,8 +122,8 @@ void wb_process (uint null0, uint null1)
     // restore interrupts after queue access,
     spin1_mode_restore (cpsr);
 
-    // get delta index: mask out phase, core and block data,
-    inx &= SPINN_DELTA_MASK;
+    // get delta index: mask out phase and block data,
+    inx &= SPINN_BLKDLT_MASK;
 
     // update scoreboard,
     wb_arrived++;
@@ -190,14 +190,14 @@ void wb_process (uint null0, uint null1)
                 (uint) w_errors[i], WITH_PAYLOAD)
               );
 
-        #ifdef DEBUG_CFG4
-          io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
-        #endif
+#ifdef DEBUG
+	pkt_sent++;
+	sent_bkp++;
+#endif
 
-        #ifdef DEBUG
-          pkt_sent++;
-          sent_bkp++;
-        #endif
+#ifdef DEBUG_CFG4
+	io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
+#endif
 
         // and initialize error for next tick
         w_errors[i] = 0;
@@ -217,19 +217,23 @@ void wb_process (uint null0, uint null1)
       while (!spin1_send_mc_packet (ldsaKey,
                 (uint) link_delta_sum_short, WITH_PAYLOAD)
             );
+#ifdef DEBUG
+      pkt_sent++;
+      lda_sent++;
+#endif
     }
 
     // if done with all deltas advance tick
     if (wb_arrived == wcfg.num_cols)
     {
       // initialize arrival scoreboard for next tick,
-      wb_arrived = 0;  
+      wb_arrived = 0;
 
       // access synchronization semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-      // and check if all threads done
-      if (wb_thrds_done == 0)
+      // and check if all other threads done
+      if (wb_thrds_pend == 0)
       {
         // if done initialize synchronization semaphore,
         // if we are using Doug's Momentum, and we have reached the end of the
@@ -240,19 +244,19 @@ void wb_process (uint null0, uint null1)
             && example == (ncfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK + 1)
         {
-          wb_thrds_done = 1;
+          wb_thrds_pend = 1;
         }
         else
         {
-          wb_thrds_done = 0;
+          wb_thrds_pend = 0;
         }
 
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
 
-        #ifdef TRACE_VRB
-          io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
-        #endif
+#ifdef TRACE_VRB
+	io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
+#endif
 
         //TODO: check if need to schedule or can simply call
         wb_advance_tick (NULL, NULL);
@@ -260,7 +264,7 @@ void wb_process (uint null0, uint null1)
       else
       {
         // if not done report processing thread done,
-        wb_thrds_done -= 1;
+        wb_thrds_pend -= 1;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
@@ -277,9 +281,9 @@ void wb_process (uint null0, uint null1)
   // restore interrupts and leave
   spin1_mode_restore (cpsr);
 
-  #ifdef PROFILE
-    io_printf (IO_STD, "tout: %u\n", tc[T2_COUNT]);
-  #endif
+#ifdef PROFILE
+  io_printf (IO_STD, "tout: %u\n", tc[T2_COUNT]);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -292,23 +296,22 @@ void wb_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void steepest_update_weights (void)
 {
-  #ifdef DEBUG
-    wght_ups++;
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "steepest_update_weights\n");
+#endif
 
-  #ifdef TRACE
-    io_printf (IO_BUF, "steepest_update_weights\n");
-  #endif
-
+#ifdef DEBUG
+  wght_ups++;
+#endif
 
   // update weights
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      #ifdef DEBUG_VRB
-        weight_t old_weight = w_weights[i][j];
-      #endif
+#ifdef DEBUG_VRB
+      weight_t old_weight = w_weights[i][j];
+#endif
 
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
@@ -386,22 +389,22 @@ void steepest_update_weights (void)
         }
       }
 
-      #ifdef DEBUG_VRB
-        io_printf (IO_BUF,
-                    "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                    i, j,
-                    SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-                    old_weight,
-                    SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-                    w_weights[i][j]
-                  );
-      #endif
+#ifdef DEBUG_VRB
+      io_printf (IO_BUF,
+		 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+		 i, j,
+		 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+		 old_weight,
+		 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+		 w_weights[i][j]
+	);
+#endif
     }
   }
 
-  #if SPINN_WEIGHT_HISTORY == TRUE
-    //TODO: dump weights to SDRAM for record keeping
-  #endif
+#if SPINN_WEIGHT_HISTORY == TRUE
+  //TODO: dump weights to SDRAM for record keeping
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -413,22 +416,22 @@ void steepest_update_weights (void)
 // ------------------------------------------------------------------------
 void momentum_update_weights (void)
 {
-  #ifdef DEBUG
-    wght_ups++;
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "momentum_update_weights\n");
+#endif
 
-  #ifdef TRACE
-    io_printf (IO_BUF, "momentum_update_weights\n");
-  #endif
+#ifdef DEBUG
+  wght_ups++;
+#endif
 
   // update weights
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      #ifdef DEBUG_VRB
-        weight_t old_weight = w_weights[i][j];
-      #endif
+#ifdef DEBUG_VRB
+      weight_t old_weight = w_weights[i][j];
+#endif
 
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
@@ -518,22 +521,22 @@ void momentum_update_weights (void)
         }
       }
 
-      #ifdef DEBUG_VRB
-        io_printf (IO_BUF,
-                    "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                    i, j,
-                    SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-                    old_weight,
-                    SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-                    w_weights[i][j]
-                  );
-      #endif
+#ifdef DEBUG_VRB
+      io_printf (IO_BUF,
+		 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+		 i, j,
+		 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+		 old_weight,
+		 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+		 w_weights[i][j]
+	);
+#endif
     }
   }
 
-  #if SPINN_WEIGHT_HISTORY == TRUE
-    //TODO: dump weights to SDRAM for record keeping
-  #endif
+#if SPINN_WEIGHT_HISTORY == TRUE
+  //TODO: dump weights to SDRAM for record keeping
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -546,13 +549,13 @@ void momentum_update_weights (void)
 // ------------------------------------------------------------------------
 void dougsmomentum_update_weights (void)
 {
-  #ifdef DEBUG
-    wght_ups++;
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "dougsmomentum_update_weights\n");
+#endif
 
-  #ifdef TRACE
-    io_printf (IO_BUF, "dougsmomentum_update_weights\n");
-  #endif
+#ifdef DEBUG
+  wght_ups++;
+#endif
 
   wchange_t scale;
 
@@ -577,9 +580,9 @@ void dougsmomentum_update_weights (void)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      #ifdef DEBUG_VRB
-        weight_t old_weight = w_weights[i][j];
-      #endif
+#ifdef DEBUG_VRB
+      weight_t old_weight = w_weights[i][j];
+#endif
 
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
@@ -669,22 +672,22 @@ void dougsmomentum_update_weights (void)
         }
       }
 
-      #ifdef DEBUG_VRB
-        io_printf (IO_BUF,
-                    "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                    i, j,
-                    SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-                    old_weight,
-                    SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-                    w_weights[i][j]
-                  );
-      #endif
+#ifdef DEBUG_VRB
+      io_printf (IO_BUF,
+		 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+		 i, j,
+		 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+		 old_weight,
+		 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+		 w_weights[i][j]
+	);
+#endif
     }
   }
 
-  #if SPINN_WEIGHT_HISTORY == TRUE
-    //TODO: dump weights to SDRAM for record keeping
-  #endif
+#if SPINN_WEIGHT_HISTORY == TRUE
+  //TODO: dump weights to SDRAM for record keeping
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -695,9 +698,25 @@ void dougsmomentum_update_weights (void)
 // ------------------------------------------------------------------------
 void wf_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "wf_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "wf_advance_tick\n");
+#endif
+
+#ifdef DEBUG
+  //NOTE: tick 0 is not a computation tick
+  if (tick)
+  {
+    tot_tick++;
+  }
+#endif
+
+#ifdef DEBUG_TICK
+  //NOTE: tick 0 is not a computation tick
+  if (tick)
+  {
+    io_printf (IO_BUF, "wf_tick: %d/%d\n", tick, tot_tick);
+  }
+#endif
 
   // change packet key colour,
   fwdKey ^= SPINN_COLOUR_KEY;
@@ -705,7 +724,7 @@ void wf_advance_tick (uint null0, uint null1)
   // update pointer to processing unit outputs,
   wf_procs = 1 - wf_procs;
 
-  // check if end of example's FORWARD phase
+  // and check if end of event
   if (tick_stop)
   {
     wf_advance_event ();
@@ -715,16 +734,8 @@ void wf_advance_tick (uint null0, uint null1)
     // if not increment tick,
     tick++;
 
-    #ifdef DEBUG
-      tot_tick++;
-    #endif
-
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "wf_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -736,17 +747,21 @@ void wf_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void wb_advance_tick (uint null0, uint null1)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "wb_advance_tick\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "wb_advance_tick\n");
+#endif
 
-  #ifdef DEBUG
-     tot_tick++;
-  #endif
+#ifdef DEBUG
+  tot_tick++;
+#endif
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
-  #endif
+#ifdef DEBUG_TICK
+  io_printf (IO_BUF, "wb_tick: %d/%d\n", tick, tot_tick);
+#endif
+
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
+#endif
 
   // change packet key colour,
   bkpKey ^= SPINN_COLOUR_KEY;
@@ -771,10 +786,6 @@ void wb_advance_tick (uint null0, uint null1)
 
     // and restore previous tick outputs
     restore_outputs (tick - 1);
-
-    #ifdef DEBUG
-      io_printf (IO_BUF, "wb_tick: %d/%d\n", tick, tot_tick);
-    #endif
   }
 }
 // ------------------------------------------------------------------------
@@ -785,24 +796,18 @@ void wb_advance_tick (uint null0, uint null1)
 // ------------------------------------------------------------------------
 void wf_advance_event (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "wf_advance_event\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "wf_advance_event\n");
+#endif
 
-  // check if done with ticks
-  if (tick == ncfg.global_max_ticks - 1)
-  {
-    evt = num_events - 1;
-  }
-
-  // check if done with events -- end of example's FORWARD phase
-  if (++evt >= num_events)
+  // check if done with example's FORWARD phase
+  if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
     // initialise synchronisation semaphore,
-    wf_thrds_done = 0;  // no processing and no stop in tick 0
+    wf_thrds_pend = 0;  // no processing and no stop in tick 0
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
@@ -834,10 +839,6 @@ void wf_advance_event (void)
     // if not increment tick,
     tick++;
 
-    #ifdef DEBUG
-      tot_tick++;
-    #endif
-
     // and trigger computation
     spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
   }
@@ -850,9 +851,9 @@ void wf_advance_event (void)
 // ------------------------------------------------------------------------
 void w_advance_example (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "w_advance_example\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "w_advance_example\n");
+#endif
 
   // check if done with examples
   if (++example >= ncfg.num_examples)
@@ -863,11 +864,11 @@ void w_advance_example (void)
       //TODO: should be called or scheduled?
       wb_update_func ();
 
-      #if WEIGHT_HISTORY == TRUE
-        // send weight history to host
-        //TODO: write this function!
-        //send_weights_to_host ();
-      #endif
+#if WEIGHT_HISTORY == TRUE
+      // send weight history to host
+      //TODO: write this function!
+      //send_weights_to_host ();
+#endif
     }
 
     // check if done with epochs
@@ -904,9 +905,10 @@ void w_advance_example (void)
   // and send sync packet to allow unit outputs to be sent
   while (!spin1_send_mc_packet (wf_sync_key, 0, NO_PAYLOAD));
 
-  #ifdef DEBUG
-    spk_sent++;
-  #endif
+#ifdef DEBUG
+  pkt_sent++;
+  spk_sent++;
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -916,9 +918,9 @@ void w_advance_example (void)
 // ------------------------------------------------------------------------
 void w_switch_to_fw (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "w_switch_to_fw\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "w_switch_to_fw\n");
+#endif
 
   // move to new FORWARD phase
   phase = SPINN_FORWARD;
@@ -931,9 +933,9 @@ void w_switch_to_fw (void)
 // ------------------------------------------------------------------------
 void w_switch_to_bp (void)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "w_switch_to_bp\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "w_switch_to_bp\n");
+#endif
 
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
@@ -945,6 +947,7 @@ void w_switch_to_bp (void)
 //#  while (!spin1_send_mc_packet (wb_sync_key, 0, NO_PAYLOAD));
 
 //#  #ifdef DEBUG
+//#    pkt_sent++;
 //#    spk_sent++;
 //#  #endif
 }
@@ -956,9 +959,9 @@ void w_switch_to_bp (void)
 // ------------------------------------------------------------------------
 void restore_outputs (uint tick)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "restore_outputs\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_outputs\n");
+#endif
 
   for (uint inx = 0; inx < wcfg.num_rows; inx++)
   {

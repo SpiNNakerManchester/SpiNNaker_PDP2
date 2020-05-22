@@ -129,7 +129,8 @@ uint t_init (void)
   {
     // get max number of ticks for first event
     if (ev[event_idx].max_time != SPINN_FP_NaN)
-      max_ticks = (((ev[event_idx].max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+      max_ticks = (((ev[event_idx].max_time + SPINN_SMALL_VAL)
+		    * ncfg.ticks_per_int)
                      + (1 << (SPINN_FPREAL_SHIFT - 1)))
                      >> SPINN_FPREAL_SHIFT;
     else
@@ -139,7 +140,8 @@ uint t_init (void)
 
     // get min number of ticks for first event
     if (ev[event_idx].min_time != SPINN_FP_NaN)
-      min_ticks = (((ev[event_idx].min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+      min_ticks = (((ev[event_idx].min_time + SPINN_SMALL_VAL)
+		    * ncfg.ticks_per_int)
                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
                     >> SPINN_FPREAL_SHIFT;
     else
@@ -157,8 +159,8 @@ uint t_init (void)
   tb_arrived = 0;
 
   // initialise synchronisation semaphores
-  tf_thrds_done = 1;
-  tb_thrds_done = 1;
+  tf_thrds_pend = 1;
+  tb_thrds_pend = 1;
 
   // initialise stop function and related flags
   if (tcfg.output_grp)
@@ -172,8 +174,10 @@ uint t_init (void)
     // variables for stop criterion computation
     t_max_output_unit = -1;
     t_max_target_unit = -1;
-    t_max_output = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
-    t_max_target = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
+    t_max_output = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
+					     - SPINN_SHORT_ACTIV_SHIFT);
+    t_max_target = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
+					     - SPINN_SHORT_ACTIV_SHIFT);
 
     // no need to wait for previous value if first in chain
     if (tcfg.is_first_output_group)
@@ -191,7 +195,7 @@ uint t_init (void)
     {
       // "broadcast" key
       tf_stop_key = rt[STP] | SPINN_STOP_KEY;
-      
+
       // "stop final" key
       tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
     }
@@ -213,7 +217,7 @@ uint t_init (void)
   t_sync_arrived = 0;
 
   // initialise sync packets flag
-  t_sync_done = FALSE;
+  t_sync_rdy = FALSE;
 
   // initialise net packet queue
   t_net_pkt_q.head = 0;
@@ -245,7 +249,8 @@ uint t_init (void)
       // update number of ticks for new event
       if (ev[event_idx + i].max_time != SPINN_FP_NaN)
       {
-        t_tot_ticks += (((ev[event_idx + i].max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+        t_tot_ticks += (((ev[event_idx + i].max_time + SPINN_SMALL_VAL)
+			 * ncfg.ticks_per_int)
                          + (1 << (SPINN_FPREAL_SHIFT - 1)))
                          >> SPINN_FPREAL_SHIFT;
       }
@@ -263,7 +268,7 @@ uint t_init (void)
     }
 
     // schedule sending of initial data to host
-    spin1_schedule_callback (send_info_to_host, NULL, NULL, SPINN_T_INIT_OUT_P);
+    spin1_schedule_callback (send_info_to_host, NULL, NULL, SPINN_T_SEND_OUTS_P);
   }
 
   // initialise packet keys
@@ -287,7 +292,8 @@ uint t_init (void)
   // allocate memory in SDRAM for target history
   if ((t_target_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks * sizeof (activation_t),
+                       tcfg.num_units * ncfg.global_max_ticks
+		       * sizeof (activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -298,7 +304,8 @@ uint t_init (void)
   // allocate memory in SDRAM for output derivative history
   if ((t_output_deriv_history = ((long_deriv_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks * sizeof (long_deriv_t),
+                       tcfg.num_units * ncfg.global_max_ticks
+		       * sizeof (long_deriv_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -320,7 +327,8 @@ uint t_init (void)
   // allocate memory in SDRAM for output history
   if ((t_output_history = ((activation_t *)
           sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks * sizeof (activation_t),
+                       tcfg.num_units * ncfg.global_max_ticks
+		       * sizeof (activation_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -328,17 +336,8 @@ uint t_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // schedule initialization and sending of unit outputs
+  // and schedule initialization and sending of unit outputs
   spin1_schedule_callback (t_init_outputs, NULL, NULL, SPINN_T_INIT_OUT_P);
-
-  // and, if required, send outputs to host
-  if (tcfg.write_out)
-  {
-    spin1_schedule_callback (send_outputs_to_host,
-                              SPINN_HOST_NORMAL, 0, SPINN_SEND_OUTS_P
-                            );
-
-  }
 
   return (SPINN_NO_ERROR);
 }

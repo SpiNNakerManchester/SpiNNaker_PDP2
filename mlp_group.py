@@ -9,7 +9,7 @@ class MLPGroup():
     def __init__(self,
                  gid,
                  units        = None,
-                 gtype        = MLPGroupTypes.HIDDEN,
+                 gtype        = [MLPGroupTypes.HIDDEN],
                  input_funcs  = None,
                  output_funcs = None,
                  write_blk    = None,
@@ -25,7 +25,16 @@ class MLPGroup():
         self.is_first_out = is_first_out
         self.label        = label
 
-        print "creating group {}".format (self.label)
+        # number of partitions required for this group
+        self.partitions = (self.units + MLPConstants.MAX_BLK_UNITS - 1)\
+            // MLPConstants.MAX_BLK_UNITS
+
+        if self.partitions == 1:
+            print "creating group {} with 1 partition".\
+                    format (self.label)
+        else:
+            print "creating group {} with {} partitions".\
+                    format (self.label, self.partitions)
 
         # keep track of associated incoming links
         self.links_from = []
@@ -46,8 +55,8 @@ class MLPGroup():
         self.t_vertex   = None
 
         # group function parameters
-        self.output_grp = (self.type == MLPGroupTypes.OUTPUT)
-        self.input_grp  = (self.type == MLPGroupTypes.INPUT)
+        self.output_grp = (MLPGroupTypes.OUTPUT in self.type)
+        self.input_grp  = (MLPGroupTypes.INPUT in self.type)
 
         # weight-related parameters
         self.learning_rate = None
@@ -78,20 +87,22 @@ class MLPGroup():
         self.weak_clamp_strength = MLPConstants.DEF_WEAK_CLMP
 
         if output_funcs is None:
-            # an input integrator removes the default output integrator
-            if (self.in_integr_en == 1):
-                self.out_integr_en = 0
-                self.num_out_procs = MLPConstants.DEF_OUT_PROCS - 1
-                self.out_procs_list = [MLPOutputProcs.OUT_LOGISTIC,\
-                                       MLPOutputProcs.OUT_NONE,\
-                                       MLPOutputProcs.OUT_NONE,\
-                                       MLPOutputProcs.OUT_NONE,\
-                                       MLPOutputProcs.OUT_NONE]
-            else:
+            # output groups have a default output integrator unless there is an input integrator
+            if (MLPGroupTypes.OUTPUT in self.type and self.in_integr_en == 0):
                 self.out_integr_en  = 1
                 self.num_out_procs  = MLPConstants.DEF_OUT_PROCS
                 self.out_procs_list = [MLPOutputProcs.OUT_LOGISTIC,\
                                        MLPOutputProcs.OUT_INTEGR,\
+                                       MLPOutputProcs.OUT_NONE,\
+                                       MLPOutputProcs.OUT_NONE,\
+                                       MLPOutputProcs.OUT_NONE]
+            # an input integrator removes the default output integrator from an output group
+            # other groups have no integrator by default
+            else:
+                self.out_integr_en = 0
+                self.num_out_procs = MLPConstants.DEF_OUT_PROCS - 1
+                self.out_procs_list = [MLPOutputProcs.OUT_LOGISTIC,\
+                                       MLPOutputProcs.OUT_NONE,\
                                        MLPOutputProcs.OUT_NONE,\
                                        MLPOutputProcs.OUT_NONE,\
                                        MLPOutputProcs.OUT_NONE]
@@ -120,24 +131,24 @@ class MLPGroup():
         self.init_output = MLPConstants.DEF_INIT_OUT
 
         # host communication parameters
-        self.write_out = (self.type == MLPGroupTypes.OUTPUT)
+        self.write_out = (MLPGroupTypes.OUTPUT in self.type)
 
         # group type modifies default values
-        if (self.type == MLPGroupTypes.BIAS):
+        if (MLPGroupTypes.BIAS in self.type):
             self.out_integr_en      = 0
             self.num_out_procs      = 1
             self.out_procs_list [0] = MLPOutputProcs.OUT_BIAS
             self.out_procs_list [1] = MLPOutputProcs.OUT_NONE
             self.init_output        = MLPConstants.BIAS_INIT_OUT
 
-        elif (self.type == MLPGroupTypes.INPUT):
-            self.out_integr_en      = 0
-            self.num_out_procs      = 1
-            self.out_procs_list [0] = MLPOutputProcs.OUT_HARD_CLAMP
-            self.out_procs_list [1] = MLPOutputProcs.OUT_NONE
+        else:
+            if (MLPGroupTypes.INPUT in self.type and MLPGroupTypes.OUTPUT not in self.type):
+                self.out_integr_en      = 0
+                self.num_out_procs      = 1
+                self.out_procs_list [0] = MLPOutputProcs.OUT_HARD_CLAMP
+                self.out_procs_list [1] = MLPOutputProcs.OUT_NONE
 
-        elif (self.type == MLPGroupTypes.OUTPUT):
-            self.write_out          = 1
-            self.group_criterion    = MLPConstants.DEF_GRP_CRIT
-            self.criterion_function = MLPStopCriteria.STOP_STD
-            self.error_function     = MLPErrorFuncs.ERR_CROSS_ENTROPY
+            if (MLPGroupTypes.OUTPUT in self.type):
+                self.group_criterion    = MLPConstants.DEF_GRP_CRIT
+                self.criterion_function = MLPStopCriteria.STOP_STD
+                self.error_function     = MLPErrorFuncs.ERR_CROSS_ENTROPY

@@ -9,6 +9,10 @@ use warnings;
 
 use IO::Socket::INET;
 
+use IO::Handle;
+
+STDOUT->autoflush(1);
+
 my $version = '0.99';
 
 my $port = 17896;
@@ -125,9 +129,9 @@ sub print_outputs
 
 sub main_loop
 {
-    my $run = 1;
+    my $finish = 0;
 
-    while ($run != 0)
+    while (1)
     {
 	my $rm = '';
 	vec ($rm, $socket_fd, 1) = 1;
@@ -153,6 +157,11 @@ sub main_loop
 
 #printf "c:%d g:%d t:%d s:%d\n", $cmd, $grp, $a3, scalar(@t);
 
+	if ($cmd == $HOST_FINAL)
+	{
+	    $finish = 1;
+	}
+
 	if ($cmd == $HOST_INFO)
 	{
 	    $num_outs[$sq] = $a1;
@@ -165,75 +174,74 @@ sub main_loop
 		$info_ctr = 0;
 	    }
 
+	    $a1 = 0;
+	    $a2 = 0xffff0000;
+	    $a3 = 0;
 	}
-	else
+
+	my $inx = $cur;
+	if ($tick[$cur] == 0xffffffff)
 	{
-	    my $inx = $cur;
-	    if ($tick[$cur] == 0xffffffff)
+	    if (($a3 != 0) && ($a3 != ($ltick + 1)))
 	    {
-		if (($a3 != 0) && ($a3 != ($ltick + 1)))
-		{
-		    printf "missing tick e:%d r:%d\n", ($ltick + 1), $a3;
-		}
-
-		$epoch[$cur]   = $a1;
-		$example[$cur] = ($a2 & 0x0000ffff);
-		$event[$cur]   = ($a2 >> 16);
-		if ($event[$cur] > 32767) { $event[$cur] = -1; }
-		$tick[$cur]    = $a3;
-	    }
-	    elsif ($tick[$cur] != $a3)
-	    {
-		if (($a3 != 0) && ($a3 != ($tick[$cur] + 1)))
-		{
-		    printf "missing tick e:%d r:%d\n", $tick[$cur] + 1, $a3;
-		}
-
-		$inx = $nxt;
-		if ($tick[$nxt] == 0xffffffff)
-		{
-		    $epoch[$nxt]   = $a1;
-		    $example[$nxt] = ($a2 & 0x0000ffff);
-		    $event[$nxt]   = ($a2 >> 16);
-		    if ($event[$nxt] > 32767) { $event[$nxt] = -1; }
-		    $tick[$nxt]    = $a3;
-		}
-		elsif ($tick[$nxt] != $a3)
-		{
-		    printf "wrong tick e:%d r:%d\n", $tick[$nxt], $a3;
-		}
+		printf "missing tick e:%d r:%d\n", ($ltick + 1), $a3;
 	    }
 
-	    my $bi = $bindex[$inx];
-
-	    $bstart->[$inx][$grp] = $bi;
-
-	    for (my $i = 0; $i < @t/2; $i++)
+	    $epoch[$cur]   = $a1;
+	    $example[$cur] = ($a2 & 0x0000ffff);
+	    $event[$cur]   = ($a2 >> 16);
+	    if ($event[$cur] > 32767) { $event[$cur] = -1; }
+	    $tick[$cur]    = $a3;
+	}
+	elsif ($tick[$cur] != $a3)
+	{
+	    if (($a3 != 0) && ($a3 != ($tick[$cur] + 1)))
 	    {
-		$outputs->[$inx][$bi] = $t[2 * $i];
-		$targets->[$inx][$bi] = $t[(2 * $i) + 1];
-		$bi++;
+		printf "missing tick e:%d r:%d\n", $tick[$cur] + 1, $a3;
 	    }
 
-	    $bindex[$inx] = $bi;
-	    $grp_ctr[$inx]++;
+	    $inx = $nxt;
+	    if ($tick[$nxt] == 0xffffffff)
+	    {
+		$epoch[$nxt]   = $a1;
+		$example[$nxt] = ($a2 & 0x0000ffff);
+		$event[$nxt]   = ($a2 >> 16);
+		if ($event[$nxt] > 32767) { $event[$nxt] = -1; }
+		$tick[$nxt]    = $a3;
+	    }
+	    elsif ($tick[$nxt] != $a3)
+	    {
+		printf "wrong tick e:%d r:%d\n", $tick[$nxt], $a3;
+	    }
+	}
+
+	my $bi = $bindex[$inx];
+
+	$bstart->[$inx][$grp] = $bi;
+
+	for (my $i = 0; $i < @t/2; $i++)
+	{
+	    $outputs->[$inx][$bi] = $t[2 * $i];
+	    $targets->[$inx][$bi] = $t[(2 * $i) + 1];
+	    $bi++;
+	}
+
+	$bindex[$inx] = $bi;
+	$grp_ctr[$inx]++;
 
 #printf "ix:%d gc:%d bi:%d\n", $inx, $grp_ctr[$inx], $bindex[$inx];
 
-	    if ($grp_ctr[$inx] == $num_grps)
-	    {
-		print_outputs ();
+	if ($grp_ctr[$inx] == $num_grps)
+	{
+	    print_outputs ();
 
-		$grp_ctr[$inx] = 0;
-		$ltick = $tick[$inx];
-		$tick[$inx] = 0xffffffff;
-		$nxt = $cur;
-		$cur = 1 - $cur;
-		if ($cmd == $HOST_FINAL)
-		{
-		    $run = 0;
-		}
-	    }
+	    last if $finish;
+
+	    $grp_ctr[$inx] = 0;
+	    $ltick = $tick[$inx];
+	    $tick[$inx] = 0xffffffff;
+	    $nxt = $cur;
+	    $cur = 1 - $cur;
 	}
     }
 }

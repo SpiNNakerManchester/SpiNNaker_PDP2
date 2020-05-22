@@ -37,6 +37,10 @@ uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
 uchar        tick_stop;    // current tick stop decision
 
+uint         to_epoch   = 0;
+uint         to_example = 0;
+uint         to_tick    = 0;
+
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
@@ -65,13 +69,13 @@ lds_t            s_lds_part;        // partial link delta sum
 // (net computation)
 scoreboard_t   * sf_arrived[2];     // keep track of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
-uint             sf_thrds_done;     // sync. semaphore: proc & stop
+uint             sf_thrds_pend;     // sync. semaphore: proc & stop
 
 // BACKPROP phase specific
 // (error computation)
 scoreboard_t   * sb_arrived[2];     // keep track of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
-uint             sb_thrds_done;     // sync. semaphore: proc & stop
+uint             sb_thrds_pend;     // sync. semaphore: proc & stop
 scoreboard_t     s_ldsa_arrived;    // keep track of the number of partial link delta sums
 scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta sum totals
 // ------------------------------------------------------------------------
@@ -91,6 +95,10 @@ scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta su
   uint stp_sent = 0;  // stop packets sent
   uint stp_recv = 0;  // stop packets received
   uint stn_recv = 0;  // network_stop packets received
+  uint lda_recv = 0;  // partial link_delta packets received
+  uint ldt_sent = 0;  // total link_delta packets sent
+  uint ldt_recv = 0;  // total link_delta packets received
+  uint ldr_sent = 0;  // link_delta packets sent
   uint wrng_phs = 0;  // packets received in wrong phase
   uint wrng_tck = 0;  // FORWARD packets received in wrong tick
   uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
@@ -144,7 +152,7 @@ uint init ()
     io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
     io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
     io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-    io_prtinf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
+    io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
   #endif
 
   // initialize epoch, example and event counters
@@ -183,17 +191,17 @@ void done (uint ec)
 
     case SPINN_QUEUE_FULL:
       io_printf (IO_BUF, "packet queue full\n");
-
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_MEM_UNAVAIL:
       io_printf (IO_BUF, "malloc failed\n");
-
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
-
+      rt_error(RTE_SWERR);
       break;
 
     case SPINN_TIMEOUT_EXIT:
@@ -201,13 +209,14 @@ void done (uint ec)
                   epoch, example, phase, tick
                 );
 
-      #ifdef DEBUG_VRB
-        io_printf (IO_BUF, "(fd:%08x bd:%08x)\n", sf_done, sb_done);
+      #ifdef DEBUG_TO
+        io_printf (IO_BUF, "(fd:%u bd:%u)\n", sf_done, sb_done);
 
         for (uint i = 0; i < scfg.num_units; i++)
         {
-          io_printf (IO_BUF, "(fa:%08x ba:%08x)\n",
-                      sf_arrived[i], sb_arrived[i]
+          io_printf (IO_BUF, "%2d: (fa[0]:%u ba[0]:%u fa[1]:%u ba[1]:%u)\n", i,
+                      sf_arrived[0][i], sb_arrived[0][i],
+                      sf_arrived[1][i], sb_arrived[1][i]
                     );
         }
       #endif
@@ -218,30 +227,48 @@ void done (uint ec)
   // report diagnostics
   #ifdef DEBUG
     io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-    io_printf (IO_BUF, "recv:%d fwd:%d bkp:%d\n", pkt_recv, recv_fwd, recv_bkp);
-    io_printf (IO_BUF, "sent:%d fwd:%d bkp:%d\n", pkt_sent, sent_fwd, sent_bkp);
-    io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-    io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-    io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
-    io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
-    io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
+    io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
+    io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
+    io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
+    io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+    io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
+    if (scfg.is_first_group)
+    {
+      io_printf (IO_BUF, "ldst recv:%d\n", ldt_recv);
+      io_printf (IO_BUF, "ldsr sent:%d\n", ldr_sent);
+    }
+    else
+    {
+      io_printf (IO_BUF, "ldst sent:%d\n", ldt_sent);
+    }
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
-    io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
+    io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+    if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+    if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
+    if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
   #endif
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// timer callback: if the execution takes too long it probably deadlocked.
-// Therefore the execution is terminated with SPINN_TIMEOUT_EXIT exit code.
+// timer callback: check that there has been progress in execution.
+// If no progress has been made terminate with SPINN_TIMEOUT_EXIT exit code.
 // ------------------------------------------------------------------------
 void timeout (uint ticks, uint null)
 {
-  if (ticks == ncfg.timeout)
+  // check if progress has been made
+  if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
   {
     // exit and report timeout
     spin1_exit (SPINN_TIMEOUT_EXIT);
+  }
+  else
+  {
+    // update checked variables
+    to_epoch   = epoch;
+    to_example = example;
+    to_tick    = tick;
   }
 }
 // ------------------------------------------------------------------------

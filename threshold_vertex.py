@@ -5,7 +5,11 @@ from data_specification.enums.data_type import DataType
 from pacman.executor.injection_decorator import inject_items
 
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
+
+from pacman.model.constraints.placer_constraints import ChipAndCoreConstraint
+
 from pacman.model.decorators.overrides import overrides
+
 from pacman.model.resources.resource_container import ResourceContainer
 from pacman.model.resources.sdram_resource import SDRAMResource
 from pacman.model.resources.iptag_resource import IPtagResource
@@ -41,6 +45,10 @@ class ThresholdVertex(
         MachineVertex.__init__(self, label =\
                                "t{} core".format (group.id))
 
+        # add placement constraint if OUTPUT group
+        if group.output_grp:
+            self.add_constraint (ChipAndCoreConstraint (x = 0, y = 0))
+
         # application-level data
         self._network = network
         self._group   = group
@@ -49,7 +57,7 @@ class ThresholdVertex(
         self._ev_cfg  = network._ex_set.event_config
 
         # application parameters
-        self._out_integr_dt   = 1.0 / network.ticks_per_int
+        self._out_integr_dt = 1.0 / network.ticks_per_int
 
         # choose appropriate group criterion
         if network.training:
@@ -74,14 +82,15 @@ class ThresholdVertex(
             self._is_last_output_group = 0
 
         # forward, backprop and stop link partition names
-        self._fwd_link = "fwd_s{}".format (self.group.id)
-        self._bkp_link = "bkp_s{}".format (self.group.id)
-        self._stp_link = "stp_s{}".format (self.group.id)
+        self._fwd_link = "fwd_t{}".format (self.group.id)
+        self._bkp_link = "bkp_t{}".format (self.group.id)
+        self._stp_link = "stp_t{}".format (self.group.id)
 
         # threshold core-specific parameters
-        # NOTE: if all-zero w cores are optimised out this need reviewing
-        self._fwd_sync_expect = len (network.groups)
-        self._bkp_sync_expect = len (network.groups)
+        # NOTE: if all-zero w cores are optimised out these need reviewing
+        self._fwd_sync_expect = len (self._group.w_vertices)
+        # NOTE: not used any more, may need reviewing if re-introduced
+        self._bkp_sync_expect = 0
 
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -229,6 +238,7 @@ class ThresholdVertex(
         resources = ResourceContainer (
             sdram  = SDRAMResource (self._sdram_usage),
             iptags = [IPtagResource (ip_address = "localhost",
+                                    tag         = 2,
                                     port        = 17896,
                                     strip_sdp   = False)]
             )
