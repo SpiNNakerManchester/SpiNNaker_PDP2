@@ -10,15 +10,15 @@ from spinnman.model.enums.cpu_state import CPUState
 
 from spinn_front_end_common.utilities import globals_variables
 
-from input_vertex     import InputVertex
-from sum_vertex       import SumVertex
-from threshold_vertex import ThresholdVertex
-from weight_vertex    import WeightVertex
+from spinn_pdp2.input_vertex     import InputVertex
+from spinn_pdp2.sum_vertex       import SumVertex
+from spinn_pdp2.threshold_vertex import ThresholdVertex
+from spinn_pdp2.weight_vertex    import WeightVertex
 
-from mlp_types    import MLPGroupTypes, MLPConstants, MLPUpdateFuncs
-from mlp_group    import MLPGroup
-from mlp_link     import MLPLink
-from mlp_examples import MLPExampleSet
+from spinn_pdp2.mlp_types    import MLPGroupTypes, MLPConstants, MLPUpdateFuncs
+from spinn_pdp2.mlp_group    import MLPGroup
+from spinn_pdp2.mlp_link     import MLPLink
+from spinn_pdp2.mlp_examples import MLPExampleSet
 
 
 class MLPNetwork():
@@ -205,10 +205,7 @@ class MLPNetwork():
         # append new group to network list
         self.groups.append (_group)
 
-        print "adding group {} [total: {}]".format (
-                label,
-                len (self.groups)
-                )
+        print (f"adding group {label} [total: {len(self.groups)}]")
 
         # if it's an INPUT group add to list
         if (MLPGroupTypes.INPUT in group_type):
@@ -268,11 +265,9 @@ class MLPNetwork():
         # add new link to the network list
         self.links.append (_link)
 
-        print "adding link from {} to {} [total: {}]".format (\
-            pre_link_group.label,
-            post_link_group.label,
-            len (self.links)
-            )
+        print (f"adding link from {pre_link_group.label} to "
+               f"{post_link_group.label} [total: {len (self.links)}]"
+               )
 
         # a new link forces reloading of initial weights file
         self._weights_loaded = False
@@ -299,7 +294,7 @@ class MLPNetwork():
         # add example set to the network list
         self._ex_set = _set
 
-        print "adding example set {}".format (label)
+        print (f"adding example set {label}")
 
         return _set
 
@@ -329,27 +324,27 @@ class MLPNetwork():
         :type momentum: float
         """
         if num_updates is not None:
-            print "setting num_epochs to {}".format (num_updates)
+            print (f"setting num_epochs to {num_updates}")
             self._num_epochs = num_updates
 
         if train_group_crit is not None:
-            print "setting train_group_crit to {}".format (train_group_crit)
+            print (f"setting train_group_crit to {train_group_crit}")
             self._train_group_crit = train_group_crit
 
         if test_group_crit is not None:
-            print "setting test_group_crit to {}".format (test_group_crit)
+            print (f"setting test_group_crit to {test_group_crit}")
             self._test_group_crit = test_group_crit
 
         if learning_rate is not None:
-            print "setting learning_rate to {}".format (learning_rate)
+            print (f"setting learning_rate to {learning_rate}")
             self._learning_rate = learning_rate
 
         if weight_decay is not None:
-            print "setting weight_decay to {}".format (weight_decay)
+            print (f"setting weight_decay to {weight_decay}")
             self._weight_decay = weight_decay
 
         if momentum is not None:
-            print "setting momentum to {}".format (momentum)
+            print (f"setting momentum to {momentum}")
             self._momentum = momentum
 
 
@@ -383,11 +378,10 @@ class MLPNetwork():
             self._weights_file = "data/{}".format (weights_file)
         else:
             self._weights_file = None
-            print "error: cannot open weights file: {}".\
-                format (weights_file)
+            print (f"error: cannot open weights file: {weights_file}")
             return False
 
-        print "reading Lens-style weights file"
+        print ("reading Lens-style weights file")
 
         # compute the number of expected weights in the file
         _num_wts = 0
@@ -399,13 +393,15 @@ class MLPNetwork():
         _wf = open (self._weights_file, "r")
 
         if int (_wf.readline ()) != MLPConstants.LENS_WEIGHT_MAGIC_COOKIE:
-            print "error: incorrect weights file type"
+            print ("error: incorrect weights file type")
             _wf.close ()
             return False
 
         # check that the file contains the right number of weights
         if int (_wf.readline ()) != _num_wts:
-            print "error: incorrect number of weights in file; expected {}".format (_num_wts)
+            print ("error: incorrect number of weights "
+                   f"in file; expected {_num_wts}"
+                   )
             _wf.close ()
             return False
 
@@ -443,10 +439,13 @@ class MLPNetwork():
     def generate_machine_graph (self):
         """ generates a machine graph for the application graph
         """
-        print "generating machine graph"
+        print ("generating machine graph")
+
+        # path to binary files
+        binaries_path = os.path.join(os.path.dirname(__file__), "..", "binaries")
 
         # setup the machine graph
-        g.setup ()
+        g.setup (model_binary_folder = binaries_path)
 
         # set the number of write blocks before generating vertices
         self._num_write_blks = len (self.output_chain)
@@ -545,8 +544,8 @@ class MLPNetwork():
             # create link delta summation s to s links - all s cores
             # (except the first) send to the first s core
             if grp != first:
-                print "Creating lds s-s edge from group {} to group {}".\
-                    format (grp.label, first.label)
+                print (f"Creating lds s-s edge from group {grp.label} "
+                       f"to group {first.label}")
                 g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                           first.s_vertex),
                                              grp.s_vertex.lds_link)
@@ -603,6 +602,9 @@ class MLPNetwork():
         """
         self._training = 0
 
+        # not used but a value is needed for the weight config struct anyway
+        self._update_function = MLPUpdateFuncs.UPD_STEEPEST
+
         # run the application
         self.run ()
 
@@ -612,7 +614,7 @@ class MLPNetwork():
         """
         # cannot run unless weights file exists
         if self._weights_file is None:
-            print "run aborted: weights file not given"
+            print ("run aborted: weights file not given")
             self._aborted = True
             return
 
@@ -620,34 +622,34 @@ class MLPNetwork():
         # application graph was modified after load
         if not self._weights_loaded:
             if not self.read_Lens_weights_file (self._weights_file):
-                print "run aborted: error reading weights file"
+                print ("run aborted: error reading weights file")
                 self._aborted = True
                 return
 
         # cannot run unless example set exists
         if self._ex_set is None:
-            print "run aborted: no example set"
+            print ("run aborted: no example set")
             self._aborted = True
             return
 
         # cannot run unless examples have been loaded
         if not self._ex_set.examples_loaded:
-            print "run aborted: examples not loaded"
+            print ("run aborted: examples not loaded")
             self._aborted = True
             return
 
         # generate summary set, example and event data
         self._num_examples = self._ex_set.compile (self)
         if self._num_examples == 0:
-            print "run aborted: error compiling example set"
+            print ("run aborted: error compiling example set")
             self._aborted = True
             return
 
         # check that no group is too big
         for grp in self.groups:
             if grp.units > MLPConstants.MAX_GRP_UNITS:
-                print "run aborted: group {} has more than {} units.".\
-                    format (grp.id, MLPConstants.MAX_GRP_UNITS)
+                print (f"run aborted: group {grp.id} has more than "
+                       f"{MLPConstants.MAX_GRP_UNITS} units.")
                 self._aborted = True
                 return
 
@@ -655,25 +657,7 @@ class MLPNetwork():
         self.generate_machine_graph ()
 
         # run application based on the machine graph
-        g.run (None)
-
-        # wait for the application to finish
-        print "running: waiting for application to finish"
-        _txrx = g.transceiver ()
-        _app_id = globals_variables.get_simulator ()._app_id
-#lap        _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
-        _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)
-        while _finished < self._num_vertices:
-            time.sleep (0.5)
-            _error = _txrx.get_core_state_count\
-                     (_app_id, CPUState.RUN_TIME_EXCEPTION)
-            _wdog = _txrx.get_core_state_count (_app_id, CPUState.WATCHDOG)
-            if _error > 0 or _wdog > 0:
-                print "application stopped: cores failed ({}\
-                     RTE, {} WDOG)".format (_error, _wdog)
-                break
-#lap            _running = _txrx.get_core_state_count (_app_id, CPUState.RUNNING)
-            _finished = _txrx.get_core_state_count (_app_id, CPUState.FINISHED)
+        g.run_until_complete ()
 
 
     def end (self):
@@ -681,8 +665,8 @@ class MLPNetwork():
         """
         if not self._aborted:
             # pause to allow debugging
-            raw_input ('paused: press enter to exit')
+            input ('paused: press enter to exit')
 
-            print "exit: application finished"
+            print ("exit: application finished")
             # let the gfe clean up
             g.stop()

@@ -2,43 +2,44 @@ import struct
 
 from data_specification.enums.data_type import DataType
 
-from pacman.executor.injection_decorator import inject_items
-
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
-from pacman.model.decorators.overrides import overrides
-from pacman.model.resources.resource_container import ResourceContainer
-from pacman.model.resources.sdram_resource import SDRAMResource
+from pacman.model.resources.resource_container \
+    import ResourceContainer, ConstantSDRAM
 
-from spinn_front_end_common.utilities.utility_objs \
-    import ExecutableType
-from spinn_front_end_common.abstract_models.abstract_has_associated_binary \
-    import AbstractHasAssociatedBinary
-from spinn_front_end_common.abstract_models\
-    .abstract_generates_data_specification \
-    import AbstractGeneratesDataSpecification
-from spinn_front_end_common.abstract_models\
-    .abstract_provides_n_keys_for_partition \
+from spinn_front_end_common.abstract_models.abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
+from spinn_front_end_common.abstract_models.impl \
+    import MachineDataSpecableVertex
 
-from mlp_types import MLPRegions, MLPConstants
+from spinn_front_end_common.utilities.constants \
+    import SYSTEM_BYTES_REQUIREMENT
+from spinnaker_graph_front_end.utilities import SimulatorVertex
+from spinnaker_graph_front_end.utilities.data_utils \
+    import generate_steps_system_data_region
+
+from spinn_utilities.overrides import overrides
+
+from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
 
 class SumVertex(
-        MachineVertex,
-        AbstractHasAssociatedBinary,
-        AbstractProvidesNKeysForPartition,
-        AbstractGeneratesDataSpecification):
-    """ A vertex to implement an MLP input core
+        SimulatorVertex,
+        MachineDataSpecableVertex,
+        AbstractProvidesNKeysForPartition):
+
+    """ A vertex to implement an PDP2 sum core
+        that aggregates partial weight/input products
     """
 
     def __init__(self,
                  network,
                  group
                  ):
-        """
-        """
-        MachineVertex.__init__(self, label =\
-                               "s{} core".format (group.id))
+
+        super(SumVertex, self).__init__(
+            label = "s_core{}".format (group.id),
+            binary_name = "sum.aplx",
+            constraints = None)
 
         # application-level data
         self._network = network
@@ -69,12 +70,9 @@ class SumVertex(
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
-        # binary, configuration and data files
-        self._aplx_file = "binaries/sum.aplx"
-
+        # configuration and data files
         # find out the size of an integer!
-        _data_int=DataType.INT32
-        int_size = _data_int.size
+        _data_int = DataType.INT32
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
@@ -89,7 +87,7 @@ class SumVertex(
             len (self._ex_cfg) * len (self._ex_cfg[0])
 
         # keys are integers
-        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * int_size
+        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * _data_int.size
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -143,34 +141,26 @@ class SumVertex(
                             self.update_function.value & 0xff,
                             self._is_first_group & 0xff
                             )
+
     @property
     @overrides (MachineVertex.resources_required)
     def resources_required (self):
-
         resources = ResourceContainer (
-            sdram = SDRAMResource (self._sdram_usage),
+            sdram = ConstantSDRAM(SYSTEM_BYTES_REQUIREMENT + self._sdram_usage)
             )
         return resources
-
-    @overrides (AbstractHasAssociatedBinary.get_binary_file_name)
-    def get_binary_file_name (self):
-        return self._aplx_file
-
-    @overrides (AbstractHasAssociatedBinary.get_binary_start_type)
-    def get_binary_start_type (self):
-        return ExecutableType.SYNC
 
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
         return self._n_keys
 
-    @inject_items ({
-        "routing_info": "MemoryRoutingInfos"})
-    @overrides (
-        AbstractGeneratesDataSpecification.generate_data_specification,
-        additional_arguments=["routing_info"])
-    def generate_data_specification (
-            self, spec, placement, routing_info):
+    @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
+    def generate_machine_data_specification(
+            self, spec, placement, machine_graph, routing_info, iptags,
+            reverse_iptags, machine_time_step, time_scale_factor):
+
+        # Generate the system data region for simulation.c requirements
+        generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)
 
         # Reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,
@@ -180,7 +170,7 @@ class SumVertex(
 
         # write the network configuration into spec
         for c in self._network.config:
-            spec.write_value (ord (c), data_type = DataType.UINT8)
+            spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
         spec.reserve_memory_region (MLPRegions.CORE.value,
@@ -190,7 +180,7 @@ class SumVertex(
 
         # write the core configuration into spec
         for c in self.config:
-            spec.write_value (ord (c), data_type = DataType.UINT8)
+            spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the examples region
         spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
@@ -201,7 +191,7 @@ class SumVertex(
         # write the example configurations into spec
         for ex in self._ex_cfg:
             for c in ex:
-                spec.write_value (ord (c), data_type = DataType.UINT8)
+                spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the routing region
         spec.reserve_memory_region (MLPRegions.ROUTING.value,

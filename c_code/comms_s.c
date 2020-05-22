@@ -6,6 +6,7 @@
 #include "mlp_types.h"
 #include "mlp_externs.h"
 
+#include "init_s.h"
 #include "comms_s.h"
 #include "process_s.h"
 
@@ -42,7 +43,7 @@ void s_receivePacket (uint key, uint payload)
       sf_thrds_pend = 1;
 
       // and advance tick
-      spin1_schedule_callback (sf_advance_tick, NULL, NULL, SPINN_S_TICK_P);
+      spin1_schedule_callback (sf_advance_tick, 0, 0, SPINN_S_TICK_P);
     }
     else
     {
@@ -61,17 +62,17 @@ void s_receivePacket (uint key, uint payload)
       stn_recv++;
     #endif
 
-    //done
-    spin1_exit (SPINN_NO_ERROR);
-    return;
+      // report no error
+      done(SPINN_NO_ERROR);
+      return;
   }
 
   // queue packet - if space available
   uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
   if (new_tail == s_pkt_queue.head)
   {
-    // if queue full exit and report failure
-    spin1_exit (SPINN_QUEUE_FULL);
+      // report queue full error
+      done(SPINN_QUEUE_FULL);
   }
   else
   {
@@ -84,7 +85,7 @@ void s_receivePacket (uint key, uint payload)
     if (!s_active)
     {
       s_active = TRUE;
-      spin1_schedule_callback (s_process, NULL, NULL, SPINN_S_PROCESS_P);
+      spin1_schedule_callback (s_process, 0, 0, SPINN_S_PROCESS_P);
     }
   }
 }

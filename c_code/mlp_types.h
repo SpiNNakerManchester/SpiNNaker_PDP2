@@ -4,6 +4,7 @@
 #include "mlp_params.h"
 
 enum MLPRegions {
+	SYSTEM,
 	NETWORK,
 	CORE,
 	INPUTS,

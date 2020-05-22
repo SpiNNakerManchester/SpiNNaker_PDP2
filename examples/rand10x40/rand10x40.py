@@ -1,11 +1,13 @@
-from mlp_network import MLPNetwork
-from mlp_types   import MLPNetworkTypes, MLPGroupTypes, MLPUpdateFuncs
-from mlp_types   import MLPInputProcs
+from spinn_pdp2.mlp_network import MLPNetwork
+from spinn_pdp2.mlp_types   import MLPNetworkTypes, MLPGroupTypes, MLPUpdateFuncs
+from spinn_pdp2.mlp_types   import MLPInputProcs
 
 #-----------------------------------------------------------
 # rand10x40
 #
-# gfe implementation of Lens' example rand10x40.
+# implementation of Lens example rand10x40
+#
+# (https://github.com/crcox/lens/blob/master/Examples/rand10x40.in)
 #
 #-----------------------------------------------------------
 
@@ -46,13 +48,13 @@ set1.set (grace_time = 1.0,
           )
 
 # set network parameters
-rand10x40.set (num_updates = 300,
+rand10x40.set (num_updates = 3,
                train_group_crit = 0.2
                )
 
 # read initial weights from Lens-generated file
 rand10x40.read_Lens_weights_file (
-    "rand10x40_train_no_recurrent_conn_weights.txt")
+    "rand10x40_weights.txt")
 
 # train the network
 rand10x40.train (update_function = MLPUpdateFuncs.UPD_STEEPEST)

@@ -23,6 +23,9 @@ void tf_process (uint null0, uint null1)
   io_printf (IO_BUF, "tb_process\n");
 #endif
 
+  (void) null0;
+  (void) null1;
+
   // process packet queue
   // access queue with interrupts disabled
   uint cpsr = spin1_int_disable ();
@@ -119,14 +122,14 @@ void tf_process (uint null0, uint null1)
 
 	  // send stop criterion packet,
 	  //TODO: check if need to schedule or can simply call
-	  tf_send_stop (NULL, NULL);
+	  tf_send_stop (0, 0);
 
 	  // and advance tick if last group
 	  //NOTE: last group in the chain does not get a stop decision
 	  if (tcfg.is_last_output_group)
 	  {
             //TODO: check if need to schedule or can simply call
-            tf_advance_tick (NULL, NULL);
+            tf_advance_tick (0, 0);
           }
 	}
 	else
@@ -151,7 +154,7 @@ void tf_process (uint null0, uint null1)
 
           // and advance tick
           //TODO: check if need to schedule or can simply call
-          tf_advance_tick (NULL, NULL);
+          tf_advance_tick (0, 0);
         }
         else
         {
@@ -185,6 +188,9 @@ void tb_process (uint null0, uint null1)
 #ifdef TRACE
   io_printf (IO_BUF, "tb_process\n");
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // compute deltas based on pre-computed errors,
   //TODO: this needs checking!
@@ -255,7 +261,7 @@ void tb_process (uint null0, uint null1)
     io_printf (IO_BUF, "tbp calling tb_advance_tick\n");
 #endif
 
-    tb_advance_tick (NULL, NULL);
+    tb_advance_tick (0, 0);
   }
   else
   {
@@ -290,6 +296,9 @@ void tf_advance_tick (uint null0, uint null1)
 #if SPINN_OUTPUT_HISTORY == TRUE
   //TODO: dump outputs to SDRAM for record keeping,
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // check if done with event
   if (tick_stop)
@@ -332,6 +341,9 @@ void tb_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
 #endif
 
+  (void) null0;
+  (void) null1;
+
   // update pointer to processing unit outputs,
   tb_procs = 1 - tb_procs;
 
@@ -362,7 +374,7 @@ void tb_advance_tick (uint null0, uint null1)
     tick--;
 
     // and trigger computation
-    spin1_schedule_callback (tb_process, NULL, NULL, SPINN_TB_PROCESS_P);
+    spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
   }
 }
 // ------------------------------------------------------------------------
@@ -460,13 +472,13 @@ void t_advance_example (void)
       network_stop = tf_example_crit;
       if (network_stop)
       {
-        // we have decided to terminate training, so write out final data
+        // we have decided to terminate training so write out final data,
         if (tcfg.write_out)
         {
           send_outputs_to_host (SPINN_HOST_FINAL, 0);
         }
 
-        //broadcast network_stop decision
+        // broadcast network_stop decision,
         while (!spin1_send_mc_packet ((tf_stpn_key | network_stop),
                                    0,
                                    NO_PAYLOAD
@@ -474,12 +486,12 @@ void t_advance_example (void)
           );
 
 #ifdef DEBUG
-	pkt_sent++;
-	stn_sent++;
+        pkt_sent++;
+        stn_sent++;
 #endif
 
-        //done
-        spin1_exit (SPINN_NO_ERROR);
+        // and report no error
+        done(SPINN_NO_ERROR);
         return;
       }
     }
@@ -490,11 +502,11 @@ void t_advance_example (void)
       // send final output packet to host,
       if (tcfg.write_out)
       {
-	send_outputs_to_host (SPINN_HOST_FINAL, 0);
+        send_outputs_to_host (SPINN_HOST_FINAL, 0);
       }
 
-      // and exit
-      spin1_exit (SPINN_NO_ERROR);
+      // and report no error
+      done(SPINN_NO_ERROR);
       return;
     }
     else
@@ -563,7 +575,7 @@ void t_advance_example (void)
 
     // and send unit outputs to w cores
     //TODO: check if need to schedule or can simply call
-    t_init_outputs (NULL, NULL);
+    t_init_outputs (0, 0);
   }
   else
   {
@@ -598,7 +610,7 @@ void t_switch_to_fw (void)
   if (t_net_pkt_q.head != t_net_pkt_q.tail)
   {
     // if queue not empty schedule FORWARD processing
-    spin1_schedule_callback (tf_process, NULL, NULL, SPINN_TF_PROCESS_P);
+    spin1_schedule_callback (tf_process, 0, 0, SPINN_TF_PROCESS_P);
   }
   else
   {
@@ -636,7 +648,7 @@ void t_switch_to_bp (void)
 
   // start processing in BACKPROP phase,
   //TODO: check!
-  spin1_schedule_callback (tb_process, NULL, NULL, SPINN_TB_PROCESS_P);
+  spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
 
   // and restore interrupts
   spin1_mode_restore (cpsr);
@@ -655,6 +667,9 @@ void tf_send_stop (uint null0, uint null1)
 #ifdef TRACE
   io_printf (IO_BUF, "tf_send_stop\n");
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // "aggregate" criteria,
   tf_stop_crit = tf_stop_crit && tf_chain_prev;
@@ -710,7 +725,10 @@ void t_init_outputs (uint null0, uint null1)
   io_printf (IO_BUF, "t_init_outputs\n");
 #endif
 
-  // initialize every unit output and send for processing
+  (void) null0;
+  (void) null1;
+
+  // initialise every unit output and send for processing
   for (uint i = 0; i < tcfg.num_units; i++)
   {
     // setup the initial output value.
@@ -734,7 +752,7 @@ void t_init_outputs (uint null0, uint null1)
     }
 
 #ifdef DEBUG_CFG3
-    io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
+  io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
 #endif
 
     // and send unit output to weight cores
@@ -745,8 +763,8 @@ void t_init_outputs (uint null0, uint null1)
           );
 
 #ifdef DEBUG
-    pkt_sent++;
-    sent_fwd++;
+  pkt_sent++;
+  sent_fwd++;
 #endif
   }
 }
@@ -1033,9 +1051,9 @@ void out_bias (uint inx)
 // ------------------------------------------------------------------------
 void out_weak_clamp (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "out_weak_clamp\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "out_weak_clamp\n");
+#endif
 
   // TODO: if training, store the injected value in SDRAM. This memory area needs
   // to be allocated during initialization
@@ -1178,6 +1196,8 @@ void out_hard_clamp_back (uint inx)
   io_printf (IO_BUF, "out_hard_clamp_back\n");
 #endif
 
+  (void) inx;
+
 /*
   short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_units;
 
@@ -1196,6 +1216,8 @@ void out_weak_clamp_back (uint inx)
 #ifdef TRACE_VRB
   io_printf (IO_BUF, "out_weak_clamp_back\n");
 #endif
+
+  (void) inx;
 }
 // ------------------------------------------------------------------------
 

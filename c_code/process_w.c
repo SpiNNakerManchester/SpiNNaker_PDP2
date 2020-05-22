@@ -23,6 +23,9 @@ void wf_process (uint null0, uint null1)
   io_printf (IO_BUF, "wf_process\n");
 #endif
 
+  (void) null0;
+  (void) null1;
+
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
@@ -80,7 +83,7 @@ void wf_process (uint null0, uint null1)
     io_printf (IO_BUF, "wfp calling wf_advance_tick\n");
 #endif
 
-    wf_advance_tick (NULL, NULL);
+    wf_advance_tick (0, 0);
   }
   else
   {
@@ -106,6 +109,9 @@ void wb_process (uint null0, uint null1)
 #ifdef PROFILE
   io_printf (IO_STD, "tin:  %u\n", tc[T2_COUNT]);
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // process delta packet queue
   // access queue with interrupts disabled
@@ -259,7 +265,7 @@ void wb_process (uint null0, uint null1)
 #endif
 
         //TODO: check if need to schedule or can simply call
-        wb_advance_tick (NULL, NULL);
+        wb_advance_tick (0, 0);
       }
       else
       {
@@ -718,6 +724,9 @@ void wf_advance_tick (uint null0, uint null1)
   }
 #endif
 
+  (void) null0;
+  (void) null1;
+
   // change packet key colour,
   fwdKey ^= SPINN_COLOUR_KEY;
 
@@ -735,7 +744,7 @@ void wf_advance_tick (uint null0, uint null1)
     tick++;
 
     // and trigger computation
-    spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
+    spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
   }
 }
 // ------------------------------------------------------------------------
@@ -762,6 +771,9 @@ void wb_advance_tick (uint null0, uint null1)
 #ifdef DEBUG_VRB
   io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
 #endif
+
+  (void) null0;
+  (void) null1;
 
   // change packet key colour,
   bkpKey ^= SPINN_COLOUR_KEY;
@@ -840,7 +852,7 @@ void wf_advance_event (void)
     tick++;
 
     // and trigger computation
-    spin1_schedule_callback (wf_process, NULL, NULL, SPINN_WF_PROCESS_P);
+    spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
   }
 }
 // ------------------------------------------------------------------------
@@ -874,8 +886,8 @@ void w_advance_example (void)
     // check if done with epochs
     if (++epoch >= ncfg.num_epochs)
     {
-      // if done then finish
-      spin1_exit (SPINN_NO_ERROR);
+      // report no error
+      done(SPINN_NO_ERROR);
       return;
     }
     else

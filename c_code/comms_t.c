@@ -6,6 +6,7 @@
 #include "mlp_types.h"
 #include "mlp_externs.h"
 
+#include "init_t.h"
 #include "comms_t.h"
 #include "process_t.h"
 
@@ -97,7 +98,7 @@ void t_stopPacket (uint key)
     tf_thrds_pend = 1;
 
     // and advance tick
-    spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
+    spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_TF_TICK_P);
   }
   else
   {
@@ -134,14 +135,14 @@ void t_chainPacket (uint key)
     }
 
     // send stop packet,
-    spin1_schedule_callback (tf_send_stop, NULL, NULL, SPINN_T_SEND_STOP_P);
+    spin1_schedule_callback (tf_send_stop, 0, 0, SPINN_T_SEND_STOP_P);
 
     // and advance tick if last_output_group
     //NOTE: this group does not get a stop decision packet
     //      so it's ready to advance tick
     if (tcfg.is_last_output_group)
     {
-      spin1_schedule_callback (tf_advance_tick, NULL, NULL, SPINN_TF_TICK_P);
+      spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_TF_TICK_P);
     }
   }
   else
@@ -158,13 +159,12 @@ void t_chainPacket (uint key)
 // ------------------------------------------------------------------------
 void t_networkStopPacket (void)
 {
-  #ifdef DEBUG
-    stn_recv++;
-  #endif
+#ifdef DEBUG
+  stn_recv++;
+#endif
 
-  //done
-  spin1_exit (SPINN_NO_ERROR);
-  return;
+  // report no error
+  done(SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
 
@@ -196,7 +196,7 @@ void t_syncPacket (uint ph)
 
         // schedule sending of unit outputs to w cores,
         spin1_schedule_callback (t_init_outputs,
-                                  NULL, NULL, SPINN_T_INIT_OUT_P
+                                  0, 0, SPINN_T_INIT_OUT_P
                                 );
 
         // and, if required, send outputs to host
@@ -231,7 +231,7 @@ void t_syncPacket (uint ph)
       if (phase == SPINN_BACKPROP)
       {
         // schedule sending of deltas
-        //#spin1_schedule_callback (t_init_deltas, NULL, NULL, SPINN_T_INIT_DLT_P);
+        //#spin1_schedule_callback (t_init_deltas, 0, 0, SPINN_T_INIT_DLT_P);
       }
       else
       {
@@ -250,19 +250,19 @@ void t_syncPacket (uint ph)
 // ------------------------------------------------------------------------
 void t_forwardPacket (uint key, uint payload)
 {
-  #ifdef DEBUG
-    recv_fwd++;
-    if (phase == SPINN_BACKPROP)
-      wrng_phs++;
-  #endif
+#ifdef DEBUG
+  recv_fwd++;
+  if (phase == SPINN_BACKPROP)
+    wrng_phs++;
+#endif
 
   // check if space in FORWARD packet queue,
   uint new_tail = (t_net_pkt_q.tail + 1) % SPINN_THLD_PQ_LEN;
 
   if (new_tail == t_net_pkt_q.head)
   {
-    // if queue full exit and report failure
-    spin1_exit (SPINN_QUEUE_FULL);
+    // report queue full error
+    done(SPINN_QUEUE_FULL);
   }
   else
   {
@@ -277,7 +277,7 @@ void t_forwardPacket (uint key, uint payload)
     if ((phase == SPINN_FORWARD) && (!t_active))
     {
       t_active = TRUE;
-      spin1_schedule_callback (tf_process, NULL, NULL, SPINN_TF_PROCESS_P);
+      spin1_schedule_callback (tf_process, 0, 0, SPINN_TF_PROCESS_P);
     }
   }
 }
@@ -324,7 +324,7 @@ void t_backpropPacket (uint key, uint payload)
         io_printf (IO_BUF, "tbpkt scheduling tb_advance_tick\n");
       #endif
 
-      spin1_schedule_callback (tb_advance_tick, NULL, NULL, SPINN_TB_TICK_P);
+      spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
     }
     else
     {
@@ -400,6 +400,9 @@ void send_outputs_to_host (uint cmd, uint tick)
 // ------------------------------------------------------------------------
 void send_info_to_host (uint null0, uint null1)
 {
+  (void) null0;
+  (void) null1;
+
   // send initial info to host
   // report epoch, example and tick,
   t_sdp_msg.cmd_rc = SPINN_HOST_INFO;

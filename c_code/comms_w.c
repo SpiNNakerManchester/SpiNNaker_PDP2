@@ -6,6 +6,7 @@
 #include "mlp_types.h"
 #include "mlp_externs.h"
 
+#include "init_w.h"
 #include "comms_w.h"
 #include "process_w.h"
 
@@ -111,7 +112,7 @@ void w_stopPacket (uint key)
       io_printf (IO_BUF, "wrp scheduling wf_advance_tick\n");
     #endif
 
-    spin1_schedule_callback (wf_advance_tick, NULL, NULL, SPINN_WF_TICK_P);
+    spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
   }
   else
   {
@@ -131,9 +132,8 @@ void w_networkStopPacket (void)
     stn_recv++;
   #endif
 
-  //done
-  spin1_exit (SPINN_NO_ERROR);
-  return;
+    // report no error
+    done(SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
 
@@ -162,7 +162,7 @@ void w_ldsrPacket (uint payload)
 
     // and advance tick
     //TODO: check if need to schedule or can simply call
-    spin1_schedule_callback (wb_advance_tick, NULL, NULL, SPINN_WB_TICK_P);
+    spin1_schedule_callback (wb_advance_tick, 0, 0, SPINN_WB_TICK_P);
   }
   else
   {
@@ -219,7 +219,7 @@ void w_forwardPacket (uint key, uint payload)
         io_printf (IO_BUF, "wfpkt scheduling wf_advance_tick\n");
       #endif
 
-      spin1_schedule_callback (wf_advance_tick, NULL, NULL, SPINN_WF_TICK_P);
+      spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
     }
     else
     {
@@ -247,8 +247,8 @@ void w_backpropPacket (uint key, uint payload)
 
   if (new_tail == w_delta_pkt_q.head)
   {
-    // if queue full exit and report failure
-    spin1_exit (SPINN_QUEUE_FULL);
+      // report queue full error
+      done(SPINN_QUEUE_FULL);
   }
   else
   {
@@ -262,7 +262,7 @@ void w_backpropPacket (uint key, uint payload)
     if (!wb_active)
     {
       wb_active = TRUE;
-      spin1_schedule_callback (wb_process, NULL, NULL, SPINN_WB_PROCESS_P);
+      spin1_schedule_callback (wb_process, 0, 0, SPINN_WB_PROCESS_P);
     }
   }
 }

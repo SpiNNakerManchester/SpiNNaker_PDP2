@@ -20,8 +20,16 @@
 *.swp
 *.tab
 *.txt
+!/examples/*/*.txt
+**/spiNNakerGraphFrontEnd.cfg
+**/spynnaker.cfg
 **/application_generated_data_files
 **/binaries
 **/build
 **/data
+**/modified_src/
 **/reports/
+__pycache__
+/SpiNNaker_PDP2.egg-info/
+/dist/
+/doc/build

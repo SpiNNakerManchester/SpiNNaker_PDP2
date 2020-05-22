@@ -6,6 +6,7 @@
 #include "mlp_types.h"
 #include "mlp_externs.h"
 
+#include "init_i.h"
 #include "comms_i.h"
 #include "process_i.h"
 
@@ -24,25 +25,25 @@ void i_receivePacket (uint key, uint payload)
   if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
     // stop packet received
-    #ifdef DEBUG
-      stp_recv++;
-    #endif
+#ifdef DEBUG
+    stp_recv++;
+#endif
 
     // STOP decision arrived
     tick_stop = key & SPINN_STPD_MASK;
 
-    #ifdef DEBUG_VRB
-      io_printf (IO_BUF, "sc:%x\n", tick_stop);
-    #endif
+#ifdef DEBUG_VRB
+    io_printf (IO_BUF, "sc:%x\n", tick_stop);
+#endif
 
     // check if all other threads done
     if (if_thrds_pend == 0)
     {
-      // if done initialize semaphore,
+      // if done initialise semaphore,
       if_thrds_pend = 1;
 
       // and advance tick
-      spin1_schedule_callback (if_advance_tick, NULL, NULL, SPINN_I_TICK_P);
+      spin1_schedule_callback (if_advance_tick, 0, 0, SPINN_I_TICK_P);
     }
     else
     {
@@ -57,12 +58,12 @@ void i_receivePacket (uint key, uint payload)
   if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
   {
     // network stop packet received
-    #ifdef DEBUG
-      stn_recv++;
-    #endif
+#ifdef DEBUG
+    stn_recv++;
+#endif
 
-    //done
-    spin1_exit (SPINN_NO_ERROR);
+    // report no error
+    done(SPINN_NO_ERROR);
     return;
   }
 
@@ -70,8 +71,8 @@ void i_receivePacket (uint key, uint payload)
   uint new_tail = (i_pkt_queue.tail + 1) % SPINN_INPUT_PQ_LEN;
   if (new_tail == i_pkt_queue.head)
   {
-    // if queue full exit and report failure
-    spin1_exit (SPINN_QUEUE_FULL);
+    // report queue full error
+    done(SPINN_QUEUE_FULL);
   }
   else
   {
@@ -84,7 +85,7 @@ void i_receivePacket (uint key, uint payload)
     if (!i_active)
     {
       i_active = TRUE;
-      spin1_schedule_callback (i_process, NULL, NULL, SPINN_I_PROCESS_P);
+      spin1_schedule_callback (i_process, 0, 0, SPINN_I_PROCESS_P);
     }
   }
 }
