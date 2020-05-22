@@ -47,6 +47,16 @@ License
 
 This software is licensed under the terms of the GNU General Public License v3.0. 
 
+Contributors
+------------
+
+Many people have contributed to the development of MLPs on SpiNNaker,
+amongst them J Moy, LA Plana, SR Welbourne, X Jin, AD Rast, S Davis
+and SB Furber.
+
+The development of the project has relied heavily on the work of the
+[SpiNNaker software contributors](http://spinnakermanchester.github.io/common_pages/5.0.0/LicenseAgreement.html#contributors).
+
 Acknowledgments
 ---------------
 
@@ -62,7 +72,3 @@ funded by the Industrial Strategy Challenge Fund, part of the government’s
 modern Industrial Strategy. The fund is delivered by UK Research and
 Innovation and managed by EPSRC under grant EP/R026084/1.
 We gratefully acknowledge these institutions for their support.
-
-Many people have contributed to the development of MLPs on SpiNNaker,
-amongst them J Moy, LA Plana, SR Welbourne, X Jin, AD Rast, S Davis
-and SB Furber.
