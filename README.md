@@ -45,7 +45,7 @@ the downloading of data to SpiNNaker and the collection of results.
 License
 -------
 
-This code is open source software released under GNU General Public License v3.0. 
+This software is licensed under the terms of the GNU General Public License v3.0. 
 
 Acknowledgments
 ---------------

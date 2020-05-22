@@ -1,4 +1,4 @@
-Copyright (c) 2012-2020, The University of Manchester. All rights reserved.
+Copyright (c) 2015-2020, The University of Manchester.
 
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
