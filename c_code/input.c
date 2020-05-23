@@ -115,6 +115,8 @@ uint             if_thrds_pend;     // sync. semaphore: proc & stop
 long_delta_t   * ib_init_delta;     // initial delta value for every tick
 scoreboard_t     ib_done;           // current tick delta computation done
 
+uint           * i_bkpKey;          // i cores have one bkpKey per partition
+
 // history arrays
 long_net_t     * i_net_history;   //sdram pointer where to store input history
 // ------------------------------------------------------------------------
@@ -180,7 +182,7 @@ uint init ()
   // initialise core-specific configuration from SDRAM
   spin1_memcpy (&icfg, dt, sizeof (i_conf_t));
 
-  // inputs iff this core receives inputs from examples file
+  // inputs if this core receives inputs from examples file
   if (icfg.input_grp)
   {
 	  it = (activation_t *) data_specification_get_region

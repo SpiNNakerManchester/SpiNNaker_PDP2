@@ -52,7 +52,9 @@ class InputVertex(
 
         # forward and backprop link partition names
         self._fwd_link = "fwd_i{}".format (self.group.id)
-        self._bkp_link = "bkp_i{}".format (self.group.id)
+        self._bkp_link = []
+        for p in range (self._group.partitions):
+            self._bkp_link.append ("bkp_i{}_{}".format (self.group.id, p))
 
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -82,7 +84,8 @@ class InputVertex(
             len (self._group.inputs) * _data_int.size
 
         # keys are integers
-        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * _data_int.size
+        # i cores require a different key for every group partition
+        self._N_KEYS_BYTES =(MLPConstants.NUM_KEYS_REQ + self.group.partitions) * _data_int.size
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -115,6 +118,7 @@ class InputVertex(
               uchar         output_grp;
               uchar         input_grp;
               uint          num_units;
+              uint          partitions;
               uint          num_in_procs;
               uint          procs_list[SPINN_NUM_IN_PROCS];
               uchar         in_integr_en;
@@ -138,10 +142,11 @@ class InputVertex(
         init_output = int (self.group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
 
-        return struct.pack ("<2B2x4IB3x4i",
+        return struct.pack ("<2B2x5IB3x4i",
                             self.group.output_grp,
                             self.group.input_grp,
                             self.group.units,
+                            self.group.partitions,
                             self.group.num_in_procs,
                             self.group.in_procs_list[0].value,
                             self.group.in_procs_list[1].value,
@@ -236,19 +241,22 @@ class InputVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds (padding), stop (padding),
-        # and lds (padding)
+        # write link keys: fwd, bkp (padding), fds (padding), stop (padding),
+        # lds (padding) and bkpi
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
-        spec.write_value (routing_info.get_first_key_from_pre_vertex (
-            self, self.bkp_link), data_type = DataType.UINT32)
-
         spec.write_value (0, data_type = DataType.UINT32)
 
         spec.write_value (0, data_type = DataType.UINT32)
 
         spec.write_value (0, data_type = DataType.UINT32)
+
+        spec.write_value (0, data_type = DataType.UINT32)
+
+        for p in range (self.group.partitions):
+            spec.write_value (routing_info.get_first_key_from_pre_vertex (
+                self, self.bkp_link[p]), data_type = DataType.UINT32)
 
         # End the specification
         spec.end_specification ()

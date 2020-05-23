@@ -70,7 +70,7 @@ void tf_process (uint null0, uint null1)
 #endif
 
     // incorporate output index into packet key and send to next stage,
-    while (!spin1_send_mc_packet ((fwdKey | inx),
+    while (!spin1_send_mc_packet ((t_fwdKey[inx >> SPINN_BLOCK_SHIFT] | inx),
                                    (uint) activation,
                                    WITH_PAYLOAD
                                  )
@@ -756,7 +756,7 @@ void t_init_outputs (uint null0, uint null1)
 #endif
 
     // and send unit output to weight cores
-    while (!spin1_send_mc_packet ((fwdKey | i),
+    while (!spin1_send_mc_packet ((t_fwdKey[i >> SPINN_BLOCK_SHIFT] | i),
                                    (uint) t_outputs[i],
                                    WITH_PAYLOAD
                                  )

@@ -499,7 +499,7 @@ class MLPNetwork():
 
                 # create forward t to w (multicast) links
                 g.add_machine_edge_instance (MachineEdge (_frmg.t_vertex, w),
-                                             _frmg.t_vertex.fwd_link)
+                                             _frmg.t_vertex.fwd_link[w.row_blk])
 
                 # create backprop w to s links
                 g.add_machine_edge_instance (MachineEdge (w, _frmg.s_vertex),
@@ -507,7 +507,7 @@ class MLPNetwork():
 
                 # create backprop i to w (multicast) links
                 g.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
-                                             grp.i_vertex.bkp_link)
+                                             grp.i_vertex.bkp_link[w.col_blk])
 
                 # create forward synchronisation w to t links
                 g.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
