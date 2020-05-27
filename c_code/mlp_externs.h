@@ -100,7 +100,7 @@ extern scoreboard_t     s_ldst_arrived; // keep track of the number of link delt
 //list of input pipeline procedures
 extern in_proc_t      const i_in_procs[SPINN_NUM_IN_PROCS];
 extern in_proc_back_t const i_in_back_procs[SPINN_NUM_IN_PROCS];
-//list of initialization procedures for input pipeline
+//list of initialisation procedures for input pipeline
 extern in_proc_init_t const i_init_in_procs[SPINN_NUM_IN_PROCS];
 
 extern long_net_t     * i_nets;        // unit nets computed in current tick
@@ -129,7 +129,7 @@ extern out_proc_t      const t_out_procs[SPINN_NUM_OUT_PROCS];
 extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
 // list of stop eval procedures
 extern stop_crit_t     const t_stop_procs[SPINN_NUM_STOP_PROCS];
-// list of initialization procedures for output pipeline
+// list of initialisation procedures for output pipeline
 extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
 extern out_error_t     const t_out_error[SPINN_NUM_ERROR_PROCS];
 

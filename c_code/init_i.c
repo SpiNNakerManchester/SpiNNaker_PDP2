@@ -11,10 +11,10 @@
 
 #include "comms_i.h"
 
-// this file contains the initialization routine for I cores
+// this file contains the initialisation routine for I cores
 
 // ------------------------------------------------------------------------
-// allocate memory and initialize variables
+// allocate memory and initialise variables
 // ------------------------------------------------------------------------
 uint i_init (void)
 {
@@ -57,41 +57,41 @@ uint i_init (void)
   //NOTE: input cores do not have a tick 0
   tick = SPINN_I_INIT_TICK;
 
-  // initialize scoreboards
+  // initialise scoreboards
   if_done = 0;
   ib_done = 0;
 
-  // initialize synchronization semaphores
+  // initialise synchronisation semaphores
   if_thrds_pend = 1;
 
-  // initialize processing thread flag
+  // initialise processing thread flag
   i_active = FALSE;
 
-  // initialize packet queue
+  // initialise packet queue
   i_pkt_queue.head = 0;
   i_pkt_queue.tail = 0;
 
-  // initialize packet keys
-  //NOTE: colour is initialized to 0.
+  // initialise packet keys
+  //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
-  // if input or output group initialize event input/target index
+  // if input or output group initialise event input/target index
   if (icfg.input_grp || icfg.output_grp)
   {
     i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
   // if the network requires training and elements of the pipeline require
-  // initialization, then follow the appropriate procedure
+  // initialisation, then follow the appropriate procedure
   // use the list of procedures in use from lens and call the appropriate
-  // initialization routine from the i_init_in_procs function pointer list
+  // initialisation routine from the i_init_in_procs function pointer list
 
   for (i = 0; i < icfg.num_in_procs; i++)
     if (i_init_in_procs[icfg.procs_list[i]] != NULL)
     {
       int return_value;
-      // call the appropriate routine for pipeline initialization
+      // call the appropriate routine for pipeline initialisation
       return_value = i_init_in_procs[icfg.procs_list[i]]();
 
       // if return value contains error, return it

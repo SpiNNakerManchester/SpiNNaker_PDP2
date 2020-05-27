@@ -11,10 +11,10 @@
 
 #include "comms_s.h"
 
-// this file contains the initialization routine for S cores
+// this file contains the initialisation routine for S cores
 
 // ------------------------------------------------------------------------
-// allocate memory and initialize variables
+// allocate memory and initialise variables
 // ------------------------------------------------------------------------
 uint s_init (void)
 {
@@ -92,7 +92,7 @@ uint s_init (void)
   //NOTE: SUM cores do not have a tick 0
   tick = SPINN_S_INIT_TICK;
 
-  // initialize nets, errors and scoreboards
+  // initialise nets, errors and scoreboards
   for (i = 0; i < scfg.num_units; i++)
   {
     s_nets[0][i] = 0;
@@ -113,18 +113,18 @@ uint s_init (void)
   sf_thrds_pend = 1;
   sb_thrds_pend = 0;
 
-  // initialize processing thread flag
+  // initialise processing thread flag
   s_active = FALSE;
 
-  // initialize partial lds
+  // initialise partial lds
   s_lds_part = 0;
 
-  // initialize packet queue
+  // initialise packet queue
   s_pkt_queue.head = 0;
   s_pkt_queue.tail = 0;
 
-  // initialize packet keys
-  //NOTE: colour is initialized to 0.
+  // initialise packet keys
+  //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldstKey = rt[LDS] | SPINN_LDST_KEY;

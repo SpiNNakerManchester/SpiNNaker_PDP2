@@ -39,9 +39,9 @@ out_proc_back_t const
     out_logistic_back, out_integr_back, out_hard_clamp_back, out_weak_clamp_back, out_bias_back
   };
 
-// list of procedures for the initialization of the output pipeline. The order
+// list of procedures for the initialisation of the output pipeline. The order
 // is relevant, as the index needs to be the same as in the FORWARD phase. In
-// case one routine is not intended to be available because no initialization
+// case one routine is not intended to be available because no initialisation
 // is required, then a NULL should replace the call
 out_proc_init_t const
   t_init_out_procs[SPINN_NUM_OUT_PROCS] =

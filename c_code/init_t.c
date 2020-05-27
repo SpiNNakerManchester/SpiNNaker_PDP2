@@ -115,7 +115,7 @@ uint t_init (void)
     if (t_init_out_procs[tcfg.procs_list[i]] != NULL)
     {
       int return_value;
-      // call the appropriate routine for pipeline initialization
+      // call the appropriate routine for pipeline initialisation
       return_value = t_init_out_procs[tcfg.procs_list[i]]();
 
       // if return value contains error, return it
@@ -277,7 +277,7 @@ uint t_init (void)
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
-  // if input or output group initialize event input/target index
+  // if input or output group initialise event input/target index
   if (tcfg.input_grp || tcfg.output_grp)
   {
     t_it_idx = ev[event_idx].it_idx * tcfg.num_units;

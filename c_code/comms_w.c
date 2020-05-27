@@ -104,7 +104,7 @@ void w_stopPacket (uint key)
   // check if all other threads done
   if (wf_thrds_pend == 0)
   {
-    // if done initialize synchronization semaphore,
+    // if done initialise synchronisation semaphore,
     wf_thrds_pend = 2;
 
     // and advance tick
@@ -153,7 +153,7 @@ void w_ldsrPacket (uint payload)
   // check if all other threads done
   if (wb_thrds_pend == 0)
   {
-    //NOTE: no need to initialize semaphore
+    //NOTE: no need to initialise semaphore
     //wb_thrds_pend = 0;
 
     #ifdef TRACE_VRB
@@ -202,7 +202,7 @@ void w_forwardPacket (uint key, uint payload)
   // if all expected inputs have arrived may move to next tick
   if (wf_arrived == wcfg.num_rows)
   {
-    // initialize arrival scoreboard for next tick,
+    // initialise arrival scoreboard for next tick,
     wf_arrived = 0;
 
     // update pointer to received unit outputs,
@@ -211,7 +211,7 @@ void w_forwardPacket (uint key, uint payload)
     // and check if all other threads are done,
     if (wf_thrds_pend == 0)
     {
-      // if done initialize synchronization semaphore,
+      // if done initialise synchronisation semaphore,
       wf_thrds_pend = 2;
 
       // and advance tick

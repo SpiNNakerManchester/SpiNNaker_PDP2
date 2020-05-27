@@ -91,7 +91,7 @@ void tf_process (uint null0, uint null1)
     // and check if all nets arrived (i.e., all outputs done)
     if (tf_arrived == tcfg.num_units)
     {
-      // initialize scoreboard for next tick,
+      // initialise scoreboard for next tick,
       tf_arrived = 0;
 
       // access synchronisation flags with interrupts disabled
@@ -146,7 +146,7 @@ void tf_process (uint null0, uint null1)
         // check if all other threads done
         if (tf_thrds_pend == 0)
         {
-          // initialize semaphore,
+          // initialise semaphore,
           tf_thrds_pend = 1;
 
           // restore interrupts after flag access,
@@ -350,10 +350,10 @@ void tb_advance_tick (uint null0, uint null1)
   // check if done with BACKPROP phase
   if (tick == SPINN_TB_END_TICK)
   {
-    // initialize the tick count
+    // initialise the tick count
     tick = SPINN_T_INIT_TICK;
 
-    // initialize the event tick count
+    // initialise the event tick count
     ev_tick = SPINN_T_INIT_TICK;
 
     // switch to FORWARD phase,
@@ -403,7 +403,7 @@ void tf_advance_event (void)
     }
     else
     {
-      // if not training, initialize ticks for the next example
+      // if not training, initialise ticks for the next example
       tick = SPINN_T_INIT_TICK;
       ev_tick = SPINN_T_INIT_TICK;
 
@@ -447,7 +447,7 @@ void tf_advance_event (void)
     // increment example tick,
     tick++;
 
-    // and initialize event tick
+    // and initialise event tick
     ev_tick = SPINN_T_INIT_TICK;
   }
 }
@@ -640,7 +640,7 @@ void t_switch_to_bp (void)
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 
-  // initialize t_errors for next example
+  // initialise t_errors for next example
   for (uint i = 0; i < tcfg.num_units; i++)
   {
     t_errors[tb_procs][i] = 0;
@@ -796,14 +796,14 @@ void compute_out (uint inx)
   io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example, tick, inx);
 #endif
 
-  // initialize the array element where to store the output value for the
+  // initialise the array element where to store the output value for the
   t_outputs[inx] = 0;
 
   // compute all the elements of the output pipeline
   // from the observations in lens, the logistic is always the first element of
   // the output pipeline, which uses the value received through the multicast
   // packet. If no logistic function is used, the t_outputs starts with a 0
-  // value, as initialized earlier
+  // value, as initialised earlier
   for (uint i = 0; i < tcfg.num_out_procs; i++)
   {
     t_out_procs[tcfg.procs_list[i]] (inx);
@@ -1017,7 +1017,7 @@ void out_hard_clamp (uint inx)
   }
 
   // TODO: if training, store the injected value in SDRAM. This memory area needs
-  // to be allocated during initialization
+  // to be allocated during initialisation
 /*
   if (ncfg.training)
   {
@@ -1056,7 +1056,7 @@ void out_weak_clamp (uint inx)
 #endif
 
   // TODO: if training, store the injected value in SDRAM. This memory area needs
-  // to be allocated during initialization
+  // to be allocated during initialisation
 /*
   if (ncfg.training)
   {
@@ -1237,10 +1237,10 @@ void out_bias_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-// initialization code for the output integrator: allocate the memory to save
-// the state of the integrator and initialize the state to 0
-// FIXME: to be checked - the initialization may be superfluous as the value is
-// set to initoutput in the following initialization steps
+// initialisation code for the output integrator: allocate the memory to save
+// the state of the integrator and initialise the state to 0
+// FIXME: to be checked - the initialisation may be superfluous as the value is
+// set to initoutput in the following initialisation steps
 // ------------------------------------------------------------------------
 int init_out_integr ()
 {

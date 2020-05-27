@@ -262,13 +262,13 @@ void s_forward_packet (uint key, uint payload)
        // prepare for next tick,
        sf_done = 0;
 
-      // access synchronization semaphore with interrupts disabled
+      // access synchronisation semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
       // check if all other threads done
       if (sf_thrds_pend == 0)
       {
-        // if done initialize semaphore
+        // if done initialise semaphore
         sf_thrds_pend = 1;
 
         // restore interrupts after flag access,
@@ -364,13 +364,13 @@ void s_backprop_packet (uint key, uint payload)
       // prepare for next tick,
       sb_done = 0;
 
-      // access synchronization semaphore with interrupts disabled
+      // access synchronisation semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
       // check if all other threads done
       if (sb_thrds_pend == 0)
       {
-        // if done initialize semaphore:
+        // if done initialise semaphore:
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we need have to wait for the partial link delta sums
@@ -476,7 +476,7 @@ void sb_advance_tick (uint null0, uint null1)
   // check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)
   {
-    // initialize the tick count
+    // initialise the tick count
     tick = SPINN_S_INIT_TICK;
 
 #ifdef TRACE
@@ -521,7 +521,7 @@ void sf_advance_event (void)
     }
     else
     {
-      // if not training initialize ticks,
+      // if not training initialise ticks,
       tick = SPINN_S_INIT_TICK;
 
       // and move to next example

@@ -341,7 +341,7 @@ typedef void (*out_proc_t) (uint);   // output comp procedures
 typedef void (*out_proc_back_t) (uint);   // BACKPROP output comp procedures
 
 
-typedef int  (*out_proc_init_t) (void);    // input initialization procedures
+typedef int  (*out_proc_init_t) (void);    // input initialisation procedures
 
 
 typedef void (*in_proc_t) (uint);    // input (net) comp procedures
@@ -350,7 +350,7 @@ typedef void (*in_proc_t) (uint);    // input (net) comp procedures
 typedef void (*in_proc_back_t) (uint);    // BACKPROP input (net) comp procedures
 
 
-typedef int  (*in_proc_init_t) (void);    // input initialization procedures
+typedef int  (*in_proc_init_t) (void);    // input initialisation procedures
 
 
 typedef void (*stop_crit_t) (uint);  // stopping criterion comp procedures

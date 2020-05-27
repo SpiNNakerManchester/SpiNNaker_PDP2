@@ -71,7 +71,7 @@ void wf_process (uint null0, uint null1)
   // and check if all other threads done
   if (wf_thrds_pend == 0)
   {
-    // if done initialize synchronization semaphore,
+    // if done initialise synchronisation semaphore,
     wf_thrds_pend = 2;
 
     // restore interrupts after flag access,
@@ -205,7 +205,7 @@ void wb_process (uint null0, uint null1)
 	io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
 #endif
 
-        // and initialize error for next tick
+        // and initialise error for next tick
         w_errors[i] = 0;
       }
     }
@@ -232,16 +232,16 @@ void wb_process (uint null0, uint null1)
     // if done with all deltas advance tick
     if (wb_arrived == wcfg.num_cols)
     {
-      // initialize arrival scoreboard for next tick,
+      // initialise arrival scoreboard for next tick,
       wb_arrived = 0;
 
-      // access synchronization semaphore with interrupts disabled
+      // access synchronisation semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
       // and check if all other threads done
       if (wb_thrds_pend == 0)
       {
-        // if done initialize synchronization semaphore,
+        // if done initialise synchronisation semaphore,
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we have to wait for the total link delta sum to
@@ -781,7 +781,7 @@ void wb_advance_tick (uint null0, uint null1)
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)
   {
-    // initialize tick for next example
+    // initialise tick for next example
     tick = SPINN_W_INIT_TICK;
 
     // go to FORWARD phase,

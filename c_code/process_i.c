@@ -126,13 +126,13 @@ void i_forward_packet (uint key, uint payload)
     // prepare for next tick,
     if_done = 0;
 
-    // access synchronization semaphore with interrupts disabled
+    // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
     // check if all other threads done
     if (if_thrds_pend == 0)
     {
-      // if done initialize semaphore,
+      // if done initialise semaphore,
       if_thrds_pend = 1;
 
       // restore interrupts after flag access,
@@ -289,7 +289,7 @@ void ib_advance_tick (uint null0, uint null1)
   // check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
   {
-    // initialize the tick count
+    // initialise the tick count
     tick = SPINN_I_INIT_TICK;
 
 #ifdef TRACE
@@ -334,7 +334,7 @@ void if_advance_event (void)
     }
     else
     {
-      // if not training, initialize ticks for the next example
+      // if not training, initialise ticks for the next example
       tick = SPINN_I_INIT_TICK;
 
       // then move to next example
@@ -390,7 +390,7 @@ void i_advance_example (void)
   num_events = ex[example].num_events;
   event_idx = ex[example].ev_idx;
 
-  // if input or output group initialize new event input/target index
+  // if input or output group initialise new event input/target index
   //TODO: check if the target value is required in I cores
   // for the BACKPROP phase, otherwise remove the condition for the
   // output group
@@ -611,7 +611,7 @@ void in_soft_clamp_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-// initialization of the input intergrator state
+// initialisation of the input intergrator state
 // ------------------------------------------------------------------------
 int init_in_integr ()
 {

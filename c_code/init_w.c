@@ -11,10 +11,10 @@
 
 #include "comms_w.h"
 
-// this file contains the initialization routine for W cores
+// this file contains the initialisation routine for W cores
 
 // ------------------------------------------------------------------------
-// allocate memory and initialize variables
+// allocate memory and initialise variables
 // ------------------------------------------------------------------------
 uint w_init (void)
 {
@@ -132,7 +132,7 @@ uint w_init (void)
 
 
 
-  // initialize weights from SDRAM
+  // initialise weights from SDRAM
   //NOTE: could use DMA
   for (i = 0; i < wcfg.num_rows; i++)
   {
@@ -156,7 +156,7 @@ uint w_init (void)
     //TODO: dump weights to SDRAM for record keeping
   #endif
 
-  // initialize link deltas
+  // initialise link deltas
   for (uint i = 0; i < wcfg.num_rows; i++)
   {
     for (uint j = 0; j < wcfg.num_cols; j++)
@@ -165,7 +165,7 @@ uint w_init (void)
     }
   }
 
-  // initialize weight changes
+  // initialise weight changes
   for (i = 0; i < wcfg.num_rows; i++)
   {
     for (j = 0; j < wcfg.num_cols; j++)
@@ -174,37 +174,37 @@ uint w_init (void)
     }
   }
 
-  // initialize error dot products
+  // initialise error dot products
   for (uint i = 0; i < wcfg.num_rows; i++)
   {
     w_errors[i] = 0;
   }
 
-  // initialize output history for tick 0
+  // initialise output history for tick 0
   for (uint i = 0; i < wcfg.num_rows; i++)
   {
     w_output_history[i] = 0;
   }
 
-  // initialize tick
+  // initialise tick
   tick = SPINN_W_INIT_TICK;
 
-  // initialize delta scaling factor
+  // initialise delta scaling factor
   // s15.16
   w_delta_dt = (1 << SPINN_FPREAL_SHIFT) / ncfg.ticks_per_int;
 
-  // initialize pointers to received unit outputs
+  // initialise pointers to received unit outputs
   wf_procs = 0;
   wf_comms = 1;
 
-  // initialize synchronization semaphores
+  // initialise synchronisation semaphores
   wf_thrds_pend = 0; // just wait for initial unit outputs
   wb_thrds_pend = 0; // just wait for initial deltas
 
-  // initialize processing thread flag
+  // initialise processing thread flag
   wb_active = FALSE;
 
-  // initialize arrival scoreboards
+  // initialise arrival scoreboards
   wf_arrived = 0;
   wb_arrived = 0;
 
@@ -212,8 +212,8 @@ uint w_init (void)
   // set weight update function
   wb_update_func = w_update_procs[wcfg.update_function];
 
-  // initialize packet keys
-  //NOTE: colour is initialized to 0.
+  // initialise packet keys
+  //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD)
 		  | SPINN_BLOCK_KEY(wcfg.col_blk);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP)

@@ -38,9 +38,9 @@ in_proc_back_t const
     in_integr_back, NULL
   };
 
-// list of procedures for the initialization of the input pipeline. Order
+// list of procedures for the initialisation of the input pipeline. Order
 // is relevant, as the index needs to be the same as in the FORWARD phase. In
-// case one routine is not intended to be available because no initialization
+// case one routine is not intended to be available because no initialisation
 // is required, then a NULL should replace the call
 in_proc_init_t const
   i_init_in_procs[SPINN_NUM_IN_PROCS] =
