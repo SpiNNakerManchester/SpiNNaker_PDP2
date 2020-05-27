@@ -2,7 +2,9 @@
 #define __INIT_T_H__
 
 uint t_init (void);
-void done (uint ec);
+
+void stage_start (void);
+void stage_done  (uint ec);
 
 #endif
  

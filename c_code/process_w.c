@@ -887,7 +887,7 @@ void w_advance_example (void)
     if (++epoch >= ncfg.num_epochs)
     {
       // report no error
-      done(SPINN_NO_ERROR);
+      stage_done (SPINN_NO_ERROR);
       return;
     }
     else

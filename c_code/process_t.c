@@ -491,7 +491,7 @@ void t_advance_example (void)
 #endif
 
         // and report no error
-        done(SPINN_NO_ERROR);
+        stage_done (SPINN_NO_ERROR);
         return;
       }
     }
@@ -506,7 +506,7 @@ void t_advance_example (void)
       }
 
       // and report no error
-      done(SPINN_NO_ERROR);
+      stage_done (SPINN_NO_ERROR);
       return;
     }
     else

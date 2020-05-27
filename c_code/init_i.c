@@ -125,45 +125,57 @@ uint i_init (void)
 
 
 // ------------------------------------------------------------------------
+// stage start callback: get stage started
+// ------------------------------------------------------------------------
+void stage_start (void)
+{
+  // start log
+  io_printf (IO_BUF, "--------------\n");
+  io_printf (IO_BUF, "starting stage\n");
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void done (uint ec)
+void stage_done (uint ec)
 {
-  // disable timer1 (used for background deadlock check)
-  tc[T1_CONTROL] = 0;
+  // pause timer and setup next stage,
+  simulation_handle_pause_resume (NULL);
 
   // report problems -- if any
   switch (ec)
   {
     case SPINN_NO_ERROR:
-      io_printf (IO_BUF, "simulation OK\n");
+      io_printf (IO_BUF, "stage OK\n");
       break;
 
     case SPINN_CFG_UNAVAIL:
       io_printf (IO_BUF, "core configuration failed\n");
-      io_printf(IO_BUF, "simulation aborted\n");
+      io_printf (IO_BUF, "stage aborted\n");
       break;
 
     case SPINN_QUEUE_FULL:
       io_printf (IO_BUF, "packet queue full\n");
-      io_printf(IO_BUF, "simulation aborted\n");
+      io_printf (IO_BUF, "stage aborted\n");
       break;
 
     case SPINN_MEM_UNAVAIL:
       io_printf (IO_BUF, "malloc failed\n");
-      io_printf(IO_BUF, "simulation aborted\n");
+      io_printf (IO_BUF, "stage aborted\n");
       break;
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
-      io_printf(IO_BUF, "simulation aborted\n");
+      io_printf (IO_BUF, "stage aborted\n");
       break;
 
     case SPINN_TIMEOUT_EXIT:
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                       epoch, example, phase, tick
                     );
-      io_printf(IO_BUF, "simulation aborted\n");
+      io_printf (IO_BUF, "stage aborted\n");
 #ifdef DEBUG_TO
       io_printf (IO_BUF, "(fd:%u bd:%u)\n", if_done, ib_done);
 #endif
@@ -185,10 +197,14 @@ void done (uint ec)
 #endif
 
   // close log,
-  io_printf (IO_BUF, "stopping simulation\n");
-  io_printf (IO_BUF, "-----------------------\n");
+  io_printf (IO_BUF, "stopping stage\n");
+  io_printf (IO_BUF, "--------------\n");
 
-  // and let host know that we're ready
-  simulation_ready_to_read();
+  // and let host know that we're done
+  if (ec == SPINN_NO_ERROR) {
+    simulation_ready_to_read ();
+  } else {
+    rt_error (RTE_SWERR);
+  }
 }
 // ------------------------------------------------------------------------

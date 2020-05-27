@@ -2,7 +2,9 @@
 #define __INIT_W_H__
 
 uint w_init (void);
-void done (uint ec);
+
+void stage_start (void);
+void stage_done  (uint ec);
 
 #endif
  

@@ -63,7 +63,7 @@ void s_receivePacket (uint key, uint payload)
     #endif
 
       // report no error
-      done(SPINN_NO_ERROR);
+      stage_done (SPINN_NO_ERROR);
       return;
   }
 
@@ -72,7 +72,7 @@ void s_receivePacket (uint key, uint payload)
   if (new_tail == s_pkt_queue.head)
   {
       // report queue full error
-      done(SPINN_QUEUE_FULL);
+      stage_done (SPINN_QUEUE_FULL);
   }
   else
   {

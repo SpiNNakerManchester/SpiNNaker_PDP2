@@ -364,7 +364,7 @@ void timeout (uint ticks, uint unused)
   if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
   {
     // report timeout error
-    done(SPINN_TIMEOUT_EXIT);
+    stage_done (SPINN_TIMEOUT_EXIT);
   }
   else
   {
@@ -382,24 +382,15 @@ void timeout (uint ticks, uint unused)
 // ------------------------------------------------------------------------
 void get_started (void)
 {
-  // start log,
-  io_printf (IO_BUF, "-----------------------\n");
-  io_printf (IO_BUF, "starting simulation\n");
-
-  // send initial outputs to host -- if required
-  if (tcfg.write_out)
-  {
-    spin1_schedule_callback (send_info_to_host, 0, 0, SPINN_T_SEND_OUTS_P);
-  }
-
-  // send initial outputs to w cores -- when simulation starts
-  spin1_schedule_callback (t_init_outputs, 0, 0, SPINN_T_INIT_OUT_P);
-
-  // and enable deadlock check
-  tc[T1_INT_CLR] = 1;
-  tc[T1_LOAD] = sv->cpu_clk * SPINN_TIMER_TICK_PERIOD;
+  // start timer,
   vic[VIC_ENABLE] = (1 << TIMER1_INT);
   tc[T1_CONTROL] = 0xe2;
+
+  // redefine start function,
+  simulation_set_start_function (stage_start);
+
+  // and run new start function
+  stage_start ();
 }
 // ------------------------------------------------------------------------
 
@@ -418,47 +409,25 @@ void c_main ()
 
   // initialise application,
   uint exit_code = init ();
-
-  // check if init completed successfully,
   if (exit_code != SPINN_NO_ERROR)
   {
       // if init failed report results and abort simulation
-      done (exit_code);
-      rt_error(RTE_SWERR);
+      stage_done (exit_code);
   }
 
-#ifdef PROFILE
-  // configure timer 2 for profiling
-  // enabled, 32 bit, free running, 16x pre-scaler
-  tc[T2_CONTROL] = SPINN_TIMER2_CONF;
-  tc[T2_LOAD] = SPINN_TIMER2_LOAD;
-#endif
-
-  // timer1 callback (used for background deadlock check)
+  // set up timer1 (used for background deadlock check),
+  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
-  // packet received callbacks
+  // set up packet received callbacks,
   spin1_callback_on (MC_PACKET_RECEIVED, t_receivePacket, SPINN_PACKET_P);
   spin1_callback_on (MCPL_PACKET_RECEIVED, t_receivePacket, SPINN_PACKET_P);
 
-#ifdef PROFILE
-  uint start_time = tc[T2_COUNT];
-  io_printf (IO_BUF, "start count: %u\n", start_time);
-#endif
-
   // setup simulation,
   simulation_set_start_function(get_started);
-  simulation_set_uses_timer(FALSE);
 
   // start execution,
   simulation_run();
-
-#ifdef PROFILE
-  uint final_time = tc[T2_COUNT];
-  io_printf (IO_BUF, "final count: %u\n", final_time);
-  io_printf (IO_BUF, "execution time: %u us\n",
-      (start_time - final_time) / SPINN_TIMER2_DIV);
-#endif
 
   // and say goodbye
   io_printf (IO_BUF, "<< mlp\n");

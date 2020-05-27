@@ -2,6 +2,8 @@
 #define __INIT_I_H__
 
 uint i_init (void);
-void done (uint ec);
+
+void stage_start (void);
+void stage_done  (uint ec);
 
 #endif

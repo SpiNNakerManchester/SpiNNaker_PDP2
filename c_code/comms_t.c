@@ -164,7 +164,7 @@ void t_networkStopPacket (void)
 #endif
 
   // report no error
-  done(SPINN_NO_ERROR);
+  stage_done (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
 
@@ -262,7 +262,7 @@ void t_forwardPacket (uint key, uint payload)
   if (new_tail == t_net_pkt_q.head)
   {
     // report queue full error
-    done(SPINN_QUEUE_FULL);
+    stage_done (SPINN_QUEUE_FULL);
   }
   else
   {
