@@ -17,14 +17,14 @@
 // ------------------------------------------------------------------------
 // process FORWARD phase: compute outputs
 // ------------------------------------------------------------------------
-void tf_process (uint null0, uint null1)
+void tf_process (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "tb_process\n");
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -183,14 +183,14 @@ void tf_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 // process BACKPROP phase: compute error deltas
 // ------------------------------------------------------------------------
-void tb_process (uint null0, uint null1)
+void tb_process (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "tb_process\n");
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // compute deltas based on pre-computed errors,
   //TODO: this needs checking!
@@ -279,7 +279,7 @@ void tb_process (uint null0, uint null1)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void tf_advance_tick (uint null0, uint null1)
+void tf_advance_tick (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "tf_advance_tick\n");
@@ -297,8 +297,8 @@ void tf_advance_tick (uint null0, uint null1)
   //TODO: dump outputs to SDRAM for record keeping,
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // check if done with event
   if (tick_stop)
@@ -327,7 +327,7 @@ void tf_advance_tick (uint null0, uint null1)
 // BACKPROP: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void tb_advance_tick (uint null0, uint null1)
+void tb_advance_tick (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "tb_advance_tick\n");
@@ -341,8 +341,8 @@ void tb_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // update pointer to processing unit outputs,
   tb_procs = 1 - tb_procs;
@@ -662,14 +662,14 @@ void t_switch_to_bp (void)
 // message to communicate the final decision if the criterion has been reached
 // across all the output groups to all the cores in the simulation
 // ------------------------------------------------------------------------
-void tf_send_stop (uint null0, uint null1)
+void tf_send_stop (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "tf_send_stop\n");
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // "aggregate" criteria,
   tf_stop_crit = tf_stop_crit && tf_chain_prev;
@@ -719,14 +719,14 @@ void tf_send_stop (uint null0, uint null1)
 // The current version implements the routine as expressed by lens 2.63, with
 // comments on the line to change to apply lens version 2.64
 // ------------------------------------------------------------------------
-void t_init_outputs (uint null0, uint null1)
+void t_init_outputs (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "t_init_outputs\n");
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // initialise every unit output and send for processing
   for (uint i = 0; i < tcfg.num_units; i++)
@@ -817,7 +817,7 @@ void compute_out (uint inx)
     io_printf (IO_BUF, "compute output deriv\n");
 #endif
 
-    // if the error function to be called is not null,
+    // if the error function to be called is not NULL,
     // compute the output derivative
     if (t_out_error[tcfg.error_function] != NULL)
     {

@@ -398,10 +398,10 @@ void send_outputs_to_host (uint cmd, uint tick)
 // data, number of output units, number of groups writing outputs and number
 // of ticks of simulation
 // ------------------------------------------------------------------------
-void send_info_to_host (uint null0, uint null1)
+void send_info_to_host (uint unused0, uint unused1)
 {
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // send initial info to host
   // report epoch, example and tick,

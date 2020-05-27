@@ -17,14 +17,14 @@
 // ------------------------------------------------------------------------
 // process FORWARD phase: compute partial dot products (output * weight)
 // ------------------------------------------------------------------------
-void wf_process (uint null0, uint null1)
+void wf_process (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "wf_process\n");
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
@@ -100,7 +100,7 @@ void wf_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 // process BACKPROP phase: compute partial products (weight * delta)
 // ------------------------------------------------------------------------
-void wb_process (uint null0, uint null1)
+void wb_process (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "wb_process\n");
@@ -110,8 +110,8 @@ void wb_process (uint null0, uint null1)
   io_printf (IO_STD, "tin:  %u\n", tc[T2_COUNT]);
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // process delta packet queue
   // access queue with interrupts disabled
@@ -702,7 +702,7 @@ void dougsmomentum_update_weights (void)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void wf_advance_tick (uint null0, uint null1)
+void wf_advance_tick (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "wf_advance_tick\n");
@@ -724,8 +724,8 @@ void wf_advance_tick (uint null0, uint null1)
   }
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // change packet key colour,
   fwdKey ^= SPINN_COLOUR_KEY;
@@ -754,7 +754,7 @@ void wf_advance_tick (uint null0, uint null1)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void wb_advance_tick (uint null0, uint null1)
+void wb_advance_tick (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "wb_advance_tick\n");
@@ -772,8 +772,8 @@ void wb_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // change packet key colour,
   bkpKey ^= SPINN_COLOUR_KEY;

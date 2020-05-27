@@ -17,14 +17,14 @@
 // ------------------------------------------------------------------------
 // process queued packets until queue empty
 // ------------------------------------------------------------------------
-void i_process (uint null0, uint null1)
+void i_process (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "i_process\n");
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -230,7 +230,7 @@ void i_backprop_packet (uint key, uint payload)
 // FORWARD phase: the tick has been completed, move FORWARD to the next tick
 // updating the indexes to the events/examples as required
 // ------------------------------------------------------------------------
-void if_advance_tick (uint null0, uint null1)
+void if_advance_tick (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "if_advance_tick\n");
@@ -244,8 +244,8 @@ void if_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // check if end of event
   if (tick_stop)
@@ -265,7 +265,7 @@ void if_advance_tick (uint null0, uint null1)
 // BACKPROP phase: the tick has been completed, move FORWARD to the next tick
 // updating the indexes to the events/examples as required
 // ------------------------------------------------------------------------
-void ib_advance_tick (uint null0, uint null1)
+void ib_advance_tick (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "ib_advance_tick\n");
@@ -283,8 +283,8 @@ void ib_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)

@@ -17,14 +17,14 @@
 // ------------------------------------------------------------------------
 // process queued packets until queue empty
 // ------------------------------------------------------------------------
-void s_process (uint null0, uint null1)
+void s_process (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "s_process\n");
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -421,7 +421,7 @@ void s_backprop_packet (uint key, uint payload)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sf_advance_tick (uint null0, uint null1)
+void sf_advance_tick (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "sf_advance_tick\n");
@@ -435,8 +435,8 @@ void sf_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // check if end of event
   if (tick_stop)
@@ -456,7 +456,7 @@ void sf_advance_tick (uint null0, uint null1)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sb_advance_tick (uint null0, uint null1)
+void sb_advance_tick (uint unused0, uint unused1)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "sb_advance_tick\n");
@@ -470,8 +470,8 @@ void sb_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)

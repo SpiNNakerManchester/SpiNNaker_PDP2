@@ -1,18 +1,18 @@
 #ifndef __PROCESS_T_H__
 #define __PROCESS_T_H__
 
-void  tf_process        (uint null0, uint null1);
-void  tb_process        (uint null0, uint null1);
-void  tf_advance_tick   (uint null0, uint null1);
-void  tb_advance_tick   (uint null0, uint null1);
+void  tf_process        (uint unused0, uint unused1);
+void  tb_process        (uint unused0, uint unused1);
+void  tf_advance_tick   (uint unused0, uint unused1);
+void  tb_advance_tick   (uint unused0, uint unused1);
 void  tf_advance_event  (void);
 void  t_advance_example (void);
 void  t_switch_to_fw    (void);
 void  t_switch_to_bp    (void);
-void  tf_send_stop      (uint null0, uint null1);
-void  t_init_outputs    (uint null0, uint null1);
+void  tf_send_stop      (uint unused0, uint unused1);
+void  t_init_outputs    (uint unused0, uint unused1);
 
-void  store_targets	   (uint inx);
+void  store_targets	       (uint inx);
 void  store_output_deriv   (uint inx);
 void  restore_output_deriv (uint inx, uint tick);
 void  store_nets           (uint inx);

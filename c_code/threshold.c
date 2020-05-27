@@ -355,10 +355,10 @@ uint init ()
 // timer callback: check that there has been progress in execution.
 // If no progress has been made terminate with SPINN_TIMEOUT_EXIT exit code.
 // ------------------------------------------------------------------------
-void timeout (uint ticks, uint null)
+void timeout (uint ticks, uint unused)
 {
   (void) ticks;
-  (void) null;
+  (void) unused;
 
   // check if progress has been made
   if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
