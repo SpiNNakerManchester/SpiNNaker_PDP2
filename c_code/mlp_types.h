@@ -16,12 +16,16 @@ enum MLPRegions {
 	ROUTING
 };
 
+// t cores can have more than one FWD key (due to partitions)
+// i cores can have more than one BKP key (due to partitions)
 enum MLPKeys {
-	FWD,
-	BKP,
-	FDS,
-	STP,
-	LDS
+	FWD = 0,
+	BKP = 1,
+	FDS = 2,
+	STP = 3,
+	LDS = 4,
+	FWDT = 5,
+	BKPI = 5
 };
 
 typedef short     short_activ_t;
@@ -241,6 +245,7 @@ typedef struct i_conf                // input core configuration
   uchar         output_grp;          // is this an OUTPUT group?
   uchar         input_grp;           // is this an INPUT group?
   uint          num_units;           // this core's number of units
+  uint          partitions;          // this groups's number of partitions
   uint          num_in_procs;        // number of input (net) comp procedures
   uint          procs_list[SPINN_NUM_IN_PROCS];
   uchar         in_integr_en;        // input integrator in use
@@ -266,6 +271,7 @@ typedef struct t_conf                  // threshold core configuration
   uchar         output_grp;            // is this an OUTPUT group?
   uchar         input_grp;             // is this an INPUT group?
   uint          num_units;             // this core's number of units
+  uint          partitions;            // this group's number of partitions
   scoreboard_t  fwd_sync_expected;     // all expected FORWARD sync packets
   scoreboard_t  bkp_sync_expected;     // all expected BACKPROP sync packets
   uchar         write_out;             // write outputs (send to host)?

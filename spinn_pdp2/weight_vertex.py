@@ -178,6 +178,14 @@ class WeightVertex(
         return self._from_group
 
     @property
+    def row_blk (self):
+        return self._row_blk
+
+    @property
+    def col_blk (self):
+        return self._col_blk
+
+    @property
     def fwd_link (self):
         return self._fwd_link
 
