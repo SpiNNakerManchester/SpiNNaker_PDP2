@@ -44,6 +44,8 @@ class MLPNetwork():
         self._learning_rate    = MLPConstants.DEF_LEARNING_RATE
         self._weight_decay     = MLPConstants.DEF_WEIGHT_DECAY
         self._momentum         = MLPConstants.DEF_MOMENTUM
+        self._update_function  = MLPConstants.DEF_UPDATE_FUNC
+
 
         # initialise lists of groups and links
         self.groups = []
@@ -57,10 +59,12 @@ class MLPNetwork():
         self._output_chain = []
 
         # track if initial weights have been loaded
+        self._weights_rdy = False
         self._weights_loaded = False
         self._weights_file = None
 
         # initialise example set
+        self._examples_rdy = False
         self._ex_set = None
 
         # create single-unit Bias group by default
@@ -69,13 +73,16 @@ class MLPNetwork():
                                        label        = "Bias"
                                        )
 
+        # initialise machine graph parameters
+        self._graph_rdy = False
+        
         # keep track of the number of vertices in the graph
         self._num_vertices = 0
 
         # keep track of the number of partitions
         self.partitions = 0
 
-        # keep track if errors have occured
+        # keep track if errors have occurred
         self._aborted = False
 
 
@@ -120,7 +127,7 @@ class MLPNetwork():
         return self._bias_group
 
     @property
-    def config (self):
+    def network_config (self):
         """ returns a packed string that corresponds to
             (C struct) network_conf in mlp_types.h:
 
@@ -580,34 +587,39 @@ class MLPNetwork():
                                                               _stpg.t_vertex),
                                                  grp.t_vertex.stp_link)
 
+        self._graph_rdy = True
+
 
     def train (self,
-               update_function = MLPUpdateFuncs.UPD_DOUGSMOMENTUM
+               update_function
               ):
-        """ train the application graph
+        """ do one stage of training
         """
-        self._training = 1
-        self._update_function = update_function
+        if update_function is not None:
+            self._update_function = update_function
 
-        # run the application
-        self.run ()
+        self._training = 1
+        self.stage_run ()
 
 
     def test (self):
-        """ test the application graph without training
+        """ do one stage of testing (no training)
         """
         self._training = 0
-
-        # not used but a value is needed for the weight config struct anyway
-        self._update_function = MLPUpdateFuncs.UPD_STEEPEST
-
-        # run the application
-        self.run ()
+        self.stage_run ()
 
 
-    def run (self):
-        """ run the application graph
+    def stage_run (self):
+        """ run a stage on application graph
         """
+        # check that no group is too big
+        for grp in self.groups:
+            if grp.units > MLPConstants.MAX_GRP_UNITS:
+                print (f"run aborted: group {grp.label} has more than "
+                       f"{MLPConstants.MAX_GRP_UNITS} units.")
+                self._aborted = True
+                return
+
         # cannot run unless weights file exists
         if self._weights_file is None:
             print ("run aborted: weights file not given")
@@ -641,18 +653,11 @@ class MLPNetwork():
             self._aborted = True
             return
 
-        # check that no group is too big
-        for grp in self.groups:
-            if grp.units > MLPConstants.MAX_GRP_UNITS:
-                print (f"run aborted: group {grp.id} has more than "
-                       f"{MLPConstants.MAX_GRP_UNITS} units.")
-                self._aborted = True
-                return
+        # generate machine graph - if needed
+        if not self._graph_rdy:
+            self.generate_machine_graph ()
 
-        # generate machine graph
-        self.generate_machine_graph ()
-
-        # run application based on the machine graph
+        # run stage
         gfe.run_until_complete ()
 
 

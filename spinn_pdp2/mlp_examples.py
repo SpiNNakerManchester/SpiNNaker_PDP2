@@ -1,5 +1,6 @@
 import os
 import struct
+
 from spinn_pdp2.mlp_types import MLPConstants
 
 

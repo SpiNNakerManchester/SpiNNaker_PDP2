@@ -4,26 +4,27 @@
 #include "mlp_params.h"
 
 enum MLPRegions {
-	SYSTEM,
-	NETWORK,
-	CORE,
-	INPUTS,
-	TARGETS,
-	EXAMPLE_SET,
-	EXAMPLES,
-	EVENTS,
-	WEIGHTS,
-	ROUTING
+	SYSTEM      =  0,
+	NETWORK     =  1,
+	CORE        =  2,
+	INPUTS      =  3,
+	TARGETS     =  4,
+	EXAMPLE_SET =  5,
+	EXAMPLES    =  6,
+	EVENTS      =  7,
+	WEIGHTS     =  8,
+	ROUTING     =  9,
+	STAGE       = 10
 };
 
 // t cores can have more than one FWD key (due to partitions)
 // i cores can have more than one BKP key (due to partitions)
 enum MLPKeys {
-	FWD = 0,
-	BKP = 1,
-	FDS = 2,
-	STP = 3,
-	LDS = 4,
+	FWD  = 0,
+	BKP  = 1,
+	FDS  = 2,
+	STP  = 3,
+	LDS  = 4,
 	FWDT = 5,
 	BKPI = 5
 };
@@ -339,6 +340,17 @@ typedef struct mlp_event
   fpreal  grace_time;
   uint    it_idx;
 } mlp_event_t;
+
+
+// ------------------------------------------------------------------------
+// stage configuration
+// ------------------------------------------------------------------------
+typedef struct stage_conf       // execution stage configuration
+{
+  uchar training;               // training or testing mode?
+  uint  num_epochs;             // number of epochs to run
+} stage_conf_t;
+// ------------------------------------------------------------------------
 
 
 typedef void (*out_proc_t) (uint);   // output comp procedures

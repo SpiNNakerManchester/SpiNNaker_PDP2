@@ -1,6 +1,14 @@
 from enum import Enum
 
 
+class MLPUpdateFuncs (Enum):
+    """ MLP weight update functions
+    """
+    UPD_STEEPEST      = 0
+    UPD_MOMENTUM      = 1
+    UPD_DOUGSMOMENTUM = 2
+
+
 class MLPConstants ():
     """ MLP network constants
     """
@@ -8,6 +16,7 @@ class MLPConstants ():
     DEF_LEARNING_RATE = 0.1
     DEF_WEIGHT_DECAY = 0
     DEF_MOMENTUM = 0.9
+    DEF_UPDATE_FUNC = MLPUpdateFuncs.UPD_DOUGSMOMENTUM
 
     DEF_INIT_NET  = 0
     DEF_INIT_OUT  = 0.5
@@ -118,24 +127,17 @@ class MLPErrorFuncs (Enum):
     ERR_SQUARED       = 2
 
 
-class MLPUpdateFuncs (Enum):
-    """ MLP weight update functions
-    """
-    UPD_STEEPEST      = 0
-    UPD_MOMENTUM      = 1
-    UPD_DOUGSMOMENTUM = 2
-
-
 class MLPRegions (Enum):
     """ regions used by MLP cores
     """
-    SYSTEM = 0
-    NETWORK = 1
-    CORE = 2
-    INPUTS = 3
-    TARGETS = 4
-    EXAMPLE_SET = 5
-    EXAMPLES = 6
-    EVENTS = 7
-    WEIGHTS = 8
-    ROUTING = 9
+    SYSTEM      =  0
+    NETWORK     =  1
+    CORE        =  2
+    INPUTS      =  3
+    TARGETS     =  4
+    EXAMPLE_SET =  5
+    EXAMPLES    =  6
+    EVENTS      =  7
+    WEIGHTS     =  8
+    ROUTING     =  9
+    STAGE       = 10

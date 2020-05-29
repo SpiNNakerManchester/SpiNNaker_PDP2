@@ -8,18 +8,18 @@ from pacman.model.resources.resource_container \
     import ResourceContainer, ConstantSDRAM
 from pacman.model.resources.iptag_resource import IPtagResource
 
+from spinn_utilities.overrides import overrides
+
 from spinn_front_end_common.abstract_models.abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
-
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
+
 from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
     import generate_steps_system_data_region
-
-from spinn_utilities.overrides import overrides
 
 from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
@@ -103,7 +103,7 @@ class ThresholdVertex(
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.config)
+            len (self._network.network_config)
 
         # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
@@ -264,7 +264,7 @@ class ThresholdVertex(
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.config:
+        for c in self._network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
