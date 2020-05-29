@@ -605,6 +605,8 @@ class MLPNetwork():
     def test (self):
         """ do one stage of testing (no training)
         """
+        self._num_epochs = 1
+
         self._training = 0
         self.stage_run ()
 
