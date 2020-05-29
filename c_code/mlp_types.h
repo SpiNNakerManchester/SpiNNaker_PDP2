@@ -214,7 +214,7 @@ typedef struct w_conf               // weight core configuration
 // ------------------------------------------------------------------------
 // sum core configuration
 // ------------------------------------------------------------------------
-// sum cores accumulate acummulate b-d-ps sent by weight cores and
+// sum cores accumulate accumulate b-d-ps sent by weight cores and
 // compute unit nets (FORWARD phase) and errors (BACKPROP phase)
 // ------------------------------------------------------------------------
 typedef struct s_conf               // sum core configuration

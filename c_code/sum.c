@@ -59,7 +59,7 @@ s_conf_t       scfg;           // sum core configuration parameters
 // ------------------------------------------------------------------------
 // sum core variables
 // ------------------------------------------------------------------------
-// sum cores compute unit nets and errors (acummulate b-d-ps).
+// sum cores compute unit nets and errors (accumulate b-d-ps).
 // ------------------------------------------------------------------------
 long_net_t     * s_nets[2];         // unit nets computed in current tick
 long_error_t   * s_errors[2];       // errors computed in current tick

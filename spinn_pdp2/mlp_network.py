@@ -1,24 +1,20 @@
 import os
 import struct
-import time
 
-import spinnaker_graph_front_end as g
+import spinnaker_graph_front_end as gfe
 
 from pacman.model.graphs.machine import MachineEdge
-
-from spinnman.model.enums.cpu_state import CPUState
-
-from spinn_front_end_common.utilities import globals_variables
 
 from spinn_pdp2.input_vertex     import InputVertex
 from spinn_pdp2.sum_vertex       import SumVertex
 from spinn_pdp2.threshold_vertex import ThresholdVertex
 from spinn_pdp2.weight_vertex    import WeightVertex
-
-from spinn_pdp2.mlp_types    import MLPGroupTypes, MLPConstants, MLPUpdateFuncs
-from spinn_pdp2.mlp_group    import MLPGroup
-from spinn_pdp2.mlp_link     import MLPLink
-from spinn_pdp2.mlp_examples import MLPExampleSet
+from spinn_pdp2.mlp_types        import (MLPGroupTypes, 
+                                         MLPConstants,
+                                         MLPUpdateFuncs)
+from spinn_pdp2.mlp_group        import MLPGroup
+from spinn_pdp2.mlp_link         import MLPLink
+from spinn_pdp2.mlp_examples     import MLPExampleSet
 
 
 class MLPNetwork():
@@ -167,7 +163,7 @@ class MLPNetwork():
         :param units: number of units that form the group
         :param group_type: list of Lens-style group types
         :param input_funcs: functions applied in the input pipeline
-        :param output_funcs: functions appllied in the output pipeline
+        :param output_funcs: functions applied in the output pipeline
         :param label: human-readable group identifier
 
         :type units: unsigned integer
@@ -244,17 +240,17 @@ class MLPNetwork():
 
         :return: a new link object
         """
+        # check that enough data is provided
+        if (pre_link_group is None) or (post_link_group is None):
+            print ("error: pre- and post-link groups required")
+            return None
+
         if label is None:
             _label = "{}-{}".format (pre_link_group.label,
                                      post_link_group.label
                                      )
         else:
             _label = label
-
-        # check that enough data is provided
-        if (pre_link_group is None) or (post_link_group is None):
-            print ("error: pre and post link groups required")
-            return None
 
         # instantiate a new link
         _link = MLPLink (pre_link_group  = pre_link_group,
@@ -445,7 +441,7 @@ class MLPNetwork():
         binaries_path = os.path.join(os.path.dirname(__file__), "..", "binaries")
 
         # setup the machine graph
-        g.setup (model_binary_folder = binaries_path)
+        gfe.setup (model_binary_folder = binaries_path)
 
         # set the number of write blocks before generating vertices
         self._num_write_blks = len (self.output_chain)
@@ -465,25 +461,25 @@ class MLPNetwork():
                     for _fp in range (from_grp.partitions):
                         wv = WeightVertex (self, grp, from_grp, _tp, _fp)
                         grp.w_vertices.append (wv)
-                        g.add_machine_vertex_instance (wv)
+                        gfe.add_machine_vertex_instance (wv)
                         self._num_vertices += 1
 
             # create one sum core per group
             sv = SumVertex (self, grp)
             grp.s_vertex = sv
-            g.add_machine_vertex_instance (sv)
+            gfe.add_machine_vertex_instance (sv)
             self._num_vertices += 1
 
             # create one input core per group
             iv = InputVertex (self, grp)
             grp.i_vertex = iv
-            g.add_machine_vertex_instance (iv)
+            gfe.add_machine_vertex_instance (iv)
             self._num_vertices += 1
 
             # create one threshold core per group
             tv = ThresholdVertex (self, grp)
             grp.t_vertex = tv
-            g.add_machine_vertex_instance (tv)
+            gfe.add_machine_vertex_instance (tv)
             self._num_vertices += 1
 
         # create associated forward, backprop, synchronisation and
@@ -494,50 +490,50 @@ class MLPNetwork():
                 _frmg = w.from_group
 
                 # create forward w to s links
-                g.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
+                gfe.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
                                              w.fwd_link)
 
                 # create forward t to w (multicast) links
-                g.add_machine_edge_instance (MachineEdge (_frmg.t_vertex, w),
+                gfe.add_machine_edge_instance (MachineEdge (_frmg.t_vertex, w),
                                              _frmg.t_vertex.fwd_link)
 
                 # create backprop w to s links
-                g.add_machine_edge_instance (MachineEdge (w, _frmg.s_vertex),
+                gfe.add_machine_edge_instance (MachineEdge (w, _frmg.s_vertex),
                                              w.bkp_link)
 
                 # create backprop i to w (multicast) links
-                g.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
+                gfe.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
                                              grp.i_vertex.bkp_link)
 
                 # create forward synchronisation w to t links
-                g.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
+                gfe.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
                                              w.fds_link)
 
                 # create link delta summation w to s links
-                g.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
+                gfe.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
                                              w.lds_link)
 
                 # create link delta summation result s (first) to w links
-                g.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
+                gfe.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
                                              first.s_vertex.lds_link)
 
             # create forward s to i link
-            g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
+            gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                       grp.i_vertex),
                                          grp.s_vertex.fwd_link)
 
             # create backprop s to t link
-            g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
+            gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                       grp.t_vertex),
                                          grp.s_vertex.bkp_link)
 
             # create forward i to t link
-            g.add_machine_edge_instance (MachineEdge (grp.i_vertex,
+            gfe.add_machine_edge_instance (MachineEdge (grp.i_vertex,
                                                       grp.t_vertex),
                                          grp.i_vertex.fwd_link)
 
             # create backprop t to i link
-            g.add_machine_edge_instance (MachineEdge (grp.t_vertex,
+            gfe.add_machine_edge_instance (MachineEdge (grp.t_vertex,
                                                       grp.i_vertex),
                                          grp.t_vertex.bkp_link)
 
@@ -546,7 +542,7 @@ class MLPNetwork():
             if grp != first:
                 print (f"Creating lds s-s edge from group {grp.label} "
                        f"to group {first.label}")
-                g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
+                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                           first.s_vertex),
                                              grp.s_vertex.lds_link)
 
@@ -557,30 +553,30 @@ class MLPNetwork():
                     for stpg in self.groups:
                         # create stop links to all w cores
                         for w in stpg.w_vertices:
-                            g.add_machine_edge_instance\
+                            gfe.add_machine_edge_instance\
                               (MachineEdge (grp.t_vertex, w),
                                grp.t_vertex.stp_link)
 
                         # create stop links to all s cores
-                        g.add_machine_edge_instance\
+                        gfe.add_machine_edge_instance\
                          (MachineEdge (grp.t_vertex, stpg.s_vertex),\
                           grp.t_vertex.stp_link)
 
                         # create stop links to all i cores
-                        g.add_machine_edge_instance\
+                        gfe.add_machine_edge_instance\
                          (MachineEdge (grp.t_vertex, stpg.i_vertex),\
                           grp.t_vertex.stp_link)
 
                         # create stop links to t cores (no link to itself!)
                         if stpg != grp:
-                            g.add_machine_edge_instance\
+                            gfe.add_machine_edge_instance\
                              (MachineEdge (grp.t_vertex, stpg.t_vertex),\
                               grp.t_vertex.stp_link)
                 else:
                     # create stop link to next OUTPUT group in chain
                     _inx  = self.output_chain.index (grp)
                     _stpg = self.output_chain[_inx + 1]
-                    g.add_machine_edge_instance (MachineEdge (grp.t_vertex,
+                    gfe.add_machine_edge_instance (MachineEdge (grp.t_vertex,
                                                               _stpg.t_vertex),
                                                  grp.t_vertex.stp_link)
 
@@ -657,7 +653,7 @@ class MLPNetwork():
         self.generate_machine_graph ()
 
         # run application based on the machine graph
-        g.run_until_complete ()
+        gfe.run_until_complete ()
 
 
     def end (self):
@@ -669,4 +665,4 @@ class MLPNetwork():
 
             print ("exit: application finished")
             # let the gfe clean up
-            g.stop()
+            gfe.stop()
