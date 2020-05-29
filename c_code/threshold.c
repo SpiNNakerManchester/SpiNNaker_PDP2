@@ -167,6 +167,8 @@ activation_t     t_max_target;      // highest target value
 long_deriv_t   * t_output_deriv;    // derivative of the output value
 delta_t        * t_deltas;
 
+uint           * t_fwdKey;          // t cores have one fwdKey per partition
+
 // history arrays
 net_t          * t_net_history;
 activation_t   * t_output_history;

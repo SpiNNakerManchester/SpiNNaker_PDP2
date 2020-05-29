@@ -72,9 +72,19 @@ uint i_init (void)
   i_pkt_queue.tail = 0;
 
   // initialise packet keys
+  // allocate memory for backprop keys (one per partition)
+  if ((i_bkpKey = ((uint *)
+         spin1_malloc (icfg.partitions * sizeof(uint)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
   //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  for (uint p = 0; p < icfg.partitions; p++) {
+	  i_bkpKey[p] = rt[BKPI + p] | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  }
 
   // if input or output group initialise event input/target index
   if (icfg.input_grp || icfg.output_grp)

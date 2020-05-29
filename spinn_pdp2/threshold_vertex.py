@@ -82,7 +82,9 @@ class ThresholdVertex(
             self._is_last_output_group = 0
 
         # forward, backprop and stop link partition names
-        self._fwd_link = "fwd_t{}".format (self.group.id)
+        self._fwd_link = []
+        for p in range (self._group.partitions):
+            self._fwd_link.append ("fwd_t{}_{}".format (self.group.id, p))
         self._bkp_link = "bkp_t{}".format (self.group.id)
         self._stp_link = "stp_t{}".format (self.group.id)
 
@@ -128,7 +130,8 @@ class ThresholdVertex(
             len (self._group.targets) * _data_int.size
 
         # keys are integers
-        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * _data_int.size
+        # t cores require a different key for every group partition
+        self._N_KEYS_BYTES = (MLPConstants.NUM_KEYS_REQ + self._group.partitions) * _data_int.size
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -166,8 +169,8 @@ class ThresholdVertex(
             {
               uchar         output_grp;
               uchar         input_grp;
-              uint          num_units;        # reserve key space for every link
-
+              uint          num_units;
+              uint          partitions;
               scoreboard_t  fwd_sync_expect;
               scoreboard_t  bkp_sync_expect;
               uchar         write_out;
@@ -204,10 +207,11 @@ class ThresholdVertex(
         group_criterion = int (self._group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2x3IB3xIB3xi6I3i4B",
+        return struct.pack ("<2B2x4IB3xIB3xi6I3i4B",
                             self.group.output_grp & 0xff,
                             self.group.input_grp & 0xff,
                             self.group.units,
+                            self.group.partitions,
                             self._fwd_sync_expect,
                             self._bkp_sync_expect,
                             self.group.write_out & 0xff,
@@ -343,9 +347,8 @@ class ThresholdVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds (padding), stp, and lds (padding)
-        spec.write_value (routing_info.get_first_key_from_pre_vertex (
-            self, self.fwd_link), data_type = DataType.UINT32)
+        # write link keys: fwd (padding), bkp, fds (padding), stp, lds (padding), and fwdt
+        spec.write_value (0, data_type = DataType.UINT32)
 
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
@@ -360,6 +363,10 @@ class ThresholdVertex(
             spec.write_value (0, data_type = DataType.UINT32)
 
         spec.write_value (0, data_type = DataType.UINT32)
+
+        for p in range (self.group.partitions):
+            spec.write_value (routing_info.get_first_key_from_pre_vertex (
+                self, self.fwd_link[p]), data_type = DataType.UINT32)
 
         # End the specification
         spec.end_specification ()

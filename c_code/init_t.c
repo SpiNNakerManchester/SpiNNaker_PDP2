@@ -273,8 +273,18 @@ uint t_init (void)
   }
 
   // initialise packet keys
+  // allocate memory for forward keys (one per partition)
+  if ((t_fwdKey = ((uint *)
+         spin1_malloc (tcfg.partitions * sizeof(uint)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
   //NOTE: colour is initialised to 0
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
+  for (uint p = 0; p < tcfg.partitions; p++) {
+	  t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
+  }
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
   // if input or output group initialise event input/target index
