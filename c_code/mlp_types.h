@@ -178,13 +178,10 @@ typedef uchar     proc_phase_t;     // phase (FORWARD or BACKPROP)
 typedef struct network_conf     // MLP network configuration
 {
   uchar net_type;               // type of neural net
-  uchar training;               // training or testing mode?
   uint  num_epochs;             // number of epochs to run
-  uint  num_examples;           // number of examples per epoch
   uint  ticks_per_int;          // number of ticks per interval
   uint  global_max_ticks;       // max number of ticks across all the examples
   uint  num_write_blks;         // number of groups that write outputs
-  uint  timeout;                // in case something goes wrong
 } network_conf_t;
 // ------------------------------------------------------------------------
 
@@ -347,8 +344,8 @@ typedef struct mlp_event
 // ------------------------------------------------------------------------
 typedef struct stage_conf       // execution stage configuration
 {
-  uchar training;               // training or testing mode?
-  uint  num_epochs;             // number of epochs to run
+  uchar training;               // stage mode: train (1) or test (0)
+  uint  num_examples;           // number of examples to run in this stage
 } stage_conf_t;
 // ------------------------------------------------------------------------
 

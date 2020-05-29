@@ -324,7 +324,7 @@ void if_advance_event (void)
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // and check if in training mode
-    if (ncfg.training)
+    if (xcfg.training)
     {
       // if training, save number of ticks
       num_ticks = tick;
@@ -369,7 +369,7 @@ void i_advance_example (void)
 #endif
 
   // check if done with examples
-  if (++example >= ncfg.num_examples)
+  if (++example >= xcfg.num_examples)
   {
     // check if done with epochs
     if (++epoch >= ncfg.num_epochs)
@@ -435,7 +435,7 @@ void compute_in (uint inx)
   // TODO: for non-continuous networks, this needs to check the requirement
   // to have these histories saved, which needs to come as a configuration
   // parameter. For continuous networks, these histories are always required.
-  if (ncfg.training)
+  if (xcfg.training)
   {
     store_nets(inx);
   }

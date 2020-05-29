@@ -46,7 +46,7 @@ void tf_process (uint unused0, uint unused1)
 
     // store net for BACKPROP computation,
     t_nets[inx] = net;
-    if (ncfg.training)
+    if (xcfg.training)
     {
       store_nets (inx);
     }
@@ -57,7 +57,7 @@ void tf_process (uint unused0, uint unused1)
 
     activation_t activation = (activation_t) t_outputs[inx];
 
-    if (ncfg.training)
+    if (xcfg.training)
     {
       store_outputs (inx);
     }
@@ -393,7 +393,7 @@ void tf_advance_event (void)
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // check if in training mode
-    if (ncfg.training)
+    if (xcfg.training)
     {
       // if training, save the number of ticks
       num_ticks = tick;
@@ -465,7 +465,7 @@ void t_advance_example (void)
 
   // check if done with examples
   //TODO: alternative algorithms for choosing example order!
-  if (++example >= ncfg.num_examples)
+  if (++example >= xcfg.num_examples)
   {
     if (tcfg.is_last_output_group)
     {
@@ -811,7 +811,7 @@ void compute_out (uint inx)
 
   // if the network is set for training, then compute the output derivative
   // using the appropriate function
-  if (ncfg.training && tcfg.output_grp)
+  if (xcfg.training && tcfg.output_grp)
   {
 #ifdef TRACE_VRB
     io_printf (IO_BUF, "compute output deriv\n");
@@ -829,7 +829,7 @@ void compute_out (uint inx)
   //TODO: for non-continuous networks, this needs to check the requirement
   //TODO: to have these histories saved, which needs configuration parameter.
   //TODO: For continuous networks, these are always required.
-  if (ncfg.training)
+  if (xcfg.training)
   {
     store_targets (inx);
     store_output_deriv (inx);
@@ -1019,7 +1019,7 @@ void out_hard_clamp (uint inx)
   // TODO: if training, store the injected value in SDRAM. This memory area needs
   // to be allocated during initialisation
 /*
-  if (ncfg.training)
+  if (xcfg.training)
   {
     short_activ_t * tmp = t_out_hard_clamp_data + tick * tcfg.num_units;
     tmp[inx] = t_outputs[inx];
@@ -1058,7 +1058,7 @@ void out_weak_clamp (uint inx)
   // TODO: if training, store the injected value in SDRAM. This memory area needs
   // to be allocated during initialisation
 /*
-  if (ncfg.training)
+  if (xcfg.training)
   {
     //store previous value of t_output for BACKPROP computation
     short_activ_t * tmp = t_out_weak_clamp_data + tick * tcfg.num_units;
@@ -1287,7 +1287,7 @@ int init_out_hard_clamp ()
 #endif
 
 /*
-  if (ncfg.training)
+  if (xcfg.training)
   {
     // allocate memory for outputs
     if ((t_out_hard_clamp_data = ((short_activ_t *)
@@ -1320,7 +1320,7 @@ int init_out_weak_clamp ()
 #endif
 
 /*
-  if (ncfg.training)
+  if (xcfg.training)
   {
     // allocate memory for outputs
     if ((t_out_weak_clamp_data = ((short_activ_t *)

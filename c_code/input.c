@@ -83,10 +83,11 @@ activation_t     *it; // example inputs
 uint             *rt; // multicast routing keys data
 
 // ------------------------------------------------------------------------
-// network and core configurations (DTCM)
+// network, core and stage configurations (DTCM)
 // ------------------------------------------------------------------------
 network_conf_t ncfg;           // network-wide configuration parameters
 i_conf_t       icfg;           // input core configuration parameters
+stage_conf_t   xcfg;           // stage configuration parameters
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -200,6 +201,12 @@ uint init ()
   // routing keys
   rt = (uint *) data_specification_get_region
 		  (ROUTING, data);
+
+  // stage configuration address
+  address_t xt = data_specification_get_region (STAGE, data);
+
+  // initialise network configuration from SDRAM
+  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
 
 #ifdef DEBUG_CFG0
   io_printf (IO_BUF, "og: %d\n", icfg.output_grp);

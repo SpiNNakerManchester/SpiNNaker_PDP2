@@ -87,13 +87,18 @@ class InputVertex(
         # i cores require a different key for every group partition
         self._N_KEYS_BYTES =(MLPConstants.NUM_KEYS_REQ + self.group.partitions) * _data_int.size
 
+        # stage configuration structure
+        self._N_STAGE_CONFIGURATION_BYTES = \
+            len (self._network.stage_config)
+
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
             self._N_CORE_CONFIGURATION_BYTES + \
             self._N_EXAMPLES_BYTES + \
             self._N_EVENTS_BYTES + \
             self._N_INPUTS_BYTES + \
-            self._N_KEYS_BYTES
+            self._N_KEYS_BYTES + \
+            self._N_STAGE_CONFIGURATION_BYTES
         )
 
     @property
@@ -257,6 +262,16 @@ class InputVertex(
         for p in range (self.group.partitions):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.bkp_link[p]), data_type = DataType.UINT32)
+
+        # Reserve and write the stage configuration region
+        spec.reserve_memory_region (MLPRegions.STAGE.value,
+                                    self._N_STAGE_CONFIGURATION_BYTES)
+
+        spec.switch_write_focus (MLPRegions.STAGE.value)
+
+        # write the stage configuration into spec
+        for c in self._network.stage_config:
+            spec.write_value (c, data_type = DataType.UINT8)
 
         # End the specification
         spec.end_specification ()

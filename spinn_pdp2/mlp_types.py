@@ -17,6 +17,7 @@ class MLPConstants ():
     DEF_WEIGHT_DECAY = 0
     DEF_MOMENTUM = 0.9
     DEF_UPDATE_FUNC = MLPUpdateFuncs.UPD_DOUGSMOMENTUM
+    DEF_NUM_UPDATES = 1
 
     DEF_INIT_NET  = 0
     DEF_INIT_OUT  = 0.5
@@ -36,8 +37,6 @@ class MLPConstants ():
     DEF_WEAK_CLMP = 0.5
 
     DEF_GRP_CRIT   = 0
-    DEF_TIMEOUT    = 10000
-    DEF_NUM_EPOCHS = 1
     DEF_EX_FREQ    = 1.0
 
     # core configuration CONSTANTS

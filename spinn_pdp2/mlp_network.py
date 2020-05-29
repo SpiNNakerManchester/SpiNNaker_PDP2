@@ -9,9 +9,7 @@ from spinn_pdp2.input_vertex     import InputVertex
 from spinn_pdp2.sum_vertex       import SumVertex
 from spinn_pdp2.threshold_vertex import ThresholdVertex
 from spinn_pdp2.weight_vertex    import WeightVertex
-from spinn_pdp2.mlp_types        import (MLPGroupTypes, 
-                                         MLPConstants,
-                                         MLPUpdateFuncs)
+from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants
 from spinn_pdp2.mlp_group        import MLPGroup
 from spinn_pdp2.mlp_link         import MLPLink
 from spinn_pdp2.mlp_examples     import MLPExampleSet
@@ -39,12 +37,11 @@ class MLPNetwork():
         self._global_max_ticks = (intervals * ticks_per_interval) + 1
         self._train_group_crit = None
         self._test_group_crit  = None
-        self._timeout          = MLPConstants.DEF_TIMEOUT
-        self._num_epochs       = MLPConstants.DEF_NUM_EPOCHS
         self._learning_rate    = MLPConstants.DEF_LEARNING_RATE
         self._weight_decay     = MLPConstants.DEF_WEIGHT_DECAY
         self._momentum         = MLPConstants.DEF_MOMENTUM
         self._update_function  = MLPConstants.DEF_UPDATE_FUNC
+        self._num_updates      = MLPConstants.DEF_NUM_UPDATES
 
 
         # initialise lists of groups and links
@@ -115,10 +112,6 @@ class MLPNetwork():
         return self._num_write_blks
 
     @property
-    def timeout (self):
-        return self._timeout
-
-    @property
     def output_chain (self):
         return self._output_chain
 
@@ -134,27 +127,41 @@ class MLPNetwork():
             typedef struct network_conf
             {
               uchar net_type;
-              uchar training;
               uint  num_epochs;
-              uint  num_examples;
               uint  ticks_per_int;
               uint  global_max_ticks;
               uint  num_write_blks;
-              uint  timeout;
             } network_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        return struct.pack("<2B2x6I",
+        return struct.pack("<B3x4I",
                            self._net_type,
-                           self._training,
                            self._num_epochs,
-                           self._num_examples,
                            self._ticks_per_interval,
                            self._global_max_ticks,
-                           self._num_write_blks,
-                           self._timeout
+                           self._num_write_blks
+                           )
+
+
+    @property
+    def stage_config (self):
+        """ returns a packed string that corresponds to
+            (C struct) stage_conf in mlp_types.h:
+
+            typedef struct stage_conf
+            {
+              uchar training;               // stage mode: train (1) or test (0)
+              uint  num_examples;           // number of examples to run in this stage
+            } stage_conf_t;
+
+            pack: standard sizes, little-endian byte order,
+            explicit padding
+        """
+        return struct.pack("<B3xI",
+                           self._training,
+                           self._num_examples
                            )
 
 
@@ -327,8 +334,8 @@ class MLPNetwork():
         :type momentum: float
         """
         if num_updates is not None:
-            print (f"setting num_epochs to {num_updates}")
-            self._num_epochs = num_updates
+            print (f"setting num_updates to {num_updates}")
+            self._num_updates = num_updates
 
         if train_group_crit is not None:
             print (f"setting train_group_crit to {train_group_crit}")
@@ -599,15 +606,15 @@ class MLPNetwork():
             self._update_function = update_function
 
         self._training = 1
+        self._num_epochs = self._num_updates
         self.stage_run ()
 
 
     def test (self):
         """ do one stage of testing (no training)
         """
-        self._num_epochs = 1
-
         self._training = 0
+        self._num_epochs = 1
         self.stage_run ()
 
 

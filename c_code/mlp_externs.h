@@ -43,6 +43,7 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 extern s_conf_t       scfg;       // sum core configuration parameters
 extern i_conf_t       icfg;       // input core configuration parameters
 extern t_conf_t       tcfg;       // threshold core configuration parameters
+extern stage_conf_t   xcfg;       // stage configuration parameters
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

@@ -150,7 +150,7 @@ void wb_process (uint unused0, uint unused1)
       // if using Doug's Momentum and reached the end of an epoch
       // accumulate partial link delta sum (to send to s core),
       if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (ncfg.num_examples - 1)
+            && example == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
       {
 	// only use link derivatives for links whose weights are non-zero
@@ -213,7 +213,7 @@ void wb_process (uint unused0, uint unused1)
     // if using Doug's Momentum and reached the end of an epoch,
     // forward the accumulated partial link delta sums to the s core
     if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (ncfg.num_examples - 1)
+            && example == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
     {
       // cast to a 32-bit value,
@@ -247,7 +247,7 @@ void wb_process (uint unused0, uint unused1)
         // the last tick, we have to wait for the total link delta sum to
         // arrive
         if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (ncfg.num_examples - 1)
+            && example == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK + 1)
         {
           wb_thrds_pend = 1;
@@ -829,7 +829,7 @@ void wf_advance_event (void)
     tick_stop = FALSE;
 
     // and check if in training mode
-    if (ncfg.training)
+    if (xcfg.training)
     {
       // if training, save number of ticks
       num_ticks = tick;
@@ -868,10 +868,10 @@ void w_advance_example (void)
 #endif
 
   // check if done with examples
-  if (++example >= ncfg.num_examples)
+  if (++example >= xcfg.num_examples)
   {
     // if training update weights at end of epoch
-    if (ncfg.training)
+    if (xcfg.training)
     {
       //TODO: should be called or scheduled?
       wb_update_func ();
@@ -897,7 +897,7 @@ void w_advance_example (void)
 
       // and, if training, initialise weight changes
       //TODO: find a better place for this operation
-      if (ncfg.training)
+      if (xcfg.training)
       {
         for (uint i = 0; i < wcfg.num_rows; i++)
         {
