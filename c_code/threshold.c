@@ -16,10 +16,12 @@
 #include "comms_t.h"
 #include "process_t.h"
 
-// main methods for the threshold core
 
 // ------------------------------------------------------------------------
-// global "constants"
+// threshold core main routines
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// threshold core constants
 // ------------------------------------------------------------------------
 // list of procedures for the FORWARD phase in the output pipeline. The order is
 // relevant, as the index is defined in mlp_params.h
@@ -70,6 +72,7 @@ out_error_t const
   };
 // ------------------------------------------------------------------------
 
+
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
@@ -97,6 +100,8 @@ uchar        network_stop; // network_stop decision
 uint         to_epoch   = 0;
 uint         to_example = 0;
 uint         to_tick    = 0;
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
@@ -107,6 +112,8 @@ mlp_event_t      *ev; // event data
 activation_t     *it; // example inputs
 activation_t     *tt; // example targets
 uint             *rt; // multicast routing keys data
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // network, core and stage configurations (DTCM)
@@ -115,6 +122,7 @@ network_conf_t ncfg;           // network-wide configuration parameters
 t_conf_t       tcfg;           // threshold core configuration parameters
 stage_conf_t   xcfg;           // stage configuration parameters
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // threshold core variables
@@ -177,6 +185,7 @@ activation_t   * t_target_history;
 long_deriv_t   * t_output_deriv_history;
 // ------------------------------------------------------------------------
 
+
 #ifdef DEBUG
 // ------------------------------------------------------------------------
 // DEBUG variables
@@ -202,162 +211,6 @@ uint wght_ups = 0;  // number of weight updates done
 uint tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
-
-
-// ------------------------------------------------------------------------
-// load configuration from SDRAM and initialise variables
-// ------------------------------------------------------------------------
-uint init ()
-{
-  io_printf (IO_BUF, "threshold\n");
-
-  // read the data specification header
-  data_specification_metadata_t * data =
-          data_specification_get_data_address();
-  if (!data_specification_read_header (data))
-  {
-	  return (SPINN_CFG_UNAVAIL);
-  }
-
-  // set up the simulation interface (system region)
-  //NOTE: these variables are not used!
-  uint32_t n_steps, run_forever, step;
-  if (!simulation_steps_initialise(
-      data_specification_get_region(SYSTEM, data),
-      APPLICATION_NAME_HASH, &n_steps, &run_forever, &step, 0, 0))
-  {
-    return (SPINN_CFG_UNAVAIL);
-  }
-
-  // network configuration address
-  address_t nt = data_specification_get_region (NETWORK, data);
-
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&ncfg, nt, sizeof(network_conf_t));
-
-  // core configuration address
-  address_t dt = data_specification_get_region (CORE, data);
-
-  // initialise core-specific configuration from SDRAM
-  spin1_memcpy (&tcfg, dt, sizeof(t_conf_t));
-
-  // inputs
-  if (tcfg.input_grp)
-  {
-    it = (activation_t *) data_specification_get_region
-		  (INPUTS, data);
-  }
-
-  // targets
-  if (tcfg.output_grp)
-  {
-    tt = (activation_t *) data_specification_get_region
-		  (TARGETS, data);
-  }
-
-  // example set
-  es = (mlp_set_t *) data_specification_get_region
-		  (EXAMPLE_SET, data);
-
-#ifdef DEBUG_CFG5
-  io_printf (IO_BUF, "ne: %u\n", es->num_examples);
-  io_printf (IO_BUF, "mt: %f\n", es->max_time);
-  io_printf (IO_BUF, "nt: %f\n", es->min_time);
-  io_printf (IO_BUF, "gt: %f\n", es->grace_time);
-  io_printf (IO_BUF, "NaN: 0x%08x%\n", SPINN_FP_NaN);
-#endif
-
-  // examples
-  ex = (mlp_example_t *) data_specification_get_region
-		  (EXAMPLES, data);
-
-#ifdef DEBUG_CFG5
-  for (uint i = 0; i < es->num_examples; i++)
-  {
-    io_printf (IO_BUF, "nx[%u]: %u\n", i, ex[i].num);
-    io_printf (IO_BUF, "nv[%u]: %u\n", i, ex[i].num_events);
-    io_printf (IO_BUF, "vi[%u]: %u\n", i, ex[i].ev_idx);
-    io_printf (IO_BUF, "xf[%u]: %f\n", i, ex[i].freq);
-  }
-#endif
-
-  // events
-  ev = (mlp_event_t *) data_specification_get_region
-		  (EVENTS, data);
-
-#ifdef DEBUG_CFG5
-  uint evi = 0;
-  for (uint i = 0; i < es->num_examples; i++)
-  {
-    for (uint j = 0; j < ex[i].num_events; j++)
-    {
-      io_printf (IO_BUF, "mt[%u][%u]: %f\n", i, j, ev[evi].max_time);
-      io_printf (IO_BUF, "nt[%u][%u]: %f\n", i, j, ev[evi].min_time);
-      io_printf (IO_BUF, "gt[%u][%u]: %f\n", i, j, ev[evi].grace_time);
-      io_printf (IO_BUF, "ii[%u][%u]: %u\n", i, j, ev[evi].it_idx);
-      evi++;
-    }
-  }
-#endif
-
-  // routing keys
-  rt = (uint *) data_specification_get_region
-		  (ROUTING, data);
-
-  // stage configuration address
-  address_t xt = data_specification_get_region (STAGE, data);
-
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
-
-#ifdef DEBUG_CFG0
-  io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
-  io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
-  io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
-  io_printf (IO_BUF, "fs: %d\n", tcfg.fwd_sync_expected);
-  io_printf (IO_BUF, "bs: %d\n", tcfg.bkp_sync_expected);
-  io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
-  io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
-  io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
-  io_printf (IO_BUF, "dt: %f\n", tcfg.out_integr_dt);
-  io_printf (IO_BUF, "np: %d\n", tcfg.num_out_procs);
-  io_printf (IO_BUF, "p0: %d\n", tcfg.procs_list[0]);
-  io_printf (IO_BUF, "p1: %d\n", tcfg.procs_list[1]);
-  io_printf (IO_BUF, "p2: %d\n", tcfg.procs_list[2]);
-  io_printf (IO_BUF, "p3: %d\n", tcfg.procs_list[3]);
-  io_printf (IO_BUF, "p4: %d\n", tcfg.procs_list[4]);
-  io_printf (IO_BUF, "wc: %f\n", tcfg.weak_clamp_strength);
-  io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
-  			tcfg.initOutput, SPINN_ACTIV_SHIFT));
-  io_printf (IO_BUF, "gc: %k\n", tcfg.group_criterion);
-  io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
-  io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output_group);
-  io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output_group);
-  io_printf (IO_BUF, "ef: %d\n", tcfg.error_function);
-  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
-  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-  io_printf (IO_BUF, "sk: 0x%08x\n", rt[STP]);
-#endif
-
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
-
-  // allocate memory and initialise variables
-  uint rcode = t_init ();
-
-  return (rcode);
-}
-// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
@@ -413,15 +266,23 @@ void c_main ()
   io_printf (IO_BUF, ">> mlp\n");
 
   // get this core's IDs,
-  chipID = spin1_get_chip_id();
-  coreID = spin1_get_core_id();
+  chipID = spin1_get_chip_id ();
+  coreID = spin1_get_core_id ();
 
-  // initialise application,
-  uint exit_code = init ();
+  // initialise configurations from SDRAM,
+  uint exit_code = cfg_init ();
   if (exit_code != SPINN_NO_ERROR)
   {
-      // if init failed report results and abort simulation
-      stage_done (exit_code);
+    // report results and abort
+    stage_done (exit_code);
+  }
+
+  // allocate memory and initialise variables,
+  exit_code = var_init ();
+  if (exit_code != SPINN_NO_ERROR)
+  {
+    // report results and abort
+    stage_done (exit_code);
   }
 
   // set up timer1 (used for background deadlock check),
@@ -433,10 +294,10 @@ void c_main ()
   spin1_callback_on (MCPL_PACKET_RECEIVED, t_receivePacket, SPINN_PACKET_P);
 
   // setup simulation,
-  simulation_set_start_function(get_started);
+  simulation_set_start_function (get_started);
 
   // start execution,
-  simulation_run();
+  simulation_run ();
 
   // and say goodbye
   io_printf (IO_BUF, "<< mlp\n");

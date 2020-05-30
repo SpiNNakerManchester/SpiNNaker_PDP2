@@ -16,10 +16,12 @@
 #include "comms_i.h"
 #include "process_i.h"
 
-// main methods for the input core
 
 // ------------------------------------------------------------------------
-// global "constants"
+// input core main routines
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// input core constants
 // ------------------------------------------------------------------------
 // list of procedures for the FORWARD phase in the input pipeline. The order is
 // relevant, as the index is defined in mlp_params.h
@@ -49,6 +51,7 @@ in_proc_init_t const
   };
 // ------------------------------------------------------------------------
 
+
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
@@ -73,6 +76,8 @@ uchar        tick_stop;    // current tick stop decision
 uint         to_epoch   = 0;
 uint         to_example = 0;
 uint         to_tick    = 0;
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
@@ -81,6 +86,8 @@ mlp_example_t    *ex; // example data
 mlp_event_t      *ev; // event data
 activation_t     *it; // example inputs
 uint             *rt; // multicast routing keys data
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // network, core and stage configurations (DTCM)
@@ -89,6 +96,7 @@ network_conf_t ncfg;           // network-wide configuration parameters
 i_conf_t       icfg;           // input core configuration parameters
 stage_conf_t   xcfg;           // stage configuration parameters
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // input core variables
@@ -122,6 +130,7 @@ uint           * i_bkpKey;          // i cores have one bkpKey per partition
 long_net_t     * i_net_history;   //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 
+
 #ifdef DEBUG
 // ------------------------------------------------------------------------
 // DEBUG variables
@@ -144,106 +153,6 @@ uint wght_ups = 0;  // number of weight updates done
 uint tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
-
-
-// ------------------------------------------------------------------------
-// load configuration from SDRAM and initialise variables
-// ------------------------------------------------------------------------
-uint init ()
-{
-  io_printf (IO_BUF, "input\n");
-
-  // read the data specification header
-  data_specification_metadata_t * data =
-          data_specification_get_data_address();
-  if (!data_specification_read_header (data))
-  {
-	  return (SPINN_CFG_UNAVAIL);
-  }
-
-  // set up the simulation interface (system region)
-  //NOTE: these variables are not used!
-  uint32_t n_steps, run_forever, step;
-  if (!simulation_steps_initialise(
-      data_specification_get_region(SYSTEM, data),
-      APPLICATION_NAME_HASH, &n_steps, &run_forever, &step, 0, 0))
-  {
-    return (SPINN_CFG_UNAVAIL);
-  }
-
-  // network configuration address
-  address_t nt = data_specification_get_region (NETWORK, data);
-
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
-
-  // core configuration address
-  address_t dt = data_specification_get_region (CORE, data);
-
-  // initialise core-specific configuration from SDRAM
-  spin1_memcpy (&icfg, dt, sizeof (i_conf_t));
-
-  // inputs if this core receives inputs from examples file
-  if (icfg.input_grp)
-  {
-	  it = (activation_t *) data_specification_get_region
-		  (INPUTS, data);
-  }
-
-  // examples
-  ex = (mlp_example_t *) data_specification_get_region
-		  (EXAMPLES, data);
-
-  // events
-  ev = (mlp_event_t *) data_specification_get_region
-		  (EVENTS, data);
-
-  // routing keys
-  rt = (uint *) data_specification_get_region
-		  (ROUTING, data);
-
-  // stage configuration address
-  address_t xt = data_specification_get_region (STAGE, data);
-
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
-
-#ifdef DEBUG_CFG0
-  io_printf (IO_BUF, "og: %d\n", icfg.output_grp);
-  io_printf (IO_BUF, "ig: %d\n", icfg.input_grp);
-  io_printf (IO_BUF, "nu: %d\n", icfg.num_units);
-  io_printf (IO_BUF, "np: %d\n", icfg.num_in_procs);
-  io_printf (IO_BUF, "p0: %d\n", icfg.procs_list[0]);
-  io_printf (IO_BUF, "p1: %d\n", icfg.procs_list[1]);
-  io_printf (IO_BUF, "ie: %d\n", icfg.in_integr_en);
-  io_printf (IO_BUF, "dt: %f\n", icfg.in_integr_dt);
-  io_printf (IO_BUF, "sc: %f\n", icfg.soft_clamp_strength);
-  io_printf (IO_BUF, "in: %d\n", icfg.initNets);
-  io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
-  		icfg.initOutput, SPINN_ACTIV_SHIFT));
-  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
-  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-#endif
-
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
-
-  // allocate memory and initialise variables
-  uint rcode = i_init ();
-
-  return (rcode);
-}
-// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
@@ -300,14 +209,22 @@ void c_main ()
   io_printf (IO_BUF, ">> mlp\n");
 
   // get this core's IDs,
-  chipID = spin1_get_chip_id();
-  coreID = spin1_get_core_id();
+  chipID = spin1_get_chip_id ();
+  coreID = spin1_get_core_id ();
 
-  // initialise application,
-  uint exit_code = init ();
+  // initialise configurations from SDRAM,
+  uint exit_code = cfg_init ();
   if (exit_code != SPINN_NO_ERROR)
   {
-    // if init failed report results and abort simulation
+    // report results and abort
+    stage_done (exit_code);
+  }
+
+  // allocate memory and initialise variables,
+  exit_code = var_init ();
+  if (exit_code != SPINN_NO_ERROR)
+  {
+    // report results and abort
     stage_done (exit_code);
   }
 

@@ -15,10 +15,12 @@
 #include "comms_w.h"
 #include "process_w.h"
 
-// main methods for the weight core
 
 // ------------------------------------------------------------------------
-// global "constants"
+// weight core main routines
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// weight core constants
 // ------------------------------------------------------------------------
 // list of procedures for updating of weights. The order is relevant, as
 // the indexes are specified in mlp_params.h
@@ -28,6 +30,7 @@ weight_update_t const
     steepest_update_weights, momentum_update_weights, dougsmomentum_update_weights
   };
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // global variables
@@ -54,6 +57,8 @@ uchar        tick_stop;    // current tick stop decision
 uint         to_epoch   = 0;
 uint         to_example = 0;
 uint         to_tick    = 0;
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
@@ -61,6 +66,8 @@ uint         to_tick    = 0;
 weight_t         * wt;     // initial connection weights
 mlp_example_t    * ex;     // example data
 uint             * rt;     // multicast routing keys data
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // network, core and stage configurations (DTCM)
@@ -69,6 +76,7 @@ network_conf_t ncfg;           // network-wide configuration parameters
 w_conf_t       wcfg;           // weight core configuration parameters
 stage_conf_t   xcfg;           // stage configuration parameters
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // weight core variables
@@ -108,6 +116,7 @@ weight_update_t  wb_update_func;    // weight update function
 activation_t   * w_output_history;  // history array for outputs
 // ------------------------------------------------------------------------
 
+
 #ifdef DEBUG
 // ------------------------------------------------------------------------
 // DEBUG variables
@@ -134,97 +143,6 @@ uint wght_ups = 0;  // number of weight updates done
 uint tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
-
-
-// ------------------------------------------------------------------------
-// load configuration from SDRAM and initialise variables
-// ------------------------------------------------------------------------
-uint init ()
-{
-  io_printf (IO_BUF, "weight\n");
-
-  // read the data specification header
-  data_specification_metadata_t * data =
-          data_specification_get_data_address();
-  if (!data_specification_read_header (data))
-  {
-	  return (SPINN_CFG_UNAVAIL);
-  }
-
-  // set up the simulation interface (system region)
-  //NOTE: these variables are not used!
-  uint32_t n_steps, run_forever, step;
-  if (!simulation_steps_initialise(
-      data_specification_get_region(SYSTEM, data),
-      APPLICATION_NAME_HASH, &n_steps, &run_forever, &step, 0, 0))
-  {
-    return (SPINN_CFG_UNAVAIL);
-  }
-
-  // network configuration address
-  address_t nt = data_specification_get_region (NETWORK, data);
-
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
-
-  // core configuration address
-  address_t dt = data_specification_get_region (CORE, data);
-
-  // initialise core-specific configuration from SDRAM
-  spin1_memcpy (&wcfg, dt, sizeof (w_conf_t));
-
-  // initial connection weights
-  wt = (weight_t *) data_specification_get_region
-		  (WEIGHTS, data);
-
-  // examples
-  ex = (mlp_example_t *) data_specification_get_region
-		  (EXAMPLES, data);
-
-  // routing keys
-  rt = (uint *) data_specification_get_region
-		  (ROUTING, data);
-
-  // stage configuration address
-  address_t xt = data_specification_get_region (STAGE, data);
-
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
-
-#ifdef DEBUG_CFG0
-  io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
-  io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
-  io_printf (IO_BUF, "rb: %d\n", wcfg.row_blk);
-  io_printf (IO_BUF, "cb: %d\n", wcfg.col_blk);
-  io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
-  io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
-  io_printf (IO_BUF, "mm: %k\n", wcfg.momentum);
-  io_printf (IO_BUF, "uf: %d\n", wcfg.update_function);
-  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
-  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-  io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
-  io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
-#endif
-
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
-
-  // allocate memory and initialise variables
-  uint rcode = w_init ();
-
-  return (rcode);
-}
-// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
@@ -281,14 +199,22 @@ void c_main ()
   io_printf (IO_BUF, ">> mlp\n");
 
   // get this core's IDs,
-  chipID = spin1_get_chip_id();
-  coreID = spin1_get_core_id();
+  chipID = spin1_get_chip_id ();
+  coreID = spin1_get_core_id ();
 
-  // initialise application,
-  uint exit_code = init ();
+  // initialise configurations from SDRAM,
+  uint exit_code = cfg_init ();
   if (exit_code != SPINN_NO_ERROR)
   {
-    // if init failed report results and abort simulation
+    // report results and abort
+    stage_done (exit_code);
+  }
+
+  // allocate memory and initialise variables,
+  exit_code = var_init ();
+  if (exit_code != SPINN_NO_ERROR)
+  {
+    // report results and abort
     stage_done (exit_code);
   }
 

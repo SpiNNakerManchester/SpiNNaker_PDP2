@@ -14,8 +14,10 @@
 #include "init_s.h"
 #include "comms_s.h"
 
-// main methods for the sum core
 
+// ------------------------------------------------------------------------
+// sum core main routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
@@ -42,12 +44,16 @@ uchar        tick_stop;    // current tick stop decision
 uint         to_epoch   = 0;
 uint         to_example = 0;
 uint         to_tick    = 0;
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
 mlp_example_t    *ex; // example data
 uint             *rt; // multicast routing keys data
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // network, core and stage configurations (DTCM)
@@ -56,6 +62,7 @@ network_conf_t ncfg;           // network-wide configuration parameters
 s_conf_t       scfg;           // sum core configuration parameters
 stage_conf_t   xcfg;           // stage configuration parameters
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // sum core variables
@@ -83,6 +90,7 @@ scoreboard_t     s_ldsa_arrived;    // keep track of the number of partial link 
 scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta sum totals
 // ------------------------------------------------------------------------
 
+
 #ifdef DEBUG
 // ------------------------------------------------------------------------
 // DEBUG variables
@@ -109,91 +117,6 @@ uint wght_ups = 0;  // number of weight updates done
 uint tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
-
-
-// ------------------------------------------------------------------------
-// load configuration from SDRAM and initialise variables
-// ------------------------------------------------------------------------
-uint init ()
-{
-  io_printf (IO_BUF, "sum\n");
-
-  // read the data specification header
-  data_specification_metadata_t * data =
-          data_specification_get_data_address();
-  if (!data_specification_read_header (data))
-  {
-	  return (SPINN_CFG_UNAVAIL);
-  }
-
-  // set up the simulation interface (system region)
-  //NOTE: these variables are not used!
-  uint32_t n_steps, run_forever, step;
-  if (!simulation_steps_initialise(
-      data_specification_get_region(SYSTEM, data),
-      APPLICATION_NAME_HASH, &n_steps, &run_forever, &step, 0, 0))
-  {
-    return (SPINN_CFG_UNAVAIL);
-  }
-
-  // network configuration address
-  address_t nt = data_specification_get_region (NETWORK, data);
-
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
-
-  // core configuration address
-  address_t dt = data_specification_get_region (CORE, data);
-
-  // initialise core-specific configuration from SDRAM
-  spin1_memcpy (&scfg, dt, sizeof (s_conf_t));
-
-  // examples
-  ex = (mlp_example_t *) data_specification_get_region
-		  (EXAMPLES, data);
-
-  // routing keys
-  rt = (uint *) data_specification_get_region
-		  (ROUTING, data);
-
-  // stage configuration address
-  address_t xt = data_specification_get_region (STAGE, data);
-
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
-
-#ifdef DEBUG_CFG0
-  io_printf (IO_BUF, "nu: %d\n", scfg.num_units);
-  io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
-  io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
-  io_printf (IO_BUF, "ae: %d\n", scfg.ldsa_expected);
-  io_printf (IO_BUF, "te: %d\n", scfg.ldst_expected);
-  io_printf (IO_BUF, "uf: %d\n", scfg.update_function);
-  io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
-  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
-  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-  io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
-#endif
-
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
-
-  // allocate memory and initialise variables
-  uint rcode = s_init ();
-
-  return (rcode);
-}
-// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
@@ -250,14 +173,22 @@ void c_main ()
   io_printf (IO_BUF, ">> mlp\n");
 
   // get this core's IDs,
-  chipID = spin1_get_chip_id();
-  coreID = spin1_get_core_id();
+  chipID = spin1_get_chip_id ();
+  coreID = spin1_get_core_id ();
 
-  // initialise application,
-  uint exit_code = init ();
+  // initialise configurations from SDRAM,
+  uint exit_code = cfg_init ();
   if (exit_code != SPINN_NO_ERROR)
   {
-    // if init failed report results and abort simulation
+    // report results and abort
+    stage_done (exit_code);
+  }
+
+  // allocate memory and initialise variables,
+  exit_code = var_init ();
+  if (exit_code != SPINN_NO_ERROR)
+  {
+    // report results and abort
     stage_done (exit_code);
   }
 

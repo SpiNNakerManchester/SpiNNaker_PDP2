@@ -2,6 +2,7 @@
 #include "spin1_api.h"
 
 // graph-front-end
+#include <data_specification.h>
 #include <simulation.h>
 
 // mlp
@@ -9,14 +10,105 @@
 #include "mlp_types.h"
 #include "mlp_externs.h"
 
+#include "init_w.h"
 #include "comms_w.h"
 
-// this file contains the initialisation routine for W cores
+
+// ------------------------------------------------------------------------
+// input core initialisation routines
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// load configurations from SDRAM
+// ------------------------------------------------------------------------
+uint cfg_init (void)
+{
+  io_printf (IO_BUF, "weight\n");
+
+  // read the data specification header
+  data_specification_metadata_t * data =
+          data_specification_get_data_address();
+  if (!data_specification_read_header (data))
+  {
+    return (SPINN_CFG_UNAVAIL);
+  }
+
+  // set up the simulation interface (system region)
+  //NOTE: these variables are not used!
+  uint32_t n_steps, run_forever, step;
+  if (!simulation_steps_initialise(
+      data_specification_get_region(SYSTEM, data),
+      APPLICATION_NAME_HASH, &n_steps, &run_forever, &step, 0, 0))
+  {
+    return (SPINN_CFG_UNAVAIL);
+  }
+
+  // network configuration address
+  address_t nt = data_specification_get_region (NETWORK, data);
+
+  // initialise network configuration from SDRAM
+  spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
+
+  // core configuration address
+  address_t dt = data_specification_get_region (CORE, data);
+
+  // initialise core-specific configuration from SDRAM
+  spin1_memcpy (&wcfg, dt, sizeof (w_conf_t));
+
+  // initial connection weights
+  wt = (weight_t *) data_specification_get_region
+      (WEIGHTS, data);
+
+  // examples
+  ex = (mlp_example_t *) data_specification_get_region
+      (EXAMPLES, data);
+
+  // routing keys
+  rt = (uint *) data_specification_get_region
+      (ROUTING, data);
+
+  // stage configuration address
+  address_t xt = data_specification_get_region (STAGE, data);
+
+  // initialise network configuration from SDRAM
+  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
+
+#ifdef DEBUG_CFG0
+  io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
+  io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
+  io_printf (IO_BUF, "rb: %d\n", wcfg.row_blk);
+  io_printf (IO_BUF, "cb: %d\n", wcfg.col_blk);
+  io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
+  io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
+  io_printf (IO_BUF, "mm: %k\n", wcfg.momentum);
+  io_printf (IO_BUF, "uf: %d\n", wcfg.update_function);
+  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
+  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
+  io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
+  io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
+#endif
+
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
+  epoch   = 0;
+  example = 0;
+  evt     = 0;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
+
+  // initialise number of events and event index
+  num_events = ex[example].num_events;
+  event_idx  = ex[example].ev_idx;
+
+  return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // allocate memory and initialise variables
 // ------------------------------------------------------------------------
-uint w_init (void)
+uint var_init (void)
 {
   uint i, j;
 
@@ -230,6 +322,31 @@ uint w_init (void)
 
 
 // ------------------------------------------------------------------------
+// load stage configuration from SDRAM
+// ------------------------------------------------------------------------
+void stage_init (void)
+{
+  // read the data specification header
+  data_specification_metadata_t * data =
+          data_specification_get_data_address();
+  if (!data_specification_read_header (data))
+  {
+    // report results and abort simulation
+    stage_done (SPINN_CFG_UNAVAIL);
+  }
+
+  // stage configuration address
+  address_t xadr = data_specification_get_region (STAGE, data);
+
+  // initialise network configuration from SDRAM
+  spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+
+  io_printf (IO_BUF, "stage configured\n");
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // stage start callback: get stage started
 // ------------------------------------------------------------------------
 void stage_start (void)
@@ -247,7 +364,7 @@ void stage_start (void)
 void stage_done (uint ec)
 {
   // pause timer and setup next stage,
-  simulation_handle_pause_resume (NULL);
+  simulation_handle_pause_resume (stage_init);
 
   // report problems -- if any
   switch (ec)
