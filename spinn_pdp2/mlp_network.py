@@ -79,6 +79,9 @@ class MLPNetwork():
         # keep track of the number of partitions
         self.partitions = 0
 
+        # keep track of the current execution stage
+        self._stage_id = 0
+
         # keep track if errors have occurred
         self._aborted = False
 
@@ -159,7 +162,8 @@ class MLPNetwork():
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        return struct.pack("<B3xI",
+        return struct.pack("<2B2xI",
+                           self._stage_id,
                            self._training,
                            self._num_examples
                            )

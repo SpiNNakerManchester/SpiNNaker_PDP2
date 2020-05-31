@@ -88,18 +88,18 @@ void w_receivePacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void w_stopPacket (uint key)
 {
-  #ifdef DEBUG
-    stp_recv++;
-    if (phase == SPINN_BACKPROP)
-      wrng_phs++;
-  #endif
+#ifdef DEBUG
+  stp_recv++;
+  if (phase == SPINN_BACKPROP)
+    wrng_phs++;
+#endif
 
   // STOP decision arrived
   tick_stop = key & SPINN_STPD_MASK;
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "sc:%x\n", tick_stop);
-  #endif
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "sc:%x\n", tick_stop);
+#endif
 
   // check if all other threads done
   if (wf_thrds_pend == 0)
@@ -108,9 +108,9 @@ void w_stopPacket (uint key)
     wf_thrds_pend = 2;
 
     // and advance tick
-    #ifdef TRACE_VRB
-      io_printf (IO_BUF, "wrp scheduling wf_advance_tick\n");
-    #endif
+#ifdef TRACE_VRB
+    io_printf (IO_BUF, "wrp scheduling wf_advance_tick\n");
+#endif
 
     spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
   }
@@ -128,9 +128,9 @@ void w_stopPacket (uint key)
 // ------------------------------------------------------------------------
 void w_networkStopPacket (void)
 {
-  #ifdef DEBUG
-    stn_recv++;
-  #endif
+#ifdef DEBUG
+  stn_recv++;
+#endif
 
     // report no error
     stage_done (SPINN_NO_ERROR);
@@ -156,9 +156,9 @@ void w_ldsrPacket (uint payload)
     //NOTE: no need to initialise semaphore
     //wb_thrds_pend = 0;
 
-    #ifdef TRACE_VRB
-      io_printf (IO_BUF, "ldsr calling wb_advance_tick\n");
-    #endif
+#ifdef TRACE_VRB
+    io_printf (IO_BUF, "ldsr calling wb_advance_tick\n");
+#endif
 
     // and advance tick
     //TODO: check if need to schedule or can simply call
@@ -178,11 +178,11 @@ void w_ldsrPacket (uint payload)
 // ------------------------------------------------------------------------
 void w_forwardPacket (uint key, uint payload)
 {
-  #ifdef DEBUG
-    recv_fwd++;
-    if (phase == SPINN_BACKPROP)
-      wrng_phs++;
-  #endif
+#ifdef DEBUG
+  recv_fwd++;
+  if (phase == SPINN_BACKPROP)
+    wrng_phs++;
+#endif
 
   // get output index: mask out phase, core and block data,
   uint inx = key & SPINN_BLKOUT_MASK;
@@ -215,9 +215,9 @@ void w_forwardPacket (uint key, uint payload)
       wf_thrds_pend = 2;
 
       // and advance tick
-      #ifdef TRACE_VRB
-        io_printf (IO_BUF, "wfpkt scheduling wf_advance_tick\n");
-      #endif
+#ifdef TRACE_VRB
+      io_printf (IO_BUF, "wfpkt scheduling wf_advance_tick\n");
+#endif
 
       spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
     }
@@ -236,11 +236,11 @@ void w_forwardPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void w_backpropPacket (uint key, uint payload)
 {
-  #ifdef DEBUG
-    recv_bkp++;
-    if (phase == SPINN_FORWARD)
-      wrng_phs++;
-  #endif
+#ifdef DEBUG
+  recv_bkp++;
+  if (phase == SPINN_FORWARD)
+    wrng_phs++;
+#endif
 
   // check if space in packet queue,
   uint new_tail = (w_delta_pkt_q.tail + 1) % SPINN_WEIGHT_PQ_LEN;
@@ -274,9 +274,9 @@ void w_backpropPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void store_output (uint inx)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "store_output\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "store_output\n");
+#endif
 
   w_output_history[(tick * wcfg.num_rows) + inx] = w_outputs[wf_comms][inx];
 }

@@ -131,11 +131,25 @@ class ThresholdVertex(
 
         # keys are integers
         # t cores require a different key for every group partition
-        self._N_KEYS_BYTES = (MLPConstants.NUM_KEYS_REQ + self._group.partitions) * _data_int.size
+        self._N_KEYS_BYTES =  _data_int.size * \
+            (MLPConstants.NUM_KEYS_REQ + self._group.partitions)
 
         # stage configuration structure
         self._N_STAGE_CONFIGURATION_BYTES = \
             len (self._network.stage_config)
+
+        # reserve SDRAM space used to store historic data
+        self._TARGET_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
+
+        self._OUT_DERIV_HISTORY_BYTES = (MLPConstants.LONG_DERIV_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
+
+        self._NET_HISTORY_BYTES = (MLPConstants.NET_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
+
+        self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -146,7 +160,11 @@ class ThresholdVertex(
             self._N_INPUTS_BYTES + \
             self._N_TARGETS_BYTES + \
             self._N_KEYS_BYTES + \
-            self._N_STAGE_CONFIGURATION_BYTES
+            self._N_STAGE_CONFIGURATION_BYTES + \
+            self._TARGET_HISTORY_BYTES + \
+            self._OUT_DERIV_HISTORY_BYTES + \
+            self._NET_HISTORY_BYTES + \
+            self._OUTPUT_HISTORY_BYTES
         )
 
     @property

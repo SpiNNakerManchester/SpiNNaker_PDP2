@@ -85,11 +85,16 @@ class InputVertex(
 
         # keys are integers
         # i cores require a different key for every group partition
-        self._N_KEYS_BYTES =(MLPConstants.NUM_KEYS_REQ + self.group.partitions) * _data_int.size
+        self._N_KEYS_BYTES = _data_int.size * \
+            (MLPConstants.NUM_KEYS_REQ + self.group.partitions)
 
         # stage configuration structure
-        self._N_STAGE_CONFIGURATION_BYTES = \
-            len (self._network.stage_config)
+        self._N_STAGE_CONFIGURATION_BYTES = len (self._network.stage_config)
+
+        # reserve SDRAM space used to store historic data
+        self._NET_HISTORY_BYTES = (MLPConstants.LONG_NET_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
+
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -98,7 +103,8 @@ class InputVertex(
             self._N_EVENTS_BYTES + \
             self._N_INPUTS_BYTES + \
             self._N_KEYS_BYTES + \
-            self._N_STAGE_CONFIGURATION_BYTES
+            self._N_STAGE_CONFIGURATION_BYTES + \
+            self._NET_HISTORY_BYTES
         )
 
     @property

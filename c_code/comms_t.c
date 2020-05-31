@@ -80,16 +80,16 @@ void t_receivePacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void t_stopPacket (uint key)
 {
-  #ifdef DEBUG
-    stp_recv++;
-  #endif
+#ifdef DEBUG
+  stp_recv++;
+#endif
 
   // STOP decision arrived
   tick_stop = key & SPINN_STPD_MASK;
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "sc:%x\n", tick_stop);
-  #endif
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "sc:%x\n", tick_stop);
+#endif
 
   // check if all other threads done
   if (tf_thrds_pend == 0)
@@ -114,9 +114,9 @@ void t_stopPacket (uint key)
 // ------------------------------------------------------------------------
 void t_chainPacket (uint key)
 {
-  #ifdef DEBUG
-    chn_recv++;
-  #endif
+#ifdef DEBUG
+  chn_recv++;
+#endif
 
   // STOP daisy chain partial decision arrived from previous core
   tf_chain_prev = key & SPINN_STPD_MASK;
@@ -173,9 +173,9 @@ void t_networkStopPacket (void)
 // ------------------------------------------------------------------------
 void t_syncPacket (uint ph)
 {
-  #ifdef DEBUG
-    spk_recv++;
-  #endif
+#ifdef DEBUG
+  spk_recv++;
+#endif
 
   if (ph == SPINN_FORWARD)
   {
@@ -289,11 +289,11 @@ void t_forwardPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void t_backpropPacket (uint key, uint payload)
 {
-  #ifdef DEBUG
-    recv_bkp++;
-    if (phase == SPINN_FORWARD)
-      wrng_phs++;
-  #endif
+#ifdef DEBUG
+  recv_bkp++;
+  if (phase == SPINN_FORWARD)
+    wrng_phs++;
+#endif
 
   // get error index: mask out phase, core and block data,
   uint inx = key & SPINN_ERROR_MASK;
@@ -320,9 +320,9 @@ void t_backpropPacket (uint key, uint payload)
       tb_thrds_pend = 1;
 
       // and advance tick
-      #ifdef TRACE_VRB
-        io_printf (IO_BUF, "tbpkt scheduling tb_advance_tick\n");
-      #endif
+#ifdef TRACE_VRB
+      io_printf (IO_BUF, "tbpkt scheduling tb_advance_tick\n");
+#endif
 
       spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
     }

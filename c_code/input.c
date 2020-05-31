@@ -1,7 +1,7 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
-// graph-front-end
+// front-end-common
 #include "common-typedefs.h"
 #include <data_specification.h>
 #include <simulation.h>
@@ -95,6 +95,7 @@ uint             *rt; // multicast routing keys data
 network_conf_t ncfg;           // network-wide configuration parameters
 i_conf_t       icfg;           // input core configuration parameters
 stage_conf_t   xcfg;           // stage configuration parameters
+address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 
 

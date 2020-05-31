@@ -344,6 +344,7 @@ typedef struct mlp_event
 // ------------------------------------------------------------------------
 typedef struct stage_conf       // execution stage configuration
 {
+  uchar stage_id;               // stage number
   uchar training;               // stage mode: train (1) or test (0)
   uint  num_examples;           // number of examples to run in this stage
 } stage_conf_t;

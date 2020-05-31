@@ -1,7 +1,7 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
-// graph-front-end
+// front-end-common
 #include <data_specification.h>
 #include <simulation.h>
 
@@ -66,13 +66,12 @@ uint cfg_init (void)
   rt = (uint *) data_specification_get_region
       (ROUTING, data);
 
-  // stage configuration address
-  address_t xt = data_specification_get_region (STAGE, data);
+  // initialise stage configuration from SDRAM
+  xadr = data_specification_get_region (STAGE, data);
+  spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+  io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
 
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
-
-#ifdef DEBUG_CFG0
+#ifdef DEBUG_CFG
   io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
   io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
   io_printf (IO_BUF, "rb: %d\n", wcfg.row_blk);
@@ -87,19 +86,6 @@ uint cfg_init (void)
   io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
 #endif
 
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
-
   return (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
@@ -112,12 +98,12 @@ uint var_init (void)
 {
   uint i, j;
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "r:%d c:%d\n",
-                wcfg.num_rows,
-                wcfg.num_cols
-              );
-  #endif
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "r:%d c:%d\n",
+              wcfg.num_rows,
+              wcfg.num_cols
+            );
+#endif
 
   // TODO: the following memory allocation is to be used to store
   // the history of any of these sets of values. When training
@@ -222,8 +208,6 @@ uint var_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-
-
   // initialise weights from SDRAM
   //NOTE: could use DMA
   for (i = 0; i < wcfg.num_rows; i++)
@@ -234,19 +218,15 @@ uint var_init (void)
                  );
   }
 
-  #ifdef DEBUG_CFG2
-    for (uint r = 0; r < wcfg.num_rows; r++)
+#ifdef DEBUG_CFG2
+  for (uint r = 0; r < wcfg.num_rows; r++)
+  {
+    for (uint c =0; c < wcfg.num_cols; c++)
     {
-      for (uint c =0; c < wcfg.num_cols; c++)
-      {
-	    io_printf (IO_BUF, "w[%u][%u]: %k\n", r, c, w_weights[r][c]);
-      }
+      io_printf (IO_BUF, "w[%u][%u]: %k\n", r, c, w_weights[r][c]);
     }
-  #endif
-
-  #ifdef WEIGHT_TRACE
-    //TODO: dump weights to SDRAM for record keeping
-  #endif
+  }
+#endif
 
   // initialise link deltas
   for (uint i = 0; i < wcfg.num_rows; i++)
@@ -277,6 +257,19 @@ uint var_init (void)
   {
     w_output_history[i] = 0;
   }
+
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
+  epoch   = 0;
+  example = 0;
+  evt     = 0;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
+
+  // initialise number of events and event index
+  num_events = ex[example].num_events;
+  event_idx  = ex[example].ev_idx;
 
   // initialise tick
   tick = SPINN_W_INIT_TICK;
@@ -326,22 +319,9 @@ uint var_init (void)
 // ------------------------------------------------------------------------
 void stage_init (void)
 {
-  // read the data specification header
-  data_specification_metadata_t * data =
-          data_specification_get_data_address();
-  if (!data_specification_read_header (data))
-  {
-    // report results and abort simulation
-    stage_done (SPINN_CFG_UNAVAIL);
-  }
-
-  // stage configuration address
-  address_t xadr = data_specification_get_region (STAGE, data);
-
-  // initialise network configuration from SDRAM
+  // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
-
-  io_printf (IO_BUF, "stage configured\n");
+  io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
 }
 // ------------------------------------------------------------------------
 

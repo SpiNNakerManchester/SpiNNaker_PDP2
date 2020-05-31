@@ -106,10 +106,6 @@ void wb_process (uint unused0, uint unused1)
   io_printf (IO_BUF, "wb_process\n");
 #endif
 
-#ifdef PROFILE
-  io_printf (IO_STD, "tin:  %u\n", tc[T2_COUNT]);
-#endif
-
   (void) unused0;
   (void) unused1;
 
@@ -286,10 +282,6 @@ void wb_process (uint unused0, uint unused1)
 
   // restore interrupts and leave
   spin1_mode_restore (cpsr);
-
-#ifdef PROFILE
-  io_printf (IO_STD, "tout: %u\n", tc[T2_COUNT]);
-#endif
 }
 // ------------------------------------------------------------------------
 
@@ -957,11 +949,6 @@ void w_switch_to_bp (void)
 
   // and send sync packet to allow unit outputs to be sent
 //#  while (!spin1_send_mc_packet (wb_sync_key, 0, NO_PAYLOAD));
-
-//#  #ifdef DEBUG
-//#    pkt_sent++;
-//#    spk_sent++;
-//#  #endif
 }
 // ------------------------------------------------------------------------
 

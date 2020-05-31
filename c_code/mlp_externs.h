@@ -1,6 +1,10 @@
 #ifndef __MLP_EXTERNS_H__
 #define __MLP_EXTERNS_H__
 
+// front-end-common types
+#include "common-typedefs.h"
+
+
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
@@ -44,6 +48,7 @@ extern s_conf_t       scfg;       // sum core configuration parameters
 extern i_conf_t       icfg;       // input core configuration parameters
 extern t_conf_t       tcfg;       // threshold core configuration parameters
 extern stage_conf_t   xcfg;       // stage configuration parameters
+extern address_t      xadr;       // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------

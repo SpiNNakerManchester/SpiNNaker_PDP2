@@ -141,13 +141,18 @@ class WeightVertex(
         self._N_STAGE_CONFIGURATION_BYTES = \
             len (self._network.stage_config)
 
+        # reserve SDRAM space used to store historic data
+        self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
+
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
             self._N_CORE_CONFIGURATION_BYTES + \
             self._N_EXAMPLES_BYTES + \
             self._N_WEIGHTS_BYTES + \
             self._N_KEYS_BYTES + \
-            self._N_STAGE_CONFIGURATION_BYTES
+            self._N_STAGE_CONFIGURATION_BYTES + \
+            self._OUTPUT_HISTORY_BYTES
         )
 
     def cast_float_to_weight (self,

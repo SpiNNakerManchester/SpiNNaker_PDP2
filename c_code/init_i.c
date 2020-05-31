@@ -1,7 +1,7 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
-// graph-front-end
+// front-end-common
 #include <data_specification.h>
 #include <simulation.h>
 
@@ -73,13 +73,12 @@ uint cfg_init (void)
   rt = (uint *) data_specification_get_region
       (ROUTING, data);
 
-  // stage configuration address
-  address_t xt = data_specification_get_region (STAGE, data);
+  // initialise stage configuration from SDRAM
+  xadr = data_specification_get_region (STAGE, data);
+  spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+  io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
 
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
-
-#ifdef DEBUG_CFG0
+#ifdef DEBUG_CFG
   io_printf (IO_BUF, "og: %d\n", icfg.output_grp);
   io_printf (IO_BUF, "ig: %d\n", icfg.input_grp);
   io_printf (IO_BUF, "nu: %d\n", icfg.num_units);
@@ -95,19 +94,6 @@ uint cfg_init (void)
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
 #endif
-
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
 
   return (SPINN_NO_ERROR);
 }
@@ -154,6 +140,40 @@ uint var_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
+  // allocate memory for backprop keys (one per partition)
+  if ((i_bkpKey = ((uint *)
+         spin1_malloc (icfg.partitions * sizeof(uint)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate memory in SDRAM for input history,
+  // TODO: this needs a condition on the requirement to have input history
+  // which needs to come as a configuration parameter
+  if ((i_net_history = ((long_net_t *)
+          sark_xalloc (sv->sdram_heap,
+                       icfg.num_units * ncfg.global_max_ticks * sizeof(long_net_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
+  epoch   = 0;
+  example = 0;
+  evt     = 0;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
+
+  // initialise number of events and event index
+  num_events = ex[example].num_events;
+  event_idx  = ex[example].ev_idx;
+
   // initialise tick
   //NOTE: input cores do not have a tick 0
   tick = SPINN_I_INIT_TICK;
@@ -173,14 +193,6 @@ uint var_init (void)
   i_pkt_queue.tail = 0;
 
   // initialise packet keys
-  // allocate memory for backprop keys (one per partition)
-  if ((i_bkpKey = ((uint *)
-         spin1_malloc (icfg.partitions * sizeof(uint)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
   //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
   for (uint p = 0; p < icfg.partitions; p++) {
@@ -210,19 +222,6 @@ uint var_init (void)
           return return_value;
     }
 
-  // allocate memory in SDRAM for input history,
-  // TODO: this needs a condition on the requirement to have input history
-  // which needs to come as a configuration parameter
-  if ((i_net_history = ((long_net_t *)
-          sark_xalloc (sv->sdram_heap,
-                       icfg.num_units * ncfg.global_max_ticks * sizeof(long_net_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
   // and initialise net history for tick 0.
   //TODO: understand why the values for tick 0 are used!
   for (uint i = 0; i < icfg.num_units; i++)
@@ -240,22 +239,9 @@ uint var_init (void)
 // ------------------------------------------------------------------------
 void stage_init (void)
 {
-  // read the data specification header
-  data_specification_metadata_t * data =
-          data_specification_get_data_address();
-  if (!data_specification_read_header (data))
-  {
-    // report results and abort simulation
-    stage_done (SPINN_CFG_UNAVAIL);
-  }
-
-  // stage configuration address
-  address_t xadr = data_specification_get_region (STAGE, data);
-
-  // initialise network configuration from SDRAM
+  // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
-
-  io_printf (IO_BUF, "stage configured\n");
+  io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
 }
 // ------------------------------------------------------------------------
 

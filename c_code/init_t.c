@@ -1,7 +1,7 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
-// graph-front-end
+// front-end-common
 #include <data_specification.h>
 #include <simulation.h>
 
@@ -117,13 +117,12 @@ uint cfg_init (void)
   rt = (uint *) data_specification_get_region
       (ROUTING, data);
 
-  // stage configuration address
-  address_t xt = data_specification_get_region (STAGE, data);
+  // initialise stage configuration from SDRAM
+  xadr = data_specification_get_region (STAGE, data);
+  spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+  io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
 
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
-
-#ifdef DEBUG_CFG0
+#ifdef DEBUG_CFG
   io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
   io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
   io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
@@ -151,19 +150,6 @@ uint cfg_init (void)
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
   io_printf (IO_BUF, "sk: 0x%08x\n", rt[STP]);
 #endif
-
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
 
   return (SPINN_NO_ERROR);
 }
@@ -262,6 +248,68 @@ uint var_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
+  // allocate memory for forward keys (one per partition)
+  if ((t_fwdKey = ((uint *)
+         spin1_malloc (tcfg.partitions * sizeof(uint)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  // TODO: the following memory allocation is to be used to store
+  // the history of any of these sets of values. When training
+  // continuous networks, these histories always need to be saved.
+  // For non-continuous networks, they only need to be stored if the
+  // backpropTicks field of the network is greater than one. This
+  // information needs to come in the tcfg structure.
+
+  // allocate memory in SDRAM for target history
+  if ((t_target_history = ((activation_t *)
+          sark_xalloc (sv->sdram_heap,
+                       tcfg.num_units * ncfg.global_max_ticks
+           * sizeof (activation_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate memory in SDRAM for output derivative history
+  if ((t_output_deriv_history = ((long_deriv_t *)
+          sark_xalloc (sv->sdram_heap,
+                       tcfg.num_units * ncfg.global_max_ticks
+           * sizeof (long_deriv_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate memory in SDRAM for net history
+  if ((t_net_history = ((net_t *)
+          sark_xalloc (sv->sdram_heap,
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof (net_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate memory in SDRAM for output history
+  if ((t_output_history = ((activation_t *)
+          sark_xalloc (sv->sdram_heap,
+                       tcfg.num_units * ncfg.global_max_ticks
+           * sizeof (activation_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
   // if the network requires training and elements of the pipeline require
   // initialisation, then follow the appropriate procedure
   // use the list of procedures in use from lens and call the appropriate
@@ -277,6 +325,19 @@ uint var_init (void)
       if (return_value != SPINN_NO_ERROR)
         return return_value;
     }
+
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
+  epoch   = 0;
+  example = 0;
+  evt     = 0;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
+
+  // initialise number of events and event index
+  num_events = ex[example].num_events;
+  event_idx  = ex[example].ev_idx;
 
   // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
@@ -364,9 +425,9 @@ uint var_init (void)
     }
   }
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "tsk = 0x%08x\n", tf_stop_key);
-  #endif
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "tsk = 0x%08x\n", tf_stop_key);
+#endif
 
   // initialise processing thread flag
   t_active = FALSE;
@@ -428,14 +489,6 @@ uint var_init (void)
   }
 
   // initialise packet keys
-  // allocate memory for forward keys (one per partition)
-  if ((t_fwdKey = ((uint *)
-         spin1_malloc (tcfg.partitions * sizeof(uint)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
   //NOTE: colour is initialised to 0
   for (uint p = 0; p < tcfg.partitions; p++) {
 	  t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
@@ -448,60 +501,6 @@ uint var_init (void)
     t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
   }
 
-  // TODO: the following memory allocation is to be used to store
-  // the history of any of these sets of values. When training
-  // continuous networks, these histories always need to be saved.
-  // For non-continuous networks, they only need to be stored if the
-  // backpropTicks field of the network is greater than one. This
-  // information needs to come in the tcfg structure.
-
-  // allocate memory in SDRAM for target history
-  if ((t_target_history = ((activation_t *)
-          sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks
-		       * sizeof (activation_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  // allocate memory in SDRAM for output derivative history
-  if ((t_output_deriv_history = ((long_deriv_t *)
-          sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks
-		       * sizeof (long_deriv_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  // allocate memory in SDRAM for net history
-  if ((t_net_history = ((net_t *)
-          sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks * sizeof (net_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  // allocate memory in SDRAM for output history
-  if ((t_output_history = ((activation_t *)
-          sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks
-		       * sizeof (activation_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
   return (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
@@ -512,22 +511,9 @@ uint var_init (void)
 // ------------------------------------------------------------------------
 void stage_init (void)
 {
-  // read the data specification header
-  data_specification_metadata_t * data =
-          data_specification_get_data_address();
-  if (!data_specification_read_header (data))
-  {
-    // report results and abort simulation
-    stage_done (SPINN_CFG_UNAVAIL);
-  }
-
-  // stage configuration address
-  address_t xadr = data_specification_get_region (STAGE, data);
-
-  // initialise network configuration from SDRAM
+  // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
-
-  io_printf (IO_BUF, "stage configured\n");
+  io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
 }
 // ------------------------------------------------------------------------
 

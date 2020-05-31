@@ -56,6 +56,14 @@ class MLPConstants ():
     ACTIV_SHIFT = 27
     ACTIV_NaN   = (1 << (ACTIV_SIZE - 1)) & 0xffffffff
 
+    # MLP fixed-point net_t type CONSTANTS
+    NET_SIZE = 32
+    LONG_NET_SIZE = 64
+
+    # MLP fixed-point deriv_t type CONSTANTS
+    DERIV_SIZE = 32
+    LONG_DERIV_SIZE = 64
+
     # MLP fixed-point error_t type CONSTANTS
     ERROR_SHIFT = 15
 

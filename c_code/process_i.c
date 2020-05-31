@@ -228,7 +228,7 @@ void i_backprop_packet (uint key, uint payload)
 
 // ------------------------------------------------------------------------
 // FORWARD phase: the tick has been completed, move FORWARD to the next tick
-// updating the indexes to the events/examples as required
+// updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
 void if_advance_tick (uint unused0, uint unused1)
 {
@@ -263,7 +263,7 @@ void if_advance_tick (uint unused0, uint unused1)
 
 // ------------------------------------------------------------------------
 // BACKPROP phase: the tick has been completed, move FORWARD to the next tick
-// updating the indexes to the events/examples as required
+// updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
 void ib_advance_tick (uint unused0, uint unused1)
 {
@@ -416,15 +416,15 @@ void i_advance_example (void)
 // ------------------------------------------------------------------------
 void compute_in (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "compute_in\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "compute_in\n");
+#endif
 
-  #ifdef DEBUG_VRB
-    char* group;
-    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
-    io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
-  #endif
+#ifdef DEBUG_VRB
+  char* group;
+  group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
+  io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
+#endif
 
   for (uint i = 0; i < icfg.num_in_procs; i++)
   {
@@ -448,9 +448,9 @@ void compute_in (uint inx)
 // ------------------------------------------------------------------------
 void store_nets (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "store_nets\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "store_nets\n");
+#endif
 
   i_net_history[(tick * icfg.num_units) + inx] = i_nets[inx];
 }
@@ -462,9 +462,9 @@ void store_nets (uint inx)
 // ------------------------------------------------------------------------
 void restore_nets (uint inx, uint tick)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "restore_nets\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_nets\n");
+#endif
 
   i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
 }
@@ -476,9 +476,9 @@ void restore_nets (uint inx, uint tick)
 // ------------------------------------------------------------------------
 void in_integr (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "in_integr\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "in_integr\n");
+#endif
 
   // representation: s40.23 in a 64 bit variable
   long_net_t last_net = i_last_integr_net[inx];
@@ -512,9 +512,9 @@ void in_integr (uint inx)
 // ------------------------------------------------------------------------
 void in_soft_clamp (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "in_soft_clamp\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "in_soft_clamp\n");
+#endif
 
   // compute only if input is not NaN
   if (it[i_it_idx + inx] != SPINN_ACTIV_NaN)
@@ -543,15 +543,15 @@ void in_soft_clamp (uint inx)
 // ------------------------------------------------------------------------
 void compute_in_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "compute_in_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "compute_in_back\n");
+#endif
 
-  #ifdef DEBUG_VRB
-    char* group;
-    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
-    io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
-  #endif
+#ifdef DEBUG_VRB
+  char* group;
+  group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
+  io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
+#endif
 
   int i;
 
@@ -573,9 +573,9 @@ void compute_in_back (uint inx)
 // ------------------------------------------------------------------------
 void in_integr_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "in_integr_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "in_integr_back\n");
+#endif
 
   // s36.27
   long_delta_t last_delta = i_last_integr_delta[inx];
@@ -602,9 +602,9 @@ void in_integr_back (uint inx)
 /*
 void in_soft_clamp_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "in_soft_clamp_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "in_soft_clamp_back\n");
+#endif
 }
 */
 // ------------------------------------------------------------------------
@@ -615,9 +615,9 @@ void in_soft_clamp_back (uint inx)
 // ------------------------------------------------------------------------
 int init_in_integr ()
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "init_in_integr\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "init_in_integr\n");
+#endif
 
   // allocate the memory for the integrator state variable for outputs
   if ((i_last_integr_net = ((long_net_t *)

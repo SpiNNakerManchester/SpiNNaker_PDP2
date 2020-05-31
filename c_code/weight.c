@@ -1,7 +1,7 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
-// graph-front-end
+// front-end-common
 #include "common-typedefs.h"
 #include <data_specification.h>
 #include <simulation.h>
@@ -23,7 +23,7 @@
 // weight core constants
 // ------------------------------------------------------------------------
 // list of procedures for updating of weights. The order is relevant, as
-// the indexes are specified in mlp_params.h
+// the indices are specified in mlp_params.h
 weight_update_t const
   w_update_procs[SPINN_NUM_UPDATE_PROCS] =
   {
@@ -75,6 +75,7 @@ uint             * rt;     // multicast routing keys data
 network_conf_t ncfg;           // network-wide configuration parameters
 w_conf_t       wcfg;           // weight core configuration parameters
 stage_conf_t   xcfg;           // stage configuration parameters
+address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 
 

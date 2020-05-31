@@ -1,7 +1,7 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
-// graph-front-end
+// front-end-common
 #include "common-typedefs.h"
 #include <data_specification.h>
 #include <simulation.h>
@@ -52,9 +52,9 @@ out_proc_init_t const
   };
 
 // list of procedures for the evaluation of the convergence (and stopping)
-// criteria. The order is relevant, as the indexes are specified in mlp_params.h
-// A NULL routine does not evaluate any convergence criterion and therefore the
-// simulation is always performed for the maximum number of ticks
+// criteria. The order is relevant, as the indices are specified in mlp_params.h
+// A NULL routine does not evaluate any convergence criterion and therefore
+// computation will continue for the defined maximum number of ticks
 stop_crit_t const
   t_stop_procs[SPINN_NUM_STOP_PROCS] =
   {
@@ -62,7 +62,7 @@ stop_crit_t const
   };
 
 // list of procedures for the evaluation of the errors between the output and
-// the target values of the output groups. The order is relevant, as the indexes
+// the target values of the output groups. The order is relevant, as the indices
 // are specified in mlp_params.h. A NULL routine does not evaluate any error and
 // therefore the weight update will always be 0
 out_error_t const
@@ -121,6 +121,7 @@ uint             *rt; // multicast routing keys data
 network_conf_t ncfg;           // network-wide configuration parameters
 t_conf_t       tcfg;           // threshold core configuration parameters
 stage_conf_t   xcfg;           // stage configuration parameters
+address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 
 
@@ -240,7 +241,8 @@ void timeout (uint ticks, uint unused)
 
 
 // ------------------------------------------------------------------------
-// start callback: get started by sending outputs to host and w cores.
+// kick start simulation
+//NOTE: workaround for an FEC bug
 // ------------------------------------------------------------------------
 void get_started (void)
 {

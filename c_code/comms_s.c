@@ -25,16 +25,16 @@ void s_receivePacket (uint key, uint payload)
   if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
     // stop packet received
-    #ifdef DEBUG
-      stp_recv++;
-    #endif
+#ifdef DEBUG
+    stp_recv++;
+#endif
 
     // STOP decision arrived
     tick_stop = key & SPINN_STPD_MASK;
 
-    #ifdef DEBUG_VRB
-      io_printf (IO_BUF, "sc:%x\n", tick_stop);
-    #endif
+#ifdef DEBUG_VRB
+    io_printf (IO_BUF, "sc:%x\n", tick_stop);
+#endif
 
     // check if all other threads done
     if (sf_thrds_pend == 0)
@@ -58,9 +58,9 @@ void s_receivePacket (uint key, uint payload)
   if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
   {
     // network stop packet received
-    #ifdef DEBUG
-      stn_recv++;
-    #endif
+#ifdef DEBUG
+    stn_recv++;
+#endif
 
       // report no error
       stage_done (SPINN_NO_ERROR);

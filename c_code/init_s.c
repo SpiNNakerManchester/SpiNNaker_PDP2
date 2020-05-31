@@ -1,7 +1,7 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
-// graph-front-end
+// front-end-common
 #include <data_specification.h>
 #include <simulation.h>
 
@@ -61,13 +61,12 @@ uint cfg_init ()
   rt = (uint *) data_specification_get_region
       (ROUTING, data);
 
-  // stage configuration address
-  address_t xt = data_specification_get_region (STAGE, data);
+  // initialise stage configuration from SDRAM
+  xadr = data_specification_get_region (STAGE, data);
+  spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+  io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
 
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&xcfg, xt, sizeof (stage_conf_t));
-
-#ifdef DEBUG_CFG0
+#ifdef DEBUG_CFG
   io_printf (IO_BUF, "nu: %d\n", scfg.num_units);
   io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
   io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
@@ -79,19 +78,6 @@ uint cfg_init ()
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
   io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
 #endif
-
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
 
   return (SPINN_NO_ERROR);
 }
@@ -173,6 +159,19 @@ uint var_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
+  epoch   = 0;
+  example = 0;
+  evt     = 0;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
+
+  // initialise number of events and event index
+  num_events = ex[example].num_events;
+  event_idx  = ex[example].ev_idx;
+
   // initialise tick
   //NOTE: SUM cores do not have a tick 0
   tick = SPINN_S_INIT_TICK;
@@ -225,22 +224,9 @@ uint var_init (void)
 // ------------------------------------------------------------------------
 void stage_init (void)
 {
-  // read the data specification header
-  data_specification_metadata_t * data =
-          data_specification_get_data_address();
-  if (!data_specification_read_header (data))
-  {
-    // report results and abort simulation
-    stage_done (SPINN_CFG_UNAVAIL);
-  }
-
-  // stage configuration address
-  address_t xadr = data_specification_get_region (STAGE, data);
-
-  // initialise network configuration from SDRAM
+  // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
-
-  io_printf (IO_BUF, "stage configured\n");
+  io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
 }
 // ------------------------------------------------------------------------
 

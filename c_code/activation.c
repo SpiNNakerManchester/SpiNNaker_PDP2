@@ -12,8 +12,7 @@
 #include "activation.h"
 
 //The sigmoid routine computes the sigmoid function with interpolation.
-//the input parameter is a 5.27 fixed point 32-bit value. The returned output
-//is a 1.15 fixed point 16-bit value.
+//
 //the output values are stored in a table with 256 elements. Since the function
 //is symmetric with respect to the value (x=0, y=0.5), the values stored in the
 //table are only the ones related to x >= 0. The values for x < 0 are computed
@@ -22,12 +21,12 @@
 //input value
 activation_t sigmoid (net_t input)
 {
-  #ifdef SPINN_SIGMD_ROUNDI
-    // round input
-    net_t temp = input + (net_t) (1 << (SPINN_SIGMD_LUT_SHIFT - 1));
-  #else // truncate input (default)
-    net_t temp = input;
-  #endif
+#ifdef SPINN_SIGMD_ROUNDI
+  // round input
+  net_t temp = input + (net_t) (1 << (SPINN_SIGMD_LUT_SHIFT - 1));
+#else // truncate input (default)
+  net_t temp = input;
+#endif
 
   // check if outside the LUT range
   if (temp >= (net_t) SPINN_SIGMD_MAX_INPUT)
@@ -95,8 +94,7 @@ activation_t sigmoid (net_t input)
 }
 
 //The inv_sigmoid routine computes the inverse of the sigmoid function with interpolation.
-//the input parameter is a 1.15 fixed point 16-bit value. The returned output
-//is a 5.27 fixed point 32-bit value.
+//
 //the output values are stored in a table with 256 elements. Since the function
 //is symmetric with respect to the value (x=0.5, y=0), the values stored in the
 //table are only the ones related to 0.5 <= x <= 1. The values for 0 <= x < 0.5
