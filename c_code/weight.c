@@ -199,7 +199,7 @@ void c_main ()
   // say hello,
   io_printf (IO_BUF, ">> mlp\n");
 
-  // get this core's IDs,
+  // get core IDs,
   chipID = spin1_get_chip_id ();
   coreID = spin1_get_core_id ();
 
@@ -211,13 +211,16 @@ void c_main ()
     stage_done (exit_code);
   }
 
-  // allocate memory and initialise variables,
-  exit_code = var_init ();
+  // allocate memory in DTCM and SDRAM,
+  exit_code = mem_init ();
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
     stage_done (exit_code);
   }
+
+  // initialise variables,
+  var_init ();
 
   // set up timer1 (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);

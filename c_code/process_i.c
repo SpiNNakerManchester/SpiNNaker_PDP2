@@ -12,8 +12,10 @@
 #include "process_i.h"
 #include "activation.h"
 
-// set of routines to be used by I core to process data
 
+// ------------------------------------------------------------------------
+// input core computation routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process queued packets until queue empty
 // ------------------------------------------------------------------------
@@ -569,7 +571,7 @@ void compute_in_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-// compute the input integration operation for the backprop
+// compute the input integration operation for the BACKPROP phase
 // ------------------------------------------------------------------------
 void in_integr_back (uint inx)
 {
@@ -607,41 +609,4 @@ void in_soft_clamp_back (uint inx)
 #endif
 }
 */
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// initialisation of the input intergrator state
-// ------------------------------------------------------------------------
-int init_in_integr ()
-{
-#ifdef TRACE_VRB
-  io_printf (IO_BUF, "init_in_integr\n");
-#endif
-
-  // allocate the memory for the integrator state variable for outputs
-  if ((i_last_integr_net = ((long_net_t *)
-         spin1_malloc (icfg.num_units * sizeof(long_net_t)))) == NULL
-       )
-  {
-      return (SPINN_MEM_UNAVAIL);
-  }
-
-  // allocate the memory for the integrator state variable for deltas
-  if ((i_last_integr_delta = ((long_delta_t *)
-         spin1_malloc (icfg.num_units * sizeof(long_delta_t)))) == NULL
-       )
-  {
-      return (SPINN_MEM_UNAVAIL);
-  }
-
-  // reset the memory of the integrator state variable
-  for (uint i = 0; i<icfg.num_units; i++)
-  {
-    i_last_integr_net[i] = (long_net_t) icfg.initNets;
-    i_last_integr_delta[i] = 0;
-  }
-
-  return SPINN_NO_ERROR;
-}
 // ------------------------------------------------------------------------

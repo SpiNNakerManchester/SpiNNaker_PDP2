@@ -10,8 +10,10 @@
 #include "comms_w.h"
 #include "process_w.h"
 
-// this file contains the communication routines used by W cores
 
+// ------------------------------------------------------------------------
+// weight core communications routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process received packets (stop, FORWARD and BACKPROP types)
 // ------------------------------------------------------------------------
@@ -190,7 +192,7 @@ void w_forwardPacket (uint key, uint payload)
   // store received unit output,
   w_outputs[wf_comms][inx] = (activation_t) payload;
 
-  // store output for use in backprop phase,
+  // store output for use in BACKPROP phase,
   if (tick > 0)
   {
     store_output (inx);

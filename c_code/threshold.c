@@ -131,7 +131,7 @@ address_t      xadr;           // stage configuration SDRAM address
 // threshold cores compute unit outputs and error deltas.
 // ------------------------------------------------------------------------
 activation_t   * t_outputs;         // current tick unit outputs
-net_t          * t_nets;            // nets received from sum cores
+net_t          * t_nets;            // nets received from input cores
 error_t        * t_errors[2];       // error banks: current and next tick
 activation_t   * t_last_integr_output;  //last integrator output value
 long_deriv_t   * t_last_integr_output_deriv; //last integrator output deriv value
@@ -267,7 +267,7 @@ void c_main ()
   // say hello,
   io_printf (IO_BUF, ">> mlp\n");
 
-  // get this core's IDs,
+  // get core IDs,
   chipID = spin1_get_chip_id ();
   coreID = spin1_get_core_id ();
 
@@ -279,13 +279,24 @@ void c_main ()
     stage_done (exit_code);
   }
 
-  // allocate memory and initialise variables,
-  exit_code = var_init ();
+  // allocate memory in DTCM and SDRAM,
+  exit_code = mem_init ();
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
     stage_done (exit_code);
   }
+
+  // allocate memory and initialise variables for OUTPUT functions,
+  exit_code = prc_init ();
+  if (exit_code != SPINN_NO_ERROR)
+  {
+    // report results and abort
+    stage_done (exit_code);
+  }
+
+  // initialise variables,
+  var_init ();
 
   // set up timer1 (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);

@@ -142,7 +142,7 @@ extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
 extern out_error_t     const t_out_error[SPINN_NUM_ERROR_PROCS];
 
 extern activation_t   * t_outputs;     // current tick unit outputs
-extern net_t          * t_nets;        // nets received from sum cores
+extern net_t          * t_nets;        // nets received from input cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
 extern activation_t   * t_last_integr_output;   //last integrator output value
 extern long_deriv_t   * t_last_integr_output_deriv; //last integr output deriv

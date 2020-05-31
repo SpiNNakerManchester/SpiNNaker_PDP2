@@ -10,8 +10,10 @@
 #include "comms_t.h"
 #include "process_t.h"
 
-// this file contains the communication routines used by T cores
 
+// ------------------------------------------------------------------------
+// threshold core communications routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process received packets (stop, chain, sync, FORWARD and BACKPROP types)
 // ------------------------------------------------------------------------
@@ -383,7 +385,7 @@ void send_outputs_to_host (uint cmd, uint tick)
   }
 
   // set message length,
-  uint len = 2 * tcfg.num_units * sizeof(short_activ_t);
+  uint len = 2 * tcfg.num_units * sizeof (short_activ_t);
   t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message
@@ -420,7 +422,7 @@ void send_info_to_host (uint unused0, uint unused1)
   }
 
   // set message length,
-  uint len = 2 * tcfg.num_units * sizeof(short_activ_t);
+  uint len = 2 * tcfg.num_units * sizeof (short_activ_t);
   t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message

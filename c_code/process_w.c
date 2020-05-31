@@ -12,8 +12,10 @@
 #include "process_w.h"
 #include "activation.h"
 
-// set of routines to be used by W core to process data
 
+// ------------------------------------------------------------------------
+// weight core computation routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process FORWARD phase: compute partial dot products (output * weight)
 // ------------------------------------------------------------------------

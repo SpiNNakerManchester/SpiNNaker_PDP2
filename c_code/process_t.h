@@ -34,10 +34,6 @@ void  out_hard_clamp_back (uint inx);
 void  out_weak_clamp_back (uint inx);
 void  out_bias_back       (uint inx);
 
-int   init_out_integr     (void);
-int   init_out_hard_clamp (void);
-int   init_out_weak_clamp (void);
-
 void  std_stop_crit       (uint inx);
 void  max_stop_crit       (uint inx);
 

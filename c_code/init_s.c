@@ -13,6 +13,7 @@
 #include "init_s.h"
 #include "comms_s.h"
 
+
 // ------------------------------------------------------------------------
 // sum core initialisation routines
 // ------------------------------------------------------------------------
@@ -85,22 +86,20 @@ uint cfg_init ()
 
 
 // ------------------------------------------------------------------------
-// allocate memory and initialise variables
+// allocate memory in DTCM and SDRAM
 // ------------------------------------------------------------------------
-uint var_init (void)
+uint mem_init (void)
 {
-  uint i;
-
   // allocate memory for nets
   if ((s_nets[0] = ((long_net_t *)
-         spin1_malloc (scfg.num_units * sizeof(long_net_t)))) == NULL
+         spin1_malloc (scfg.num_units * sizeof (long_net_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((s_nets[1] = ((long_net_t *)
-         spin1_malloc (scfg.num_units * sizeof(long_net_t)))) == NULL
+         spin1_malloc (scfg.num_units * sizeof (long_net_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -108,14 +107,14 @@ uint var_init (void)
 
   // allocate memory for errors
   if ((s_errors[0] = ((long_error_t *)
-         spin1_malloc (scfg.num_units * sizeof(long_error_t)))) == NULL
+         spin1_malloc (scfg.num_units * sizeof (long_error_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((s_errors[1] = ((long_error_t *)
-         spin1_malloc (scfg.num_units * sizeof(long_error_t)))) == NULL
+         spin1_malloc (scfg.num_units * sizeof (long_error_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -123,7 +122,7 @@ uint var_init (void)
 
   // allocate memory for packet queue
   if ((s_pkt_queue.queue = ((packet_t *)
-         spin1_malloc (SPINN_SUM_PQ_LEN * sizeof(packet_t)))) == NULL
+         spin1_malloc (SPINN_SUM_PQ_LEN * sizeof (packet_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -131,14 +130,14 @@ uint var_init (void)
 
   // allocate memory for received net b-d-ps scoreboards
   if ((sf_arrived[0] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_units * sizeof(scoreboard_t)))) == NULL
+          spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((sf_arrived[1] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_units * sizeof(scoreboard_t)))) == NULL
+          spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -146,19 +145,29 @@ uint var_init (void)
 
   // allocate memory for received error b-d-ps scoreboards
   if ((sb_arrived[0] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_units * sizeof(scoreboard_t)))) == NULL
+          spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((sb_arrived[1] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_units * sizeof(scoreboard_t)))) == NULL
+          spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
+  return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// initialise variables
+// ------------------------------------------------------------------------
+void var_init (void)
+{
   // initialise epoch, example and event counters
   //TODO: alternative algorithms for choosing example order!
   epoch   = 0;
@@ -177,7 +186,7 @@ uint var_init (void)
   tick = SPINN_S_INIT_TICK;
 
   // initialise nets, errors and scoreboards
-  for (i = 0; i < scfg.num_units; i++)
+  for (uint i = 0; i < scfg.num_units; i++)
   {
     s_nets[0][i] = 0;
     s_nets[1][i] = 0;
@@ -213,8 +222,6 @@ uint var_init (void)
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldstKey = rt[LDS] | SPINN_LDST_KEY;
   ldsrKey = rt[LDS] | SPINN_LDSR_KEY;
-
-  return (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
 

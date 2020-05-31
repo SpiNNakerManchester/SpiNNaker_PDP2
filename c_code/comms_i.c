@@ -10,8 +10,10 @@
 #include "comms_i.h"
 #include "process_i.h"
 
-// this file contains the communication routines used by I cores
 
+// ------------------------------------------------------------------------
+// input core communications routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process received packets (stop, FORWARD and BACKPROP types)
 // ------------------------------------------------------------------------

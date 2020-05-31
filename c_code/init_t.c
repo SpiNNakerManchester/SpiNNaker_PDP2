@@ -14,6 +14,7 @@
 #include "comms_t.h"
 #include "process_t.h"
 
+
 // ------------------------------------------------------------------------
 // threshold core initialisation routines
 // ------------------------------------------------------------------------
@@ -46,13 +47,13 @@ uint cfg_init (void)
   address_t nt = data_specification_get_region (NETWORK, data);
 
   // initialise network configuration from SDRAM
-  spin1_memcpy (&ncfg, nt, sizeof(network_conf_t));
+  spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
 
   // core configuration address
   address_t dt = data_specification_get_region (CORE, data);
 
   // initialise core-specific configuration from SDRAM
-  spin1_memcpy (&tcfg, dt, sizeof(t_conf_t));
+  spin1_memcpy (&tcfg, dt, sizeof (t_conf_t));
 
   // inputs
   if (tcfg.input_grp)
@@ -157,15 +158,13 @@ uint cfg_init (void)
 
 
 // ------------------------------------------------------------------------
-// allocate memory and initialise variables
+// allocate memory in DTCM and SDRAM
 // ------------------------------------------------------------------------
-uint var_init (void)
+uint mem_init (void)
 {
-  uint i = 0;
-
   // allocate memory for nets -- stored in FORWARD phase for use in BACKPROP
   if ((t_nets = ((net_t *)
-         spin1_malloc (tcfg.num_units * sizeof(net_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof (net_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -173,15 +172,15 @@ uint var_init (void)
 
   // allocate memory for outputs
   if ((t_outputs = ((activation_t *)
-         spin1_malloc (tcfg.num_units * sizeof(activation_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof (activation_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for output derivative (which is equal to error derivative)
+  // allocate memory for output derivatives (equal to error derivative)
   if ((t_output_deriv = ((long_deriv_t *)
-         spin1_malloc (tcfg.num_units * sizeof(long_deriv_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof (long_deriv_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -189,7 +188,7 @@ uint var_init (void)
 
   // allocate memory for deltas
   if ((t_deltas = ((delta_t *)
-	 spin1_malloc (tcfg.num_units * sizeof(delta_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof (delta_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -197,52 +196,23 @@ uint var_init (void)
 
   // allocate memory for errors
   if ((t_errors[0] = ((error_t *)
-         spin1_malloc (tcfg.num_units * sizeof(error_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof (error_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
   if ((t_errors[1] = ((error_t *)
-         spin1_malloc (tcfg.num_units * sizeof(error_t)))) == NULL
+         spin1_malloc (tcfg.num_units * sizeof (error_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // initialise output derivatives
-  for (i = 0; i < tcfg.num_units; i++)
-  {
-    t_output_deriv[i] = 0;
-  }
-
-  // initialise deltas
-  for (i = 0; i < tcfg.num_units; i++)
-  {
-    t_deltas[i] = 0;
-  }
-
-  // initialise errors
-  for (i = 0; i < tcfg.num_units; i++)
-  {
-    t_errors[0][i] = 0;
-    t_errors[1][i] = 0;
-  }
-
-  // check if the hard clamp is in use in the sequence of pipeline elements
-  t_hard_clamp_en = FALSE;
-  for (i = 0; i < tcfg.num_out_procs; i++)
-  {
-    // check if the hard clamp is in the output pipeline
-    // and set hard_clamp_en appropriately
-    if (t_out_procs[tcfg.procs_list[i]] == out_hard_clamp)
-      t_hard_clamp_en = TRUE;
-  }
-
   // allocate memory for net packet queue
   // TODO: use correct length!
   if ((t_net_pkt_q.queue = ((packet_t *)
-         spin1_malloc (SPINN_THLD_PQ_LEN * sizeof(packet_t)))) == NULL
+         spin1_malloc (SPINN_THLD_PQ_LEN * sizeof (packet_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -250,14 +220,14 @@ uint var_init (void)
 
   // allocate memory for forward keys (one per partition)
   if ((t_fwdKey = ((uint *)
-         spin1_malloc (tcfg.partitions * sizeof(uint)))) == NULL
+         spin1_malloc (tcfg.partitions * sizeof (uint)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // TODO: the following memory allocation is to be used to store
-  // the history of any of these sets of values. When training
+  // TODO: the following memory allocations are to be used to store
+  // the histories of these sets of values. When training
   // continuous networks, these histories always need to be saved.
   // For non-continuous networks, they only need to be stored if the
   // backpropTicks field of the network is greater than one. This
@@ -310,22 +280,139 @@ uint var_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // if the network requires training and elements of the pipeline require
-  // initialisation, then follow the appropriate procedure
-  // use the list of procedures in use from lens and call the appropriate
-  // initialisation routine from the t_init_out_procs function pointer list
-  for (i = 0; i < tcfg.num_out_procs; i++)
+  return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// allocate memory for OUTPUT INTEGRATOR state
+// ------------------------------------------------------------------------
+uint init_out_integr ()
+{
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "init_out_integr\n");
+#endif
+
+  // allocate memory for integrator state
+  //NOTE: these variables are initialised in function init_outputs ()
+  if ((t_last_integr_output = ((activation_t *)
+       spin1_malloc (tcfg.num_units * sizeof (activation_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((t_last_integr_output_deriv = ((long_deriv_t *)
+       spin1_malloc (tcfg.num_units * sizeof (long_deriv_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((t_instant_outputs = ((activation_t *)
+       spin1_malloc (tcfg.num_units * ncfg.global_max_ticks *
+           sizeof (activation_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  return SPINN_NO_ERROR;
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// allocate memory for HARD CLAMP state
+//NOTE: This function is currently a stub
+// ------------------------------------------------------------------------
+uint init_out_hard_clamp ()
+{
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "init_out_hard_clamp\n");
+#endif
+
+/*
+  if (xcfg.training)
+  {
+    // allocate memory for outputs
+    if ((t_out_hard_clamp_data = ((short_activ_t *)
+          sark_xalloc (sv->sdram_heap,
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof (short_activ_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+       )
+    {
+      return (SPINN_MEM_UNAVAIL);
+    }
+  }
+
+  io_printf (IO_BUF, "hc store addr %08x\n", (uint) t_out_hard_clamp_data);
+*/
+
+  return SPINN_NO_ERROR;
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// allocate memory for WEAK CLAMP state
+//NOTE: This function is currently a stub
+// ------------------------------------------------------------------------
+uint init_out_weak_clamp ()
+{
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "init_out_weak_clamp\n");
+#endif
+
+/*
+  if (xcfg.training)
+  {
+    // allocate memory for outputs
+    if ((t_out_weak_clamp_data = ((short_activ_t *)
+          sark_xalloc (sv->sdram_heap,
+                       tcfg.num_units * ncfg.global_max_ticks * sizeof (short_activ_t),
+                       0, ALLOC_LOCK)
+                       )) == NULL
+       )
+    {
+      return (SPINN_MEM_UNAVAIL);
+    }
+  }
+*/
+
+  return SPINN_NO_ERROR;
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// allocate memory and initialise variables for OUTPUT functions
+// ------------------------------------------------------------------------
+uint prc_init (void)
+{
+  for (uint i = 0; i < tcfg.num_out_procs; i++)
+  {
     if (t_init_out_procs[tcfg.procs_list[i]] != NULL)
     {
-      int return_value;
       // call the appropriate routine for pipeline initialisation
-      return_value = t_init_out_procs[tcfg.procs_list[i]]();
-
-      // if return value contains error, return it
-      if (return_value != SPINN_NO_ERROR)
-        return return_value;
+      uint exit_code  = t_init_out_procs[tcfg.procs_list[i]]();
+      if (exit_code != SPINN_NO_ERROR)
+        return (exit_code);
     }
+  }
 
+  return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// initialise variables
+// ------------------------------------------------------------------------
+void var_init (void)
+{
   // initialise epoch, example and event counters
   //TODO: alternative algorithms for choosing example order!
   epoch   = 0;
@@ -349,7 +436,7 @@ uint var_init (void)
     // get max number of ticks for first event
     if (ev[event_idx].max_time != SPINN_FP_NaN)
       max_ticks = (((ev[event_idx].max_time + SPINN_SMALL_VAL)
-		    * ncfg.ticks_per_int)
+        * ncfg.ticks_per_int)
                      + (1 << (SPINN_FPREAL_SHIFT - 1)))
                      >> SPINN_FPREAL_SHIFT;
     else
@@ -360,13 +447,42 @@ uint var_init (void)
     // get min number of ticks for first event
     if (ev[event_idx].min_time != SPINN_FP_NaN)
       min_ticks = (((ev[event_idx].min_time + SPINN_SMALL_VAL)
-		    * ncfg.ticks_per_int)
+        * ncfg.ticks_per_int)
                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
                     >> SPINN_FPREAL_SHIFT;
     else
       min_ticks = (((es->min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
                     >> SPINN_FPREAL_SHIFT;
+  }
+
+  // initialise output derivatives
+  for (uint i = 0; i < tcfg.num_units; i++)
+  {
+    t_output_deriv[i] = 0;
+  }
+
+  // initialise deltas
+  for (uint i = 0; i < tcfg.num_units; i++)
+  {
+    t_deltas[i] = 0;
+  }
+
+  // initialise errors
+  for (uint i = 0; i < tcfg.num_units; i++)
+  {
+    t_errors[0][i] = 0;
+    t_errors[1][i] = 0;
+  }
+
+  // check if the hard clamp is in use in the sequence of pipeline elements
+  t_hard_clamp_en = FALSE;
+  for (uint i = 0; i < tcfg.num_out_procs; i++)
+  {
+    // check if the hard clamp is in the output pipeline
+    // and set hard_clamp_en appropriately
+    if (t_out_procs[tcfg.procs_list[i]] == out_hard_clamp)
+      t_hard_clamp_en = TRUE;
   }
 
   // initialise pointers to received errors
@@ -394,9 +510,9 @@ uint var_init (void)
     t_max_output_unit = -1;
     t_max_target_unit = -1;
     t_max_output = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
-					     - SPINN_SHORT_ACTIV_SHIFT);
+               - SPINN_SHORT_ACTIV_SHIFT);
     t_max_target = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
-					     - SPINN_SHORT_ACTIV_SHIFT);
+               - SPINN_SHORT_ACTIV_SHIFT);
 
     // no need to wait for previous value if first in chain
     if (tcfg.is_first_output_group)
@@ -469,7 +585,7 @@ uint var_init (void)
       if (ev[event_idx + i].max_time != SPINN_FP_NaN)
       {
         t_tot_ticks += (((ev[event_idx + i].max_time + SPINN_SMALL_VAL)
-			 * ncfg.ticks_per_int)
+       * ncfg.ticks_per_int)
                          + (1 << (SPINN_FPREAL_SHIFT - 1)))
                          >> SPINN_FPREAL_SHIFT;
       }
@@ -491,7 +607,7 @@ uint var_init (void)
   // initialise packet keys
   //NOTE: colour is initialised to 0
   for (uint p = 0; p < tcfg.partitions; p++) {
-	  t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
+    t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
@@ -500,8 +616,6 @@ uint var_init (void)
   {
     t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
   }
-
-  return (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
 

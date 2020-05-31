@@ -101,15 +101,13 @@ uint cfg_init (void)
 
 
 // ------------------------------------------------------------------------
-// allocate memory and initialise variables
+// allocate memory in DTCM and SDRAM
 // ------------------------------------------------------------------------
-uint var_init (void)
+uint mem_init (void)
 {
-  uint i;
-
   // allocate memory for nets
   if ((i_nets = ((long_net_t *)
-         spin1_malloc (icfg.num_units * sizeof(long_net_t)))) == NULL
+         spin1_malloc (icfg.num_units * sizeof (long_net_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -117,16 +115,16 @@ uint var_init (void)
 
   // allocate memory for deltas
   if ((i_deltas = ((long_delta_t *)
-         spin1_malloc (icfg.num_units * sizeof(long_delta_t)))) == NULL
+         spin1_malloc (icfg.num_units * sizeof (long_delta_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // TODO: probably this variable can be removed
-  // allocate memory to store delta values during the first BACKPROPagation tick
+  // TODO: this variable can probably be removed
+  // allocate memory to store delta values during the first BACKPROP tick
   if ((i_init_delta = ((long_delta_t *)
-         spin1_malloc (icfg.num_units * sizeof(long_delta_t)))) == NULL
+         spin1_malloc (icfg.num_units * sizeof (long_delta_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -134,26 +132,26 @@ uint var_init (void)
 
   // allocate memory for packet queue
   if ((i_pkt_queue.queue = ((packet_t *)
-         spin1_malloc (SPINN_INPUT_PQ_LEN * sizeof(packet_t)))) == NULL
+         spin1_malloc (SPINN_INPUT_PQ_LEN * sizeof (packet_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for backprop keys (one per partition)
+  // allocate memory for BACKPROP keys (one per partition)
   if ((i_bkpKey = ((uint *)
-         spin1_malloc (icfg.partitions * sizeof(uint)))) == NULL
+         spin1_malloc (icfg.partitions * sizeof (uint)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory in SDRAM for input history,
+  // and allocate memory in SDRAM for net history
   // TODO: this needs a condition on the requirement to have input history
   // which needs to come as a configuration parameter
   if ((i_net_history = ((long_net_t *)
           sark_xalloc (sv->sdram_heap,
-                       icfg.num_units * ncfg.global_max_ticks * sizeof(long_net_t),
+                       icfg.num_units * ncfg.global_max_ticks * sizeof (long_net_t),
                        0, ALLOC_LOCK)
                        )) == NULL
      )
@@ -161,6 +159,74 @@ uint var_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
+  return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// allocate memory for and initialise INPUT INTEGRATOR state
+// ------------------------------------------------------------------------
+uint init_in_integr ()
+{
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "init_in_integr\n");
+#endif
+
+  // allocate memory for the integrator state variable for outputs
+  if ((i_last_integr_net = ((long_net_t *)
+         spin1_malloc (icfg.num_units * sizeof (long_net_t)))) == NULL
+       )
+  {
+      return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate memory for the integrator state variable for deltas
+  if ((i_last_integr_delta = ((long_delta_t *)
+         spin1_malloc (icfg.num_units * sizeof (long_delta_t)))) == NULL
+       )
+  {
+      return (SPINN_MEM_UNAVAIL);
+  }
+
+  // reset the memory of the integrator state variable
+  for (uint i = 0; i<icfg.num_units; i++)
+  {
+    i_last_integr_net[i] = (long_net_t) icfg.initNets;
+    i_last_integr_delta[i] = 0;
+  }
+
+  return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// allocate memory and initialise variables for INPUT functions
+// ------------------------------------------------------------------------
+uint prc_init (void)
+{
+  for (uint i = 0; i < icfg.num_in_procs; i++)
+  {
+    if (i_init_in_procs[icfg.procs_list[i]] != NULL)
+    {
+      // call the appropriate routine for pipeline initialisation
+      uint exit_code = i_init_in_procs[icfg.procs_list[i]]();
+      if (exit_code != SPINN_NO_ERROR)
+          return (exit_code);
+    }
+  }
+
+  return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// initialise variables
+// ------------------------------------------------------------------------
+void var_init (void)
+{
   // initialise epoch, example and event counters
   //TODO: alternative algorithms for choosing example order!
   epoch   = 0;
@@ -205,31 +271,12 @@ uint var_init (void)
     i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
-  // if the network requires training and elements of the pipeline require
-  // initialisation, then follow the appropriate procedure
-  // use the list of procedures in use from lens and call the appropriate
-  // initialisation routine from the i_init_in_procs function pointer list
-
-  for (i = 0; i < icfg.num_in_procs; i++)
-    if (i_init_in_procs[icfg.procs_list[i]] != NULL)
-    {
-      int return_value;
-      // call the appropriate routine for pipeline initialisation
-      return_value = i_init_in_procs[icfg.procs_list[i]]();
-
-      // if return value contains error, return it
-      if (return_value != SPINN_NO_ERROR)
-          return return_value;
-    }
-
   // and initialise net history for tick 0.
   //TODO: understand why the values for tick 0 are used!
   for (uint i = 0; i < icfg.num_units; i++)
   {
     i_net_history[i] = 0;
   }
-
-  return (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
 

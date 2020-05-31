@@ -12,8 +12,10 @@
 #include "process_t.h"
 #include "activation.h"
 
-// set of routines to be used by T core to process data
 
+// ------------------------------------------------------------------------
+// threshold core computation routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process FORWARD phase: compute outputs
 // ------------------------------------------------------------------------
@@ -1161,7 +1163,7 @@ void out_logistic_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-// compute the output integration operation for the backprop
+// compute the output integration operation for the BACKPROP phase
 // ------------------------------------------------------------------------
 void out_integr_back (uint inx)
 {
@@ -1232,110 +1234,6 @@ void out_bias_back (uint inx)
 #endif
 
   t_output_deriv[inx] = 0;
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// initialisation code for the output integrator: allocate the memory to save
-// the state of the integrator and initialise the state to 0
-// FIXME: to be checked - the initialisation may be superfluous as the value is
-// set to initoutput in the following initialisation steps
-// ------------------------------------------------------------------------
-int init_out_integr ()
-{
-#ifdef TRACE_VRB
-  io_printf (IO_BUF, "init_out_integr\n");
-#endif
-
-  // allocate memory for integrator state
-  //NOTE: these variables are initialised in function init_outputs ()
-  if ((t_last_integr_output = ((activation_t *)
-       spin1_malloc (tcfg.num_units * sizeof(activation_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((t_last_integr_output_deriv = ((long_deriv_t *)
-       spin1_malloc (tcfg.num_units * sizeof(long_deriv_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((t_instant_outputs = ((activation_t *)
-       spin1_malloc (tcfg.num_units * ncfg.global_max_ticks * sizeof(activation_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  return SPINN_NO_ERROR;
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// initialisation of the hard clamp includes SDRAM memory allocation to store
-// information related to the values injected. This function is currently a stub
-// ------------------------------------------------------------------------
-int init_out_hard_clamp ()
-{
-#ifdef TRACE_VRB
-  io_printf (IO_BUF, "init_out_hard_clamp\n");
-#endif
-
-/*
-  if (xcfg.training)
-  {
-    // allocate memory for outputs
-    if ((t_out_hard_clamp_data = ((short_activ_t *)
-          sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks * sizeof(short_activ_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-       )
-    {
-      return (SPINN_MEM_UNAVAIL);
-    }
-  }
-
-  io_printf (IO_BUF, "hc store addr %08x\n", (int) t_out_hard_clamp_data);
-*/
-
-  return SPINN_NO_ERROR;
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// initialisation of the weak clamp includes SDRAM memory allocation to store
-// information related to the values injected. This function is currently a stub
-// ------------------------------------------------------------------------
-int init_out_weak_clamp ()
-{
-#ifdef TRACE_VRB
-  io_printf (IO_BUF, "init_out_weak_clamp\n");
-#endif
-
-/*
-  if (xcfg.training)
-  {
-    // allocate memory for outputs
-    if ((t_out_weak_clamp_data = ((short_activ_t *)
-          sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks * sizeof(short_activ_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-       )
-    {
-      return (SPINN_MEM_UNAVAIL);
-    }
-  }
-*/
-
-  return SPINN_NO_ERROR;
 }
 // ------------------------------------------------------------------------
 

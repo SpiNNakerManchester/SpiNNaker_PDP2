@@ -19,6 +19,4 @@ void  in_soft_clamp     (uint inx);
 void  compute_in_back   (uint inx);
 void  in_integr_back    (uint inx);
 
-int   init_in_integr    (void);
-
 #endif
