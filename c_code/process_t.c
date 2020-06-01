@@ -110,7 +110,7 @@ void tf_process (uint unused0, uint unused1)
 	if (tf_chain_rdy)
 	{
 	  // initialise semaphore,
-	  tf_chain_rdy = tf_chain_init;
+	  tf_chain_rdy = tf_initChain;
 
 	  // restore interrupts after flag access,
 	  spin1_mode_restore (cpsr);

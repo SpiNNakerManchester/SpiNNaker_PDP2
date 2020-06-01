@@ -152,7 +152,7 @@ sdp_msg_t        t_sdp_msg;         // SDP message buffer for host comms.
 scoreboard_t     tf_arrived;        // keep track of expected nets
 uint             tf_thrds_pend;     // sync. semaphore: proc & stop
 uchar            tf_chain_prev;     // previous daisy chain (DC) value
-uchar            tf_chain_init;     // previous DC received init
+uchar            tf_initChain;      // previous DC received init value
 uchar            tf_chain_rdy;      // local DC value can be forwarded
 uchar            tf_stop_crit;      // stop criterion met?
 uchar            tf_group_crit;     // stop criterion met for all groups?
@@ -281,14 +281,6 @@ void c_main ()
 
   // allocate memory in DTCM and SDRAM,
   exit_code = mem_init ();
-  if (exit_code != SPINN_NO_ERROR)
-  {
-    // report results and abort
-    stage_done (exit_code);
-  }
-
-  // allocate memory and initialise variables for OUTPUT functions,
-  exit_code = prc_init ();
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort

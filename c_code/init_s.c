@@ -244,8 +244,8 @@ void stage_init (void)
 void stage_start (void)
 {
   // start log
-  io_printf (IO_BUF, "--------------\n");
-  io_printf (IO_BUF, "starting stage\n");
+  io_printf (IO_BUF, "----------------\n");
+  io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
 }
 // ------------------------------------------------------------------------
 
@@ -328,8 +328,8 @@ void stage_done (uint ec)
 #endif
 
   // close log,
-  io_printf (IO_BUF, "stopping stage\n");
-  io_printf (IO_BUF, "--------------\n");
+  io_printf (IO_BUF, "stopping stage %u\n", xcfg.stage_id);
+  io_printf (IO_BUF, "----------------\n");
 
   // and let host know that we're done
   if (ec == SPINN_NO_ERROR) {

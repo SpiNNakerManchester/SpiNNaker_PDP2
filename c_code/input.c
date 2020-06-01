@@ -229,14 +229,6 @@ void c_main ()
     stage_done (exit_code);
   }
 
-  // allocate memory and initialise variables for INPUT functions,
-  exit_code = prc_init ();
-  if (exit_code != SPINN_NO_ERROR)
-  {
-    // report results and abort
-    stage_done (exit_code);
-  }
-
   // initialise variables,
   var_init ();
 

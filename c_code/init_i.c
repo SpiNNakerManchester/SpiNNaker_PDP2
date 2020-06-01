@@ -146,6 +146,18 @@ uint mem_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
+  // allocate memory for INPUT functions
+  for (uint i = 0; i < icfg.num_in_procs; i++)
+  {
+    if (i_init_in_procs[icfg.procs_list[i]] != NULL)
+    {
+      // call the appropriate routine for pipeline initialisation
+      uint exit_code = i_init_in_procs[icfg.procs_list[i]]();
+      if (exit_code != SPINN_NO_ERROR)
+          return (exit_code);
+    }
+  }
+
   // and allocate memory in SDRAM for net history
   // TODO: this needs a condition on the requirement to have input history
   // which needs to come as a configuration parameter
@@ -187,34 +199,6 @@ uint init_in_integr ()
        )
   {
       return (SPINN_MEM_UNAVAIL);
-  }
-
-  // reset the memory of the INTEGRATOR state variable
-  for (uint i = 0; i<icfg.num_units; i++)
-  {
-    i_last_integr_net[i] = (long_net_t) icfg.initNets;
-    i_last_integr_delta[i] = 0;
-  }
-
-  return (SPINN_NO_ERROR);
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// allocate memory and initialise variables for INPUT functions
-// ------------------------------------------------------------------------
-uint prc_init (void)
-{
-  for (uint i = 0; i < icfg.num_in_procs; i++)
-  {
-    if (i_init_in_procs[icfg.procs_list[i]] != NULL)
-    {
-      // call the appropriate routine for pipeline initialisation
-      uint exit_code = i_init_in_procs[icfg.procs_list[i]]();
-      if (exit_code != SPINN_NO_ERROR)
-          return (exit_code);
-    }
   }
 
   return (SPINN_NO_ERROR);
@@ -271,6 +255,16 @@ void var_init (void)
     i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
+  // if the INPUT INTEGRATOR is used
+  // reset the memory of the INTEGRATOR state variables
+  if (icfg.in_integr_en) {
+    for (uint i = 0; i<icfg.num_units; i++)
+    {
+      i_last_integr_net[i] = (long_net_t) icfg.initNets;
+      i_last_integr_delta[i] = 0;
+    }
+  }
+
   // and initialise net history for tick 0.
   //TODO: understand why the values for tick 0 are used!
   for (uint i = 0; i < icfg.num_units; i++)
@@ -299,8 +293,8 @@ void stage_init (void)
 void stage_start (void)
 {
   // start log
-  io_printf (IO_BUF, "--------------\n");
-  io_printf (IO_BUF, "starting stage\n");
+  io_printf (IO_BUF, "----------------\n");
+  io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
 }
 // ------------------------------------------------------------------------
 
@@ -366,8 +360,8 @@ void stage_done (uint ec)
 #endif
 
   // close log,
-  io_printf (IO_BUF, "stopping stage\n");
-  io_printf (IO_BUF, "--------------\n");
+  io_printf (IO_BUF, "stopping stage %u\n", xcfg.stage_id);
+  io_printf (IO_BUF, "----------------\n");
 
   // and let host know that we're done
   if (ec == SPINN_NO_ERROR) {

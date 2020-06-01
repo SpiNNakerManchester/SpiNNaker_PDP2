@@ -158,7 +158,7 @@ extern sdp_msg_t        t_sdp_msg;     // SDP message buffer for host comms.
 extern scoreboard_t     tf_arrived;    // keep track of expected nets
 extern uint             tf_thrds_pend; // sync. semaphore: proc & stop
 extern uchar            tf_chain_prev; // previous daisy chain (DC) value
-extern uchar            tf_chain_init; // previous DC received init
+extern uchar            tf_initChain;  // previous DC received init value
 extern uchar            tf_chain_rdy;  // local DC value can be forwarded
 extern uchar            tf_stop_crit;  // stop criterion met?
 extern uchar            tf_group_crit;     // stop criterion met for all groups?

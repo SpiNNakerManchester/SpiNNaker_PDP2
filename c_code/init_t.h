@@ -3,7 +3,6 @@
 
 uint cfg_init (void);
 uint mem_init (void);
-uint prc_init (void);
 void var_init (void);
 
 void t_init_outputs (uint unused0, uint unused1);

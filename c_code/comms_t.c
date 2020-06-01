@@ -127,7 +127,7 @@ void t_chainPacket (uint key)
   if (tf_chain_rdy)
   {
     // initialise flag,
-    tf_chain_rdy = tf_chain_init;
+    tf_chain_rdy = tf_initChain;
 
     // report outputs to host if requested,
     if (tcfg.write_out)

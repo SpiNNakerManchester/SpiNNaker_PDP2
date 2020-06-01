@@ -226,6 +226,18 @@ uint mem_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
+  // allocate memory for OUTPUT functions
+  for (uint i = 0; i < tcfg.num_out_procs; i++)
+  {
+    if (t_init_out_procs[tcfg.procs_list[i]] != NULL)
+    {
+      // call the appropriate routine for pipeline initialisation
+      uint exit_code  = t_init_out_procs[tcfg.procs_list[i]]();
+      if (exit_code != SPINN_NO_ERROR)
+        return (exit_code);
+    }
+  }
+
   // TODO: the following memory allocations are to be used to store
   // the histories of these sets of values. When training
   // continuous networks, these histories always need to be saved.
@@ -448,27 +460,6 @@ uint init_out_weak_clamp ()
 
 
 // ------------------------------------------------------------------------
-// allocate memory and initialise variables for OUTPUT functions
-// ------------------------------------------------------------------------
-uint prc_init (void)
-{
-  for (uint i = 0; i < tcfg.num_out_procs; i++)
-  {
-    if (t_init_out_procs[tcfg.procs_list[i]] != NULL)
-    {
-      // call the appropriate routine for pipeline initialisation
-      uint exit_code  = t_init_out_procs[tcfg.procs_list[i]]();
-      if (exit_code != SPINN_NO_ERROR)
-        return (exit_code);
-    }
-  }
-
-  return (SPINN_NO_ERROR);
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
 void var_init (void)
@@ -577,14 +568,14 @@ void var_init (void)
     // no need to wait for previous value if first in chain
     if (tcfg.is_first_output_group)
     {
-      tf_chain_init = 1;
+      tf_initChain = 1;
       tf_chain_prev = TRUE;
     }
     else
     {
-      tf_chain_init = 0;
+      tf_initChain = 0;
     }
-    tf_chain_rdy = tf_chain_init;
+    tf_chain_rdy = tf_initChain;
 
     if (tcfg.is_last_output_group)
     {
@@ -698,8 +689,8 @@ void stage_init (void)
 void stage_start (void)
 {
   // start log,
-  io_printf (IO_BUF, "--------------\n");
-  io_printf (IO_BUF, "starting stage\n");
+  io_printf (IO_BUF, "----------------\n");
+  io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
 
   // send initial outputs to host -- if required,
   if (tcfg.write_out)
@@ -805,8 +796,8 @@ void stage_done (uint ec)
 #endif
 
   // close log,
-  io_printf (IO_BUF, "stopping stage\n");
-  io_printf (IO_BUF, "--------------\n");
+  io_printf (IO_BUF, "stopping stage %u\n", xcfg.stage_id);
+  io_printf (IO_BUF, "----------------\n");
 
   // and let host know that we're done
   if (ec == SPINN_NO_ERROR) {
