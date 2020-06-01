@@ -21,12 +21,12 @@
 // ------------------------------------------------------------------------
 void s_process (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "s_process\n");
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -425,6 +425,9 @@ void s_backprop_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void sf_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "sf_advance_tick\n");
 #endif
@@ -436,9 +439,6 @@ void sf_advance_tick (uint unused0, uint unused1)
 #ifdef DEBUG_TICK
   io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // check if end of event
   if (tick_stop)
@@ -460,6 +460,9 @@ void sf_advance_tick (uint unused0, uint unused1)
 // ------------------------------------------------------------------------
 void sb_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "sb_advance_tick\n");
 #endif
@@ -471,9 +474,6 @@ void sb_advance_tick (uint unused0, uint unused1)
 #ifdef DEBUG_TICK
   io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)

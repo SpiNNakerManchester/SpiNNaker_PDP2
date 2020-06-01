@@ -286,6 +286,66 @@ uint mem_init (void)
 
 
 // ------------------------------------------------------------------------
+// initialise unit outputs and OUTPUT INTEGRATOR state
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+//NOTE: There is a conflict in the initialisation routine between
+// versions 2.63 and 2.64 of LENS. This function LENS version 2.63.
+// Added comments indicate changes to apply LENS version 2.64
+// ------------------------------------------------------------------------
+void t_init_outputs (uint unused0, uint unused1)
+{
+  (void) unused0;
+  (void) unused1;
+
+#ifdef TRACE
+  io_printf (IO_BUF, "t_init_outputs\n");
+#endif
+
+  // initialise every unit output and send for processing
+  for (uint i = 0; i < tcfg.num_units; i++)
+  {
+    // setup the initial output value.
+    // Lens has two ways of initialise the output value,
+    // as defined in Lens 2.63 and Lens 2.64,
+    // and the two ways are not compatible
+
+    // use initial values,
+    // TODO: need to verify initInput with Lens
+    // NOTE: The following code follows the output of Lens 2.63:
+    // initialise the output value of the units
+
+    t_outputs[i] = tcfg.initOutput;
+
+    // if the OUTPUT INTEGRATOR is used
+    // reset the array of the last values
+    if (tcfg.out_integr_en) {
+      t_last_integr_output[i] = tcfg.initOutput;
+
+      t_last_integr_output_deriv[i] = 0;
+    }
+
+#ifdef DEBUG_CFG3
+    io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
+#endif
+
+    // and send unit output to weight cores
+    while (!spin1_send_mc_packet ((t_fwdKey[i >> SPINN_BLOCK_SHIFT] | i),
+                                   (uint) t_outputs[i],
+                                   WITH_PAYLOAD
+                                 )
+          );
+
+#ifdef DEBUG
+    pkt_sent++;
+    sent_fwd++;
+#endif
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // allocate memory for OUTPUT INTEGRATOR state
 // ------------------------------------------------------------------------
 uint init_out_integr ()
@@ -294,7 +354,7 @@ uint init_out_integr ()
   io_printf (IO_BUF, "init_out_integr\n");
 #endif
 
-  // allocate memory for integrator state
+  // allocate memory for INTEGRATOR state
   //NOTE: these variables are initialised in function init_outputs ()
   if ((t_last_integr_output = ((activation_t *)
        spin1_malloc (tcfg.num_units * sizeof (activation_t)))) == NULL

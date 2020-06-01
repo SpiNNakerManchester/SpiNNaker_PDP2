@@ -21,12 +21,12 @@
 // ------------------------------------------------------------------------
 void tf_process (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "tb_process\n");
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -187,12 +187,12 @@ void tf_process (uint unused0, uint unused1)
 // ------------------------------------------------------------------------
 void tb_process (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "tb_process\n");
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // compute deltas based on pre-computed errors,
   //TODO: this needs checking!
@@ -283,6 +283,9 @@ void tb_process (uint unused0, uint unused1)
 // ------------------------------------------------------------------------
 void tf_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "tf_advance_tick\n");
 #endif
@@ -298,9 +301,6 @@ void tf_advance_tick (uint unused0, uint unused1)
 #if SPINN_OUTPUT_HISTORY == TRUE
   //TODO: dump outputs to SDRAM for record keeping,
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // check if done with event
   if (tick_stop)
@@ -331,6 +331,9 @@ void tf_advance_tick (uint unused0, uint unused1)
 // ------------------------------------------------------------------------
 void tb_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "tb_advance_tick\n");
 #endif
@@ -342,9 +345,6 @@ void tb_advance_tick (uint unused0, uint unused1)
 #ifdef DEBUG_TICK
   io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // update pointer to processing unit outputs,
   tb_procs = 1 - tb_procs;
@@ -666,12 +666,12 @@ void t_switch_to_bp (void)
 // ------------------------------------------------------------------------
 void tf_send_stop (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "tf_send_stop\n");
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // "aggregate" criteria,
   tf_stop_crit = tf_stop_crit && tf_chain_prev;
@@ -711,64 +711,6 @@ void tf_send_stop (uint unused0, uint unused1)
 
   // and initialise criterion for next tick
   tf_stop_crit = TRUE;
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// this routine initialises the output values of the units. There is a conflict
-// in the initialisation routine between lens 2.63 and lens 2.64.
-// The current version implements the routine as expressed by lens 2.63, with
-// comments on the line to change to apply lens version 2.64
-// ------------------------------------------------------------------------
-void t_init_outputs (uint unused0, uint unused1)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "t_init_outputs\n");
-#endif
-
-  (void) unused0;
-  (void) unused1;
-
-  // initialise every unit output and send for processing
-  for (uint i = 0; i < tcfg.num_units; i++)
-  {
-    // setup the initial output value.
-    // Lens has two ways of initialise the output value,
-	// as defined in Lens 2.63 and Lens 2.64,
-	// and the two ways are not compatible
-
-    // use initial values,
-    // TODO: need to verify initInput with Lens
-    // NOTE: The following code follows the output of Lens 2.63:
-    // initialise the output value of the units
-
-    t_outputs[i] = tcfg.initOutput;
-
-    // if the output integrator is used
-    // reset the array of the last values
-    if (tcfg.out_integr_en) {
-      t_last_integr_output[i] = tcfg.initOutput;
-
-      t_last_integr_output_deriv[i] = 0;
-    }
-
-#ifdef DEBUG_CFG3
-  io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
-#endif
-
-    // and send unit output to weight cores
-    while (!spin1_send_mc_packet ((t_fwdKey[i >> SPINN_BLOCK_SHIFT] | i),
-                                   (uint) t_outputs[i],
-                                   WITH_PAYLOAD
-                                 )
-          );
-
-#ifdef DEBUG
-  pkt_sent++;
-  sent_fwd++;
-#endif
-  }
 }
 // ------------------------------------------------------------------------
 
@@ -974,7 +916,7 @@ void out_integr (uint inx)
   // store the output for the backward path
   t_instant_outputs[((tick - 1) * tcfg.num_units) + inx] = t_outputs[inx];
 
-  // compute the of the output integrator and round off
+  // compute the of the output INTEGRATOR and round off
   // s36.27 = (s0.16 * (s4.27 - s4.27)) >> 16
   long_activ_t out_tmp = ((dt * (new_output - last_output))
                             + (1 << SPINN_ACTIV_SHIFT))
@@ -993,7 +935,7 @@ void out_integr (uint inx)
     // representation in 36.27 within the range (-1; 1) can be reduced to 4.27
     t_outputs[inx] = (activation_t) out_tmp;
 
-  // store the integrator state for the next iteration
+  // store the INTEGRATOR state for the next iteration
   t_last_integr_output[inx] = t_outputs[inx];
 }
 // ------------------------------------------------------------------------
@@ -1183,7 +1125,7 @@ void out_integr_back (uint inx)
   last_output_deriv += t_output_deriv[inx] - d;
   t_output_deriv[inx] = d;
 
-  // store the integrator state for the next iteration
+  // store the INTEGRATOR state for the next iteration
   t_last_integr_output_deriv[inx] = last_output_deriv;
 }
 // ------------------------------------------------------------------------

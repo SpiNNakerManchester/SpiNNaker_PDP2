@@ -173,7 +173,7 @@ uint init_in_integr ()
   io_printf (IO_BUF, "init_in_integr\n");
 #endif
 
-  // allocate memory for the integrator state variable for outputs
+  // allocate memory for the INTEGRATOR state variable for outputs
   if ((i_last_integr_net = ((long_net_t *)
          spin1_malloc (icfg.num_units * sizeof (long_net_t)))) == NULL
        )
@@ -181,7 +181,7 @@ uint init_in_integr ()
       return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for the integrator state variable for deltas
+  // allocate memory for the INTEGRATOR state variable for deltas
   if ((i_last_integr_delta = ((long_delta_t *)
          spin1_malloc (icfg.num_units * sizeof (long_delta_t)))) == NULL
        )
@@ -189,7 +189,7 @@ uint init_in_integr ()
       return (SPINN_MEM_UNAVAIL);
   }
 
-  // reset the memory of the integrator state variable
+  // reset the memory of the INTEGRATOR state variable
   for (uint i = 0; i<icfg.num_units; i++)
   {
     i_last_integr_net[i] = (long_net_t) icfg.initNets;

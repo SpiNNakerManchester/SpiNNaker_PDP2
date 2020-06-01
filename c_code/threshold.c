@@ -133,8 +133,8 @@ address_t      xadr;           // stage configuration SDRAM address
 activation_t   * t_outputs;         // current tick unit outputs
 net_t          * t_nets;            // nets received from input cores
 error_t        * t_errors[2];       // error banks: current and next tick
-activation_t   * t_last_integr_output;  //last integrator output value
-long_deriv_t   * t_last_integr_output_deriv; //last integrator output deriv value
+activation_t   * t_last_integr_output;  //last INTEGRATOR output value
+long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output deriv value
 activation_t   * t_instant_outputs; // current output value stored for the backward pass
 short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps

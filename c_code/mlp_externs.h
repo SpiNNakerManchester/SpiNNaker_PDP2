@@ -119,8 +119,8 @@ extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_pend; // sync. semaphore: proc & stop
 extern long_delta_t   * ib_init_delta; // initial delta value for every tick
 extern scoreboard_t     ib_done;       // current tick delta computation done
-extern long_net_t     * i_last_integr_net;   //last integrator output value
-extern long_delta_t   * i_last_integr_delta; //last integrator delta value
+extern long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
+extern long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
 
 extern uint           * i_bkpKey;      // i cores have one bkpKey per partition
 
@@ -144,8 +144,8 @@ extern out_error_t     const t_out_error[SPINN_NUM_ERROR_PROCS];
 extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from input cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
-extern activation_t   * t_last_integr_output;   //last integrator output value
-extern long_deriv_t   * t_last_integr_output_deriv; //last integr output deriv
+extern activation_t   * t_last_integr_output;   //last INTEGRATOR output value
+extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output deriv
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
 extern uchar            t_hard_clamp_en;   // hard clamp output enabled
 extern uint             t_it_idx;      // index into current inputs/targets

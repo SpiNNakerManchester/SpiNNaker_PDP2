@@ -21,12 +21,12 @@
 // ------------------------------------------------------------------------
 void i_process (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "i_process\n");
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -234,6 +234,9 @@ void i_backprop_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 void if_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "if_advance_tick\n");
 #endif
@@ -245,9 +248,6 @@ void if_advance_tick (uint unused0, uint unused1)
 #ifdef DEBUG_TICK
   io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // check if end of event
   if (tick_stop)
@@ -269,6 +269,9 @@ void if_advance_tick (uint unused0, uint unused1)
 // ------------------------------------------------------------------------
 void ib_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "ib_advance_tick\n");
 #endif
@@ -284,9 +287,6 @@ void ib_advance_tick (uint unused0, uint unused1)
 #ifdef DEBUG_VRB
   io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
 #endif
-
-  (void) unused0;
-  (void) unused1;
 
   // check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
@@ -401,7 +401,7 @@ void i_advance_example (void)
     i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
-  // if the input integrator is used reset the array of last values
+  // if the input INTEGRATOR is used reset the array of last values
   if (icfg.in_integr_en)
     for (uint i = 0; i < icfg.num_units; i++)
     {
@@ -474,7 +474,7 @@ void restore_nets (uint inx, uint tick)
 
 
 // ------------------------------------------------------------------------
-// input integrator element
+// input INTEGRATOR element
 // ------------------------------------------------------------------------
 void in_integr (uint inx)
 {
@@ -593,7 +593,7 @@ void in_integr_back (uint inx)
 
   i_deltas[inx] = d;
 
-  // store the integrator state for the next iteration
+  // store the INTEGRATOR state for the next iteration
   i_last_integr_delta[inx] = last_delta;
 }
 // ------------------------------------------------------------------------

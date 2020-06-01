@@ -10,6 +10,6 @@ uint init_in_integr (void);
 
 void stage_init  (void);
 void stage_start (void);
-void stage_done  (uint ec);
+void stage_done  (uint exit_code);
 
 #endif
