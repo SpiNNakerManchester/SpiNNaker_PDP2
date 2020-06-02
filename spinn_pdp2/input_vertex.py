@@ -10,6 +10,8 @@ from spinn_utilities.overrides import overrides
 
 from spinn_front_end_common.abstract_models.abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
+from spinn_front_end_common.abstract_models import \
+    AbstractRewritesDataSpecification
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
 from spinn_front_end_common.utilities.constants \
@@ -25,7 +27,9 @@ from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 class InputVertex(
         SimulatorVertex,
         MachineDataSpecableVertex,
-        AbstractProvidesNKeysForPartition):
+        AbstractProvidesNKeysForPartition,
+        AbstractRewritesDataSpecification
+        ):
 
     """ A vertex to implement a PDP2 input core
         that applies unit input functions 
@@ -40,6 +44,8 @@ class InputVertex(
             label = "i_core{}".format (group.id),
             binary_name = "input.aplx",
             constraints = None)
+
+        self._stage = 0
 
         # application-level data
         self._network = network
@@ -176,9 +182,11 @@ class InputVertex(
             )
         return resources
 
+
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
         return self._n_keys
+
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
     def generate_machine_data_specification(
@@ -281,3 +289,33 @@ class InputVertex(
 
         # End the specification
         spec.end_specification ()
+
+
+    @overrides(AbstractRewritesDataSpecification.regenerate_data_specification)
+    def regenerate_data_specification(self, spec, placement):
+        # Reserve and write the stage configuration region
+        spec.reserve_memory_region (MLPRegions.STAGE.value,
+                                    self._N_STAGE_CONFIGURATION_BYTES)
+
+        spec.switch_write_focus (MLPRegions.STAGE.value)
+
+        # write the stage configuration into spec
+        for c in self._network.stage_config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
+
+        spec.end_specification()
+
+
+    @overrides(AbstractRewritesDataSpecification.requires_memory_regions_to_be_reloaded)
+    def requires_memory_regions_to_be_reloaded(self):
+        return True
+
+
+    @overrides(AbstractRewritesDataSpecification.mark_regions_reloaded)
+    def mark_regions_reloaded(self):
+        """
+            TODO: not really sure what this method is used for!
+        """
+        # prepare for next stage
+        self._stage += 1

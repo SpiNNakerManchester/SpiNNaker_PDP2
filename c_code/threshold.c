@@ -82,6 +82,9 @@ uint coreID;               // 5-bit virtual core ID
 uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 
+uint32_t stage_step;       // current stage step
+uint32_t stage_num_steps;  // current stage number of steps
+
 uint         epoch;        // current training iteration
 uint         example;      // current example in epoch
 uint         evt;          // current event in example
@@ -190,25 +193,25 @@ long_deriv_t   * t_output_deriv_history;
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-uint pkt_sent = 0;  // total packets sent
-uint sent_fwd = 0;  // packets sent in FORWARD phase
-uint sent_bkp = 0;  // packets sent in BACKPROP phase
-uint pkt_recv = 0;  // total packets received
-uint recv_fwd = 0;  // packets received in FORWARD phase
-uint recv_bkp = 0;  // packets received in BACKPROP phase
-uint spk_sent = 0;  // sync packets sent
-uint spk_recv = 0;  // sync packets received
-uint chn_sent = 0;  // chain packets sent
-uint chn_recv = 0;  // chain packets received
-uint stp_sent = 0;  // stop packets sent
-uint stp_recv = 0;  // stop packets received
-uint stn_sent = 0;  // network_stop packets sent
-uint stn_recv = 0;  // network_stop packets received
-uint wrng_phs = 0;  // packets received in wrong phase
-uint wrng_tck = 0;  // FORWARD packets received in wrong tick
-uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
-uint wght_ups = 0;  // number of weight updates done
-uint tot_tick = 0;  // total number of ticks executed
+uint pkt_sent;  // total packets sent
+uint sent_fwd;  // packets sent in FORWARD phase
+uint sent_bkp;  // packets sent in BACKPROP phase
+uint pkt_recv;  // total packets received
+uint recv_fwd;  // packets received in FORWARD phase
+uint recv_bkp;  // packets received in BACKPROP phase
+uint spk_sent;  // sync packets sent
+uint spk_recv;  // sync packets received
+uint chn_sent;  // chain packets sent
+uint chn_recv;  // chain packets received
+uint stp_sent;  // stop packets sent
+uint stp_recv;  // stop packets received
+uint stn_sent;  // network_stop packets sent
+uint stn_recv;  // network_stop packets received
+uint wrng_phs;  // packets received in wrong phase
+uint wrng_tck;  // FORWARD packets received in wrong tick
+uint wrng_btk;  // BACKPROP packets received in wrong tick
+uint wght_ups;  // number of weight updates done
+uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
 

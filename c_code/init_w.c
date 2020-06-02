@@ -33,10 +33,12 @@ uint cfg_init (void)
 
   // set up the simulation interface (system region)
   //NOTE: these variables are not used!
-  uint32_t n_steps, run_forever, step;
+  uint32_t run_forever;
   if (!simulation_steps_initialise(
       data_specification_get_region(SYSTEM, data),
-      APPLICATION_NAME_HASH, &n_steps, &run_forever, &step, 0, 0))
+      APPLICATION_NAME_HASH, &stage_num_steps,
+      &run_forever, &stage_step, 0, 0)
+      )
   {
     return (SPINN_CFG_UNAVAIL);
   }
@@ -292,6 +294,33 @@ void var_init (void)
   wb_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
   ldsaKey = rt[LDS] | SPINN_LDSA_KEY;
+
+#ifdef DEBUG
+// ------------------------------------------------------------------------
+// DEBUG variables
+// ------------------------------------------------------------------------
+pkt_sent = 0;  // total packets sent
+sent_fwd = 0;  // packets sent in FORWARD phase
+sent_bkp = 0;  // packets sent in BACKPROP phase
+pkt_recv = 0;  // total packets received
+recv_fwd = 0;  // packets received in FORWARD phase
+recv_bkp = 0;  // packets received in BACKPROP phase
+pkt_fwbk = 0;  // unused packets received in FORWARD phase
+pkt_bwbk = 0;  // unused packets received in BACKPROP phase
+spk_sent = 0;  // sync packets sent
+spk_recv = 0;  // sync packets received
+stp_sent = 0;  // stop packets sent
+stp_recv = 0;  // stop packets received
+stn_recv = 0;  // network_stop packets received
+lda_sent = 0;  // partial link_delta packets sent
+ldr_recv = 0;  // link_delta packets received
+wrng_phs = 0;  // packets received in wrong phase
+wrng_tck = 0;  // FORWARD packets received in wrong tick
+wrng_btk = 0;  // BACKPROP packets received in wrong tick
+wght_ups = 0;  // number of weight updates done
+tot_tick = 0;  // total number of ticks executed
+// ------------------------------------------------------------------------
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -301,9 +330,15 @@ void var_init (void)
 // ------------------------------------------------------------------------
 void stage_init (void)
 {
+  // clear output from earlier runs
+  sark_io_buf_reset();
+
   // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
+
+  // re-initialise variables for this stage
+  var_init ();
 }
 // ------------------------------------------------------------------------
 

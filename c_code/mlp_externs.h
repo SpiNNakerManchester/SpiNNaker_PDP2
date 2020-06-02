@@ -16,6 +16,9 @@ extern uint ldsaKey;              // 32-bit packet ID for link delta summation a
 extern uint ldstKey;              // 32-bit packet ID for link delta summation totals
 extern uint ldsrKey;              // 32-bit packet ID for link delta summation reports
 
+extern uint32_t stage_step;       // current stage step
+extern uint32_t stage_num_steps;  // current stage number of steps
+
 extern uint         epoch;        // current training/testing iteration
 extern uint         example;      // current example in epoch
 extern uint         evt;          // current event in example

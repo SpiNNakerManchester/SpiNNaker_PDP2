@@ -670,16 +670,18 @@ class MLPNetwork():
             self.generate_machine_graph ()
 
         # run stage
-        gfe.run_until_complete ()
+        gfe.run_until_complete (self._stage_id)
 
+        # pause to allow debugging
+        input (f"stage {self._stage_id} paused: press enter to exit")
+
+        # prepare for next stage
+        self._stage_id += 1
 
     def end (self):
         """ clean up before exiting
         """
         if not self._aborted:
-            # pause to allow debugging
-            input ('paused: press enter to exit')
-
             print ("exit: application finished")
             # let the gfe clean up
             gfe.stop()
