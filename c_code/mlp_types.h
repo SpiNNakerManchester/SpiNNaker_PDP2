@@ -274,6 +274,7 @@ typedef struct t_conf                  // threshold core configuration
   scoreboard_t  bkp_sync_expected;     // all expected BACKPROP sync packets
   uchar         write_out;             // write outputs (send to host)?
   uint          write_blk;             // this core's write block
+  uchar         hard_clamp_en;         // HARD CLAMP in use
   uchar         out_integr_en;         // output INTEGRATOR in use
   fpreal        out_integr_dt;         // integration time const for input integr
   uint          num_out_procs;         // number of output comp procedures

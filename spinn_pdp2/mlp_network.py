@@ -61,7 +61,6 @@ class MLPNetwork():
         self._weights_file = None
 
         # initialise example set
-        self._examples_rdy = False
         self._ex_set = None
 
         # create single-unit Bias group by default
@@ -165,7 +164,7 @@ class MLPNetwork():
         return struct.pack("<2B2xI",
                            self._stage_id,
                            self._training,
-                           self._num_examples
+                           self._ex_set.num_examples
                            )
 
 
@@ -660,11 +659,11 @@ class MLPNetwork():
             return
 
         # generate summary set, example and event data
-        self._num_examples = self._ex_set.compile (self)
-        if self._num_examples == 0:
-            print ("run aborted: error compiling example set")
-            self._aborted = True
-            return
+        if not self._ex_set.examples_compiled:
+            if self._ex_set.compile (self) == 0:
+                print ("run aborted: error compiling example set")
+                self._aborted = True
+                return
 
         # generate machine graph - if needed
         if not self._graph_rdy:

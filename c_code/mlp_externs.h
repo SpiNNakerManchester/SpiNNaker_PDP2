@@ -147,7 +147,6 @@ extern error_t        * t_errors[2];   // error banks: current and next tick
 extern activation_t   * t_last_integr_output;   //last INTEGRATOR output value
 extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output deriv
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
-extern uchar            t_hard_clamp_en;   // hard clamp output enabled
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example
 extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets

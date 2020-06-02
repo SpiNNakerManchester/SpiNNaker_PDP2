@@ -198,6 +198,7 @@ class ThresholdVertex(
               scoreboard_t  bkp_sync_expect;
               uchar         write_out;
               uint          write_blk;
+              uchar         hard_clamp_en;
               uchar         out_integr_en;
               fpreal        out_integr_dt;
               uint          num_out_procs;
@@ -230,7 +231,7 @@ class ThresholdVertex(
         group_criterion = int (self._group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2x4IB3xIB3xi6I3i4B",
+        return struct.pack ("<2B2x4IB3xI2B2xi6I3i4B",
                             self.group.output_grp & 0xff,
                             self.group.input_grp & 0xff,
                             self.group.units,
@@ -239,6 +240,7 @@ class ThresholdVertex(
                             self._bkp_sync_expect,
                             self.group.write_out & 0xff,
                             self.group.write_blk,
+                            self.group.hard_clamp_en & 0xff,
                             self.group.out_integr_en & 0xff,
                             out_integr_dt,
                             self.group.num_out_procs,

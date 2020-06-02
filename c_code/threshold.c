@@ -138,7 +138,6 @@ long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output deriv valu
 activation_t   * t_instant_outputs; // current output value stored for the backward pass
 short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
-uchar            t_hard_clamp_en;   //hard clamp output enabled
 uint             t_it_idx;          // index into current inputs/targets
 uint             t_tot_ticks;       // total ticks on current example
 pkt_queue_t      t_net_pkt_q;       // queue to hold received nets

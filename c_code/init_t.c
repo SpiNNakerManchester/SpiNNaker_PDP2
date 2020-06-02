@@ -9,10 +9,8 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_externs.h"
-
 #include "init_t.h"
 #include "comms_t.h"
-#include "process_t.h"
 
 
 // ------------------------------------------------------------------------
@@ -507,33 +505,13 @@ void var_init (void)
                     >> SPINN_FPREAL_SHIFT;
   }
 
-  // initialise output derivatives
+  // initialise output derivatives, deltas and errors
   for (uint i = 0; i < tcfg.num_units; i++)
   {
     t_output_deriv[i] = 0;
-  }
-
-  // initialise deltas
-  for (uint i = 0; i < tcfg.num_units; i++)
-  {
     t_deltas[i] = 0;
-  }
-
-  // initialise errors
-  for (uint i = 0; i < tcfg.num_units; i++)
-  {
     t_errors[0][i] = 0;
     t_errors[1][i] = 0;
-  }
-
-  // check if the hard clamp is in use in the sequence of pipeline elements
-  t_hard_clamp_en = FALSE;
-  for (uint i = 0; i < tcfg.num_out_procs; i++)
-  {
-    // check if the hard clamp is in the output pipeline
-    // and set hard_clamp_en appropriately
-    if (t_out_procs[tcfg.procs_list[i]] == out_hard_clamp)
-      t_hard_clamp_en = TRUE;
   }
 
   // initialise pointers to received errors

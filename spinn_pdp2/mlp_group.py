@@ -64,6 +64,7 @@ class MLPGroup():
         self.momentum = None
 
         # input function parameters
+        self.hard_clamp_en = 0
         self.soft_clamp_strength = MLPConstants.DEF_SOFT_CLMP
 
         if input_funcs is None:
@@ -143,6 +144,7 @@ class MLPGroup():
 
         else:
             if (MLPGroupTypes.INPUT in self.type and MLPGroupTypes.OUTPUT not in self.type):
+                self.hard_clamp_en      = 1
                 self.out_integr_en      = 0
                 self.num_out_procs      = 1
                 self.out_procs_list [0] = MLPOutputProcs.OUT_HARD_CLAMP
