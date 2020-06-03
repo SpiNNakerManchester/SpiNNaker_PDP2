@@ -479,6 +479,9 @@ void t_advance_example (void)
     // check if terminating "early"
     else if (tcfg.is_last_output_group && tf_example_crit)
     {
+      // keep epoch compatible with LENS
+      epoch--;
+
       // broadcast network_stop decision,
       while (!spin1_send_mc_packet (tf_stpn_key, 0, NO_PAYLOAD)
           );
