@@ -98,7 +98,6 @@ uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
 uint         ev_tick;      // current tick in event
 uchar        tick_stop;    // current tick stop decision
-uchar        network_stop; // network_stop decision
 
 uint         to_epoch   = 0;
 uint         to_example = 0;

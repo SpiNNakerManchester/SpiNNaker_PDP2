@@ -42,6 +42,7 @@ class MLPNetwork():
         self._momentum         = MLPConstants.DEF_MOMENTUM
         self._update_function  = MLPConstants.DEF_UPDATE_FUNC
         self._num_updates      = MLPConstants.DEF_NUM_UPDATES
+        self._num_examples     = None
 
 
         # initialise lists of groups and links
@@ -154,17 +155,24 @@ class MLPNetwork():
 
             typedef struct stage_conf
             {
-              uchar training;               // stage mode: train (1) or test (0)
-              uint  num_examples;           // number of examples to run in this stage
+              uchar stage_id;      // stage identifier
+              uchar training;      // stage mode: train (1) or test (0)
+              uint  num_examples;  // number of examples to run in this stage
             } stage_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # determine the number of examples to run in this stage
+        if self._num_examples is not None:
+            _num_examples = self._num_examples
+        else:
+            _num_examples = self._ex_set.num_examples
+
         return struct.pack("<2B2xI",
                            self._stage_id,
                            self._training,
-                           self._ex_set.num_examples
+                           _num_examples
                            )
 
 
@@ -601,21 +609,30 @@ class MLPNetwork():
 
 
     def train (self,
-               update_function
+               update_function,
+               num_examples = None
               ):
-        """ do one stage of training
+        """ do one stage in train mode
         """
         if update_function is not None:
             self._update_function = update_function
+
+        if num_examples is not None:
+            self._num_examples = num_examples
 
         self._training = 1
         self._num_epochs = self._num_updates
         self.stage_run ()
 
 
-    def test (self):
-        """ do one stage of testing (no training)
+    def test (self,
+               num_examples = None
+              ):
+        """ do one stage in test mode
         """
+        if num_examples is not None:
+            self._num_examples = num_examples
+
         self._training = 0
         self._num_epochs = 1
         self.stage_run ()

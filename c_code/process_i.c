@@ -374,7 +374,7 @@ void i_advance_example (void)
   if (++example >= xcfg.num_examples)
   {
     // check if done with epochs
-    if (++epoch >= ncfg.num_epochs)
+    if (!xcfg.training || (++epoch >= ncfg.num_epochs))
     {
       // report no error
       stage_done (SPINN_NO_ERROR);

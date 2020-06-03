@@ -67,6 +67,15 @@ uint cfg_init (void)
   xadr = data_specification_get_region (STAGE, data);
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
+  if (xcfg.training)
+  {
+    io_printf (IO_BUF, "train ", xcfg.num_examples);
+  }
+  else
+  {
+    io_printf (IO_BUF, "test ");
+  }
+  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "nu: %d\n", scfg.num_units);
@@ -265,6 +274,15 @@ void stage_init (void)
   // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
+  if (xcfg.training)
+  {
+    io_printf (IO_BUF, "train ", xcfg.num_examples);
+  }
+  else
+  {
+    io_printf (IO_BUF, "test ");
+  }
+  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 
   // re-initialise variables for this stage
   var_init ();

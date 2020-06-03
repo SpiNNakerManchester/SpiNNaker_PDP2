@@ -78,5 +78,8 @@ rogers.read_Lens_weights_file (
 # train the network
 rogers.train (update_function = MLPUpdateFuncs.UPD_DOUGSMOMENTUM)
 
+# train the network
+rogers.test ()
+
 # close the application
 rogers.end ()

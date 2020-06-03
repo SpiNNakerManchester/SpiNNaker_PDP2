@@ -469,43 +469,24 @@ void t_advance_example (void)
   //TODO: alternative algorithms for choosing example order!
   if (++example >= xcfg.num_examples)
   {
-    if (tcfg.is_last_output_group)
+    // check if done with epochs
+    if (!xcfg.training || (++epoch >= ncfg.num_epochs))
     {
-      network_stop = tf_example_crit;
-      if (network_stop)
-      {
-        // we have decided to terminate training so write out final data,
-        if (tcfg.write_out)
-        {
-          send_outputs_to_host (SPINN_HOST_FINAL, 0);
-        }
-
-        // broadcast network_stop decision,
-        while (!spin1_send_mc_packet ((tf_stpn_key | network_stop),
-                                   0,
-                                   NO_PAYLOAD
-                                   )
+      // report no error
+      stage_done (SPINN_NO_ERROR);
+      return;
+    }
+    // check if terminating "early"
+    else if (tcfg.is_last_output_group && tf_example_crit)
+    {
+      // broadcast network_stop decision,
+      while (!spin1_send_mc_packet (tf_stpn_key, 0, NO_PAYLOAD)
           );
 
 #ifdef DEBUG
-        pkt_sent++;
-        stn_sent++;
+      pkt_sent++;
+      stn_sent++;
 #endif
-
-        // and report no error
-        stage_done (SPINN_NO_ERROR);
-        return;
-      }
-    }
-
-    // check if done with epochs
-    if (++epoch >= ncfg.num_epochs)
-    {
-      // send final output packet to host,
-      if (tcfg.write_out)
-      {
-        send_outputs_to_host (SPINN_HOST_FINAL, 0);
-      }
 
       // and report no error
       stage_done (SPINN_NO_ERROR);

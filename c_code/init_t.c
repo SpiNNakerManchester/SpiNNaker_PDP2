@@ -122,6 +122,15 @@ uint cfg_init (void)
   xadr = data_specification_get_region (STAGE, data);
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
+  if (xcfg.training)
+  {
+    io_printf (IO_BUF, "train ", xcfg.num_examples);
+  }
+  else
+  {
+    io_printf (IO_BUF, "test ");
+  }
+  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
@@ -688,6 +697,15 @@ void stage_init (void)
   // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
+  if (xcfg.training)
+  {
+    io_printf (IO_BUF, "train ", xcfg.num_examples);
+  }
+  else
+  {
+    io_printf (IO_BUF, "test ");
+  }
+  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 
   // re-initialise variables for this stage
   var_init ();
@@ -728,6 +746,7 @@ void stage_done (uint ec)
   switch (ec)
   {
     case SPINN_NO_ERROR:
+      tick = 0;  // adjust tick for output reporting to host (below)
       io_printf (IO_BUF, "stage OK\n");
       break;
 
@@ -768,10 +787,6 @@ void stage_done (uint ec)
                   tf_chain_rdy
                 );
 #endif
-      if (tcfg.write_out)  // make sure the output monitor closes!
-      {
-        send_outputs_to_host (SPINN_HOST_FINAL, tick);
-      }
       break;
   }
 
@@ -806,6 +821,12 @@ void stage_done (uint ec)
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
 #endif
+
+  // send final outputs to host,
+  if (tcfg.write_out)
+  {
+    send_outputs_to_host (SPINN_HOST_FINAL, tick);
+  }
 
   // close log,
   io_printf (IO_BUF, "stopping stage %u\n", xcfg.stage_id);

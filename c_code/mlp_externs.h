@@ -30,7 +30,6 @@ extern uint         max_ticks;    // maximum number of ticks in current event
 extern uint         min_ticks;    // minimum number of ticks in current event
 extern uint         tick;         // current tick in phase
 extern uchar        tick_stop;    // current tick stop decision
-extern uchar        network_stop; // network_stop decision
 extern uint         ev_tick;      // current tick in event
 extern proc_phase_t phase;        // FORWARD or BACKPROP
 
