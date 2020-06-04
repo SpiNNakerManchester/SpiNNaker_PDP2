@@ -51,8 +51,8 @@ Contributors
 ------------
 
 Many people have contributed to the development of MLPs on SpiNNaker,
-amongst them J Moy, LA Plana, SR Welbourne, X Jin, AD Rast, S Davis
-and SB Furber.
+amongst them J Moy, LA Plana, SR Welbourne, X Jin, S Davidson, AD Rast,
+S Davis and SB Furber.
 
 The development of the project has relied heavily on the work of the
 [SpiNNaker software contributors](http://spinnakermanchester.github.io/common_pages/5.0.0/LicenseAgreement.html#contributors).
