@@ -344,14 +344,11 @@ void t_backpropPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void send_outputs_to_host (uint cmd, uint tick)
 {
-  // adjust event according to Lens reporting,
-  int le = (tick == 0) ? -1 : (int) evt;
-
   // report epoch, example, event and tick,
   t_sdp_msg.cmd_rc = cmd;
   t_sdp_msg.seq    = tcfg.write_blk;
   t_sdp_msg.arg1   = epoch;
-  t_sdp_msg.arg2   = (le << 16) | example_cnt;
+  t_sdp_msg.arg2   = (evt << 16) | example_cnt;
   t_sdp_msg.arg3   = tick;
 
   // set default message data length (no data)
