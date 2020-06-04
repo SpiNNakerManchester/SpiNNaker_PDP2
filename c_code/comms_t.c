@@ -344,9 +344,6 @@ void t_backpropPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void send_outputs_to_host (uint cmd, uint tick)
 {
-  // spread SDP messages to avoid congestion and possible loss,
-  spin1_delay_us (1000); //##
-
   // adjust event according to Lens reporting,
   int le = (tick == 0) ? -1 : (int) evt;
 
@@ -357,35 +354,43 @@ void send_outputs_to_host (uint cmd, uint tick)
   t_sdp_msg.arg2   = (le << 16) | example;
   t_sdp_msg.arg3   = tick;
 
-  // copy outputs and targets into msg buffer,
-  short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
-  for (uint i = 0; i < tcfg.num_units; i++)
+  // set default message data length (no data)
+  uint len = 0;
+
+  if (cmd == SPINN_HOST_NORMAL)
   {
-    if (tick == 0)
+    // copy outputs and targets into msg buffer,
+    short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
+    for (uint i = 0; i < tcfg.num_units; i++)
     {
-      my_data[2 * i]     = 0;
-      my_data[2 * i + 1] = 0;
-    }
-    else
-    {
-      my_data[2 * i]     = (short_activ_t) (t_outputs[i]
-					    >> (SPINN_ACTIV_SHIFT
-						- SPINN_SHORT_ACTIV_SHIFT));
-      if (tt[t_it_idx + i] == SPINN_ACTIV_ONE)
+      if (tick == 0)
       {
-        my_data[2 * i + 1] = SPINN_SHORT_ACTIV_MAX;
+        my_data[2 * i]     = 0;
+        my_data[2 * i + 1] = 0;
       }
       else
       {
-        my_data[2 * i + 1] = (short_activ_t) (tt[t_it_idx + i]
-					      >> (SPINN_ACTIV_SHIFT
-						  - SPINN_SHORT_ACTIV_SHIFT));
+        my_data[2 * i]     = (short_activ_t) (t_outputs[i]
+                >> (SPINN_ACTIV_SHIFT
+              - SPINN_SHORT_ACTIV_SHIFT));
+        if (tt[t_it_idx + i] == SPINN_ACTIV_ONE)
+        {
+          my_data[2 * i + 1] = SPINN_SHORT_ACTIV_MAX;
+        }
+        else
+        {
+          my_data[2 * i + 1] = (short_activ_t) (tt[t_it_idx + i]
+                  >> (SPINN_ACTIV_SHIFT
+                - SPINN_SHORT_ACTIV_SHIFT));
+        }
       }
     }
+
+    // and set message data length,
+    len = 2 * tcfg.num_units * sizeof (short_activ_t);
   }
 
   // set message length,
-  uint len = 2 * tcfg.num_units * sizeof (short_activ_t);
   t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message

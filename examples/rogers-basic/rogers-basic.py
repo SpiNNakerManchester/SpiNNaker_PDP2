@@ -75,10 +75,10 @@ rogers.set (num_updates = 10,
 rogers.read_Lens_weights_file (
     "rogers-basic_weights.txt")
 
-# train the network
+# train the network for the complete example set
 rogers.train (update_function = MLPUpdateFuncs.UPD_DOUGSMOMENTUM)
 
-# train the network
+# test the network for the complete example set
 rogers.test ()
 
 # close the application

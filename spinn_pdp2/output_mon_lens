@@ -233,7 +233,7 @@ sub main_loop
 
 	if ($grp_ctr[$inx] == $num_grps)
 	{
-	    print_outputs ();
+	    print_outputs () if not finish;
 
 	    last if $finish;
 

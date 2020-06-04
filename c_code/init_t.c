@@ -746,7 +746,6 @@ void stage_done (uint ec)
   switch (ec)
   {
     case SPINN_NO_ERROR:
-      tick = 0;  // adjust tick for output reporting to host (below)
       io_printf (IO_BUF, "stage OK\n");
       break;
 
@@ -822,10 +821,10 @@ void stage_done (uint ec)
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
 #endif
 
-  // send final outputs to host,
+  // let host know that reporting is finished,
   if (tcfg.write_out)
   {
-    send_outputs_to_host (SPINN_HOST_FINAL, tick);
+    send_outputs_to_host (SPINN_HOST_FINAL, 0);
   }
 
   // close log,

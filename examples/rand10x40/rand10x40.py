@@ -48,7 +48,7 @@ set1.set (grace_time = 1.0,
           )
 
 # set network parameters
-rand10x40.set (num_updates = 3,
+rand10x40.set (num_updates = 300,
                train_group_crit = 0.2
                )
 
@@ -56,8 +56,13 @@ rand10x40.set (num_updates = 3,
 rand10x40.read_Lens_weights_file (
     "rand10x40_weights.txt")
 
-# train the network
-rand10x40.train (update_function = MLPUpdateFuncs.UPD_STEEPEST)
+# train the network for 40 examples
+rand10x40.train (update_function = MLPUpdateFuncs.UPD_STEEPEST,
+                 num_examples = 40
+                 )
+
+# test the network for 1 example
+rand10x40.test (num_examples = 1)
 
 # close the application
 rand10x40.end ()
