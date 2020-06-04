@@ -50,6 +50,7 @@ class SumVertex(
         # application-level data
         self._network = network
         self._group   = group
+        self._set_cfg = network._ex_set.set_config
         self._ex_cfg  = network._ex_set.example_config
 
         # check if first group in the network
@@ -88,6 +89,10 @@ class SumVertex(
         self._N_CORE_CONFIGURATION_BYTES = \
             len (self.config)
 
+        # set configuration structure
+        self._N_EXAMPLE_SET_BYTES = \
+            len (self._set_cfg)
+
         # list of example configurations
         self._N_EXAMPLES_BYTES = \
             len (self._ex_cfg) * len (self._ex_cfg[0])
@@ -102,6 +107,7 @@ class SumVertex(
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
             self._N_CORE_CONFIGURATION_BYTES + \
+            self._N_EXAMPLE_SET_BYTES + \
             self._N_EXAMPLES_BYTES + \
             self._N_KEYS_BYTES + \
             self._N_STAGE_CONFIGURATION_BYTES
@@ -193,6 +199,16 @@ class SumVertex(
 
         # write the core configuration into spec
         for c in self.config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
+        # Reserve and write the example set region
+        spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
+                                    self._N_EXAMPLE_SET_BYTES)
+
+        spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
+
+        # write the example set configuration into spec
+        for c in self._set_cfg:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the examples region

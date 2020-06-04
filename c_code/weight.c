@@ -46,7 +46,8 @@ uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 
 uint         epoch;        // current training iteration
-uint         example;      // current example in epoch
+uint         example_cnt;  // example count in epoch
+uint         example_inx;  // current example index
 uint         evt;          // current event in example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
@@ -66,8 +67,9 @@ uint         to_tick    = 0;
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
-weight_t         * wt;     // initial connection weights
+mlp_set_t        * es;     // example set data
 mlp_example_t    * ex;     // example data
+weight_t         * wt;     // initial connection weights
 uint             * rt;     // multicast routing keys data
 // ------------------------------------------------------------------------
 
@@ -151,7 +153,7 @@ uint tot_tick;  // total number of ticks executed
 
 // ------------------------------------------------------------------------
 // timer callback: check that there has been progress in execution.
-// If no progress has been made terminate with SPINN_TIMEOUT_EXIT exit code.
+// If no progress has been made terminate with SPINN_TIMEOUT_EXIT code.
 // ------------------------------------------------------------------------
 void timeout (uint ticks, uint unused)
 {
@@ -159,7 +161,7 @@ void timeout (uint ticks, uint unused)
   (void) unused;
 
   // check if progress has been made
-  if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
+  if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
     // report timeout error
     stage_done (SPINN_TIMEOUT_EXIT);
@@ -168,7 +170,7 @@ void timeout (uint ticks, uint unused)
   {
     // update checked variables
     to_epoch   = epoch;
-    to_example = example;
+    to_example = example_cnt;
     to_tick    = tick;
   }
 }

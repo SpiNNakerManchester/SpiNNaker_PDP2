@@ -617,9 +617,7 @@ class MLPNetwork():
         if update_function is not None:
             self._update_function = update_function
 
-        if num_examples is not None:
-            self._num_examples = num_examples
-
+        self._num_examples = num_examples
         self._training = 1
         self._num_epochs = self._num_updates
         self.stage_run ()
@@ -630,9 +628,7 @@ class MLPNetwork():
               ):
         """ do one stage in test mode
         """
-        if num_examples is not None:
-            self._num_examples = num_examples
-
+        self._num_examples = num_examples
         self._training = 0
         self._num_epochs = 1
         self.stage_run ()

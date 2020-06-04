@@ -465,9 +465,15 @@ void t_advance_example (void)
   io_printf (IO_BUF, "t_advance_example\n");
 #endif
 
+  // point to next example in the set - wrap around if at the end
+  if (++example_inx >= es->num_examples)
+  {
+    example_inx = 0;
+  }
+
   // check if done with examples
   //TODO: alternative algorithms for choosing example order!
-  if (++example >= xcfg.num_examples)
+  if (++example_cnt >= xcfg.num_examples)
   {
     // check if done with epochs
     if (!xcfg.training || (++epoch >= ncfg.num_epochs))
@@ -494,8 +500,8 @@ void t_advance_example (void)
     }
     else
     {
-      // start from first example again
-      example = 0;
+      // reset example count for next epoch
+      example_cnt = 0;
       tf_event_crit = 1;
       tf_example_crit = 1;
     }
@@ -503,8 +509,8 @@ void t_advance_example (void)
 
   // start from first event for next example
   evt = 0;
-  num_events = ex[example].num_events;
-  event_idx = ex[example].ev_idx;
+  num_events = ex[example_inx].num_events;
+  event_idx = ex[example_inx].ev_idx;
   tf_event_crit = 1;
 
   // if input or output group initialise new event input/target index
@@ -718,7 +724,7 @@ void compute_out (uint inx)
 #ifdef DEBUG_VRB
   char* group;
   group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
-  io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example, tick, inx);
+  io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example_cnt, tick, inx);
 #endif
 
   // initialise the array element where to store the output value for the
@@ -1031,7 +1037,7 @@ void compute_out_back (uint inx)
 #ifdef DEBUG_VRB
   char* group;
   group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
-  io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d - Unit: %d\n", group, example, tick, inx);
+  io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d - Unit: %d\n", group, example_cnt, tick, inx);
 #endif
 
   int i;

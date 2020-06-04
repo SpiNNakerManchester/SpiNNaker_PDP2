@@ -20,7 +20,8 @@ extern uint32_t stage_step;       // current stage step
 extern uint32_t stage_num_steps;  // current stage number of steps
 
 extern uint         epoch;        // current training/testing iteration
-extern uint         example;      // current example in epoch
+extern uint         example_cnt;  // example count in epoch
+extern uint         example_inx;  // current example index
 extern uint         evt;          // current event in example
 extern uint         max_evt;      // the last event reached in the current example
 extern uint         num_events;   // number of events in current example

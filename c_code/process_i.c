@@ -370,8 +370,14 @@ void i_advance_example (void)
   io_printf (IO_BUF, "i_advance_example\n");
 #endif
 
+  // point to next example in the set - wrap around if at the end
+  if (++example_inx >= es->num_examples)
+  {
+    example_inx = 0;
+  }
+
   // check if done with examples
-  if (++example >= xcfg.num_examples)
+  if (++example_cnt >= xcfg.num_examples)
   {
     // check if done with epochs
     if (!xcfg.training || (++epoch >= ncfg.num_epochs))
@@ -382,15 +388,15 @@ void i_advance_example (void)
     }
     else
     {
-      // start from first example again
-      example = 0;
+      // reset example count for next epoch
+      example_cnt = 0;
     }
   }
 
   // start from first event for next example
   evt = 0;
-  num_events = ex[example].num_events;
-  event_idx = ex[example].ev_idx;
+  num_events = ex[example_inx].num_events;
+  event_idx = ex[example_inx].ev_idx;
 
   // if input or output group initialise new event input/target index
   //TODO: check if the target value is required in I cores
@@ -425,7 +431,7 @@ void compute_in (uint inx)
 #ifdef DEBUG_VRB
   char* group;
   group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
-  io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
+  io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example_cnt, tick);
 #endif
 
   for (uint i = 0; i < icfg.num_in_procs; i++)
@@ -552,7 +558,7 @@ void compute_in_back (uint inx)
 #ifdef DEBUG_VRB
   char* group;
   group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
-  io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
+  io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example_cnt, tick);
 #endif
 
   int i;

@@ -124,7 +124,7 @@ uint cfg_init (void)
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ", xcfg.num_examples);
+    io_printf (IO_BUF, "train ");
   }
   else
   {
@@ -475,16 +475,17 @@ void var_init (void)
 {
   // initialise epoch, example and event counters
   //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
+  epoch       = 0;
+  example_cnt = 0;
+  example_inx = 0;
+  evt         = 0;
 
   // initialise phase
   phase = SPINN_FORWARD;
 
   // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
+  num_events = ex[example_inx].num_events;
+  event_idx  = ex[example_inx].ev_idx;
 
   // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
@@ -700,7 +701,7 @@ void stage_init (void)
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ", xcfg.num_examples);
+    io_printf (IO_BUF, "train ");
   }
   else
   {
@@ -772,7 +773,7 @@ void stage_done (uint ec)
 
     case SPINN_TIMEOUT_EXIT:
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
-                 epoch, example, phase, tick
+                 epoch, example_cnt, phase, tick
                 );
       io_printf (IO_BUF, "stage aborted\n");
 #ifdef DEBUG_TO

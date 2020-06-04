@@ -378,7 +378,7 @@ void s_backprop_packet (uint key, uint payload)
         // the last tick, we need have to wait for the partial link delta sums
         // to arrive
         if (scfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (xcfg.num_examples - 1)
+            && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_SB_END_TICK + 1)
         {
           // if this s core relates to the first group in the network, then we
@@ -548,8 +548,14 @@ void s_advance_example (void)
   io_printf (IO_BUF, "s_advance_example\n");
 #endif
 
+  // point to next example in the set - wrap around if at the end
+  if (++example_inx >= es->num_examples)
+  {
+    example_inx = 0;
+  }
+
   // check if done with examples
-  if (++example >= xcfg.num_examples)
+  if (++example_cnt >= xcfg.num_examples)
   {
     // check if done with epochs
     if (!xcfg.training || (++epoch >= ncfg.num_epochs))
@@ -560,8 +566,8 @@ void s_advance_example (void)
     }
     else
     {
-      // start from first example again
-      example = 0;
+      // reset example count for next epoch
+      example_cnt = 0;
 
       // reset the partial link delta sum
       if (xcfg.training)
@@ -575,6 +581,6 @@ void s_advance_example (void)
 
   // start from first event for next example
   evt = 0;
-  num_events = ex[example].num_events;
+  num_events = ex[example_inx].num_events;
 }
 // ------------------------------------------------------------------------

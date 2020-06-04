@@ -148,7 +148,7 @@ void wb_process (uint unused0, uint unused1)
       // if using Doug's Momentum and reached the end of an epoch
       // accumulate partial link delta sum (to send to s core),
       if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (xcfg.num_examples - 1)
+            && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
       {
         // only use link derivatives for links whose weights are non-zero
@@ -211,7 +211,7 @@ void wb_process (uint unused0, uint unused1)
     // if using Doug's Momentum and reached the end of an epoch,
     // forward the accumulated partial link delta sums to the s core
     if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (xcfg.num_examples - 1)
+            && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
     {
       // cast to a 32-bit value,
@@ -245,7 +245,7 @@ void wb_process (uint unused0, uint unused1)
         // the last tick, we have to wait for the total link delta sum to
         // arrive
         if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (xcfg.num_examples - 1)
+            && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK + 1)
         {
           wb_thrds_pend = 1;
@@ -861,8 +861,14 @@ void w_advance_example (void)
   io_printf (IO_BUF, "w_advance_example\n");
 #endif
 
+  // point to next example in the set - wrap around if at the end
+  if (++example_inx >= es->num_examples)
+  {
+    example_inx = 0;
+  }
+
   // check if done with examples
-  if (++example >= xcfg.num_examples)
+  if (++example_cnt >= xcfg.num_examples)
   {
     // if training update weights at end of epoch
     if (xcfg.training)
@@ -886,8 +892,8 @@ void w_advance_example (void)
     }
     else
     {
-      // if not start from first example again,
-      example = 0;
+      // reset example count for next epoch
+      example_cnt = 0;
 
       // and, if training, initialise weight changes
       //TODO: find a better place for this operation
@@ -906,7 +912,7 @@ void w_advance_example (void)
 
   // start from first event for next example,
   evt = 0;
-  num_events = ex[example].num_events;
+  num_events = ex[example_inx].num_events;
 
   // and send sync packet to allow unit outputs to be sent
   while (!spin1_send_mc_packet (wf_sync_key, 0, NO_PAYLOAD));
