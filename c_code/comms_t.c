@@ -133,7 +133,7 @@ void t_chainPacket (uint key)
     if (tcfg.write_out)
     {
       spin1_schedule_callback (send_outputs_to_host, SPINN_HOST_NORMAL, tick,
-			       SPINN_T_SEND_OUTS_P);
+                               SPINN_T_SEND_OUTS_P);
     }
 
     // send stop packet,
@@ -435,8 +435,8 @@ void send_info_to_host (uint unused0, uint unused1)
 
 #ifdef DEBUG_VRB
   io_printf (IO_BUF, "sent info to host: nb:%d wb:%d no:%d tt:%d\n",
-	     ncfg.num_write_blks, tcfg.write_blk,
-	     tcfg.num_units, t_tot_ticks
+             ncfg.num_write_blks, tcfg.write_blk,
+             tcfg.num_units, t_tot_ticks
     );
 #endif
 }

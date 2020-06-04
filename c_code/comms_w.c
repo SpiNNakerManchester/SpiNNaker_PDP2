@@ -56,29 +56,29 @@ void w_receivePacket (uint key, uint payload)
   if (ph == SPINN_FORWARD)
   {
     // FORWARD phase packet in my block
-	if (blk == wcfg.row_blk)
-	{
-	  w_forwardPacket (key, payload);
-	}
+    if (blk == wcfg.row_blk)
+    {
+      w_forwardPacket (key, payload);
+    }
 #ifdef DEBUG
-	else
-	{
-	  pkt_fwbk++;
-	}
+    else
+    {
+      pkt_fwbk++;
+    }
 #endif
   }
   else
   {
     // BACKPROP phase packet in my block
-	if (blk == wcfg.col_blk)
-	{
-	  w_backpropPacket (key, payload);
-	}
+    if (blk == wcfg.col_blk)
+    {
+      w_backpropPacket (key, payload);
+    }
 #ifdef DEBUG
-	else
-	{
-	  pkt_bwbk++;
-	}
+    else
+    {
+      pkt_bwbk++;
+    }
 #endif
   }
 }

@@ -12,7 +12,7 @@ void  t_switch_to_bp    (void);
 void  tf_send_stop      (uint unused0, uint unused1);
 void  t_init_outputs    (uint unused0, uint unused1);
 
-void  store_targets	       (uint inx);
+void  store_targets        (uint inx);
 void  store_output_deriv   (uint inx);
 void  restore_output_deriv (uint inx, uint tick);
 void  store_nets           (uint inx);

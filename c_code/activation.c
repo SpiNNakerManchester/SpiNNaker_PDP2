@@ -69,7 +69,7 @@ activation_t sigmoid (net_t input)
     // s0.15 = ((s0.15 - s0.15) * s0.22) >> 22
     long_activ_t out_tmp = (((long_activ_t) (y1 - y0) * z)
                              + (long_activ_t) (1 << (SPINN_SIGMD_LUT_SHIFT - 1)))
-	                     >> SPINN_SIGMD_LUT_SHIFT;
+                             >> SPINN_SIGMD_LUT_SHIFT;
 
     long_activ_t out_tmp2 = y0 + (long_activ_t) out_tmp;
 
@@ -172,7 +172,7 @@ wchange_t sqrt_custom (lds_t x)
 
   // if x is zero or one return x
   if ((x == 0) || x == 16) {
-    return (x << (SPINN_WEIGHT_SHIFT - SPINN_LDS_SHIFT));	
+    return (x << (SPINN_WEIGHT_SHIFT - SPINN_LDS_SHIFT));       
   }
 
   n = __builtin_clz(x);

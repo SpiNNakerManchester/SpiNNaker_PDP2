@@ -151,11 +151,11 @@ void wb_process (uint unused0, uint unused1)
             && example == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
       {
-	// only use link derivatives for links whose weights are non-zero
+        // only use link derivatives for links whose weights are non-zero
         // as zero weights indicate no connection
-      	if (w_weights[i][inx] != 0)
+        if (w_weights[i][inx] != 0)
         {
-	  long_lds_t link_delta_tmp;
+          long_lds_t link_delta_tmp;
 
           // scale the link derivatives
           if (ncfg.net_type == SPINN_NET_CONT)
@@ -163,17 +163,17 @@ void wb_process (uint unused0, uint unused1)
             // 60.4 = (s36.27 * s15.16) >> 39
             link_delta_tmp = (w_link_deltas[i][inx] * (long_delta_t) w_delta_dt)
                                  >> (SPINN_LONG_DELTA_SHIFT + SPINN_FPREAL_SHIFT
-				     - SPINN_LONG_LDS_SHIFT);
-	  }
-	  else
-	  {
-	    link_delta_tmp = w_link_deltas[i][inx];
+                                     - SPINN_LONG_LDS_SHIFT);
+          }
+          else
+          {
+            link_delta_tmp = w_link_deltas[i][inx];
           }
 
-	  // square the link derivatives
-	  // 60.4 = (60.4 * 60.4) >> 4
-	  link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT);
-  	  link_delta_sum = link_delta_sum + link_delta_tmp;
+          // square the link derivatives
+          // 60.4 = (60.4 * 60.4) >> 4
+          link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT);
+          link_delta_sum = link_delta_sum + link_delta_tmp;
         }
       }
 
@@ -195,12 +195,12 @@ void wb_process (uint unused0, uint unused1)
               );
 
 #ifdef DEBUG
-	pkt_sent++;
-	sent_bkp++;
+        pkt_sent++;
+        sent_bkp++;
 #endif
 
 #ifdef DEBUG_CFG4
-	io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
+        io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
 #endif
 
         // and initialise error for next tick
@@ -259,7 +259,7 @@ void wb_process (uint unused0, uint unused1)
         spin1_mode_restore (cpsr);
 
 #ifdef TRACE_VRB
-	io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
+        io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
 #endif
 
         //TODO: check if need to schedule or can simply call
@@ -321,7 +321,7 @@ void steepest_update_weights (void)
         {
           // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
-				 * (long_delta_t) w_delta_dt)
+                                 * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
@@ -338,25 +338,25 @@ void steepest_update_weights (void)
         // and adjust decimal point position
         w_wchanges[i][j] = change_tmp
                              >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_LONG_DELTA_SHIFT
-		             - SPINN_WEIGHT_SHIFT);
+                             - SPINN_WEIGHT_SHIFT);
 
-	if (wcfg.weightDecay > 0)
-	{
-	  //apply weight decay
-	  long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
+        if (wcfg.weightDecay > 0)
+        {
+          //apply weight decay
+          long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
 
-	  // round off
-	  weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+          // round off
+          weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
                                                + SPINN_WEIGHT_SHIFT
                                                - SPINN_WEIGHT_SHIFT - 1));
 
           // and adjust decimal point position
           weightDecay_tmp = weightDecay_tmp
                              >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
-		             - SPINN_WEIGHT_SHIFT);
+                             - SPINN_WEIGHT_SHIFT);
 
-	  w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
-	}
+          w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
+        }
 
         // compute new weight
         long_weight_t temp = (long_weight_t) w_weights[i][j]
@@ -391,13 +391,13 @@ void steepest_update_weights (void)
 
 #ifdef DEBUG_VRB
       io_printf (IO_BUF,
-		 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-		 i, j,
-		 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-		 old_weight,
-		 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-		 w_weights[i][j]
-	);
+                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+                 i, j,
+                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+                 old_weight,
+                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+                 w_weights[i][j]
+        );
 #endif
     }
   }
@@ -441,7 +441,7 @@ void momentum_update_weights (void)
         {
           // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
-				 * (long_delta_t) w_delta_dt)
+                                 * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
@@ -456,9 +456,9 @@ void momentum_update_weights (void)
                                         + SPINN_LONG_DELTA_SHIFT
                                         - SPINN_WEIGHT_SHIFT - 1));
 
-	// compute momentum factor
-	// s48.15 = (s0.15 * s48.15) >> 15
-	long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
+        // compute momentum factor
+        // s48.15 = (s0.15 * s48.15) >> 15
+        long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
 
         // round off
         momentum_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
@@ -468,27 +468,27 @@ void momentum_update_weights (void)
         // compute sum and adjust decimal point position
         w_wchanges[i][j] =
                 (change_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_LONG_DELTA_SHIFT
-		              - SPINN_WEIGHT_SHIFT))
+                              - SPINN_WEIGHT_SHIFT))
               + (momentum_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
                               - SPINN_WEIGHT_SHIFT));
 
-	if (wcfg.weightDecay > 0)
-	{
-	  //apply weight decay
-	  long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
+        if (wcfg.weightDecay > 0)
+        {
+          //apply weight decay
+          long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
 
-	  // round off
-	  weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+          // round off
+          weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
                                                + SPINN_WEIGHT_SHIFT
                                                - SPINN_WEIGHT_SHIFT - 1));
 
           // and adjust decimal point position
           weightDecay_tmp = weightDecay_tmp
                              >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
-		             - SPINN_WEIGHT_SHIFT);
+                             - SPINN_WEIGHT_SHIFT);
 
-	  w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
-	}
+          w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
+        }
 
         // compute new weight
         long_weight_t temp = (long_weight_t) w_weights[i][j]
@@ -523,13 +523,13 @@ void momentum_update_weights (void)
 
 #ifdef DEBUG_VRB
       io_printf (IO_BUF,
-		 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-		 i, j,
-		 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-		 old_weight,
-		 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-		 w_weights[i][j]
-	);
+                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+                 i, j,
+                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+                 old_weight,
+                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+                 w_weights[i][j]
+        );
 #endif
     }
   }
@@ -592,7 +592,7 @@ void dougsmomentum_update_weights (void)
         {
           // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
-				 * (long_delta_t) w_delta_dt)
+                                 * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
@@ -607,9 +607,9 @@ void dougsmomentum_update_weights (void)
                                         + SPINN_LONG_DELTA_SHIFT
                                         - SPINN_WEIGHT_SHIFT - 1));
 
-	// compute momentum factor
-	// s48.15 = (s0.15 * s48.15) >> 15
-	long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
+        // compute momentum factor
+        // s48.15 = (s0.15 * s48.15) >> 15
+        long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
 
         // round off
         momentum_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
@@ -619,27 +619,27 @@ void dougsmomentum_update_weights (void)
         // compute sum and adjust decimal point position
         w_wchanges[i][j] =
                 (change_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_LONG_DELTA_SHIFT
-		              - SPINN_WEIGHT_SHIFT))
+                              - SPINN_WEIGHT_SHIFT))
               + (momentum_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
                               - SPINN_WEIGHT_SHIFT));
 
-	if (wcfg.weightDecay > 0)
-	{
-	  //apply weight decay
-	  long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
+        if (wcfg.weightDecay > 0)
+        {
+          //apply weight decay
+          long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
 
-	  // round off
-	  weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+          // round off
+          weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
                                                + SPINN_WEIGHT_SHIFT
                                                - SPINN_WEIGHT_SHIFT - 1));
 
           // and adjust decimal point position
           weightDecay_tmp = weightDecay_tmp
                              >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
-		             - SPINN_WEIGHT_SHIFT);
+                             - SPINN_WEIGHT_SHIFT);
 
-	  w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
-	}
+          w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
+        }
 
         // compute new weight
         long_weight_t temp = (long_weight_t) w_weights[i][j]
@@ -674,13 +674,13 @@ void dougsmomentum_update_weights (void)
 
 #ifdef DEBUG_VRB
       io_printf (IO_BUF,
-		 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-		 i, j,
-		 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-		 old_weight,
-		 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-		 w_weights[i][j]
-	);
+                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+                 i, j,
+                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+                 old_weight,
+                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+                 w_weights[i][j]
+        );
 #endif
     }
   }

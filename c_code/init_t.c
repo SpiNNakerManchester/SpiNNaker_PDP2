@@ -646,7 +646,8 @@ void var_init (void)
 
   // initialise packet keys
   //NOTE: colour is initialised to 0
-  for (uint p = 0; p < tcfg.partitions; p++) {
+  for (uint p = 0; p < tcfg.partitions; p++)
+  {
     t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
@@ -832,7 +833,8 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "----------------\n");
 
   // and let host know that we're done
-  if (ec == SPINN_NO_ERROR) {
+  if (ec == SPINN_NO_ERROR)
+  {
     simulation_ready_to_read ();
   } else {
     rt_error (RTE_SWERR);

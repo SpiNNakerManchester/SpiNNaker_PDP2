@@ -4,29 +4,29 @@
 #include "mlp_params.h"
 
 enum MLPRegions {
-	SYSTEM      =  0,
-	NETWORK     =  1,
-	CORE        =  2,
-	INPUTS      =  3,
-	TARGETS     =  4,
-	EXAMPLE_SET =  5,
-	EXAMPLES    =  6,
-	EVENTS      =  7,
-	WEIGHTS     =  8,
-	ROUTING     =  9,
-	STAGE       = 10
+  SYSTEM      =  0,
+  NETWORK     =  1,
+  CORE        =  2,
+  INPUTS      =  3,
+  TARGETS     =  4,
+  EXAMPLE_SET =  5,
+  EXAMPLES    =  6,
+  EVENTS      =  7,
+  WEIGHTS     =  8,
+  ROUTING     =  9,
+  STAGE       = 10
 };
 
 // t cores can have more than one FWD key (due to partitions)
 // i cores can have more than one BKP key (due to partitions)
 enum MLPKeys {
-	FWD  = 0,
-	BKP  = 1,
-	FDS  = 2,
-	STP  = 3,
-	LDS  = 4,
-	FWDT = 5,
-	BKPI = 5
+  FWD  = 0,
+  BKP  = 1,
+  FDS  = 2,
+  STP  = 3,
+  LDS  = 4,
+  FWDT = 5,
+  BKPI = 5
 };
 
 typedef short     short_activ_t;

@@ -521,7 +521,7 @@ void in_soft_clamp (uint inx)
   // compute only if input is not NaN
   if (it[i_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-	long_activ_t external_input = it[i_it_idx + inx];           // s36.27
+    long_activ_t external_input = it[i_it_idx + inx];           // s36.27
     long_fpreal soft_clamp_strength = icfg.soft_clamp_strength; // s48.16
     long_activ_t init_output = icfg.initOutput;                 // s36.27
 

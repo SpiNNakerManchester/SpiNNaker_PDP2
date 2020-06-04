@@ -66,8 +66,8 @@ void tf_process (uint unused0, uint unused1)
 
 #ifdef DEBUG_VRB
     io_printf (IO_BUF, "o[%2d]:%11.7f (0x%08x)\n", inx,
-	       SPINN_CONV_TO_PRINT(activation, SPINN_SHORT_ACTIV_SHIFT),
-	       activation
+               SPINN_CONV_TO_PRINT(activation, SPINN_SHORT_ACTIV_SHIFT),
+               activation
       );
 #endif
 
@@ -102,46 +102,46 @@ void tf_process (uint unused0, uint unused1)
       // report processing done and forward stop criterion if OUTPUT group
       if (tcfg.output_grp)
       {
-	// report processing thread done,
-	//NOTE: stop criterion cannot have arrived!
-	tf_thrds_pend -= 1;
+        // report processing thread done,
+        //NOTE: stop criterion cannot have arrived!
+        tf_thrds_pend -= 1;
 
-	// check if chain value can be forwarded
-	if (tf_chain_rdy)
-	{
-	  // initialise semaphore,
-	  tf_chain_rdy = tf_initChain;
+        // check if chain value can be forwarded
+        if (tf_chain_rdy)
+        {
+          // initialise semaphore,
+          tf_chain_rdy = tf_initChain;
 
-	  // restore interrupts after flag access,
-	  spin1_mode_restore (cpsr);
+          // restore interrupts after flag access,
+          spin1_mode_restore (cpsr);
 
-	  // report outputs to host if requested,
-	  if (tcfg.write_out)
-	  {
-	    //TODO: check if need to schedule or can simply call
-	    send_outputs_to_host (SPINN_HOST_NORMAL, tick);
-	  }
+          // report outputs to host if requested,
+          if (tcfg.write_out)
+          {
+            //TODO: check if need to schedule or can simply call
+            send_outputs_to_host (SPINN_HOST_NORMAL, tick);
+          }
 
-	  // send stop criterion packet,
-	  //TODO: check if need to schedule or can simply call
-	  tf_send_stop (0, 0);
+          // send stop criterion packet,
+          //TODO: check if need to schedule or can simply call
+          tf_send_stop (0, 0);
 
-	  // and advance tick if last group
-	  //NOTE: last group in the chain does not get a stop decision
-	  if (tcfg.is_last_output_group)
-	  {
+          // and advance tick if last group
+          //NOTE: last group in the chain does not get a stop decision
+          if (tcfg.is_last_output_group)
+          {
             //TODO: check if need to schedule or can simply call
             tf_advance_tick (0, 0);
           }
-	}
-	else
-	{
-	  // flag that local value is ready,
-	  tf_chain_rdy = 1;
+        }
+        else
+        {
+          // flag that local value is ready,
+          tf_chain_rdy = 1;
 
-	  // and restore interrupts after flag access
-	  spin1_mode_restore (cpsr);
-	}
+          // and restore interrupts after flag access
+          spin1_mode_restore (cpsr);
+        }
       }
       else
       {
@@ -231,8 +231,8 @@ void tb_process (uint unused0, uint unused1)
 
 #ifdef DEBUG_VRB
     io_printf(IO_BUF, "d[%2d] = %10.7f (%08x)\n", inx,
-	      SPINN_CONV_TO_PRINT (delta, SPINN_DELTA_SHIFT),
-	      delta
+              SPINN_CONV_TO_PRINT (delta, SPINN_DELTA_SHIFT),
+              delta
       );
 #endif
 
@@ -994,7 +994,7 @@ void out_weak_clamp (uint inx)
   // compute only if input is not NaN
   if (it[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-	long_activ_t external_input = it[t_it_idx + inx];           // s36.27
+    long_activ_t external_input = it[t_it_idx + inx];           // s36.27
     long_fpreal weak_clamp_strength = tcfg.weak_clamp_strength; // s48.16
     long_activ_t output_value = t_outputs[inx];                 // s36.27
 
@@ -1178,7 +1178,7 @@ void std_stop_crit (uint inx)
   {
     // s16.15 = (s4.27 - s4.27) >> (27 - 15)
     error_t error = (error_t) ABS ((t_outputs[inx] - tt[t_it_idx + inx]) >>
-    		(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
+                (SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
     tf_stop_crit = tf_stop_crit && (error < tcfg.group_criterion);
   }
@@ -1218,11 +1218,11 @@ void max_stop_crit (uint inx)
 
     // s16.15 = (s4.27 - s4.27) >> (27 - 15)
     error_t error = (error_t) ABS ((t_max_output - t_max_target) >>
-    			(SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
+                        (SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
     if ((t_max_output_unit == -1)
-	 || ((t_max_output_unit == t_max_target_unit)
-	     && (error < tcfg.group_criterion)
+         || ((t_max_output_unit == t_max_target_unit)
+             && (error < tcfg.group_criterion)
             )
        )
       tf_stop_crit = TRUE;

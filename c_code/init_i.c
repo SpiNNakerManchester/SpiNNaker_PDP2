@@ -255,8 +255,9 @@ void var_init (void)
   // initialise packet keys
   //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
-  for (uint p = 0; p < icfg.partitions; p++) {
-	  i_bkpKey[p] = rt[BKPI + p] | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  for (uint p = 0; p < icfg.partitions; p++)
+  {
+    i_bkpKey[p] = rt[BKPI + p] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   }
 
   // if input or output group initialise event input/target index
@@ -267,7 +268,8 @@ void var_init (void)
 
   // if the INPUT INTEGRATOR is used
   // reset the memory of the INTEGRATOR state variables
-  if (icfg.in_integr_en) {
+  if (icfg.in_integr_en)
+  {
     for (uint i = 0; i<icfg.num_units; i++)
     {
       i_last_integr_net[i] = (long_net_t) icfg.initNets;
@@ -412,7 +414,8 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "----------------\n");
 
   // and let host know that we're done
-  if (ec == SPINN_NO_ERROR) {
+  if (ec == SPINN_NO_ERROR)
+  {
     simulation_ready_to_read ();
   } else {
     rt_error (RTE_SWERR);
