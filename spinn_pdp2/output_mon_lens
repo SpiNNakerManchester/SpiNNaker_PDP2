@@ -190,7 +190,7 @@ sub main_loop
 	    $epoch[$cur]   = $a1;
 	    $example[$cur] = ($a2 & 0x0000ffff);
 	    $event[$cur]   = ($a2 >> 16);
-	    if ($event[$cur] == 0) { $event[$cur] = -1; }
+	    if ($event[$cur] > 32767) { $event[$cur] = -1; }
 	    $tick[$cur]    = $a3;
 	}
 	elsif ($tick[$cur] != $a3)
@@ -206,7 +206,7 @@ sub main_loop
 		$epoch[$nxt]   = $a1;
 		$example[$nxt] = ($a2 & 0x0000ffff);
 		$event[$nxt]   = ($a2 >> 16);
-		if ($event[$nxt] == 0) { $event[$nxt] = -1; }
+		if ($event[$nxt] > 32767) { $event[$nxt] = -1; }
 		$tick[$nxt]    = $a3;
 	    }
 	    elsif ($tick[$nxt] != $a3)
