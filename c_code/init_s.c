@@ -269,6 +269,97 @@ tot_tick = 0;  // total number of ticks executed
 
 
 // ------------------------------------------------------------------------
+// initialise variables for next stage
+// ------------------------------------------------------------------------
+void stage_var_init (void)
+{
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
+  epoch       = 0;
+  example_cnt = 0;
+  example_inx = 0;
+  evt         = 0;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
+
+  // initialise number of events and event index
+  num_events = ex[example_inx].num_events;
+  event_idx  = ex[example_inx].ev_idx;
+
+  // initialise tick
+  //NOTE: SUM cores do not have a tick 0
+  tick = SPINN_S_INIT_TICK;
+
+  // initialise nets, errors and scoreboards
+  for (uint i = 0; i < scfg.num_units; i++)
+  {
+    s_nets[0][i] = 0;
+    s_nets[1][i] = 0;
+    s_errors[0][i] = 0;
+    s_errors[1][i] = 0;
+    sf_arrived[0][i] = 0;
+    sf_arrived[1][i] = 0;
+    sb_arrived[0][i] = 0;
+    sb_arrived[1][i] = 0;
+  }
+  sf_done = 0;
+  sb_done = 0;
+  s_ldsa_arrived = 0;
+  s_ldst_arrived = 0;
+
+  // initialise synchronisation semaphores
+  sf_thrds_pend = 1;
+  sb_thrds_pend = 0;
+
+  // initialise processing thread flag
+  s_active = FALSE;
+
+  // initialise partial lds
+  s_lds_part = 0;
+
+  // initialise packet queue
+  s_pkt_queue.head = 0;
+  s_pkt_queue.tail = 0;
+
+  // initialise packet keys
+  //NOTE: colour is initialised to 0.
+  fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  ldstKey = rt[LDS] | SPINN_LDST_KEY;
+  ldsrKey = rt[LDS] | SPINN_LDSR_KEY;
+
+#ifdef DEBUG
+// ------------------------------------------------------------------------
+// DEBUG variables
+// ------------------------------------------------------------------------
+pkt_sent = 0;  // total packets sent
+sent_fwd = 0;  // packets sent in FORWARD phase
+sent_bkp = 0;  // packets sent in BACKPROP phase
+pkt_recv = 0;  // total packets received
+recv_fwd = 0;  // packets received in FORWARD phase
+recv_bkp = 0;  // packets received in BACKPROP phase
+spk_sent = 0;  // sync packets sent
+spk_recv = 0;  // sync packets received
+stp_sent = 0;  // stop packets sent
+stp_recv = 0;  // stop packets received
+stn_recv = 0;  // network_stop packets received
+lda_recv = 0;  // partial link_delta packets received
+ldt_sent = 0;  // total link_delta packets sent
+ldt_recv = 0;  // total link_delta packets received
+ldr_sent = 0;  // link_delta packets sent
+wrng_phs = 0;  // packets received in wrong phase
+wrng_tck = 0;  // FORWARD packets received in wrong tick
+wrng_btk = 0;  // BACKPROP packets received in wrong tick
+wght_ups = 0;  // number of weight updates done
+tot_tick = 0;  // total number of ticks executed
+// ------------------------------------------------------------------------
+#endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // load stage configuration from SDRAM
 // ------------------------------------------------------------------------
 void stage_init (void)
@@ -290,7 +381,7 @@ void stage_init (void)
   io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 
   // re-initialise variables for this stage
-  var_init ();
+  stage_var_init ();
 }
 // ------------------------------------------------------------------------
 

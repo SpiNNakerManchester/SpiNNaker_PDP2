@@ -11,9 +11,10 @@ uint init_out_integr     (void);
 uint init_out_hard_clamp (void);
 uint init_out_weak_clamp (void);
 
-void stage_init  (void);
-void stage_start (void);
-void stage_done  (uint exit_code);
+void stage_var_init (void);
+void stage_init     (void);
+void stage_start    (void);
+void stage_done     (uint exit_code);
 
 #endif
  

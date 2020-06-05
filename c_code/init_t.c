@@ -689,6 +689,226 @@ tot_tick = 0;  // total number of ticks executed
 
 
 // ------------------------------------------------------------------------
+// initialise variables for next stage
+// ------------------------------------------------------------------------
+void stage_var_init (void)
+{
+  // initialise epoch, example and event counters
+  //TODO: alternative algorithms for choosing example order!
+  epoch       = 0;
+  example_cnt = 0;
+  example_inx = 0;
+  evt         = 0;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
+
+  // initialise number of events and event index
+  num_events = ex[example_inx].num_events;
+  event_idx  = ex[example_inx].ev_idx;
+
+  // initialise example and event ticks
+  tick = SPINN_T_INIT_TICK;
+  ev_tick = SPINN_T_INIT_TICK;
+
+  // initialise max and min ticks
+  if (tcfg.is_last_output_group)
+  {
+    // get max number of ticks for first event
+    if (ev[event_idx].max_time != SPINN_FP_NaN)
+      max_ticks = (((ev[event_idx].max_time + SPINN_SMALL_VAL)
+        * ncfg.ticks_per_int)
+                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                     >> SPINN_FPREAL_SHIFT;
+    else
+      max_ticks = (((es->max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                     + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                     >> SPINN_FPREAL_SHIFT;
+
+    // get min number of ticks for first event
+    if (ev[event_idx].min_time != SPINN_FP_NaN)
+      min_ticks = (((ev[event_idx].min_time + SPINN_SMALL_VAL)
+        * ncfg.ticks_per_int)
+                    + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                    >> SPINN_FPREAL_SHIFT;
+    else
+      min_ticks = (((es->min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                    + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                    >> SPINN_FPREAL_SHIFT;
+  }
+
+  // initialise output derivatives, deltas and errors
+  for (uint i = 0; i < tcfg.num_units; i++)
+  {
+    t_output_deriv[i] = 0;
+    t_deltas[i] = 0;
+    t_errors[0][i] = 0;
+    t_errors[1][i] = 0;
+  }
+
+  // initialise pointers to received errors
+  tb_procs = 0;
+  tb_comms = 1;
+
+  // initialise received net and error scoreboards
+  tf_arrived = 0;
+  tb_arrived = 0;
+
+  // initialise synchronisation semaphores
+  tf_thrds_pend = 1;
+  tb_thrds_pend = 1;
+
+  // initialise stop function and related flags
+  if (tcfg.output_grp)
+  {
+    tf_stop_func = t_stop_procs[tcfg.criterion_function];
+    tf_stop_crit = TRUE;
+    tf_group_crit = TRUE;
+    tf_event_crit = TRUE;
+    tf_example_crit = TRUE;
+
+    // variables for stop criterion computation
+    t_max_output_unit = -1;
+    t_max_target_unit = -1;
+    t_max_output = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
+               - SPINN_SHORT_ACTIV_SHIFT);
+    t_max_target = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
+               - SPINN_SHORT_ACTIV_SHIFT);
+
+    // no need to wait for previous value if first in chain
+    if (tcfg.is_first_output_group)
+    {
+      tf_initChain = 1;
+      tf_chain_prev = TRUE;
+    }
+    else
+    {
+      tf_initChain = 0;
+    }
+    tf_chain_rdy = tf_initChain;
+
+    if (tcfg.is_last_output_group)
+    {
+      // "broadcast" key
+      tf_stop_key = rt[STP] | SPINN_STOP_KEY;
+
+      // "stop final" key
+      tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
+    }
+    else
+    {
+      // "daisy chain" key
+      tf_stop_key = rt[STP] | SPINN_STPC_KEY;
+    }
+  }
+
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "tsk = 0x%08x\n", tf_stop_key);
+#endif
+
+  // initialise processing thread flag
+  t_active = FALSE;
+
+  // initialise received sync packets scoreboard
+  t_sync_arrived = 0;
+
+  // initialise sync packets flag
+  t_sync_rdy = FALSE;
+
+  // initialise net packet queue
+  t_net_pkt_q.head = 0;
+  t_net_pkt_q.tail = 0;
+
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "wo:%d\n", tcfg.write_out);
+#endif
+
+  // check if writing outputs to host
+  if (tcfg.write_out)
+  {
+    // initialise SDP message buffer,
+    // Fill in SDP destination fields
+    t_sdp_msg.tag = SPINN_SDP_IPTAG;      // IPTag
+    t_sdp_msg.dest_port = PORT_ETH;       // Ethernet
+    t_sdp_msg.dest_addr = sv->dbg_addr;   // Root chip
+
+    // Fill in SDP source & flag fields,
+    t_sdp_msg.flags = SPINN_SDP_FLAGS;
+    t_sdp_msg.srce_port = coreID;
+    t_sdp_msg.srce_addr = sv->p2p_addr;
+
+    // compute total ticks in first example -- info to be sent to host,
+    //TODO: cannot compute correctly -- variable if completion criteria used
+    t_tot_ticks = 0;
+    for (uint i = 0; i < num_events; i++)
+    {
+      // update number of ticks for new event
+      if (ev[event_idx + i].max_time != SPINN_FP_NaN)
+      {
+        t_tot_ticks += (((ev[event_idx + i].max_time + SPINN_SMALL_VAL)
+       * ncfg.ticks_per_int)
+                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                         >> SPINN_FPREAL_SHIFT;
+      }
+      else
+      {
+        t_tot_ticks += (((es->max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
+                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
+                         >> SPINN_FPREAL_SHIFT;
+      }
+    }
+
+    // and limit to the global maximum if required
+    if (t_tot_ticks > ncfg.global_max_ticks - 1)
+    {
+      t_tot_ticks = ncfg.global_max_ticks - 1;
+    }
+  }
+
+  // initialise packet keys
+  //NOTE: colour is initialised to 0
+  for (uint p = 0; p < tcfg.partitions; p++)
+  {
+    t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
+  }
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
+
+  // if input or output group initialise event input/target index
+  if (tcfg.input_grp || tcfg.output_grp)
+  {
+    t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
+  }
+
+#ifdef DEBUG
+// ------------------------------------------------------------------------
+// DEBUG variables
+// ------------------------------------------------------------------------
+pkt_sent = 0;  // total packets sent
+sent_fwd = 0;  // packets sent in FORWARD phase
+sent_bkp = 0;  // packets sent in BACKPROP phase
+pkt_recv = 0;  // total packets received
+recv_fwd = 0;  // packets received in FORWARD phase
+recv_bkp = 0;  // packets received in BACKPROP phase
+spk_sent = 0;  // sync packets sent
+spk_recv = 0;  // sync packets received
+chn_sent = 0;  // chain packets sent
+chn_recv = 0;  // chain packets received
+stp_sent = 0;  // stop packets sent
+stp_recv = 0;  // stop packets received
+stn_sent = 0;  // network_stop packets sent
+stn_recv = 0;  // network_stop packets received
+wrng_phs = 0;  // packets received in wrong phase
+wrng_tck = 0;  // FORWARD packets received in wrong tick
+wrng_btk = 0;  // BACKPROP packets received in wrong tick
+wght_ups = 0;  // number of weight updates done
+tot_tick = 0;  // total number of ticks executed
+// ------------------------------------------------------------------------
+#endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // load stage configuration from SDRAM
 // ------------------------------------------------------------------------
 void stage_init (void)
@@ -710,7 +930,7 @@ void stage_init (void)
   io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 
   // re-initialise variables for this stage
-  var_init ();
+  stage_var_init ();
 }
 // ------------------------------------------------------------------------
 
