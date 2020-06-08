@@ -8,6 +8,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_macros.h"
 #include "mlp_externs.h"
 #include "init_t.h"
 #include "comms_t.h"
@@ -151,7 +152,8 @@ uint cfg_init (void)
   io_printf (IO_BUF, "wc: %f\n", tcfg.weak_clamp_strength);
   io_printf (IO_BUF, "io: %f\n", SPINN_LCONV_TO_PRINT(
         tcfg.initOutput, SPINN_ACTIV_SHIFT));
-  io_printf (IO_BUF, "gc: %k\n", tcfg.group_criterion);
+  io_printf (IO_BUF, "gs: %k\n", tcfg.tst_group_criterion);
+  io_printf (IO_BUF, "gt: %k\n", tcfg.trn_group_criterion);
   io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
   io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output_group);
   io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output_group);
@@ -480,12 +482,12 @@ void var_init (void)
   example_inx = 0;
   evt         = 0;
 
-  // initialise phase
-  phase = SPINN_FORWARD;
-
   // initialise number of events and event index
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
 
   // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
@@ -546,6 +548,15 @@ void var_init (void)
     tf_group_crit = TRUE;
     tf_event_crit = TRUE;
     tf_example_crit = TRUE;
+
+    if (xcfg.training)
+    {
+      t_group_criterion = tcfg.trn_group_criterion;
+    }
+    else
+    {
+      t_group_criterion = tcfg.tst_group_criterion;
+    }
 
     // variables for stop criterion computation
     t_max_output_unit = -1;
@@ -680,7 +691,6 @@ stn_recv = 0;  // network_stop packets received
 wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
-wght_ups = 0;  // number of weight updates done
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -697,15 +707,20 @@ void stage_var_init (void)
   //TODO: alternative algorithms for choosing example order!
   epoch       = 0;
   example_cnt = 0;
-  example_inx = 0;
   evt         = 0;
 
-  // initialise phase
-  phase = SPINN_FORWARD;
+  // reset example index if requested
+  if (xcfg.reset)
+  {
+    example_inx = 0;
+  }
 
   // initialise number of events and event index
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
 
   // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
@@ -767,6 +782,15 @@ void stage_var_init (void)
     tf_event_crit = TRUE;
     tf_example_crit = TRUE;
 
+    if (xcfg.training)
+    {
+      t_group_criterion = tcfg.trn_group_criterion;
+    }
+    else
+    {
+      t_group_criterion = tcfg.tst_group_criterion;
+    }
+
     // variables for stop criterion computation
     t_max_output_unit = -1;
     t_max_target_unit = -1;
@@ -802,10 +826,6 @@ void stage_var_init (void)
     }
   }
 
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "tsk = 0x%08x\n", tf_stop_key);
-#endif
-
   // initialise processing thread flag
   t_active = FALSE;
 
@@ -818,10 +838,6 @@ void stage_var_init (void)
   // initialise net packet queue
   t_net_pkt_q.head = 0;
   t_net_pkt_q.tail = 0;
-
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "wo:%d\n", tcfg.write_out);
-#endif
 
   // check if writing outputs to host
   if (tcfg.write_out)
@@ -900,7 +916,6 @@ stn_recv = 0;  // network_stop packets received
 wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
-wght_ups = 0;  // number of weight updates done
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -913,7 +928,7 @@ tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 void stage_init (void)
 {
-  // clear output from earlier runs
+  // clear output from previous stage
   sark_io_buf_reset();
 
   // initialise stage configuration from SDRAM

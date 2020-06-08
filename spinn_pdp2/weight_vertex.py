@@ -237,7 +237,6 @@ class WeightVertex(
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
               short_fpreal_t momentum;
-              uchar          update_function;
             } w_conf_t;
 
             pack: standard sizes, little-endian byte order,
@@ -255,15 +254,14 @@ class WeightVertex(
         momentum = int (self.momentum *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<4I3hBx",
+        return struct.pack ("<4I3h2x",
                             self._num_rows,
                             self._num_cols,
                             self._row_blk,
                             self._col_blk,
                             learning_rate & 0xffff,
                             weight_decay & 0xffff,
-                            momentum & 0xffff,
-                            self.update_function.value & 0xff
+                            momentum & 0xffff
                             )
 
     @property

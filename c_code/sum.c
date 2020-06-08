@@ -119,7 +119,6 @@ uint ldr_sent;  // link_delta packets sent
 uint wrng_phs;  // packets received in wrong phase
 uint wrng_tck;  // FORWARD packets received in wrong tick
 uint wrng_btk;  // BACKPROP packets received in wrong tick
-uint wght_ups;  // number of weight updates done
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif

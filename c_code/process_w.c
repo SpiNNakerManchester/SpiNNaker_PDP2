@@ -147,7 +147,7 @@ void wb_process (uint unused0, uint unused1)
 
       // if using Doug's Momentum and reached the end of an epoch
       // accumulate partial link delta sum (to send to s core),
-      if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+      if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
             && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
       {
@@ -210,7 +210,7 @@ void wb_process (uint unused0, uint unused1)
 
     // if using Doug's Momentum and reached the end of an epoch,
     // forward the accumulated partial link delta sums to the s core
-    if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+    if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
             && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
     {
@@ -244,7 +244,7 @@ void wb_process (uint unused0, uint unused1)
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we have to wait for the total link delta sum to
         // arrive
-        if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+        if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
             && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK + 1)
         {
@@ -884,7 +884,7 @@ void w_advance_example (void)
     }
 
     // check if done with epochs
-    if (!xcfg.training || (++epoch >= ncfg.num_epochs))
+    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
     {
       // report no error
       stage_done (SPINN_NO_ERROR);

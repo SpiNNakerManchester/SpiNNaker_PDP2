@@ -87,7 +87,7 @@ uint cfg_init (void)
   io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
   io_printf (IO_BUF, "ae: %d\n", scfg.ldsa_expected);
   io_printf (IO_BUF, "te: %d\n", scfg.ldst_expected);
-  io_printf (IO_BUF, "uf: %d\n", scfg.update_function);
+  io_printf (IO_BUF, "uf: %d\n", xcfg.update_function);
   io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
@@ -189,12 +189,12 @@ void var_init (void)
   example_inx = 0;
   evt         = 0;
 
-  // initialise phase
-  phase = SPINN_FORWARD;
-
   // initialise number of events and event index
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
 
   // initialise tick
   //NOTE: SUM cores do not have a tick 0
@@ -260,7 +260,6 @@ ldr_sent = 0;  // link_delta packets sent
 wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
-wght_ups = 0;  // number of weight updates done
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -277,15 +276,20 @@ void stage_var_init (void)
   //TODO: alternative algorithms for choosing example order!
   epoch       = 0;
   example_cnt = 0;
-  example_inx = 0;
   evt         = 0;
 
-  // initialise phase
-  phase = SPINN_FORWARD;
+  // reset example index if requested
+  if (xcfg.reset)
+  {
+    example_inx = 0;
+  }
 
   // initialise number of events and event index
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
 
   // initialise tick
   //NOTE: SUM cores do not have a tick 0
@@ -351,7 +355,6 @@ ldr_sent = 0;  // link_delta packets sent
 wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
-wght_ups = 0;  // number of weight updates done
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -364,7 +367,7 @@ tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 void stage_init (void)
 {
-  // clear output from earlier runs
+  // clear output from previous stage
   sark_io_buf_reset();
 
   // initialise stage configuration from SDRAM

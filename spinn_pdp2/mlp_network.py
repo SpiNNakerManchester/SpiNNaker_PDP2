@@ -44,6 +44,11 @@ class MLPNetwork():
         self._num_updates      = MLPConstants.DEF_NUM_UPDATES
         self._num_examples     = None
 
+        # default stage parameter values
+        self._stg_update_function = MLPConstants.DEF_UPDATE_FUNC
+        self._stg_epochs          = MLPConstants.DEF_NUM_UPDATES
+        self._stg_examples        = None
+        self._stg_reset           = True
 
         # initialise lists of groups and links
         self.groups = []
@@ -130,7 +135,6 @@ class MLPNetwork():
             typedef struct network_conf
             {
               uchar net_type;
-              uint  num_epochs;
               uint  ticks_per_int;
               uint  global_max_ticks;
               uint  num_write_blks;
@@ -139,9 +143,8 @@ class MLPNetwork():
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        return struct.pack("<B3x4I",
+        return struct.pack("<B3x3I",
                            self._net_type,
-                           self._num_epochs,
                            self._ticks_per_interval,
                            self._global_max_ticks,
                            self._num_write_blks
@@ -155,24 +158,42 @@ class MLPNetwork():
 
             typedef struct stage_conf
             {
-              uchar stage_id;      // stage identifier
-              uchar training;      // stage mode: train (1) or test (0)
-              uint  num_examples;  // number of examples to run in this stage
+              uchar stage_id;         // stage identifier
+              uchar training;         // stage mode: train (1) or test (0)
+              uchar update_function;  // weight update function in this stage
+              uchar reset;            // reset example index at stage start?
+              uint  num_examples;     // examples to run in this stage
+              uint  num_epochs;       // training epochs in this stage
             } stage_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # determine the number of examples to run in this stage
-        if self._num_examples is not None:
-            _num_examples = self._num_examples
+        # set the update function to use in this stage
+        if self._stg_update_function is not None:
+            _update_function = self._stg_update_function
+        else:
+            _update_function = self._update_function
+
+        # set the number of examples to use in this stage
+        if self._stg_examples is not None:
+            _num_examples = self._stg_examples
         else:
             _num_examples = self._ex_set.num_examples
 
-        return struct.pack("<2B2xI",
+        # set the number of epochs to run in this stage
+        if self._stg_epochs is not None:
+            _num_epochs = self._stg_epochs
+        else:
+            _num_epochs = self._num_updates
+
+        return struct.pack("<4B2I",
                            self._stage_id,
                            self._training,
-                           _num_examples
+                           _update_function.value,
+                           self._stg_reset,
+                           _num_examples,
+                           _num_epochs
                            )
 
 
@@ -199,6 +220,9 @@ class MLPNetwork():
 
         :return: a new group object
         """
+        # machine graph needs rebuilding
+        self._graph_rdy = False
+        
         _id = len (self.groups)
 
         # set properties for OUTPUT group
@@ -265,6 +289,9 @@ class MLPNetwork():
 
         :return: a new link object
         """
+        # machine graph needs rebuilding
+        self._graph_rdy = False
+        
         # check that enough data is provided
         if (pre_link_group is None) or (post_link_group is None):
             print ("error: pre- and post-link groups required")
@@ -609,28 +636,49 @@ class MLPNetwork():
 
 
     def train (self,
-               update_function,
-               num_examples = None
+               update_function = None,
+               num_updates = None
               ):
         """ do one stage in train mode
         """
-        if update_function is not None:
-            self._update_function = update_function
+        # set the update function to use in this stage
+        #NOTE: sorted at configuration time - if not provided
+        self._stg_update_function = update_function
 
-        self._num_examples = num_examples
+        # set the number of epochs to run in this stage
+        #NOTE: sorted at configuration time - if not provided
+        self._stg_epochs = num_updates
+
+        # sort the number of examples at configuration time
+        self._stg_examples = None
+
+        # always reset the example index at the start of training stage 
+        self._stg_reset = True
+
         self._training = 1
-        self._num_epochs = self._num_updates
         self.stage_run ()
 
 
     def test (self,
-               num_examples = None
+               num_examples = None,
+               reset_examples = True
               ):
         """ do one stage in test mode
         """
-        self._num_examples = num_examples
+        # sort the update function at configuration time
+        self._stg_update_function = None
+
+        # set the number of epochs to run in this stage
+        self._stg_epochs = 1
+
+        # set the number of examples to run in this stage
+        #NOTE: sorted at configuration time - if not provided
+        self._stg_examples = num_examples
+
+        # reset the example index if requested
+        self._stg_reset = reset_examples
+
         self._training = 0
-        self._num_epochs = 1
         self.stage_run ()
 
 

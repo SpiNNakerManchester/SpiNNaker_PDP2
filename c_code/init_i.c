@@ -8,6 +8,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
+#include "mlp_macros.h"
 #include "mlp_externs.h"
 #include "init_i.h"
 #include "comms_i.h"
@@ -232,12 +233,12 @@ void var_init (void)
   example_inx = 0;
   evt         = 0;
 
-  // initialise phase
-  phase = SPINN_FORWARD;
-
   // initialise number of events and event index
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
 
   // initialise tick
   //NOTE: input cores do not have a tick 0
@@ -307,7 +308,6 @@ stn_recv = 0;  // network_stop packets received
 wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
-wght_ups = 0;  // number of weight updates done
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -324,15 +324,20 @@ void stage_var_init (void)
   //TODO: alternative algorithms for choosing example order!
   epoch       = 0;
   example_cnt = 0;
-  example_inx = 0;
   evt         = 0;
 
-  // initialise phase
-  phase = SPINN_FORWARD;
+  // reset example index if requested
+  if (xcfg.reset)
+  {
+    example_inx = 0;
+  }
 
   // initialise number of events and event index
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
 
   // initialise tick
   //NOTE: input cores do not have a tick 0
@@ -402,7 +407,6 @@ stn_recv = 0;  // network_stop packets received
 wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
-wght_ups = 0;  // number of weight updates done
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -415,7 +419,7 @@ tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 void stage_init (void)
 {
-  // clear output from earlier runs
+  // clear output from previous stage
   sark_io_buf_reset();
 
   // initialise stage configuration from SDRAM

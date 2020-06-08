@@ -65,21 +65,20 @@ class ThresholdVertex(
         # application parameters
         self._out_integr_dt = 1.0 / network.ticks_per_int
 
-        # choose appropriate group criterion
-        if network.training:
-            if self.group.train_group_crit is not None:
-                self._group_criterion = self.group.train_group_crit
-            elif network._train_group_crit is not None:
-                self._group_criterion = network._train_group_crit
-            else:
-                self._group_criterion = MLPConstants.DEF_GRP_CRIT
+        # choose appropriate group criteria
+        if self.group.test_group_crit is not None:
+            self._tst_group_criterion = self.group.test_group_crit
+        elif network._test_group_crit is not None:
+            self._tst_group_criterion = network._test_group_crit
         else:
-            if self.group.test_group_crit is not None:
-                self._group_criterion = self.group.test_group_crit
-            elif network._test_group_crit is not None:
-                self._group_criterion = network._test_group_crit
-            else:
-                self._group_criterion = MLPConstants.DEF_GRP_CRIT
+            self._tst_group_criterion = MLPConstants.DEF_GRP_CRIT
+
+        if self.group.train_group_crit is not None:
+            self._trn_group_criterion = self.group.train_group_crit
+        elif network._train_group_crit is not None:
+            self._trn_group_criterion = network._train_group_crit
+        else:
+            self._trn_group_criterion = MLPConstants.DEF_GRP_CRIT
 
         # check if last output group in daisy chain
         if group == network.output_chain[-1]:
@@ -211,7 +210,8 @@ class ThresholdVertex(
               uint          procs_list[SPINN_NUM_OUT_PROCS];
               fpreal        weak_clamp_strength;
               activation_t  initOutput;
-              error_t       group_criterion;
+              error_t       tst_group_criterion;
+              error_t       trn_group_criterion;
               uchar         criterion_function;
               uchar         is_first_output_group;
               uchar         is_last_output_group;
@@ -233,11 +233,13 @@ class ThresholdVertex(
         init_output = int (self.group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
 
-        # group criterion is an MLP fixed-point error_t
-        group_criterion = int (self._group_criterion *\
+        # group criteria are MLP fixed-point error_t
+        tst_group_criterion = int (self._tst_group_criterion *\
+                                (1 << MLPConstants.ERROR_SHIFT))
+        trn_group_criterion = int (self._trn_group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2x4IB3xI2B2xi6I3i4B",
+        return struct.pack ("<2B2x4IB3xI2B2xi6I4i4B",
                             self.group.output_grp & 0xff,
                             self.group.input_grp & 0xff,
                             self.group.units,
@@ -257,7 +259,8 @@ class ThresholdVertex(
                             self.group.out_procs_list[4].value,
                             weak_clamp_strength,
                             init_output,
-                            group_criterion,
+                            tst_group_criterion,
+                            trn_group_criterion,
                             self.group.criterion_function.value & 0xff,
                             self.group.is_first_out & 0xff,
                             self._is_last_output_group & 0xff,

@@ -476,7 +476,7 @@ void t_advance_example (void)
   if (++example_cnt >= xcfg.num_examples)
   {
     // check if done with epochs
-    if (!xcfg.training || (++epoch >= ncfg.num_epochs))
+    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
     {
       // report no error
       stage_done (SPINN_NO_ERROR);
@@ -1186,7 +1186,7 @@ void std_stop_crit (uint inx)
     error_t error = (error_t) ABS ((t_outputs[inx] - tt[t_it_idx + inx]) >>
                 (SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
-    tf_stop_crit = tf_stop_crit && (error < tcfg.group_criterion);
+    tf_stop_crit = tf_stop_crit && (error < t_group_criterion);
   }
 }
 // ------------------------------------------------------------------------
@@ -1228,7 +1228,7 @@ void max_stop_crit (uint inx)
 
     if ((t_max_output_unit == -1)
          || ((t_max_output_unit == t_max_target_unit)
-             && (error < tcfg.group_criterion)
+             && (error < t_group_criterion)
             )
        )
       tf_stop_crit = TRUE;

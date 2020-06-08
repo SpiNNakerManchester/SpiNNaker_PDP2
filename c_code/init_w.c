@@ -93,7 +93,7 @@ uint cfg_init (void)
   io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
   io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
   io_printf (IO_BUF, "mm: %k\n", wcfg.momentum);
-  io_printf (IO_BUF, "uf: %d\n", wcfg.update_function);
+  io_printf (IO_BUF, "uf: %d\n", xcfg.update_function);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
   io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
@@ -230,12 +230,12 @@ void var_init (void)
   example_inx = 0;
   evt         = 0;
 
-  // initialise phase
-  phase = SPINN_FORWARD;
-
   // initialise number of events and event index
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
+
+  // initialise phase
+  phase = SPINN_FORWARD;
 
   // initialise tick
   tick = SPINN_W_INIT_TICK;
@@ -293,9 +293,8 @@ void var_init (void)
   wf_arrived = 0;
   wb_arrived = 0;
 
-
   // set weight update function
-  wb_update_func = w_update_procs[wcfg.update_function];
+  wb_update_func = w_update_procs[xcfg.update_function];
 
   // initialise packet keys
   //NOTE: colour is initialised to 0.
@@ -348,38 +347,23 @@ void stage_var_init (void)
   //TODO: alternative algorithms for choosing example order!
   epoch       = 0;
   example_cnt = 0;
-  example_inx = 0;
   evt         = 0;
 
-  // initialise phase
-  phase = SPINN_FORWARD;
+  // reset example index if requested
+  if (xcfg.reset)
+  {
+    example_inx = 0;
+  }
 
   // initialise number of events and event index
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
 
+  // initialise phase
+  phase = SPINN_FORWARD;
+
   // initialise tick
   tick = SPINN_W_INIT_TICK;
-
-  // initialise weights from SDRAM
-  //NOTE: could use DMA
-  for (uint i = 0; i < wcfg.num_rows; i++)
-  {
-    spin1_memcpy (w_weights[i],
-                   &wt[i * wcfg.num_cols],
-                   wcfg.num_cols * sizeof (weight_t)
-                 );
-  }
-
-#ifdef DEBUG_CFG2
-  for (uint r = 0; r < wcfg.num_rows; r++)
-  {
-    for (uint c =0; c < wcfg.num_cols; c++)
-    {
-      io_printf (IO_BUF, "w[%u][%u]: %k\n", r, c, w_weights[r][c]);
-    }
-  }
-#endif
 
   // initialise link deltas, weight changes
   // error dot products and output history for tick 0
@@ -414,9 +398,8 @@ void stage_var_init (void)
   wf_arrived = 0;
   wb_arrived = 0;
 
-
   // set weight update function
-  wb_update_func = w_update_procs[wcfg.update_function];
+  wb_update_func = w_update_procs[xcfg.update_function];
 
   // initialise packet keys
   //NOTE: colour is initialised to 0.
@@ -465,7 +448,7 @@ tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 void stage_init (void)
 {
-  // clear output from earlier runs
+  // clear output from previous stage
   sark_io_buf_reset();
 
   // initialise stage configuration from SDRAM

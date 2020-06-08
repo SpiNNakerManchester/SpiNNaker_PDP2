@@ -141,7 +141,6 @@ class SumVertex(
               scoreboard_t bkp_expect;
               scoreboard_t ldsa_expect;
               scoreboard_t ldst_expect;
-              uchar        update_function;
               uchar        is_first_group;
             } s_conf_t;
 
@@ -149,13 +148,12 @@ class SumVertex(
             explicit padding
         """
 
-        return struct.pack ("<5I2B2x",
+        return struct.pack ("<5IB3x",
                             self.group.units,
                             self._fwd_expect,
                             self._bkp_expect,
                             self._ldsa_expect,
                             self._ldst_expect,
-                            self.update_function.value & 0xff,
                             self._is_first_group & 0xff
                             )
 

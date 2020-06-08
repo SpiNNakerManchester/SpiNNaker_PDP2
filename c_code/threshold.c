@@ -160,6 +160,7 @@ uchar            tf_stop_crit;      // stop criterion met?
 uchar            tf_group_crit;     // stop criterion met for all groups?
 uchar            tf_event_crit;     // stop criterion met for all events?
 uchar            tf_example_crit;   // stop criterion met for all examples?
+error_t          t_group_criterion; // convergence criterion value
 stop_crit_t      tf_stop_func;      // stop evaluation function
 uint             tf_stop_key;       // stop criterion packet key
 uint             tf_stpn_key;       // stop network packet key
@@ -210,7 +211,6 @@ uint stn_recv;  // network_stop packets received
 uint wrng_phs;  // packets received in wrong phase
 uint wrng_tck;  // FORWARD packets received in wrong tick
 uint wrng_btk;  // BACKPROP packets received in wrong tick
-uint wght_ups;  // number of weight updates done
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif

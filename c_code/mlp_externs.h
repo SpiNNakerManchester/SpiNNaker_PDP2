@@ -166,6 +166,7 @@ extern uchar            tf_stop_crit;  // stop criterion met?
 extern uchar            tf_group_crit;     // stop criterion met for all groups?
 extern uchar            tf_event_crit;     // stop criterion met for all events?
 extern uchar            tf_example_crit;   // stop criterion met for all examples?
+extern error_t          t_group_criterion; // convergence criterion value
 extern stop_crit_t      tf_stop_func;  // stop evaluation function
 extern uint             tf_stop_key;   // stop criterion packet key
 extern uint             tf_stpn_key;   // stop network packet key

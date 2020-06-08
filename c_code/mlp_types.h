@@ -178,7 +178,6 @@ typedef uchar     proc_phase_t;     // phase (FORWARD or BACKPROP)
 typedef struct network_conf     // MLP network configuration
 {
   uchar net_type;               // type of neural net
-  uint  num_epochs;             // number of epochs to run
   uint  ticks_per_int;          // number of ticks per interval
   uint  global_max_ticks;       // max number of ticks across all the examples
   uint  num_write_blks;         // number of groups that write outputs
@@ -208,7 +207,6 @@ typedef struct w_conf               // weight core configuration
   short_fpreal_t learningRate;      // network learning rate
   short_fpreal_t weightDecay;       // network weight decay
   short_fpreal_t momentum;          // network momentum
-  uchar          update_function;   // function to update weights
 } w_conf_t;
 // ------------------------------------------------------------------------
 
@@ -226,7 +224,6 @@ typedef struct s_conf               // sum core configuration
   scoreboard_t bkp_expected;        // num of expected partial errors
   scoreboard_t ldsa_expected;       // num of expected partial link delta sums
   scoreboard_t ldst_expected;       // num of expected link delta sum totals
-  uchar        update_function;     // function to update weights
   uchar        is_first_group;      // is this the first group in the network?
 } s_conf_t;
 // ------------------------------------------------------------------------
@@ -281,7 +278,8 @@ typedef struct t_conf                  // threshold core configuration
   uint          procs_list[SPINN_NUM_OUT_PROCS];
   fpreal        weak_clamp_strength;   // Strength coeff for weak clamp
   activation_t  initOutput;            // initial value for unit outputs
-  error_t       group_criterion;       // convergence criterion value
+  error_t       tst_group_criterion;   // test-mode convergence criterion value
+  error_t       trn_group_criterion;   // train-mode convergence criterion value
   uchar         criterion_function;    // function to eval convergence criterion
   uchar         is_first_output_group; // is this the first of the output groups
   uchar         is_last_output_group;  // is this the last of the output groups
@@ -347,7 +345,10 @@ typedef struct stage_conf       // execution stage configuration
 {
   uchar stage_id;               // stage number
   uchar training;               // stage mode: train (1) or test (0)
+  uchar update_function;        // weight update function in this stage
+  uchar reset;                  // reset example index at stage start?
   uint  num_examples;           // number of examples to run in this stage
+  uint  num_epochs;             // number of training epochs in this stage
 } stage_conf_t;
 // ------------------------------------------------------------------------
 
