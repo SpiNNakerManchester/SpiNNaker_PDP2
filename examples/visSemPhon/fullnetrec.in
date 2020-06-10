@@ -1,0 +1,95 @@
+global hiddensize
+# create network layers.
+	addNet full -i 6 -t 5 CONTINUOUS
+	addGroup S1 800 OUTPUT  +BIASED IN_INTEGR  
+	addGroup P1 61 OUTPUT  +BIASED IN_INTEGR  
+	addGroup S2 $hiddensize IN_INTEGR +BIASED 
+	addGroup P2 $hiddensize IN_INTEGR +BIASED 
+	addGroup V 400 -BIASED  INPUT 
+
+
+# connect layers
+	global z
+	set z 1
+	seed $z
+	set nmean -0.025
+
+	puts "connecting s-s"
+	connectGroups S1 S2 -p RANDOM -s 0.3 -mean $nmean -range 0.1 
+
+	seed [expr $z+1]
+	connectGroups S2 S1 -p RANDOM -s 0.3 -mean  $nmean -range 0.1 
+
+	seed [expr $z+2]
+	connectGroups S1 S1 -p RANDOM -s 0.3 -mean  $nmean -range 0.1 
+
+	seed [expr $z+3]
+	connectGroups S2 S2 -p RANDOM -s 0.3 -mean  $nmean -range 0.1 
+
+	
+	puts "connecting P-p"
+	seed [expr $z+4]
+	connectGroups P1 P2 -p RANDOM -s 0.3 -mean  $nmean -range 0.1 
+
+	seed [expr $z+5]
+	connectGroups P2 P1 -p RANDOM -s 0.3 -mean  $nmean -range 0.1 
+
+	seed [expr $z+6]
+	connectGroups P1 P1 -p RANDOM -s 0.3 -mean  $nmean -range 0.1 
+
+	seed [expr $z+7]
+	connectGroups P2 P2 -p RANDOM -s 0.3 -mean  $nmean -range 0.1 
+
+
+	puts "connecting S-p"
+	seed [expr $z+8]
+	connectGroups S1 P1 -p RANDOM -s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g P1 -t S1
+	seed [expr $z+9]
+	connectGroups S2 P1 -p RANDOM -s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g P1 -t S2
+	seed [expr $z+10]
+	connectGroups S1 P2 -p RANDOM -s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g P2 -t S1
+	seed [expr $z+11]
+	connectGroups S2 P2 -p RANDOM -s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g P2 -t S2
+
+
+	puts "connecting P-S"
+	seed [expr $z+12]
+	connectGroups P1 S1 -p RANDOM -s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g S1 -t P1
+	seed [expr $z+13]
+	connectGroups P2 S1 -p RANDOM -s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g S1 -t P2
+	seed [expr $z+14]
+	connectGroups P1 S2 -p RANDOM -s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g S2 -t P1
+	seed [expr $z+15]
+	connectGroups P2 S2 -p RANDOM -s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g S2 -t P2
+
+
+	puts "connecting v-s"
+	seed [expr $z+20]
+	connectGroups V S1 -p RANDOM	-s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g S1 -t V
+	seed [expr $z+21]
+	connectGroups V S2 -p RANDOM	-s 0.05 -mean 0.1 -range 0.09 
+	setLinkValues min 0.0001 -g S2 -t V
+
+# Set learning parameters 
+	setObj learningRate 0.05
+	setObj momentum 0.9
+	setObj trainGroupCrit 0
+	setObj pseudoExampleFreq 1
+	setObj  randRange          0.1
+	setObj  targetRadius       0.1
+	setObj  numUpdates         10000
+	setObj  testGroupCrit      0.5
+	setObj  reportInterval	1
+	setObj V.initOutput 0
+	setObj S1.initOutput 0
+	setObj P1.initOutput 0
+
