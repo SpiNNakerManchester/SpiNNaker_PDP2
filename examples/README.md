@@ -23,4 +23,3 @@ file                     | function
 rogers-basic.py          | network description and simulation control
 rogers-basic.ex          | training/testing set
 rogers-basic_weights.txt | initial weights
-t
