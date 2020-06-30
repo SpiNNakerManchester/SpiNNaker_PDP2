@@ -1,15 +1,15 @@
 SpiNNaker_PDP2: Examples
 ========================
 
-### rand10x40: Simple feed-forward network with INPUT, HIDDEN and OUTPUT layers
+### rand10x40: Simple random mapping of inputs to outputs task
 
-Reference: Lens example at [crcox/lens](https://github.com/crcox/lens/blob/master/Examples/rand10x40.in)
+Reference: example from [Lens manual](https://ni.cmu.edu/~plaut/Lens/Manual/Example/rand10x40.html)
 
 file                     | function
 -------------------------|-------------------------------------------
 rand10x40.py             | network description and simulation control
 rand10x40.ex             | training/testing set
-rand10x40_weights.txt    | initial weigths
+rand10x40_weights.txt    | initial weights
 
 
 ### rogers-basic: Simplified version of Rogers network
@@ -22,4 +22,5 @@ file                     | function
 -------------------------|-------------------------------------------
 rogers-basic.py          | network description and simulation control
 rogers-basic.ex          | training/testing set
-rogers-basic_weights.txt | initial weigths
+rogers-basic_weights.txt | initial weights
+t
