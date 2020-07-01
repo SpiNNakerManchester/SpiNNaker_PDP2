@@ -10,8 +10,10 @@
 #include "comms_t.h"
 #include "process_t.h"
 
-// this file contains the communication routines used by T cores
 
+// ------------------------------------------------------------------------
+// threshold core communications routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process received packets (stop, chain, sync, FORWARD and BACKPROP types)
 // ------------------------------------------------------------------------
@@ -80,16 +82,16 @@ void t_receivePacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void t_stopPacket (uint key)
 {
-  #ifdef DEBUG
-    stp_recv++;
-  #endif
+#ifdef DEBUG
+  stp_recv++;
+#endif
 
   // STOP decision arrived
   tick_stop = key & SPINN_STPD_MASK;
 
-  #ifdef DEBUG_VRB
-    io_printf (IO_BUF, "sc:%x\n", tick_stop);
-  #endif
+#ifdef DEBUG_VRB
+  io_printf (IO_BUF, "sc:%x\n", tick_stop);
+#endif
 
   // check if all other threads done
   if (tf_thrds_pend == 0)
@@ -114,9 +116,9 @@ void t_stopPacket (uint key)
 // ------------------------------------------------------------------------
 void t_chainPacket (uint key)
 {
-  #ifdef DEBUG
-    chn_recv++;
-  #endif
+#ifdef DEBUG
+  chn_recv++;
+#endif
 
   // STOP daisy chain partial decision arrived from previous core
   tf_chain_prev = key & SPINN_STPD_MASK;
@@ -125,13 +127,13 @@ void t_chainPacket (uint key)
   if (tf_chain_rdy)
   {
     // initialise flag,
-    tf_chain_rdy = tf_chain_init;
+    tf_chain_rdy = tf_initChain;
 
     // report outputs to host if requested,
     if (tcfg.write_out)
     {
       spin1_schedule_callback (send_outputs_to_host, SPINN_HOST_NORMAL, tick,
-			       SPINN_T_SEND_OUTS_P);
+                               SPINN_T_SEND_OUTS_P);
     }
 
     // send stop packet,
@@ -164,7 +166,7 @@ void t_networkStopPacket (void)
 #endif
 
   // report no error
-  done(SPINN_NO_ERROR);
+  stage_done (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
 
@@ -173,9 +175,9 @@ void t_networkStopPacket (void)
 // ------------------------------------------------------------------------
 void t_syncPacket (uint ph)
 {
-  #ifdef DEBUG
-    spk_recv++;
-  #endif
+#ifdef DEBUG
+  spk_recv++;
+#endif
 
   if (ph == SPINN_FORWARD)
   {
@@ -262,7 +264,7 @@ void t_forwardPacket (uint key, uint payload)
   if (new_tail == t_net_pkt_q.head)
   {
     // report queue full error
-    done(SPINN_QUEUE_FULL);
+    stage_done (SPINN_QUEUE_FULL);
   }
   else
   {
@@ -289,11 +291,11 @@ void t_forwardPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void t_backpropPacket (uint key, uint payload)
 {
-  #ifdef DEBUG
-    recv_bkp++;
-    if (phase == SPINN_FORWARD)
-      wrng_phs++;
-  #endif
+#ifdef DEBUG
+  recv_bkp++;
+  if (phase == SPINN_FORWARD)
+    wrng_phs++;
+#endif
 
   // get error index: mask out phase, core and block data,
   uint inx = key & SPINN_ERROR_MASK;
@@ -320,9 +322,9 @@ void t_backpropPacket (uint key, uint payload)
       tb_thrds_pend = 1;
 
       // and advance tick
-      #ifdef TRACE_VRB
-        io_printf (IO_BUF, "tbpkt scheduling tb_advance_tick\n");
-      #endif
+#ifdef TRACE_VRB
+      io_printf (IO_BUF, "tbpkt scheduling tb_advance_tick\n");
+#endif
 
       spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
     }
@@ -342,48 +344,50 @@ void t_backpropPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void send_outputs_to_host (uint cmd, uint tick)
 {
-  // spread SDP messages to avoid congestion and possible loss,
-  spin1_delay_us (1000); //##
-
-  // adjust event according to Lens reporting,
-  int le = (tick == 0) ? -1 : (int) evt;
-
-  // report epoch, example and tick,
+  // report epoch, example, event and tick,
   t_sdp_msg.cmd_rc = cmd;
   t_sdp_msg.seq    = tcfg.write_blk;
   t_sdp_msg.arg1   = epoch;
-  t_sdp_msg.arg2   = (le << 16) | example;
+  t_sdp_msg.arg2   = (evt << 16) | example_cnt;
   t_sdp_msg.arg3   = tick;
 
-  // copy outputs and targets into msg buffer,
-  short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
-  for (uint i = 0; i < tcfg.num_units; i++)
+  // set default message data length (no data)
+  uint len = 0;
+
+  if (cmd == SPINN_HOST_NORMAL)
   {
-    if (tick == 0)
+    // copy outputs and targets into msg buffer,
+    short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
+    for (uint i = 0; i < tcfg.num_units; i++)
     {
-      my_data[2 * i]     = 0;
-      my_data[2 * i + 1] = 0;
-    }
-    else
-    {
-      my_data[2 * i]     = (short_activ_t) (t_outputs[i]
-					    >> (SPINN_ACTIV_SHIFT
-						- SPINN_SHORT_ACTIV_SHIFT));
-      if (tt[t_it_idx + i] == SPINN_ACTIV_ONE)
+      if (tick == 0)
       {
-        my_data[2 * i + 1] = SPINN_SHORT_ACTIV_MAX;
+        my_data[2 * i]     = 0;
+        my_data[2 * i + 1] = 0;
       }
       else
       {
-        my_data[2 * i + 1] = (short_activ_t) (tt[t_it_idx + i]
-					      >> (SPINN_ACTIV_SHIFT
-						  - SPINN_SHORT_ACTIV_SHIFT));
+        my_data[2 * i]     = (short_activ_t) (t_outputs[i]
+                >> (SPINN_ACTIV_SHIFT
+              - SPINN_SHORT_ACTIV_SHIFT));
+        if (tt[t_it_idx + i] == SPINN_ACTIV_ONE)
+        {
+          my_data[2 * i + 1] = SPINN_SHORT_ACTIV_MAX;
+        }
+        else
+        {
+          my_data[2 * i + 1] = (short_activ_t) (tt[t_it_idx + i]
+                  >> (SPINN_ACTIV_SHIFT
+                - SPINN_SHORT_ACTIV_SHIFT));
+        }
       }
     }
+
+    // and set message data length,
+    len = 2 * tcfg.num_units * sizeof (short_activ_t);
   }
 
   // set message length,
-  uint len = 2 * tcfg.num_units * sizeof(short_activ_t);
   t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message
@@ -398,13 +402,13 @@ void send_outputs_to_host (uint cmd, uint tick)
 // data, number of output units, number of groups writing outputs and number
 // of ticks of simulation
 // ------------------------------------------------------------------------
-void send_info_to_host (uint null0, uint null1)
+void send_info_to_host (uint unused0, uint unused1)
 {
-  (void) null0;
-  (void) null1;
+  (void) unused0;
+  (void) unused1;
 
   // send initial info to host
-  // report epoch, example and tick,
+  // report number of units, number of write blocks and total ticks,
   t_sdp_msg.cmd_rc = SPINN_HOST_INFO;
   t_sdp_msg.seq    = tcfg.write_blk;
   t_sdp_msg.arg1   = tcfg.num_units;
@@ -420,7 +424,7 @@ void send_info_to_host (uint null0, uint null1)
   }
 
   // set message length,
-  uint len = 2 * tcfg.num_units * sizeof(short_activ_t);
+  uint len = 2 * tcfg.num_units * sizeof (short_activ_t);
   t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
 
   // and send message
@@ -428,8 +432,8 @@ void send_info_to_host (uint null0, uint null1)
 
 #ifdef DEBUG_VRB
   io_printf (IO_BUF, "sent info to host: nb:%d wb:%d no:%d tt:%d\n",
-	     ncfg.num_write_blks, tcfg.write_blk,
-	     tcfg.num_units, t_tot_ticks
+             ncfg.num_write_blks, tcfg.write_blk,
+             tcfg.num_units, t_tot_ticks
     );
 #endif
 }

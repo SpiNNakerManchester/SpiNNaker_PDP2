@@ -12,19 +12,21 @@
 #include "process_s.h"
 #include "activation.h"
 
-// set of routines to be used by S core to process data
 
+// ------------------------------------------------------------------------
+// sum core computation routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process queued packets until queue empty
 // ------------------------------------------------------------------------
-void s_process (uint null0, uint null1)
+void s_process (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "s_process\n");
 #endif
-
-  (void) null0;
-  (void) null1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -262,13 +264,13 @@ void s_forward_packet (uint key, uint payload)
        // prepare for next tick,
        sf_done = 0;
 
-      // access synchronization semaphore with interrupts disabled
+      // access synchronisation semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
       // check if all other threads done
       if (sf_thrds_pend == 0)
       {
-        // if done initialize semaphore
+        // if done initialise semaphore
         sf_thrds_pend = 1;
 
         // restore interrupts after flag access,
@@ -364,19 +366,19 @@ void s_backprop_packet (uint key, uint payload)
       // prepare for next tick,
       sb_done = 0;
 
-      // access synchronization semaphore with interrupts disabled
+      // access synchronisation semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
       // check if all other threads done
       if (sb_thrds_pend == 0)
       {
-        // if done initialize semaphore:
+        // if done initialise semaphore:
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we need have to wait for the partial link delta sums
         // to arrive
-        if (scfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (ncfg.num_examples - 1)
+        if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+            && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_SB_END_TICK + 1)
         {
           // if this s core relates to the first group in the network, then we
@@ -421,8 +423,11 @@ void s_backprop_packet (uint key, uint payload)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sf_advance_tick (uint null0, uint null1)
+void sf_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "sf_advance_tick\n");
 #endif
@@ -434,9 +439,6 @@ void sf_advance_tick (uint null0, uint null1)
 #ifdef DEBUG_TICK
   io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
 #endif
-
-  (void) null0;
-  (void) null1;
 
   // check if end of event
   if (tick_stop)
@@ -456,8 +458,11 @@ void sf_advance_tick (uint null0, uint null1)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sb_advance_tick (uint null0, uint null1)
+void sb_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "sb_advance_tick\n");
 #endif
@@ -470,13 +475,10 @@ void sb_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-  (void) null0;
-  (void) null1;
-
   // check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)
   {
-    // initialize the tick count
+    // initialise the tick count
     tick = SPINN_S_INIT_TICK;
 
 #ifdef TRACE
@@ -511,7 +513,7 @@ void sf_advance_event (void)
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // and check if in training mode
-    if (ncfg.training)
+    if (xcfg.training)
     {
       // if training save number of ticks,
       num_ticks = tick;
@@ -521,7 +523,7 @@ void sf_advance_event (void)
     }
     else
     {
-      // if not training initialize ticks,
+      // if not training initialise ticks,
       tick = SPINN_S_INIT_TICK;
 
       // and move to next example
@@ -546,23 +548,29 @@ void s_advance_example (void)
   io_printf (IO_BUF, "s_advance_example\n");
 #endif
 
+  // point to next example in the set - wrap around if at the end
+  if (++example_inx >= es->num_examples)
+  {
+    example_inx = 0;
+  }
+
   // check if done with examples
-  if (++example >= ncfg.num_examples)
+  if (++example_cnt >= xcfg.num_examples)
   {
     // check if done with epochs
-    if (++epoch >= ncfg.num_epochs)
+    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
     {
       // report no error
-      done(SPINN_NO_ERROR);
+      stage_done (SPINN_NO_ERROR);
       return;
     }
     else
     {
-      // start from first example again
-      example = 0;
+      // reset example count for next epoch
+      example_cnt = 0;
 
       // reset the partial link delta sum
-      if (ncfg.training)
+      if (xcfg.training)
       {
         s_lds_part = 0;
         s_ldsa_arrived = 0;
@@ -573,6 +581,6 @@ void s_advance_example (void)
 
   // start from first event for next example
   evt = 0;
-  num_events = ex[example].num_events;
+  num_events = ex[example_inx].num_events;
 }
 // ------------------------------------------------------------------------

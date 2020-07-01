@@ -60,22 +60,22 @@ sub process_args
 {
     while ($#ARGV >= 0)
     {
-	my $arg = shift @ARGV;
+        my $arg = shift @ARGV;
 
-	if ($arg eq '-version')
-	{
-	    die "output_mon_lens - v$version\n";
-	}
-	elsif ($arg eq '-port')
-	{
-	    die "error: port not specified\n" unless defined $ARGV[0] &&
-		$ARGV[0] =~ /^\d+$/;
-	    $port = shift @ARGV;
-	}
-	else
-	{
-	    usage ();
-	}
+        if ($arg eq '-version')
+        {
+            die "output_mon_lens - v$version\n";
+        }
+        elsif ($arg eq '-port')
+        {
+            die "error: port not specified\n" unless defined $ARGV[0] &&
+                $ARGV[0] =~ /^\d+$/;
+            $port = shift @ARGV;
+        }
+        else
+        {
+            usage ();
+        }
     }
 }
 
@@ -83,8 +83,8 @@ sub process_args
 sub open_input
 {
     $socket = new IO::Socket::INET (LocalPort => $port,
-				    Proto => 'udp',
-				    Blocking => 0);
+                                    Proto => 'udp',
+                                    Blocking => 0);
 
     die "failed to create socket: $!\n" unless $socket;
 
@@ -98,31 +98,31 @@ sub print_outputs
 {
     if ($tick[$cur] == 0)
     {
-	printf "%d %d\n", $epoch[$cur], $example[$cur];
-	printf "%d %d\n", $num_ticks, $num_grps;
+        printf "%d %d\n", $epoch[$cur], $example[$cur];
+        printf "%d %d\n", $num_ticks, $num_grps;
     }
 
     printf "%d %d\n", $tick[$cur], $event[$cur];
 
     for (my $i = 0; $i < $num_grps; $i++)
     {
-	printf "%d 1\n", $num_outs[$i];
+        printf "%d 1\n", $num_outs[$i];
 
-	my $low = $bstart->[$cur][$i];
-	my $high = $low + $num_outs[$i];
-	for (my $j = $low; $j < $high; $j++)
-	{
-	    printf "%f ", ((1.0 * $outputs->[$cur][$j]) / (1.0 * (1 << 15)));
-	    my $tg = ((1.0 * $targets->[$cur][$j]) / (1.0 * (1 << 15)));
+        my $low = $bstart->[$cur][$i];
+        my $high = $low + $num_outs[$i];
+        for (my $j = $low; $j < $high; $j++)
+        {
+            printf "%f ", ((1.0 * $outputs->[$cur][$j]) / (1.0 * (1 << 15)));
+            my $tg = ((1.0 * $targets->[$cur][$j]) / (1.0 * (1 << 15)));
             if ($tg == $HOST_NaN)
             {
-		printf "-\n";
-	    }
+                printf "-\n";
+            }
             else
             {
-		printf "%d\n", ($tg > 0.5) ? 1 : 0;
-	    }
-	}
+                printf "%d\n", ($tg > 0.5) ? 1 : 0;
+            }
+        }
     }
 }
 
@@ -133,116 +133,116 @@ sub main_loop
 
     while (1)
     {
-	my $rm = '';
-	vec ($rm, $socket_fd, 1) = 1;
-	
-	my $n = select ($rm, undef, undef, 0.1);
-	next if $n == 0;
-	
-	my $addr = recv ($socket, my $buf, 65536, 0);
-	
-	unless (defined $addr)
-	{
-	    warn "!! recv failed\n";
-	    next;
-	}
-	
-	my ($pad, $flags, $tag, $dp, $sp, $da, $sa, $cr, $sq, $a1, $a2, $a3, $d) = 
-	    unpack 'v C4 v2 v2 V3 a*', $buf;
-	
-	my $cmd = $cr;
-	my $grp = $sq;
+        my $rm = '';
+        vec ($rm, $socket_fd, 1) = 1;
+        
+        my $n = select ($rm, undef, undef, 0.1);
+        next if $n == 0;
+        
+        my $addr = recv ($socket, my $buf, 65536, 0);
+        
+        unless (defined $addr)
+        {
+            warn "!! recv failed\n";
+            next;
+        }
+        
+        my ($pad, $flags, $tag, $dp, $sp, $da, $sa, $cr, $sq, $a1, $a2, $a3, $d) = 
+            unpack 'v C4 v2 v2 V3 a*', $buf;
+        
+        my $cmd = $cr;
+        my $grp = $sq;
 
-	my @t = unpack 's*', $d;
+        my @t = unpack 's*', $d;
 
 #printf "c:%d g:%d t:%d s:%d\n", $cmd, $grp, $a3, scalar(@t);
 
-	if ($cmd == $HOST_FINAL)
-	{
-	    $finish = 1;
-	}
+        if ($cmd == $HOST_FINAL)
+        {
+            $finish = 1;
+        }
 
-	if ($cmd == $HOST_INFO)
-	{
-	    $num_outs[$sq] = $a1;
-	    $num_grps = $a2;
-	    $num_ticks = $a3;
+        if ($cmd == $HOST_INFO)
+        {
+            $num_outs[$sq] = $a1;
+            $num_grps = $a2;
+            $num_ticks = $a3;
 
-	    $info_ctr++;
-	    if ($info_ctr == $num_grps)
-	    {
-		$info_ctr = 0;
-	    }
+            $info_ctr++;
+            if ($info_ctr == $num_grps)
+            {
+                $info_ctr = 0;
+            }
 
-	    $a1 = 0;
-	    $a2 = 0xffff0000;
-	    $a3 = 0;
-	}
+            $a1 = 0;
+            $a2 = 0xffff0000;
+            $a3 = 0;
+        }
 
-	my $inx = $cur;
-	if ($tick[$cur] == 0xffffffff)
-	{
-	    if (($a3 != 0) && ($a3 != ($ltick + 1)))
-	    {
-		printf "missing tick e:%d r:%d\n", ($ltick + 1), $a3;
-	    }
+        my $inx = $cur;
+        if ($tick[$cur] == 0xffffffff)
+        {
+            if (($a3 != 0) && ($a3 != ($ltick + 1)))
+            {
+                printf "missing tick e:%d r:%d\n", ($ltick + 1), $a3;
+            }
 
-	    $epoch[$cur]   = $a1;
-	    $example[$cur] = ($a2 & 0x0000ffff);
-	    $event[$cur]   = ($a2 >> 16);
-	    if ($event[$cur] > 32767) { $event[$cur] = -1; }
-	    $tick[$cur]    = $a3;
-	}
-	elsif ($tick[$cur] != $a3)
-	{
-	    if (($a3 != 0) && ($a3 != ($tick[$cur] + 1)))
-	    {
-		printf "missing tick e:%d r:%d\n", $tick[$cur] + 1, $a3;
-	    }
+            $epoch[$cur]   = $a1;
+            $example[$cur] = ($a2 & 0x0000ffff);
+            $event[$cur]   = ($a2 >> 16);
+            $tick[$cur]    = $a3;
+            if ($tick[$cur] == 0) { $event[$cur] = -1; }
+        }
+        elsif ($tick[$cur] != $a3)
+        {
+            if (($a3 != 0) && ($a3 != ($tick[$cur] + 1)))
+            {
+                printf "missing tick e:%d r:%d\n", $tick[$cur] + 1, $a3;
+            }
 
-	    $inx = $nxt;
-	    if ($tick[$nxt] == 0xffffffff)
-	    {
-		$epoch[$nxt]   = $a1;
-		$example[$nxt] = ($a2 & 0x0000ffff);
-		$event[$nxt]   = ($a2 >> 16);
-		if ($event[$nxt] > 32767) { $event[$nxt] = -1; }
-		$tick[$nxt]    = $a3;
-	    }
-	    elsif ($tick[$nxt] != $a3)
-	    {
-		printf "wrong tick e:%d r:%d\n", $tick[$nxt], $a3;
-	    }
-	}
+            $inx = $nxt;
+            if ($tick[$nxt] == 0xffffffff)
+            {
+                $epoch[$nxt]   = $a1;
+                $example[$nxt] = ($a2 & 0x0000ffff);
+                $event[$nxt]   = ($a2 >> 16);
+                $tick[$nxt]    = $a3;
+                if ($tick[$nxt] == 0) { $event[$nxt] = -1; }
+            }
+            elsif ($tick[$nxt] != $a3)
+            {
+                printf "wrong tick e:%d r:%d\n", $tick[$nxt], $a3;
+            }
+        }
 
-	my $bi = $bindex[$inx];
+        my $bi = $bindex[$inx];
 
-	$bstart->[$inx][$grp] = $bi;
+        $bstart->[$inx][$grp] = $bi;
 
-	for (my $i = 0; $i < @t/2; $i++)
-	{
-	    $outputs->[$inx][$bi] = $t[2 * $i];
-	    $targets->[$inx][$bi] = $t[(2 * $i) + 1];
-	    $bi++;
-	}
+        for (my $i = 0; $i < @t/2; $i++)
+        {
+            $outputs->[$inx][$bi] = $t[2 * $i];
+            $targets->[$inx][$bi] = $t[(2 * $i) + 1];
+            $bi++;
+        }
 
-	$bindex[$inx] = $bi;
-	$grp_ctr[$inx]++;
+        $bindex[$inx] = $bi;
+        $grp_ctr[$inx]++;
 
 #printf "ix:%d gc:%d bi:%d\n", $inx, $grp_ctr[$inx], $bindex[$inx];
 
-	if ($grp_ctr[$inx] == $num_grps)
-	{
-	    print_outputs ();
+        if ($grp_ctr[$inx] == $num_grps)
+        {
+            print_outputs () if not $finish;
 
-	    last if $finish;
+            last if $finish;
 
-	    $grp_ctr[$inx] = 0;
-	    $ltick = $tick[$inx];
-	    $tick[$inx] = 0xffffffff;
-	    $nxt = $cur;
-	    $cur = 1 - $cur;
-	}
+            $grp_ctr[$inx] = 0;
+            $ltick = $tick[$inx];
+            $tick[$inx] = 0xffffffff;
+            $nxt = $cur;
+            $cur = 1 - $cur;
+        }
     }
 }
 

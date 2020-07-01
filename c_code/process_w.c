@@ -12,19 +12,21 @@
 #include "process_w.h"
 #include "activation.h"
 
-// set of routines to be used by W core to process data
 
+// ------------------------------------------------------------------------
+// weight core computation routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process FORWARD phase: compute partial dot products (output * weight)
 // ------------------------------------------------------------------------
-void wf_process (uint null0, uint null1)
+void wf_process (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "wf_process\n");
 #endif
-
-  (void) null0;
-  (void) null1;
 
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
@@ -71,7 +73,7 @@ void wf_process (uint null0, uint null1)
   // and check if all other threads done
   if (wf_thrds_pend == 0)
   {
-    // if done initialize synchronization semaphore,
+    // if done initialise synchronisation semaphore,
     wf_thrds_pend = 2;
 
     // restore interrupts after flag access,
@@ -100,18 +102,14 @@ void wf_process (uint null0, uint null1)
 // ------------------------------------------------------------------------
 // process BACKPROP phase: compute partial products (weight * delta)
 // ------------------------------------------------------------------------
-void wb_process (uint null0, uint null1)
+void wb_process (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "wb_process\n");
 #endif
-
-#ifdef PROFILE
-  io_printf (IO_STD, "tin:  %u\n", tc[T2_COUNT]);
-#endif
-
-  (void) null0;
-  (void) null1;
 
   // process delta packet queue
   // access queue with interrupts disabled
@@ -149,15 +147,15 @@ void wb_process (uint null0, uint null1)
 
       // if using Doug's Momentum and reached the end of an epoch
       // accumulate partial link delta sum (to send to s core),
-      if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (ncfg.num_examples - 1)
+      if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+            && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
       {
-	// only use link derivatives for links whose weights are non-zero
+        // only use link derivatives for links whose weights are non-zero
         // as zero weights indicate no connection
-      	if (w_weights[i][inx] != 0)
+        if (w_weights[i][inx] != 0)
         {
-	  long_lds_t link_delta_tmp;
+          long_lds_t link_delta_tmp;
 
           // scale the link derivatives
           if (ncfg.net_type == SPINN_NET_CONT)
@@ -165,17 +163,17 @@ void wb_process (uint null0, uint null1)
             // 60.4 = (s36.27 * s15.16) >> 39
             link_delta_tmp = (w_link_deltas[i][inx] * (long_delta_t) w_delta_dt)
                                  >> (SPINN_LONG_DELTA_SHIFT + SPINN_FPREAL_SHIFT
-				     - SPINN_LONG_LDS_SHIFT);
-	  }
-	  else
-	  {
-	    link_delta_tmp = w_link_deltas[i][inx];
+                                     - SPINN_LONG_LDS_SHIFT);
+          }
+          else
+          {
+            link_delta_tmp = w_link_deltas[i][inx];
           }
 
-	  // square the link derivatives
-	  // 60.4 = (60.4 * 60.4) >> 4
-	  link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT);
-  	  link_delta_sum = link_delta_sum + link_delta_tmp;
+          // square the link derivatives
+          // 60.4 = (60.4 * 60.4) >> 4
+          link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT);
+          link_delta_sum = link_delta_sum + link_delta_tmp;
         }
       }
 
@@ -197,23 +195,23 @@ void wb_process (uint null0, uint null1)
               );
 
 #ifdef DEBUG
-	pkt_sent++;
-	sent_bkp++;
+        pkt_sent++;
+        sent_bkp++;
 #endif
 
 #ifdef DEBUG_CFG4
-	io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
+        io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
 #endif
 
-        // and initialize error for next tick
+        // and initialise error for next tick
         w_errors[i] = 0;
       }
     }
 
     // if using Doug's Momentum and reached the end of an epoch,
     // forward the accumulated partial link delta sums to the s core
-    if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (ncfg.num_examples - 1)
+    if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+            && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK)
     {
       // cast to a 32-bit value,
@@ -232,22 +230,22 @@ void wb_process (uint null0, uint null1)
     // if done with all deltas advance tick
     if (wb_arrived == wcfg.num_cols)
     {
-      // initialize arrival scoreboard for next tick,
+      // initialise arrival scoreboard for next tick,
       wb_arrived = 0;
 
-      // access synchronization semaphore with interrupts disabled
+      // access synchronisation semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
       // and check if all other threads done
       if (wb_thrds_pend == 0)
       {
-        // if done initialize synchronization semaphore,
+        // if done initialise synchronisation semaphore,
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we have to wait for the total link delta sum to
         // arrive
-        if (wcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example == (ncfg.num_examples - 1)
+        if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+            && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK + 1)
         {
           wb_thrds_pend = 1;
@@ -261,7 +259,7 @@ void wb_process (uint null0, uint null1)
         spin1_mode_restore (cpsr);
 
 #ifdef TRACE_VRB
-	io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
+        io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
 #endif
 
         //TODO: check if need to schedule or can simply call
@@ -286,10 +284,6 @@ void wb_process (uint null0, uint null1)
 
   // restore interrupts and leave
   spin1_mode_restore (cpsr);
-
-#ifdef PROFILE
-  io_printf (IO_STD, "tout: %u\n", tc[T2_COUNT]);
-#endif
 }
 // ------------------------------------------------------------------------
 
@@ -327,7 +321,7 @@ void steepest_update_weights (void)
         {
           // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
-				 * (long_delta_t) w_delta_dt)
+                                 * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
@@ -344,25 +338,25 @@ void steepest_update_weights (void)
         // and adjust decimal point position
         w_wchanges[i][j] = change_tmp
                              >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_LONG_DELTA_SHIFT
-		             - SPINN_WEIGHT_SHIFT);
+                             - SPINN_WEIGHT_SHIFT);
 
-	if (wcfg.weightDecay > 0)
-	{
-	  //apply weight decay
-	  long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
+        if (wcfg.weightDecay > 0)
+        {
+          //apply weight decay
+          long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
 
-	  // round off
-	  weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+          // round off
+          weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
                                                + SPINN_WEIGHT_SHIFT
                                                - SPINN_WEIGHT_SHIFT - 1));
 
           // and adjust decimal point position
           weightDecay_tmp = weightDecay_tmp
                              >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
-		             - SPINN_WEIGHT_SHIFT);
+                             - SPINN_WEIGHT_SHIFT);
 
-	  w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
-	}
+          w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
+        }
 
         // compute new weight
         long_weight_t temp = (long_weight_t) w_weights[i][j]
@@ -397,13 +391,13 @@ void steepest_update_weights (void)
 
 #ifdef DEBUG_VRB
       io_printf (IO_BUF,
-		 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-		 i, j,
-		 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-		 old_weight,
-		 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-		 w_weights[i][j]
-	);
+                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+                 i, j,
+                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+                 old_weight,
+                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+                 w_weights[i][j]
+        );
 #endif
     }
   }
@@ -447,7 +441,7 @@ void momentum_update_weights (void)
         {
           // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
-				 * (long_delta_t) w_delta_dt)
+                                 * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
@@ -462,9 +456,9 @@ void momentum_update_weights (void)
                                         + SPINN_LONG_DELTA_SHIFT
                                         - SPINN_WEIGHT_SHIFT - 1));
 
-	// compute momentum factor
-	// s48.15 = (s0.15 * s48.15) >> 15
-	long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
+        // compute momentum factor
+        // s48.15 = (s0.15 * s48.15) >> 15
+        long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
 
         // round off
         momentum_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
@@ -474,27 +468,27 @@ void momentum_update_weights (void)
         // compute sum and adjust decimal point position
         w_wchanges[i][j] =
                 (change_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_LONG_DELTA_SHIFT
-		              - SPINN_WEIGHT_SHIFT))
+                              - SPINN_WEIGHT_SHIFT))
               + (momentum_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
                               - SPINN_WEIGHT_SHIFT));
 
-	if (wcfg.weightDecay > 0)
-	{
-	  //apply weight decay
-	  long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
+        if (wcfg.weightDecay > 0)
+        {
+          //apply weight decay
+          long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
 
-	  // round off
-	  weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+          // round off
+          weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
                                                + SPINN_WEIGHT_SHIFT
                                                - SPINN_WEIGHT_SHIFT - 1));
 
           // and adjust decimal point position
           weightDecay_tmp = weightDecay_tmp
                              >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
-		             - SPINN_WEIGHT_SHIFT);
+                             - SPINN_WEIGHT_SHIFT);
 
-	  w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
-	}
+          w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
+        }
 
         // compute new weight
         long_weight_t temp = (long_weight_t) w_weights[i][j]
@@ -529,13 +523,13 @@ void momentum_update_weights (void)
 
 #ifdef DEBUG_VRB
       io_printf (IO_BUF,
-		 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-		 i, j,
-		 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-		 old_weight,
-		 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-		 w_weights[i][j]
-	);
+                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+                 i, j,
+                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+                 old_weight,
+                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+                 w_weights[i][j]
+        );
 #endif
     }
   }
@@ -598,7 +592,7 @@ void dougsmomentum_update_weights (void)
         {
           // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
-				 * (long_delta_t) w_delta_dt)
+                                 * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
@@ -613,9 +607,9 @@ void dougsmomentum_update_weights (void)
                                         + SPINN_LONG_DELTA_SHIFT
                                         - SPINN_WEIGHT_SHIFT - 1));
 
-	// compute momentum factor
-	// s48.15 = (s0.15 * s48.15) >> 15
-	long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
+        // compute momentum factor
+        // s48.15 = (s0.15 * s48.15) >> 15
+        long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
 
         // round off
         momentum_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
@@ -625,27 +619,27 @@ void dougsmomentum_update_weights (void)
         // compute sum and adjust decimal point position
         w_wchanges[i][j] =
                 (change_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_LONG_DELTA_SHIFT
-		              - SPINN_WEIGHT_SHIFT))
+                              - SPINN_WEIGHT_SHIFT))
               + (momentum_tmp >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
                               - SPINN_WEIGHT_SHIFT));
 
-	if (wcfg.weightDecay > 0)
-	{
-	  //apply weight decay
-	  long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
+        if (wcfg.weightDecay > 0)
+        {
+          //apply weight decay
+          long_wchange_t weightDecay_tmp = wcfg.weightDecay * w_weights[i][j];
 
-	  // round off
-	  weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
+          // round off
+          weightDecay_tmp += (long_wchange_t) (1 << (SPINN_SHORT_FPREAL_SHIFT
                                                + SPINN_WEIGHT_SHIFT
                                                - SPINN_WEIGHT_SHIFT - 1));
 
           // and adjust decimal point position
           weightDecay_tmp = weightDecay_tmp
                              >> (SPINN_SHORT_FPREAL_SHIFT + SPINN_WEIGHT_SHIFT
-		             - SPINN_WEIGHT_SHIFT);
+                             - SPINN_WEIGHT_SHIFT);
 
-	  w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
-	}
+          w_wchanges[i][j] = w_wchanges[i][j] - weightDecay_tmp;
+        }
 
         // compute new weight
         long_weight_t temp = (long_weight_t) w_weights[i][j]
@@ -680,13 +674,13 @@ void dougsmomentum_update_weights (void)
 
 #ifdef DEBUG_VRB
       io_printf (IO_BUF,
-		 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-		 i, j,
-		 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-		 old_weight,
-		 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-		 w_weights[i][j]
-	);
+                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
+                 i, j,
+                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
+                 old_weight,
+                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
+                 w_weights[i][j]
+        );
 #endif
     }
   }
@@ -702,8 +696,11 @@ void dougsmomentum_update_weights (void)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void wf_advance_tick (uint null0, uint null1)
+void wf_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "wf_advance_tick\n");
 #endif
@@ -723,9 +720,6 @@ void wf_advance_tick (uint null0, uint null1)
     io_printf (IO_BUF, "wf_tick: %d/%d\n", tick, tot_tick);
   }
 #endif
-
-  (void) null0;
-  (void) null1;
 
   // change packet key colour,
   fwdKey ^= SPINN_COLOUR_KEY;
@@ -754,8 +748,11 @@ void wf_advance_tick (uint null0, uint null1)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void wb_advance_tick (uint null0, uint null1)
+void wb_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "wb_advance_tick\n");
 #endif
@@ -772,16 +769,13 @@ void wb_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
 #endif
 
-  (void) null0;
-  (void) null1;
-
   // change packet key colour,
   bkpKey ^= SPINN_COLOUR_KEY;
 
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)
   {
-    // initialize tick for next example
+    // initialise tick for next example
     tick = SPINN_W_INIT_TICK;
 
     // go to FORWARD phase,
@@ -829,7 +823,7 @@ void wf_advance_event (void)
     tick_stop = FALSE;
 
     // and check if in training mode
-    if (ncfg.training)
+    if (xcfg.training)
     {
       // if training, save number of ticks
       num_ticks = tick;
@@ -867,11 +861,17 @@ void w_advance_example (void)
   io_printf (IO_BUF, "w_advance_example\n");
 #endif
 
+  // point to next example in the set - wrap around if at the end
+  if (++example_inx >= es->num_examples)
+  {
+    example_inx = 0;
+  }
+
   // check if done with examples
-  if (++example >= ncfg.num_examples)
+  if (++example_cnt >= xcfg.num_examples)
   {
     // if training update weights at end of epoch
-    if (ncfg.training)
+    if (xcfg.training)
     {
       //TODO: should be called or scheduled?
       wb_update_func ();
@@ -884,20 +884,20 @@ void w_advance_example (void)
     }
 
     // check if done with epochs
-    if (++epoch >= ncfg.num_epochs)
+    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
     {
       // report no error
-      done(SPINN_NO_ERROR);
+      stage_done (SPINN_NO_ERROR);
       return;
     }
     else
     {
-      // if not start from first example again,
-      example = 0;
+      // reset example count for next epoch
+      example_cnt = 0;
 
       // and, if training, initialise weight changes
       //TODO: find a better place for this operation
-      if (ncfg.training)
+      if (xcfg.training)
       {
         for (uint i = 0; i < wcfg.num_rows; i++)
         {
@@ -912,7 +912,7 @@ void w_advance_example (void)
 
   // start from first event for next example,
   evt = 0;
-  num_events = ex[example].num_events;
+  num_events = ex[example_inx].num_events;
 
   // and send sync packet to allow unit outputs to be sent
   while (!spin1_send_mc_packet (wf_sync_key, 0, NO_PAYLOAD));
@@ -957,11 +957,6 @@ void w_switch_to_bp (void)
 
   // and send sync packet to allow unit outputs to be sent
 //#  while (!spin1_send_mc_packet (wb_sync_key, 0, NO_PAYLOAD));
-
-//#  #ifdef DEBUG
-//#    pkt_sent++;
-//#    spk_sent++;
-//#  #endif
 }
 // ------------------------------------------------------------------------
 

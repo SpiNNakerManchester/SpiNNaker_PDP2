@@ -8,18 +8,20 @@ from pacman.model.resources.resource_container \
     import ResourceContainer, ConstantSDRAM
 from pacman.model.resources.iptag_resource import IPtagResource
 
+from spinn_utilities.overrides import overrides
+
 from spinn_front_end_common.abstract_models.abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
+from spinn_front_end_common.abstract_models import \
+    AbstractRewritesDataSpecification
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
-
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
+
 from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
     import generate_steps_system_data_region
-
-from spinn_utilities.overrides import overrides
 
 from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
@@ -27,7 +29,9 @@ from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 class ThresholdVertex(
         SimulatorVertex,
         MachineDataSpecableVertex,
-        AbstractProvidesNKeysForPartition):
+        AbstractProvidesNKeysForPartition,
+        AbstractRewritesDataSpecification
+        ):
 
     """ A vertex to implement a PDP2 threshold core
         that applies unit output and activation functions
@@ -49,6 +53,8 @@ class ThresholdVertex(
             binary_name = "threshold.aplx",
             constraints = constraints)
 
+        self._stage = 0
+
         # application-level data
         self._network = network
         self._group   = group
@@ -59,21 +65,20 @@ class ThresholdVertex(
         # application parameters
         self._out_integr_dt = 1.0 / network.ticks_per_int
 
-        # choose appropriate group criterion
-        if network.training:
-            if self.group.train_group_crit is not None:
-                self._group_criterion = self.group.train_group_crit
-            elif network._train_group_crit is not None:
-                self._group_criterion = network._train_group_crit
-            else:
-                self._group_criterion = MLPConstants.DEF_GRP_CRIT
+        # choose appropriate group criteria
+        if self.group.test_group_crit is not None:
+            self._tst_group_criterion = self.group.test_group_crit
+        elif network._test_group_crit is not None:
+            self._tst_group_criterion = network._test_group_crit
         else:
-            if self.group.test_group_crit is not None:
-                self._group_criterion = self.group.test_group_crit
-            elif network._test_group_crit is not None:
-                self._group_criterion = network._test_group_crit
-            else:
-                self._group_criterion = MLPConstants.DEF_GRP_CRIT
+            self._tst_group_criterion = MLPConstants.DEF_GRP_CRIT
+
+        if self.group.train_group_crit is not None:
+            self._trn_group_criterion = self.group.train_group_crit
+        elif network._train_group_crit is not None:
+            self._trn_group_criterion = network._train_group_crit
+        else:
+            self._trn_group_criterion = MLPConstants.DEF_GRP_CRIT
 
         # check if last output group in daisy chain
         if group == network.output_chain[-1]:
@@ -103,7 +108,7 @@ class ThresholdVertex(
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.config)
+            len (self._network.network_config)
 
         # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
@@ -131,7 +136,25 @@ class ThresholdVertex(
 
         # keys are integers
         # t cores require a different key for every group partition
-        self._N_KEYS_BYTES = (MLPConstants.NUM_KEYS_REQ + self._group.partitions) * _data_int.size
+        self._N_KEYS_BYTES =  _data_int.size * \
+            (MLPConstants.NUM_KEYS_REQ + self._group.partitions)
+
+        # stage configuration structure
+        self._N_STAGE_CONFIGURATION_BYTES = \
+            len (self._network.stage_config)
+
+        # reserve SDRAM space used to store historic data
+        self._TARGET_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
+
+        self._OUT_DERIV_HISTORY_BYTES = (MLPConstants.LONG_DERIV_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
+
+        self._NET_HISTORY_BYTES = (MLPConstants.NET_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
+
+        self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -141,7 +164,12 @@ class ThresholdVertex(
             self._N_EVENTS_BYTES + \
             self._N_INPUTS_BYTES + \
             self._N_TARGETS_BYTES + \
-            self._N_KEYS_BYTES
+            self._N_KEYS_BYTES + \
+            self._N_STAGE_CONFIGURATION_BYTES + \
+            self._TARGET_HISTORY_BYTES + \
+            self._OUT_DERIV_HISTORY_BYTES + \
+            self._NET_HISTORY_BYTES + \
+            self._OUTPUT_HISTORY_BYTES
         )
 
     @property
@@ -175,13 +203,15 @@ class ThresholdVertex(
               scoreboard_t  bkp_sync_expect;
               uchar         write_out;
               uint          write_blk;
+              uchar         hard_clamp_en;
               uchar         out_integr_en;
               fpreal        out_integr_dt;
               uint          num_out_procs;
               uint          procs_list[SPINN_NUM_OUT_PROCS];
               fpreal        weak_clamp_strength;
               activation_t  initOutput;
-              error_t       group_criterion;
+              error_t       tst_group_criterion;
+              error_t       trn_group_criterion;
               uchar         criterion_function;
               uchar         is_first_output_group;
               uchar         is_last_output_group;
@@ -203,11 +233,13 @@ class ThresholdVertex(
         init_output = int (self.group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
 
-        # group criterion is an MLP fixed-point error_t
-        group_criterion = int (self._group_criterion *\
+        # group criteria are MLP fixed-point error_t
+        tst_group_criterion = int (self._tst_group_criterion *\
+                                (1 << MLPConstants.ERROR_SHIFT))
+        trn_group_criterion = int (self._trn_group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2x4IB3xIB3xi6I3i4B",
+        return struct.pack ("<2B2x4IB3xI2B2xi6I4i4B",
                             self.group.output_grp & 0xff,
                             self.group.input_grp & 0xff,
                             self.group.units,
@@ -216,6 +248,7 @@ class ThresholdVertex(
                             self._bkp_sync_expect,
                             self.group.write_out & 0xff,
                             self.group.write_blk,
+                            self.group.hard_clamp_en & 0xff,
                             self.group.out_integr_en & 0xff,
                             out_integr_dt,
                             self.group.num_out_procs,
@@ -226,7 +259,8 @@ class ThresholdVertex(
                             self.group.out_procs_list[4].value,
                             weak_clamp_strength,
                             init_output,
-                            group_criterion,
+                            tst_group_criterion,
+                            trn_group_criterion,
                             self.group.criterion_function.value & 0xff,
                             self.group.is_first_out & 0xff,
                             self._is_last_output_group & 0xff,
@@ -245,9 +279,11 @@ class ThresholdVertex(
             )
         return resources
 
+
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
         return self._n_keys
+
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
     def generate_machine_data_specification(
@@ -264,7 +300,7 @@ class ThresholdVertex(
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.config:
+        for c in self._network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
@@ -368,5 +404,45 @@ class ThresholdVertex(
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.fwd_link[p]), data_type = DataType.UINT32)
 
+        # Reserve and write the stage configuration region
+        spec.reserve_memory_region (MLPRegions.STAGE.value,
+                                    self._N_STAGE_CONFIGURATION_BYTES)
+
+        spec.switch_write_focus (MLPRegions.STAGE.value)
+
+        # write the stage configuration into spec
+        for c in self._network.stage_config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
         # End the specification
         spec.end_specification ()
+
+
+    @overrides(AbstractRewritesDataSpecification.regenerate_data_specification)
+    def regenerate_data_specification(self, spec, placement):
+        # Reserve and write the stage configuration region
+        spec.reserve_memory_region (MLPRegions.STAGE.value,
+                                    self._N_STAGE_CONFIGURATION_BYTES)
+
+        spec.switch_write_focus (MLPRegions.STAGE.value)
+
+        # write the stage configuration into spec
+        for c in self._network.stage_config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
+
+        spec.end_specification()
+
+
+    @overrides(AbstractRewritesDataSpecification.requires_memory_regions_to_be_reloaded)
+    def requires_memory_regions_to_be_reloaded(self):
+        return True
+
+
+    @overrides(AbstractRewritesDataSpecification.mark_regions_reloaded)
+    def mark_regions_reloaded(self):
+        """
+            TODO: not really sure what this method is used for!
+        """
+        # prepare for next stage
+        self._stage += 1

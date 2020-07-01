@@ -10,8 +10,10 @@
 #include "comms_i.h"
 #include "process_i.h"
 
-// this file contains the communication routines used by I cores
 
+// ------------------------------------------------------------------------
+// input core communications routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process received packets (stop, FORWARD and BACKPROP types)
 // ------------------------------------------------------------------------
@@ -63,7 +65,7 @@ void i_receivePacket (uint key, uint payload)
 #endif
 
     // report no error
-    done(SPINN_NO_ERROR);
+    stage_done (SPINN_NO_ERROR);
     return;
   }
 
@@ -72,7 +74,7 @@ void i_receivePacket (uint key, uint payload)
   if (new_tail == i_pkt_queue.head)
   {
     // report queue full error
-    done(SPINN_QUEUE_FULL);
+    stage_done (SPINN_QUEUE_FULL);
   }
   else
   {

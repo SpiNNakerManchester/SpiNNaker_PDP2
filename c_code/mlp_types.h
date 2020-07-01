@@ -4,28 +4,29 @@
 #include "mlp_params.h"
 
 enum MLPRegions {
-	SYSTEM,
-	NETWORK,
-	CORE,
-	INPUTS,
-	TARGETS,
-	EXAMPLE_SET,
-	EXAMPLES,
-	EVENTS,
-	WEIGHTS,
-	ROUTING
+  SYSTEM      =  0,
+  NETWORK     =  1,
+  CORE        =  2,
+  INPUTS      =  3,
+  TARGETS     =  4,
+  EXAMPLE_SET =  5,
+  EXAMPLES    =  6,
+  EVENTS      =  7,
+  WEIGHTS     =  8,
+  ROUTING     =  9,
+  STAGE       = 10
 };
 
 // t cores can have more than one FWD key (due to partitions)
 // i cores can have more than one BKP key (due to partitions)
 enum MLPKeys {
-	FWD = 0,
-	BKP = 1,
-	FDS = 2,
-	STP = 3,
-	LDS = 4,
-	FWDT = 5,
-	BKPI = 5
+  FWD  = 0,
+  BKP  = 1,
+  FDS  = 2,
+  STP  = 3,
+  LDS  = 4,
+  FWDT = 5,
+  BKPI = 5
 };
 
 typedef short     short_activ_t;
@@ -177,13 +178,9 @@ typedef uchar     proc_phase_t;     // phase (FORWARD or BACKPROP)
 typedef struct network_conf     // MLP network configuration
 {
   uchar net_type;               // type of neural net
-  uchar training;               // training or testing mode?
-  uint  num_epochs;             // number of epochs to run
-  uint  num_examples;           // number of examples per epoch
   uint  ticks_per_int;          // number of ticks per interval
   uint  global_max_ticks;       // max number of ticks across all the examples
   uint  num_write_blks;         // number of groups that write outputs
-  uint  timeout;                // in case something goes wrong
 } network_conf_t;
 // ------------------------------------------------------------------------
 
@@ -210,7 +207,6 @@ typedef struct w_conf               // weight core configuration
   short_fpreal_t learningRate;      // network learning rate
   short_fpreal_t weightDecay;       // network weight decay
   short_fpreal_t momentum;          // network momentum
-  uchar          update_function;   // function to update weights
 } w_conf_t;
 // ------------------------------------------------------------------------
 
@@ -218,7 +214,7 @@ typedef struct w_conf               // weight core configuration
 // ------------------------------------------------------------------------
 // sum core configuration
 // ------------------------------------------------------------------------
-// sum cores accumulate acummulate b-d-ps sent by weight cores and
+// sum cores accumulate accumulate b-d-ps sent by weight cores and
 // compute unit nets (FORWARD phase) and errors (BACKPROP phase)
 // ------------------------------------------------------------------------
 typedef struct s_conf               // sum core configuration
@@ -228,7 +224,6 @@ typedef struct s_conf               // sum core configuration
   scoreboard_t bkp_expected;        // num of expected partial errors
   scoreboard_t ldsa_expected;       // num of expected partial link delta sums
   scoreboard_t ldst_expected;       // num of expected link delta sum totals
-  uchar        update_function;     // function to update weights
   uchar        is_first_group;      // is this the first group in the network?
 } s_conf_t;
 // ------------------------------------------------------------------------
@@ -248,7 +243,7 @@ typedef struct i_conf                // input core configuration
   uint          partitions;          // this groups's number of partitions
   uint          num_in_procs;        // number of input (net) comp procedures
   uint          procs_list[SPINN_NUM_IN_PROCS];
-  uchar         in_integr_en;        // input integrator in use
+  uchar         in_integr_en;        // input INTEGRATOR in use
   fpreal        in_integr_dt;        // integration time const for input integr
   fpreal        soft_clamp_strength; // Strength coeff for soft clamp
   net_t         initNets;            // initial value for unit nets
@@ -276,13 +271,15 @@ typedef struct t_conf                  // threshold core configuration
   scoreboard_t  bkp_sync_expected;     // all expected BACKPROP sync packets
   uchar         write_out;             // write outputs (send to host)?
   uint          write_blk;             // this core's write block
-  uchar         out_integr_en;         // input integrator in use
+  uchar         hard_clamp_en;         // HARD CLAMP in use
+  uchar         out_integr_en;         // output INTEGRATOR in use
   fpreal        out_integr_dt;         // integration time const for input integr
   uint          num_out_procs;         // number of output comp procedures
   uint          procs_list[SPINN_NUM_OUT_PROCS];
   fpreal        weak_clamp_strength;   // Strength coeff for weak clamp
   activation_t  initOutput;            // initial value for unit outputs
-  error_t       group_criterion;       // convergence criterion value
+  error_t       tst_group_criterion;   // test-mode convergence criterion value
+  error_t       trn_group_criterion;   // train-mode convergence criterion value
   uchar         criterion_function;    // function to eval convergence criterion
   uchar         is_first_output_group; // is this the first of the output groups
   uchar         is_last_output_group;  // is this the last of the output groups
@@ -341,13 +338,28 @@ typedef struct mlp_event
 } mlp_event_t;
 
 
+// ------------------------------------------------------------------------
+// stage configuration
+// ------------------------------------------------------------------------
+typedef struct stage_conf       // execution stage configuration
+{
+  uchar stage_id;               // stage number
+  uchar training;               // stage mode: train (1) or test (0)
+  uchar update_function;        // weight update function in this stage
+  uchar reset;                  // reset example index at stage start?
+  uint  num_examples;           // number of examples to run in this stage
+  uint  num_epochs;             // number of training epochs in this stage
+} stage_conf_t;
+// ------------------------------------------------------------------------
+
+
 typedef void (*out_proc_t) (uint);   // output comp procedures
 
 
 typedef void (*out_proc_back_t) (uint);   // BACKPROP output comp procedures
 
 
-typedef int  (*out_proc_init_t) (void);    // input initialization procedures
+typedef uint (*out_proc_init_t) (void);    // input initialisation procedures
 
 
 typedef void (*in_proc_t) (uint);    // input (net) comp procedures
@@ -356,7 +368,7 @@ typedef void (*in_proc_t) (uint);    // input (net) comp procedures
 typedef void (*in_proc_back_t) (uint);    // BACKPROP input (net) comp procedures
 
 
-typedef int  (*in_proc_init_t) (void);    // input initialization procedures
+typedef uint (*in_proc_init_t) (void);    // input initialisation procedures
 
 
 typedef void (*stop_crit_t) (uint);  // stopping criterion comp procedures

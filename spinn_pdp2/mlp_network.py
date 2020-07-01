@@ -1,24 +1,18 @@
 import os
 import struct
-import time
 
-import spinnaker_graph_front_end as g
+import spinnaker_graph_front_end as gfe
 
 from pacman.model.graphs.machine import MachineEdge
-
-from spinnman.model.enums.cpu_state import CPUState
-
-from spinn_front_end_common.utilities import globals_variables
 
 from spinn_pdp2.input_vertex     import InputVertex
 from spinn_pdp2.sum_vertex       import SumVertex
 from spinn_pdp2.threshold_vertex import ThresholdVertex
 from spinn_pdp2.weight_vertex    import WeightVertex
-
-from spinn_pdp2.mlp_types    import MLPGroupTypes, MLPConstants, MLPUpdateFuncs
-from spinn_pdp2.mlp_group    import MLPGroup
-from spinn_pdp2.mlp_link     import MLPLink
-from spinn_pdp2.mlp_examples import MLPExampleSet
+from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants
+from spinn_pdp2.mlp_group        import MLPGroup
+from spinn_pdp2.mlp_link         import MLPLink
+from spinn_pdp2.mlp_examples     import MLPExampleSet
 
 
 class MLPNetwork():
@@ -43,11 +37,18 @@ class MLPNetwork():
         self._global_max_ticks = (intervals * ticks_per_interval) + 1
         self._train_group_crit = None
         self._test_group_crit  = None
-        self._timeout          = MLPConstants.DEF_TIMEOUT
-        self._num_epochs       = MLPConstants.DEF_NUM_EPOCHS
         self._learning_rate    = MLPConstants.DEF_LEARNING_RATE
         self._weight_decay     = MLPConstants.DEF_WEIGHT_DECAY
         self._momentum         = MLPConstants.DEF_MOMENTUM
+        self._update_function  = MLPConstants.DEF_UPDATE_FUNC
+        self._num_updates      = MLPConstants.DEF_NUM_UPDATES
+        self._num_examples     = None
+
+        # default stage parameter values
+        self._stg_update_function = MLPConstants.DEF_UPDATE_FUNC
+        self._stg_epochs          = MLPConstants.DEF_NUM_UPDATES
+        self._stg_examples        = None
+        self._stg_reset           = True
 
         # initialise lists of groups and links
         self.groups = []
@@ -61,6 +62,7 @@ class MLPNetwork():
         self._output_chain = []
 
         # track if initial weights have been loaded
+        self._weights_rdy = False
         self._weights_loaded = False
         self._weights_file = None
 
@@ -73,13 +75,19 @@ class MLPNetwork():
                                        label        = "Bias"
                                        )
 
+        # initialise machine graph parameters
+        self._graph_rdy = False
+        
         # keep track of the number of vertices in the graph
         self._num_vertices = 0
 
         # keep track of the number of partitions
         self.partitions = 0
 
-        # keep track if errors have occured
+        # keep track of the current execution stage
+        self._stage_id = 0
+
+        # keep track if errors have occurred
         self._aborted = False
 
 
@@ -112,10 +120,6 @@ class MLPNetwork():
         return self._num_write_blks
 
     @property
-    def timeout (self):
-        return self._timeout
-
-    @property
     def output_chain (self):
         return self._output_chain
 
@@ -124,34 +128,72 @@ class MLPNetwork():
         return self._bias_group
 
     @property
-    def config (self):
+    def network_config (self):
         """ returns a packed string that corresponds to
             (C struct) network_conf in mlp_types.h:
 
             typedef struct network_conf
             {
               uchar net_type;
-              uchar training;
-              uint  num_epochs;
-              uint  num_examples;
               uint  ticks_per_int;
               uint  global_max_ticks;
               uint  num_write_blks;
-              uint  timeout;
             } network_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        return struct.pack("<2B2x6I",
+        return struct.pack("<B3x3I",
                            self._net_type,
-                           self._training,
-                           self._num_epochs,
-                           self._num_examples,
                            self._ticks_per_interval,
                            self._global_max_ticks,
-                           self._num_write_blks,
-                           self._timeout
+                           self._num_write_blks
+                           )
+
+
+    @property
+    def stage_config (self):
+        """ returns a packed string that corresponds to
+            (C struct) stage_conf in mlp_types.h:
+
+            typedef struct stage_conf
+            {
+              uchar stage_id;         // stage identifier
+              uchar training;         // stage mode: train (1) or test (0)
+              uchar update_function;  // weight update function in this stage
+              uchar reset;            // reset example index at stage start?
+              uint  num_examples;     // examples to run in this stage
+              uint  num_epochs;       // training epochs in this stage
+            } stage_conf_t;
+
+            pack: standard sizes, little-endian byte order,
+            explicit padding
+        """
+        # set the update function to use in this stage
+        if self._stg_update_function is not None:
+            _update_function = self._stg_update_function
+        else:
+            _update_function = self._update_function
+
+        # set the number of examples to use in this stage
+        if self._stg_examples is not None:
+            _num_examples = self._stg_examples
+        else:
+            _num_examples = self._ex_set.num_examples
+
+        # set the number of epochs to run in this stage
+        if self._stg_epochs is not None:
+            _num_epochs = self._stg_epochs
+        else:
+            _num_epochs = self._num_updates
+
+        return struct.pack("<4B2I",
+                           self._stage_id,
+                           self._training,
+                           _update_function.value,
+                           self._stg_reset,
+                           _num_examples,
+                           _num_epochs
                            )
 
 
@@ -167,7 +209,7 @@ class MLPNetwork():
         :param units: number of units that form the group
         :param group_type: list of Lens-style group types
         :param input_funcs: functions applied in the input pipeline
-        :param output_funcs: functions appllied in the output pipeline
+        :param output_funcs: functions applied in the output pipeline
         :param label: human-readable group identifier
 
         :type units: unsigned integer
@@ -178,6 +220,9 @@ class MLPNetwork():
 
         :return: a new group object
         """
+        # machine graph needs rebuilding
+        self._graph_rdy = False
+        
         _id = len (self.groups)
 
         # set properties for OUTPUT group
@@ -244,17 +289,20 @@ class MLPNetwork():
 
         :return: a new link object
         """
+        # machine graph needs rebuilding
+        self._graph_rdy = False
+        
+        # check that enough data is provided
+        if (pre_link_group is None) or (post_link_group is None):
+            print ("error: pre- and post-link groups required")
+            return None
+
         if label is None:
             _label = "{}-{}".format (pre_link_group.label,
                                      post_link_group.label
                                      )
         else:
             _label = label
-
-        # check that enough data is provided
-        if (pre_link_group is None) or (post_link_group is None):
-            print ("error: pre and post link groups required")
-            return None
 
         # instantiate a new link
         _link = MLPLink (pre_link_group  = pre_link_group,
@@ -324,8 +372,8 @@ class MLPNetwork():
         :type momentum: float
         """
         if num_updates is not None:
-            print (f"setting num_epochs to {num_updates}")
-            self._num_epochs = num_updates
+            print (f"setting num_updates to {num_updates}")
+            self._num_updates = num_updates
 
         if train_group_crit is not None:
             print (f"setting train_group_crit to {train_group_crit}")
@@ -445,7 +493,7 @@ class MLPNetwork():
         binaries_path = os.path.join(os.path.dirname(__file__), "..", "binaries")
 
         # setup the machine graph
-        g.setup (model_binary_folder = binaries_path)
+        gfe.setup (model_binary_folder = binaries_path)
 
         # set the number of write blocks before generating vertices
         self._num_write_blks = len (self.output_chain)
@@ -465,25 +513,25 @@ class MLPNetwork():
                     for _fp in range (from_grp.partitions):
                         wv = WeightVertex (self, grp, from_grp, _tp, _fp)
                         grp.w_vertices.append (wv)
-                        g.add_machine_vertex_instance (wv)
+                        gfe.add_machine_vertex_instance (wv)
                         self._num_vertices += 1
 
             # create one sum core per group
             sv = SumVertex (self, grp)
             grp.s_vertex = sv
-            g.add_machine_vertex_instance (sv)
+            gfe.add_machine_vertex_instance (sv)
             self._num_vertices += 1
 
             # create one input core per group
             iv = InputVertex (self, grp)
             grp.i_vertex = iv
-            g.add_machine_vertex_instance (iv)
+            gfe.add_machine_vertex_instance (iv)
             self._num_vertices += 1
 
             # create one threshold core per group
             tv = ThresholdVertex (self, grp)
             grp.t_vertex = tv
-            g.add_machine_vertex_instance (tv)
+            gfe.add_machine_vertex_instance (tv)
             self._num_vertices += 1
 
         # create associated forward, backprop, synchronisation and
@@ -494,50 +542,50 @@ class MLPNetwork():
                 _frmg = w.from_group
 
                 # create forward w to s links
-                g.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
+                gfe.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
                                              w.fwd_link)
 
                 # create forward t to w (multicast) links
-                g.add_machine_edge_instance (MachineEdge (_frmg.t_vertex, w),
+                gfe.add_machine_edge_instance (MachineEdge (_frmg.t_vertex, w),
                                              _frmg.t_vertex.fwd_link[w.row_blk])
 
                 # create backprop w to s links
-                g.add_machine_edge_instance (MachineEdge (w, _frmg.s_vertex),
+                gfe.add_machine_edge_instance (MachineEdge (w, _frmg.s_vertex),
                                              w.bkp_link)
 
                 # create backprop i to w (multicast) links
-                g.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
+                gfe.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
                                              grp.i_vertex.bkp_link[w.col_blk])
 
                 # create forward synchronisation w to t links
-                g.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
+                gfe.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
                                              w.fds_link)
 
                 # create link delta summation w to s links
-                g.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
+                gfe.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
                                              w.lds_link)
 
                 # create link delta summation result s (first) to w links
-                g.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
+                gfe.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
                                              first.s_vertex.lds_link)
 
             # create forward s to i link
-            g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
+            gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                       grp.i_vertex),
                                          grp.s_vertex.fwd_link)
 
             # create backprop s to t link
-            g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
+            gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                       grp.t_vertex),
                                          grp.s_vertex.bkp_link)
 
             # create forward i to t link
-            g.add_machine_edge_instance (MachineEdge (grp.i_vertex,
+            gfe.add_machine_edge_instance (MachineEdge (grp.i_vertex,
                                                       grp.t_vertex),
                                          grp.i_vertex.fwd_link)
 
             # create backprop t to i link
-            g.add_machine_edge_instance (MachineEdge (grp.t_vertex,
+            gfe.add_machine_edge_instance (MachineEdge (grp.t_vertex,
                                                       grp.i_vertex),
                                          grp.t_vertex.bkp_link)
 
@@ -546,7 +594,7 @@ class MLPNetwork():
             if grp != first:
                 print (f"Creating lds s-s edge from group {grp.label} "
                        f"to group {first.label}")
-                g.add_machine_edge_instance (MachineEdge (grp.s_vertex,
+                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                           first.s_vertex),
                                              grp.s_vertex.lds_link)
 
@@ -557,61 +605,94 @@ class MLPNetwork():
                     for stpg in self.groups:
                         # create stop links to all w cores
                         for w in stpg.w_vertices:
-                            g.add_machine_edge_instance\
+                            gfe.add_machine_edge_instance\
                               (MachineEdge (grp.t_vertex, w),
                                grp.t_vertex.stp_link)
 
                         # create stop links to all s cores
-                        g.add_machine_edge_instance\
+                        gfe.add_machine_edge_instance\
                          (MachineEdge (grp.t_vertex, stpg.s_vertex),\
                           grp.t_vertex.stp_link)
 
                         # create stop links to all i cores
-                        g.add_machine_edge_instance\
+                        gfe.add_machine_edge_instance\
                          (MachineEdge (grp.t_vertex, stpg.i_vertex),\
                           grp.t_vertex.stp_link)
 
                         # create stop links to t cores (no link to itself!)
                         if stpg != grp:
-                            g.add_machine_edge_instance\
+                            gfe.add_machine_edge_instance\
                              (MachineEdge (grp.t_vertex, stpg.t_vertex),\
                               grp.t_vertex.stp_link)
                 else:
                     # create stop link to next OUTPUT group in chain
                     _inx  = self.output_chain.index (grp)
                     _stpg = self.output_chain[_inx + 1]
-                    g.add_machine_edge_instance (MachineEdge (grp.t_vertex,
+                    gfe.add_machine_edge_instance (MachineEdge (grp.t_vertex,
                                                               _stpg.t_vertex),
                                                  grp.t_vertex.stp_link)
 
+        self._graph_rdy = True
+
 
     def train (self,
-               update_function = MLPUpdateFuncs.UPD_DOUGSMOMENTUM
+               update_function = None,
+               num_updates = None
               ):
-        """ train the application graph
+        """ do one stage in train mode
         """
+        # set the update function to use in this stage
+        #NOTE: sorted at configuration time - if not provided
+        self._stg_update_function = update_function
+
+        # set the number of epochs to run in this stage
+        #NOTE: sorted at configuration time - if not provided
+        self._stg_epochs = num_updates
+
+        # sort the number of examples at configuration time
+        self._stg_examples = None
+
+        # always reset the example index at the start of training stage 
+        self._stg_reset = True
+
         self._training = 1
-        self._update_function = update_function
-
-        # run the application
-        self.run ()
+        self.stage_run ()
 
 
-    def test (self):
-        """ test the application graph without training
+    def test (self,
+               num_examples = None,
+               reset_examples = True
+              ):
+        """ do one stage in test mode
         """
+        # sort the update function at configuration time
+        self._stg_update_function = None
+
+        # set the number of epochs to run in this stage
+        self._stg_epochs = 1
+
+        # set the number of examples to run in this stage
+        #NOTE: sorted at configuration time - if not provided
+        self._stg_examples = num_examples
+
+        # reset the example index if requested
+        self._stg_reset = reset_examples
+
         self._training = 0
-
-        # not used but a value is needed for the weight config struct anyway
-        self._update_function = MLPUpdateFuncs.UPD_STEEPEST
-
-        # run the application
-        self.run ()
+        self.stage_run ()
 
 
-    def run (self):
-        """ run the application graph
+    def stage_run (self):
+        """ run a stage on application graph
         """
+        # check that no group is too big
+        for grp in self.groups:
+            if grp.units > MLPConstants.MAX_GRP_UNITS:
+                print (f"run aborted: group {grp.label} has more than "
+                       f"{MLPConstants.MAX_GRP_UNITS} units.")
+                self._aborted = True
+                return
+
         # cannot run unless weights file exists
         if self._weights_file is None:
             print ("run aborted: weights file not given")
@@ -639,34 +720,29 @@ class MLPNetwork():
             return
 
         # generate summary set, example and event data
-        self._num_examples = self._ex_set.compile (self)
-        if self._num_examples == 0:
-            print ("run aborted: error compiling example set")
-            self._aborted = True
-            return
-
-        # check that no group is too big
-        for grp in self.groups:
-            if grp.units > MLPConstants.MAX_GRP_UNITS:
-                print (f"run aborted: group {grp.id} has more than "
-                       f"{MLPConstants.MAX_GRP_UNITS} units.")
+        if not self._ex_set.examples_compiled:
+            if self._ex_set.compile (self) == 0:
+                print ("run aborted: error compiling example set")
                 self._aborted = True
                 return
 
-        # generate machine graph
-        self.generate_machine_graph ()
+        # generate machine graph - if needed
+        if not self._graph_rdy:
+            self.generate_machine_graph ()
 
-        # run application based on the machine graph
-        g.run_until_complete ()
+        # run stage
+        gfe.run_until_complete (self._stage_id)
 
+        # pause to allow debugging
+        input (f"stage {self._stage_id} paused: press enter to exit")
+
+        # prepare for next stage
+        self._stage_id += 1
 
     def end (self):
         """ clean up before exiting
         """
         if not self._aborted:
-            # pause to allow debugging
-            input ('paused: press enter to exit')
-
             print ("exit: application finished")
             # let the gfe clean up
-            g.stop()
+            gfe.stop()

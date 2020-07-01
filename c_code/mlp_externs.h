@@ -1,6 +1,10 @@
 #ifndef __MLP_EXTERNS_H__
 #define __MLP_EXTERNS_H__
 
+// front-end-common types
+#include "common-typedefs.h"
+
+
 // ------------------------------------------------------------------------
 // global variables
 // ------------------------------------------------------------------------
@@ -12,8 +16,12 @@ extern uint ldsaKey;              // 32-bit packet ID for link delta summation a
 extern uint ldstKey;              // 32-bit packet ID for link delta summation totals
 extern uint ldsrKey;              // 32-bit packet ID for link delta summation reports
 
-extern uint         epoch;        // current training iteration
-extern uint         example;      // current example in epoch
+extern uint32_t stage_step;       // current stage step
+extern uint32_t stage_num_steps;  // current stage number of steps
+
+extern uint         epoch;        // current training/testing iteration
+extern uint         example_cnt;  // example count in epoch
+extern uint         example_inx;  // current example index
 extern uint         evt;          // current event in example
 extern uint         max_evt;      // the last event reached in the current example
 extern uint         num_events;   // number of events in current example
@@ -23,7 +31,6 @@ extern uint         max_ticks;    // maximum number of ticks in current event
 extern uint         min_ticks;    // minimum number of ticks in current event
 extern uint         tick;         // current tick in phase
 extern uchar        tick_stop;    // current tick stop decision
-extern uchar        network_stop; // network_stop decision
 extern uint         ev_tick;      // current tick in event
 extern proc_phase_t phase;        // FORWARD or BACKPROP
 
@@ -43,6 +50,8 @@ extern w_conf_t       wcfg;       // weight core configuration parameters
 extern s_conf_t       scfg;       // sum core configuration parameters
 extern i_conf_t       icfg;       // input core configuration parameters
 extern t_conf_t       tcfg;       // threshold core configuration parameters
+extern stage_conf_t   xcfg;       // stage configuration parameters
+extern address_t      xadr;       // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -100,7 +109,7 @@ extern scoreboard_t     s_ldst_arrived; // keep track of the number of link delt
 //list of input pipeline procedures
 extern in_proc_t      const i_in_procs[SPINN_NUM_IN_PROCS];
 extern in_proc_back_t const i_in_back_procs[SPINN_NUM_IN_PROCS];
-//list of initialization procedures for input pipeline
+//list of initialisation procedures for input pipeline
 extern in_proc_init_t const i_init_in_procs[SPINN_NUM_IN_PROCS];
 
 extern long_net_t     * i_nets;        // unit nets computed in current tick
@@ -113,8 +122,8 @@ extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_pend; // sync. semaphore: proc & stop
 extern long_delta_t   * ib_init_delta; // initial delta value for every tick
 extern scoreboard_t     ib_done;       // current tick delta computation done
-extern long_net_t     * i_last_integr_net;   //last integrator output value
-extern long_delta_t   * i_last_integr_delta; //last integrator delta value
+extern long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
+extern long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
 
 extern uint           * i_bkpKey;      // i cores have one bkpKey per partition
 
@@ -131,17 +140,16 @@ extern out_proc_t      const t_out_procs[SPINN_NUM_OUT_PROCS];
 extern out_proc_back_t const t_out_back_procs[SPINN_NUM_OUT_PROCS];
 // list of stop eval procedures
 extern stop_crit_t     const t_stop_procs[SPINN_NUM_STOP_PROCS];
-// list of initialization procedures for output pipeline
+// list of initialisation procedures for output pipeline
 extern out_proc_init_t const t_init_out_procs[SPINN_NUM_OUT_PROCS];
 extern out_error_t     const t_out_error[SPINN_NUM_ERROR_PROCS];
 
 extern activation_t   * t_outputs;     // current tick unit outputs
-extern net_t          * t_nets;        // nets received from sum cores
+extern net_t          * t_nets;        // nets received from input cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
-extern activation_t   * t_last_integr_output;   //last integrator output value
-extern long_deriv_t   * t_last_integr_output_deriv; //last integr output deriv
+extern activation_t   * t_last_integr_output;   //last INTEGRATOR output value
+extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output deriv
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
-extern uchar            t_hard_clamp_en;   // hard clamp output enabled
 extern uint             t_it_idx;      // index into current inputs/targets
 extern uint             t_tot_ticks;   // total ticks on current example
 extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
@@ -152,12 +160,13 @@ extern sdp_msg_t        t_sdp_msg;     // SDP message buffer for host comms.
 extern scoreboard_t     tf_arrived;    // keep track of expected nets
 extern uint             tf_thrds_pend; // sync. semaphore: proc & stop
 extern uchar            tf_chain_prev; // previous daisy chain (DC) value
-extern uchar            tf_chain_init; // previous DC received init
+extern uchar            tf_initChain;  // previous DC received init value
 extern uchar            tf_chain_rdy;  // local DC value can be forwarded
 extern uchar            tf_stop_crit;  // stop criterion met?
 extern uchar            tf_group_crit;     // stop criterion met for all groups?
 extern uchar            tf_event_crit;     // stop criterion met for all events?
 extern uchar            tf_example_crit;   // stop criterion met for all examples?
+extern error_t          t_group_criterion; // convergence criterion value
 extern stop_crit_t      tf_stop_func;  // stop evaluation function
 extern uint             tf_stop_key;   // stop criterion packet key
 extern uint             tf_stpn_key;   // stop network packet key

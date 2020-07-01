@@ -12,19 +12,21 @@
 #include "process_i.h"
 #include "activation.h"
 
-// set of routines to be used by I core to process data
 
+// ------------------------------------------------------------------------
+// input core computation routines
+// ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // process queued packets until queue empty
 // ------------------------------------------------------------------------
-void i_process (uint null0, uint null1)
+void i_process (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "i_process\n");
 #endif
-
-  (void) null0;
-  (void) null1;
 
   // process packet queue
   // access queue with interrupts disabled
@@ -126,13 +128,13 @@ void i_forward_packet (uint key, uint payload)
     // prepare for next tick,
     if_done = 0;
 
-    // access synchronization semaphore with interrupts disabled
+    // access synchronisation semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
     // check if all other threads done
     if (if_thrds_pend == 0)
     {
-      // if done initialize semaphore,
+      // if done initialise semaphore,
       if_thrds_pend = 1;
 
       // restore interrupts after flag access,
@@ -228,10 +230,13 @@ void i_backprop_packet (uint key, uint payload)
 
 // ------------------------------------------------------------------------
 // FORWARD phase: the tick has been completed, move FORWARD to the next tick
-// updating the indexes to the events/examples as required
+// updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
-void if_advance_tick (uint null0, uint null1)
+void if_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "if_advance_tick\n");
 #endif
@@ -243,9 +248,6 @@ void if_advance_tick (uint null0, uint null1)
 #ifdef DEBUG_TICK
   io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
 #endif
-
-  (void) null0;
-  (void) null1;
 
   // check if end of event
   if (tick_stop)
@@ -263,10 +265,13 @@ void if_advance_tick (uint null0, uint null1)
 
 // ------------------------------------------------------------------------
 // BACKPROP phase: the tick has been completed, move FORWARD to the next tick
-// updating the indexes to the events/examples as required
+// updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
-void ib_advance_tick (uint null0, uint null1)
+void ib_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "ib_advance_tick\n");
 #endif
@@ -283,13 +288,10 @@ void ib_advance_tick (uint null0, uint null1)
   io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
 #endif
 
-  (void) null0;
-  (void) null1;
-
   // check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
   {
-    // initialize the tick count
+    // initialise the tick count
     tick = SPINN_I_INIT_TICK;
 
 #ifdef TRACE
@@ -324,7 +326,7 @@ void if_advance_event (void)
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
     // and check if in training mode
-    if (ncfg.training)
+    if (xcfg.training)
     {
       // if training, save number of ticks
       num_ticks = tick;
@@ -334,7 +336,7 @@ void if_advance_event (void)
     }
     else
     {
-      // if not training, initialize ticks for the next example
+      // if not training, initialise ticks for the next example
       tick = SPINN_I_INIT_TICK;
 
       // then move to next example
@@ -368,29 +370,35 @@ void i_advance_example (void)
   io_printf (IO_BUF, "i_advance_example\n");
 #endif
 
+  // point to next example in the set - wrap around if at the end
+  if (++example_inx >= es->num_examples)
+  {
+    example_inx = 0;
+  }
+
   // check if done with examples
-  if (++example >= ncfg.num_examples)
+  if (++example_cnt >= xcfg.num_examples)
   {
     // check if done with epochs
-    if (++epoch >= ncfg.num_epochs)
+    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
     {
       // report no error
-      done(SPINN_NO_ERROR);
+      stage_done (SPINN_NO_ERROR);
       return;
     }
     else
     {
-      // start from first example again
-      example = 0;
+      // reset example count for next epoch
+      example_cnt = 0;
     }
   }
 
   // start from first event for next example
   evt = 0;
-  num_events = ex[example].num_events;
-  event_idx = ex[example].ev_idx;
+  num_events = ex[example_inx].num_events;
+  event_idx = ex[example_inx].ev_idx;
 
-  // if input or output group initialize new event input/target index
+  // if input or output group initialise new event input/target index
   //TODO: check if the target value is required in I cores
   // for the BACKPROP phase, otherwise remove the condition for the
   // output group
@@ -399,7 +407,7 @@ void i_advance_example (void)
     i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
-  // if the input integrator is used reset the array of last values
+  // if the input INTEGRATOR is used reset the array of last values
   if (icfg.in_integr_en)
     for (uint i = 0; i < icfg.num_units; i++)
     {
@@ -416,15 +424,15 @@ void i_advance_example (void)
 // ------------------------------------------------------------------------
 void compute_in (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "compute_in\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "compute_in\n");
+#endif
 
-  #ifdef DEBUG_VRB
-    char* group;
-    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
-    io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
-  #endif
+#ifdef DEBUG_VRB
+  char* group;
+  group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
+  io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example_cnt, tick);
+#endif
 
   for (uint i = 0; i < icfg.num_in_procs; i++)
   {
@@ -435,7 +443,7 @@ void compute_in (uint inx)
   // TODO: for non-continuous networks, this needs to check the requirement
   // to have these histories saved, which needs to come as a configuration
   // parameter. For continuous networks, these histories are always required.
-  if (ncfg.training)
+  if (xcfg.training)
   {
     store_nets(inx);
   }
@@ -448,9 +456,9 @@ void compute_in (uint inx)
 // ------------------------------------------------------------------------
 void store_nets (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "store_nets\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "store_nets\n");
+#endif
 
   i_net_history[(tick * icfg.num_units) + inx] = i_nets[inx];
 }
@@ -462,9 +470,9 @@ void store_nets (uint inx)
 // ------------------------------------------------------------------------
 void restore_nets (uint inx, uint tick)
 {
-  #ifdef TRACE
-    io_printf (IO_BUF, "restore_nets\n");
-  #endif
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_nets\n");
+#endif
 
   i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
 }
@@ -472,13 +480,13 @@ void restore_nets (uint inx, uint tick)
 
 
 // ------------------------------------------------------------------------
-// input integrator element
+// input INTEGRATOR element
 // ------------------------------------------------------------------------
 void in_integr (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "in_integr\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "in_integr\n");
+#endif
 
   // representation: s40.23 in a 64 bit variable
   long_net_t last_net = i_last_integr_net[inx];
@@ -512,14 +520,14 @@ void in_integr (uint inx)
 // ------------------------------------------------------------------------
 void in_soft_clamp (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "in_soft_clamp\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "in_soft_clamp\n");
+#endif
 
   // compute only if input is not NaN
   if (it[i_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-	long_activ_t external_input = it[i_it_idx + inx];           // s36.27
+    long_activ_t external_input = it[i_it_idx + inx];           // s36.27
     long_fpreal soft_clamp_strength = icfg.soft_clamp_strength; // s48.16
     long_activ_t init_output = icfg.initOutput;                 // s36.27
 
@@ -543,15 +551,15 @@ void in_soft_clamp (uint inx)
 // ------------------------------------------------------------------------
 void compute_in_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "compute_in_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "compute_in_back\n");
+#endif
 
-  #ifdef DEBUG_VRB
-    char* group;
-    group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
-    io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example, tick);
-  #endif
+#ifdef DEBUG_VRB
+  char* group;
+  group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
+  io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example_cnt, tick);
+#endif
 
   int i;
 
@@ -569,13 +577,13 @@ void compute_in_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-// compute the input integration operation for the backprop
+// compute the input integration operation for the BACKPROP phase
 // ------------------------------------------------------------------------
 void in_integr_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "in_integr_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "in_integr_back\n");
+#endif
 
   // s36.27
   long_delta_t last_delta = i_last_integr_delta[inx];
@@ -591,7 +599,7 @@ void in_integr_back (uint inx)
 
   i_deltas[inx] = d;
 
-  // store the integrator state for the next iteration
+  // store the INTEGRATOR state for the next iteration
   i_last_integr_delta[inx] = last_delta;
 }
 // ------------------------------------------------------------------------
@@ -602,46 +610,9 @@ void in_integr_back (uint inx)
 /*
 void in_soft_clamp_back (uint inx)
 {
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "in_soft_clamp_back\n");
-  #endif
+#ifdef TRACE_VRB
+  io_printf (IO_BUF, "in_soft_clamp_back\n");
+#endif
 }
 */
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// initialization of the input intergrator state
-// ------------------------------------------------------------------------
-int init_in_integr ()
-{
-  #ifdef TRACE_VRB
-    io_printf (IO_BUF, "init_in_integr\n");
-  #endif
-
-  // allocate the memory for the integrator state variable for outputs
-  if ((i_last_integr_net = ((long_net_t *)
-         spin1_malloc (icfg.num_units * sizeof(long_net_t)))) == NULL
-       )
-  {
-      return (SPINN_MEM_UNAVAIL);
-  }
-
-  // allocate the memory for the integrator state variable for deltas
-  if ((i_last_integr_delta = ((long_delta_t *)
-         spin1_malloc (icfg.num_units * sizeof(long_delta_t)))) == NULL
-       )
-  {
-      return (SPINN_MEM_UNAVAIL);
-  }
-
-  // reset the memory of the integrator state variable
-  for (uint i = 0; i<icfg.num_units; i++)
-  {
-    i_last_integr_net[i] = (long_net_t) icfg.initNets;
-    i_last_integr_delta[i] = 0;
-  }
-
-  return SPINN_NO_ERROR;
-}
 // ------------------------------------------------------------------------

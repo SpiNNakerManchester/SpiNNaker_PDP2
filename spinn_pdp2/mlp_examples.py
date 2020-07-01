@@ -1,5 +1,6 @@
 import os
 import struct
+
 from spinn_pdp2.mlp_types import MLPConstants
 
 
@@ -26,9 +27,13 @@ class MLPExampleSet ():
 
         # start with an empty list of examples
         self.examples   = []
+        self.num_examples = 0
 
         # track if examples have been loaded
         self.examples_loaded = False
+
+        # track if examples have been compiled
+        self.examples_compiled = False
 
         print ("creating example set")
 
@@ -646,7 +651,12 @@ class MLPExampleSet ():
 
                     print (f"{g.label}: {len (g.targets)} targets")
 
-        return len (self.examples)
+        self.num_examples = len (self.examples)
+
+        # mark examples file as compiled
+        self.examples_compiled = True
+
+        return self.num_examples
 
 
 class MLPExample ():

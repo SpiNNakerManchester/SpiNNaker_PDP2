@@ -1,7 +1,7 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
-// graph-front-end
+// front-end-common
 #include "common-typedefs.h"
 #include <data_specification.h>
 #include <simulation.h>
@@ -15,19 +15,22 @@
 #include "comms_w.h"
 #include "process_w.h"
 
-// main methods for the weight core
 
 // ------------------------------------------------------------------------
-// global "constants"
+// weight core main routines
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// weight core constants
 // ------------------------------------------------------------------------
 // list of procedures for updating of weights. The order is relevant, as
-// the indexes are specified in mlp_params.h
+// the indices are specified in mlp_params.h
 weight_update_t const
   w_update_procs[SPINN_NUM_UPDATE_PROCS] =
   {
     steepest_update_weights, momentum_update_weights, dougsmomentum_update_weights
   };
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // global variables
@@ -39,8 +42,12 @@ uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 uint ldsaKey;              // 32-bit packet ID for link delta summation
 
+uint32_t stage_step;       // current stage step
+uint32_t stage_num_steps;  // current stage number of steps
+
 uint         epoch;        // current training iteration
-uint         example;      // current example in epoch
+uint         example_cnt;  // example count in epoch
+uint         example_inx;  // current example index
 uint         evt;          // current event in example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
@@ -54,20 +61,28 @@ uchar        tick_stop;    // current tick stop decision
 uint         to_epoch   = 0;
 uint         to_example = 0;
 uint         to_tick    = 0;
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // data structures in regions of SDRAM
 // ------------------------------------------------------------------------
-weight_t         * wt;     // initial connection weights
+mlp_set_t        * es;     // example set data
 mlp_example_t    * ex;     // example data
+weight_t         * wt;     // initial connection weights
 uint             * rt;     // multicast routing keys data
+// ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
-// network and core configurations (DTCM)
+// network, core and stage configurations (DTCM)
 // ------------------------------------------------------------------------
-network_conf_t     ncfg;   // network-wide configuration parameters
-w_conf_t           wcfg;   // weight core configuration parameters
+network_conf_t ncfg;           // network-wide configuration parameters
+w_conf_t       wcfg;           // weight core configuration parameters
+stage_conf_t   xcfg;           // stage configuration parameters
+address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // weight core variables
@@ -107,139 +122,55 @@ weight_update_t  wb_update_func;    // weight update function
 activation_t   * w_output_history;  // history array for outputs
 // ------------------------------------------------------------------------
 
+
 #ifdef DEBUG
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-uint pkt_sent = 0;  // total packets sent
-uint sent_fwd = 0;  // packets sent in FORWARD phase
-uint sent_bkp = 0;  // packets sent in BACKPROP phase
-uint pkt_recv = 0;  // total packets received
-uint recv_fwd = 0;  // packets received in FORWARD phase
-uint recv_bkp = 0;  // packets received in BACKPROP phase
-uint pkt_fwbk = 0;  // unused packets received in FORWARD phase
-uint pkt_bwbk = 0;  // unused packets received in BACKPROP phase
-uint spk_sent = 0;  // sync packets sent
-uint spk_recv = 0;  // sync packets received
-uint stp_sent = 0;  // stop packets sent
-uint stp_recv = 0;  // stop packets received
-uint stn_recv = 0;  // network_stop packets received
-uint lda_sent = 0;  // partial link_delta packets sent
-uint ldr_recv = 0;  // link_delta packets received
-uint wrng_phs = 0;  // packets received in wrong phase
-uint wrng_tck = 0;  // FORWARD packets received in wrong tick
-uint wrng_btk = 0;  // BACKPROP packets received in wrong tick
-uint wght_ups = 0;  // number of weight updates done
-uint tot_tick = 0;  // total number of ticks executed
+uint pkt_sent;  // total packets sent
+uint sent_fwd;  // packets sent in FORWARD phase
+uint sent_bkp;  // packets sent in BACKPROP phase
+uint pkt_recv;  // total packets received
+uint recv_fwd;  // packets received in FORWARD phase
+uint recv_bkp;  // packets received in BACKPROP phase
+uint pkt_fwbk;  // unused packets received in FORWARD phase
+uint pkt_bwbk;  // unused packets received in BACKPROP phase
+uint spk_sent;  // sync packets sent
+uint spk_recv;  // sync packets received
+uint stp_sent;  // stop packets sent
+uint stp_recv;  // stop packets received
+uint stn_recv;  // network_stop packets received
+uint lda_sent;  // partial link_delta packets sent
+uint ldr_recv;  // link_delta packets received
+uint wrng_phs;  // packets received in wrong phase
+uint wrng_tck;  // FORWARD packets received in wrong tick
+uint wrng_btk;  // BACKPROP packets received in wrong tick
+uint wght_ups;  // number of weight updates done
+uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
-
-
-// ------------------------------------------------------------------------
-// load configuration from SDRAM and initialise variables
-// ------------------------------------------------------------------------
-uint init ()
-{
-  io_printf (IO_BUF, "weight\n");
-
-  // read the data specification header
-  data_specification_metadata_t * data =
-          data_specification_get_data_address();
-  if (!data_specification_read_header (data))
-  {
-	  return (SPINN_CFG_UNAVAIL);
-  }
-
-  // set up the simulation interface (system region)
-  //NOTE: these variables are not used!
-  uint32_t n_steps, run_forever, step;
-  if (!simulation_steps_initialise(
-      data_specification_get_region(SYSTEM, data),
-      APPLICATION_NAME_HASH, &n_steps, &run_forever, &step, 0, 0))
-  {
-    return (SPINN_CFG_UNAVAIL);
-  }
-
-  // network configuration address
-  address_t nt = data_specification_get_region (NETWORK, data);
-
-  // initialise network configuration from SDRAM
-  spin1_memcpy (&ncfg, nt, sizeof (network_conf_t));
-
-  // core configuration address
-  address_t dt = data_specification_get_region (CORE, data);
-
-  // initialise core-specific configuration from SDRAM
-  spin1_memcpy (&wcfg, dt, sizeof (w_conf_t));
-
-  // initial connection weights
-  wt = (weight_t *) data_specification_get_region
-		  (WEIGHTS, data);
-
-  // examples
-  ex = (mlp_example_t *) data_specification_get_region
-		  (EXAMPLES, data);
-
-  // routing keys
-  rt = (uint *) data_specification_get_region
-		  (ROUTING, data);
-
-#ifdef DEBUG_CFG0
-  io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
-  io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
-  io_printf (IO_BUF, "rb: %d\n", wcfg.row_blk);
-  io_printf (IO_BUF, "cb: %d\n", wcfg.col_blk);
-  io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
-  io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
-  io_printf (IO_BUF, "mm: %k\n", wcfg.momentum);
-  io_printf (IO_BUF, "uf: %d\n", wcfg.update_function);
-  io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
-  io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-  io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
-  io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
-#endif
-
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch   = 0;
-  example = 0;
-  evt     = 0;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise number of events and event index
-  num_events = ex[example].num_events;
-  event_idx  = ex[example].ev_idx;
-
-  // allocate memory and initialise variables
-  uint rcode = w_init ();
-
-  return (rcode);
-}
-// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
 // timer callback: check that there has been progress in execution.
-// If no progress has been made terminate with SPINN_TIMEOUT_EXIT exit code.
+// If no progress has been made terminate with SPINN_TIMEOUT_EXIT code.
 // ------------------------------------------------------------------------
-void timeout (uint ticks, uint null)
+void timeout (uint ticks, uint unused)
 {
   (void) ticks;
-  (void) null;
+  (void) unused;
 
   // check if progress has been made
-  if ((to_epoch == epoch) && (to_example == example) && (to_tick == tick))
+  if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
     // report timeout error
-    done(SPINN_TIMEOUT_EXIT);
+    stage_done (SPINN_TIMEOUT_EXIT);
   }
   else
   {
     // update checked variables
     to_epoch   = epoch;
-    to_example = example;
+    to_example = example_cnt;
     to_tick    = tick;
   }
 }
@@ -247,19 +178,20 @@ void timeout (uint ticks, uint null)
 
 
 // ------------------------------------------------------------------------
-// start callback: get started by sending outputs to host and w cores.
+// kick start simulation
+//NOTE: workaround for an FEC bug
 // ------------------------------------------------------------------------
 void get_started (void)
 {
-  // start log,
-  io_printf (IO_BUF, "-----------------------\n");
-  io_printf (IO_BUF, "starting simulation\n");
-
-  // and enable deadlock check
-  tc[T1_INT_CLR] = 1;
-  tc[T1_LOAD] = sv->cpu_clk * SPINN_TIMER_TICK_PERIOD;
+  // start timer,
   vic[VIC_ENABLE] = (1 << TIMER1_INT);
   tc[T1_CONTROL] = 0xe2;
+
+  // redefine start function,
+  simulation_set_start_function (stage_start);
+
+  // and run new start function
+  stage_start ();
 }
 // ------------------------------------------------------------------------
 
@@ -272,53 +204,42 @@ void c_main ()
   // say hello,
   io_printf (IO_BUF, ">> mlp\n");
 
-  // get this core's IDs,
-  chipID = spin1_get_chip_id();
-  coreID = spin1_get_core_id();
+  // get core IDs,
+  chipID = spin1_get_chip_id ();
+  coreID = spin1_get_core_id ();
 
-  // initialise application,
-  uint exit_code = init ();
-
-  // check if init completed successfully,
+  // initialise configurations from SDRAM,
+  uint exit_code = cfg_init ();
   if (exit_code != SPINN_NO_ERROR)
   {
-    // if init failed report results and abort simulation
-    done (exit_code);
-    rt_error(RTE_SWERR);
+    // report results and abort
+    stage_done (exit_code);
   }
 
-#ifdef PROFILE
-  // configure timer 2 for profiling
-  // enabled, 32 bit, free running, 16x pre-scaler
-  tc[T2_CONTROL] = SPINN_TIMER2_CONF;
-  tc[T2_LOAD] = SPINN_TIMER2_LOAD;
-#endif
+  // allocate memory in DTCM and SDRAM,
+  exit_code = mem_init ();
+  if (exit_code != SPINN_NO_ERROR)
+  {
+    // report results and abort
+    stage_done (exit_code);
+  }
 
-  // timer1 callback (used for background deadlock check)
+  // initialise variables,
+  var_init ();
+
+  // set up timer1 (used for background deadlock check),
+  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
-  // packet received callbacks
+  // set up packet received callbacks,
   spin1_callback_on (MC_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);
   spin1_callback_on (MCPL_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);
 
-#ifdef PROFILE
-  uint start_time = tc[T2_COUNT];
-  io_printf (IO_BUF, "start count: %u\n", start_time);
-#endif
-
   // setup simulation,
-  simulation_set_start_function(get_started);
-  simulation_set_uses_timer(FALSE);
+  simulation_set_start_function (get_started);
 
   // start execution,
-  simulation_run();
-
-#ifdef PROFILE
-  uint final_time = tc[T2_COUNT];
-  io_printf (IO_BUF, "final count: %u\n", final_time);
-  io_printf (IO_BUF, "execution time: %u us\n",
-      (start_time - final_time) / SPINN_TIMER2_DIV);
-#endif
+  simulation_run ();
 
   // and say goodbye
   io_printf (IO_BUF, "<< mlp\n");

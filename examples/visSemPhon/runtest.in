@@ -1,0 +1,21 @@
+# Load training set 
+loadExamples namtr.ex -set namtr -m RANDOMISED
+
+# parameters for hiddenunit size and reccurrent/feedforward
+global hiddensize recurrent
+set hiddensize 5000
+set recurrent 1
+
+#set up network
+if [expr $recurrent==0] then {source fullnetff.in} else {source fullnetrec.in}  
+useTrainingSet namtr
+useTestingSet namtr
+
+#Train for 100 epochs
+set  x 0
+saveWeights epoch$x.wt -v 3
+for {set x 1} {$x < 100} {incr x} {
+	train 1 
+	saveWeights epoch$x.wt -v 3
+}
+

@@ -6,18 +6,20 @@ from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.resources.resource_container \
     import ResourceContainer, ConstantSDRAM
 
+from spinn_utilities.overrides import overrides
+
 from spinn_front_end_common.abstract_models.abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
+from spinn_front_end_common.abstract_models import \
+    AbstractRewritesDataSpecification
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
-
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
+
 from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
     import generate_steps_system_data_region
-
-from spinn_utilities.overrides import overrides
 
 from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
@@ -25,7 +27,9 @@ from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 class WeightVertex(
         SimulatorVertex,
         MachineDataSpecableVertex,
-        AbstractProvidesNKeysForPartition):
+        AbstractProvidesNKeysForPartition,
+        AbstractRewritesDataSpecification
+        ):
 
     """ A vertex to implement a PDP2 weight core
         that computes partial weight/input products
@@ -44,12 +48,15 @@ class WeightVertex(
             binary_name = "weight.aplx",
             constraints = None)
 
+        self._stage = 0
+
         # application-level data
         self._network    = network
         self._group      = group
         self._from_group = from_group
         self._col_blk    = col_blk
         self._row_blk    = row_blk
+        self._set_cfg    = network._ex_set.set_config
         self._ex_cfg     = network._ex_set.example_config
 
         # compute number of rows and columns
@@ -120,11 +127,15 @@ class WeightVertex(
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.config)
+            len (self._network.network_config)
 
         # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
             len (self.config)
+
+        # set configuration structure
+        self._N_EXAMPLE_SET_BYTES = \
+            len (self._set_cfg)
 
         # list of example configurations
         self._N_EXAMPLES_BYTES = \
@@ -137,12 +148,23 @@ class WeightVertex(
         # keys are integers
         self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * _data_int.size
 
+        # stage configuration structure
+        self._N_STAGE_CONFIGURATION_BYTES = \
+            len (self._network.stage_config)
+
+        # reserve SDRAM space used to store historic data
+        self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
+            self.group.units * self._network.global_max_ticks
+
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
             self._N_CORE_CONFIGURATION_BYTES + \
+            self._N_EXAMPLE_SET_BYTES + \
             self._N_EXAMPLES_BYTES + \
             self._N_WEIGHTS_BYTES + \
-            self._N_KEYS_BYTES
+            self._N_KEYS_BYTES + \
+            self._N_STAGE_CONFIGURATION_BYTES + \
+            self._OUTPUT_HISTORY_BYTES
         )
 
     def cast_float_to_weight (self,
@@ -215,7 +237,6 @@ class WeightVertex(
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
               short_fpreal_t momentum;
-              uchar          update_function;
             } w_conf_t;
 
             pack: standard sizes, little-endian byte order,
@@ -233,15 +254,14 @@ class WeightVertex(
         momentum = int (self.momentum *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<4I3hBx",
+        return struct.pack ("<4I3h2x",
                             self._num_rows,
                             self._num_cols,
                             self._row_blk,
                             self._col_blk,
                             learning_rate & 0xffff,
                             weight_decay & 0xffff,
-                            momentum & 0xffff,
-                            self.update_function.value & 0xff
+                            momentum & 0xffff
                             )
 
     @property
@@ -252,9 +272,11 @@ class WeightVertex(
             )
         return resources
 
+
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
         return self._n_keys
+
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
     def generate_machine_data_specification(
@@ -271,7 +293,7 @@ class WeightVertex(
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.config:
+        for c in self._network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
@@ -282,6 +304,16 @@ class WeightVertex(
 
         # write the core configuration into spec
         for c in self.config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
+        # Reserve and write the example set region
+        spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
+                                    self._N_EXAMPLE_SET_BYTES)
+
+        spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
+
+        # write the example set configuration into spec
+        for c in self._set_cfg:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the examples region
@@ -340,5 +372,45 @@ class WeightVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
 
+        # Reserve and write the stage configuration region
+        spec.reserve_memory_region (MLPRegions.STAGE.value,
+                                    self._N_STAGE_CONFIGURATION_BYTES)
+
+        spec.switch_write_focus (MLPRegions.STAGE.value)
+
+        # write the stage configuration into spec
+        for c in self._network.stage_config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
         # End the specification
         spec.end_specification ()
+
+
+    @overrides(AbstractRewritesDataSpecification.regenerate_data_specification)
+    def regenerate_data_specification(self, spec, placement):
+        # Reserve and write the stage configuration region
+        spec.reserve_memory_region (MLPRegions.STAGE.value,
+                                    self._N_STAGE_CONFIGURATION_BYTES)
+
+        spec.switch_write_focus (MLPRegions.STAGE.value)
+
+        # write the stage configuration into spec
+        for c in self._network.stage_config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
+
+        spec.end_specification()
+
+
+    @overrides(AbstractRewritesDataSpecification.requires_memory_regions_to_be_reloaded)
+    def requires_memory_regions_to_be_reloaded(self):
+        return True
+
+
+    @overrides(AbstractRewritesDataSpecification.mark_regions_reloaded)
+    def mark_regions_reloaded(self):
+        """
+            TODO: not really sure what this method is used for!
+        """
+        # prepare for next stage
+        self._stage += 1

@@ -13,7 +13,7 @@
 
 
 // ------------------------------------------------------------------------
-// simulation constants
+// setup constants
 // ------------------------------------------------------------------------
 #define SPINN_TIMER_TICK_PERIOD  1000000
 //#define SPINN_TIMER_TICK_PERIOD  100000

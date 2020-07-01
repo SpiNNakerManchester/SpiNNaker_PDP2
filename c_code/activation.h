@@ -6,7 +6,7 @@
 activation_t sigmoid       (net_t input);
 net_t        inv_sigmoid   (activation_t input);
 
-#define __SQRT_HALF	UINT32_C(3037000500)
+#define __SQRT_HALF     UINT32_C(3037000500)
 
 extern uint64_t recip_normalized_root (uint32_t x);
 extern uint64_t __x_u64_ulr           (uint64_t x, uint32_t y);

@@ -6,18 +6,20 @@ from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.resources.resource_container \
     import ResourceContainer, ConstantSDRAM
 
+from spinn_utilities.overrides import overrides
+
 from spinn_front_end_common.abstract_models.abstract_provides_n_keys_for_partition \
     import AbstractProvidesNKeysForPartition
+from spinn_front_end_common.abstract_models import \
+    AbstractRewritesDataSpecification
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
-
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
+
 from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
     import generate_steps_system_data_region
-
-from spinn_utilities.overrides import overrides
 
 from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
@@ -25,7 +27,9 @@ from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 class SumVertex(
         SimulatorVertex,
         MachineDataSpecableVertex,
-        AbstractProvidesNKeysForPartition):
+        AbstractProvidesNKeysForPartition,
+        AbstractRewritesDataSpecification
+        ):
 
     """ A vertex to implement an PDP2 sum core
         that aggregates partial weight/input products
@@ -41,9 +45,12 @@ class SumVertex(
             binary_name = "sum.aplx",
             constraints = None)
 
+        self._stage = 0
+
         # application-level data
         self._network = network
         self._group   = group
+        self._set_cfg = network._ex_set.set_config
         self._ex_cfg  = network._ex_set.example_config
 
         # check if first group in the network
@@ -76,11 +83,15 @@ class SumVertex(
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.config)
+            len (self._network.network_config)
 
         # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
             len (self.config)
+
+        # set configuration structure
+        self._N_EXAMPLE_SET_BYTES = \
+            len (self._set_cfg)
 
         # list of example configurations
         self._N_EXAMPLES_BYTES = \
@@ -89,11 +100,17 @@ class SumVertex(
         # keys are integers
         self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * _data_int.size
 
+        # stage configuration structure
+        self._N_STAGE_CONFIGURATION_BYTES = \
+            len (self._network.stage_config)
+
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
             self._N_CORE_CONFIGURATION_BYTES + \
+            self._N_EXAMPLE_SET_BYTES + \
             self._N_EXAMPLES_BYTES + \
-            self._N_KEYS_BYTES
+            self._N_KEYS_BYTES + \
+            self._N_STAGE_CONFIGURATION_BYTES
         )
 
     @property
@@ -124,7 +141,6 @@ class SumVertex(
               scoreboard_t bkp_expect;
               scoreboard_t ldsa_expect;
               scoreboard_t ldst_expect;
-              uchar        update_function;
               uchar        is_first_group;
             } s_conf_t;
 
@@ -132,13 +148,12 @@ class SumVertex(
             explicit padding
         """
 
-        return struct.pack ("<5I2B2x",
+        return struct.pack ("<5IB3x",
                             self.group.units,
                             self._fwd_expect,
                             self._bkp_expect,
                             self._ldsa_expect,
                             self._ldst_expect,
-                            self.update_function.value & 0xff,
                             self._is_first_group & 0xff
                             )
 
@@ -150,9 +165,11 @@ class SumVertex(
             )
         return resources
 
+
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
         return self._n_keys
+
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
     def generate_machine_data_specification(
@@ -169,7 +186,7 @@ class SumVertex(
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.config:
+        for c in self._network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
@@ -180,6 +197,16 @@ class SumVertex(
 
         # write the core configuration into spec
         for c in self.config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
+        # Reserve and write the example set region
+        spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
+                                    self._N_EXAMPLE_SET_BYTES)
+
+        spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
+
+        # write the example set configuration into spec
+        for c in self._set_cfg:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the examples region
@@ -214,5 +241,45 @@ class SumVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
 
+        # Reserve and write the stage configuration region
+        spec.reserve_memory_region (MLPRegions.STAGE.value,
+                                    self._N_STAGE_CONFIGURATION_BYTES)
+
+        spec.switch_write_focus (MLPRegions.STAGE.value)
+
+        # write the stage configuration into spec
+        for c in self._network.stage_config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
         # End the specification
         spec.end_specification ()
+
+
+    @overrides(AbstractRewritesDataSpecification.regenerate_data_specification)
+    def regenerate_data_specification(self, spec, placement):
+        # Reserve and write the stage configuration region
+        spec.reserve_memory_region (MLPRegions.STAGE.value,
+                                    self._N_STAGE_CONFIGURATION_BYTES)
+
+        spec.switch_write_focus (MLPRegions.STAGE.value)
+
+        # write the stage configuration into spec
+        for c in self._network.stage_config:
+            spec.write_value (c, data_type = DataType.UINT8)
+
+
+        spec.end_specification()
+
+
+    @overrides(AbstractRewritesDataSpecification.requires_memory_regions_to_be_reloaded)
+    def requires_memory_regions_to_be_reloaded(self):
+        return True
+
+
+    @overrides(AbstractRewritesDataSpecification.mark_regions_reloaded)
+    def mark_regions_reloaded(self):
+        """
+            TODO: not really sure what this method is used for!
+        """
+        # prepare for next stage
+        self._stage += 1

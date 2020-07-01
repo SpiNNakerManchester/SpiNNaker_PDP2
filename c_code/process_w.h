@@ -1,10 +1,10 @@
 #ifndef __PROCESS_W_H__
 #define __PROCESS_W_H__
 
-void  wf_process        (uint null0, uint null1);
-void  wb_process        (uint null0, uint null1);
-void  wf_advance_tick   (uint null0, uint null1);
-void  wb_advance_tick   (uint null0, uint null1);
+void  wf_process        (uint unused0, uint unused1);
+void  wb_process        (uint unused0, uint unused1);
+void  wf_advance_tick   (uint unused0, uint unused1);
+void  wb_advance_tick   (uint unused0, uint unused1);
 void  wf_advance_event  (void);
 void  w_advance_example (void);
 void  w_switch_to_fw    (void);
