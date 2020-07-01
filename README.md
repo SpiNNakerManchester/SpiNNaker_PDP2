@@ -52,7 +52,8 @@ Contributors
 
 Many people have contributed to the development of ANNs on SpiNNaker,
 amongst them J Moy, LA Plana, SR Welbourne, X Jin, S Davidson, AD Rast,
-S Davis and SB Furber.
+S Davis and SB Furber, all associated with The University of Manchester
+at the time of their contribution.
 
 The development of the project has relied heavily on the work of the
 [SpiNNaker software contributors](http://spinnakermanchester.github.io/common_pages/5.0.0/LicenseAgreement.html#contributors).
