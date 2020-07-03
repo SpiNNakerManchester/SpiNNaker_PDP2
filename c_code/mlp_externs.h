@@ -12,6 +12,7 @@ extern uint coreID;               // 5-bit virtual core ID
 
 extern uint fwdKey;               // 32-bit packet ID for FORWARD phase
 extern uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+extern uint syncKey;              // synchronisation: next example can start
 extern uint ldsaKey;              // 32-bit packet ID for link delta summation accumulators
 extern uint ldstKey;              // 32-bit packet ID for link delta summation totals
 extern uint ldsrKey;              // 32-bit packet ID for link delta summation reports
@@ -73,11 +74,9 @@ extern uint               wf_procs;      // pointer to processing unit outputs
 extern uint               wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t       wf_arrived;    // keeps track of received unit outputs
 extern uint               wf_thrds_pend; // sync. semaphore: comms, proc & stop
-extern uint               wf_sync_key;   // FORWARD processing can start
 extern uchar              wb_active;     // processing deltas from queue?
 extern scoreboard_t       wb_arrived;    // keeps track of received deltas
 extern uint               wb_thrds_pend; // sync. semaphore: comms, proc & stop
-extern uint               wb_sync_key;   // BACKPROP processing can start
 extern weight_update_t    wb_update_func; // weight update function
 
 // history arrays

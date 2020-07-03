@@ -95,7 +95,8 @@ class ThresholdVertex(
 
         # threshold core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
-        self._fwd_sync_expect = len (self._group.w_vertices)
+        self._fwd_sync_expect = len (self._network.groups)
+
         # NOTE: not used any more, may need reviewing if re-introduced
         self._bkp_sync_expect = 0
 

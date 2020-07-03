@@ -26,6 +26,7 @@ uint coreID;               // 5-bit virtual core ID
 
 uint fwdKey;               // 32-bit packet ID for FORWARD phase
 uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+uint syncKey;              // synchronisation: next example can start
 uint ldstKey;              // 32-bit packet ID for link delta summation totals
 uint ldsrKey;              // 32-bit packet ID for link delta summation reports
 

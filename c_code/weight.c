@@ -108,14 +108,12 @@ uint             wf_procs;          // pointer to processing unit outputs
 uint             wf_comms;          // pointer to receiving unit outputs
 scoreboard_t     wf_arrived;        // keeps track of received unit outputs
 uint             wf_thrds_pend;     // sync. semaphore: comms, proc & stop
-uint             wf_sync_key;       // FORWARD processing can start
 
 // BACKPROP phase specific variables
 // (error b-d-p computation)
 uchar            wb_active;         // processing deltas from queue?
 scoreboard_t     wb_arrived;        // keeps track of received deltas
 uint             wb_thrds_pend;     // sync. semaphore: comms, proc & stop
-uint             wb_sync_key;       // BACKPROP processing can start
 weight_update_t  wb_update_func;    // weight update function
 
 // history arrays

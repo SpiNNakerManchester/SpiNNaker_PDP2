@@ -302,10 +302,6 @@ void var_init (void)
       | SPINN_BLOCK_KEY(wcfg.col_blk);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP)
       | SPINN_BLOCK_KEY(wcfg.row_blk);
-
-  wf_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
-  wb_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
-
   ldsaKey = rt[LDS] | SPINN_LDSA_KEY;
 
 #ifdef DEBUG
@@ -407,10 +403,6 @@ void stage_var_init (void)
       | SPINN_BLOCK_KEY(wcfg.col_blk);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP)
       | SPINN_BLOCK_KEY(wcfg.row_blk);
-
-  wf_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
-  wb_sync_key = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
-
   ldsaKey = rt[LDS] | SPINN_LDSA_KEY;
 
 #ifdef DEBUG
@@ -540,7 +532,6 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);
-  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   io_printf (IO_BUF, "ldsa sent:%d\n", lda_sent);
   io_printf (IO_BUF, "ldsr recv:%d\n", ldr_recv);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
