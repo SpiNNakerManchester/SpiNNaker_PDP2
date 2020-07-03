@@ -557,10 +557,6 @@ class MLPNetwork():
                 gfe.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
                                              grp.i_vertex.bkp_link[w.col_blk])
 
-                # create forward synchronisation w to t links
-                gfe.add_machine_edge_instance (MachineEdge (w, _frmg.t_vertex),
-                                             w.fds_link)
-
                 # create link delta summation w to s links
                 gfe.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
                                              w.lds_link)
@@ -568,6 +564,11 @@ class MLPNetwork():
                 # create link delta summation result s (first) to w links
                 gfe.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
                                              first.s_vertex.lds_link)
+
+            # create forward synchronisation s to t (multicast) links
+            for sgrp in self.groups:
+                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex, sgrp.t_vertex),
+                                             grp.s_vertex.fds_link)
 
             # create forward s to i link
             gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,

@@ -582,5 +582,13 @@ void s_advance_example (void)
   // start from first event for next example
   evt = 0;
   num_events = ex[example_inx].num_events;
+
+  // and send sync packet to allow unit outputs to be sent
+  while (!spin1_send_mc_packet (syncKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+  pkt_sent++;
+  spk_sent++;
+#endif
 }
 // ------------------------------------------------------------------------

@@ -78,12 +78,10 @@ class WeightVertex(
             else:
                 self._num_cols = _r
 
-        # forward, backprop, synchronisation, and link delta summation link partition names
+        # forward, backprop and link delta summation link partition names
         self._fwd_link = "fwd_w{}_{}".format (self.group.id,
                                               self.from_group.id)
         self._bkp_link = "bkp_w{}_{}".format (self.group.id,
-                                              self.from_group.id)
-        self._fds_link = "fds_w{}_{}".format (self.group.id,
                                               self.from_group.id)
         self._lds_link = "lds_w{}_{}".format (self.group.id,
                                               self.from_group.id)
@@ -214,10 +212,6 @@ class WeightVertex(
     @property
     def bkp_link (self):
         return self._bkp_link
-
-    @property
-    def fds_link (self):
-        return self._fds_link
 
     @property
     def lds_link (self):
@@ -357,15 +351,14 @@ class WeightVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds, stop (padding), and lds
+        # write link keys: fwd, bkp, fds (padding), stp (padding), and lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
-        spec.write_value (routing_info.get_first_key_from_pre_vertex (
-            self, self.fds_link), data_type = DataType.UINT32)
+        spec.write_value (0, data_type = DataType.UINT32)
 
         spec.write_value (0, data_type = DataType.UINT32)
 

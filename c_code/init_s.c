@@ -235,6 +235,7 @@ void var_init (void)
   //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  syncKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
   ldstKey = rt[LDS] | SPINN_LDST_KEY;
   ldsrKey = rt[LDS] | SPINN_LDSR_KEY;
 
@@ -330,6 +331,7 @@ void stage_var_init (void)
   //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  syncKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
   ldstKey = rt[LDS] | SPINN_LDST_KEY;
   ldsrKey = rt[LDS] | SPINN_LDSR_KEY;
 
@@ -461,6 +463,7 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
   if (scfg.is_first_group)
   {

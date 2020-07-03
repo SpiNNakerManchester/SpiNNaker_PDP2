@@ -62,6 +62,7 @@ class SumVertex(
         # forward, backprop, and link delta summation link partition names
         self._fwd_link = "fwd_s{}".format (self.group.id)
         self._bkp_link = "bkp_s{}".format (self.group.id)
+        self._fds_link = "fds_s{}".format (self.group.id)
         self._lds_link = "lds_s{}".format (self.group.id)
 
         # sum core-specific parameters
@@ -124,6 +125,10 @@ class SumVertex(
     @property
     def bkp_link (self):
         return self._bkp_link
+
+    @property
+    def fds_link (self):
+        return self._fds_link
 
     @property
     def lds_link (self):
@@ -226,7 +231,7 @@ class SumVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds (padding), stop (padding),
+        # write link keys: fwd, bkp, fds, stp (padding),
         # and lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
@@ -234,7 +239,8 @@ class SumVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
-        spec.write_value (0, data_type = DataType.UINT32)
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.fds_link), data_type = DataType.UINT32)
 
         spec.write_value (0, data_type = DataType.UINT32)
 
