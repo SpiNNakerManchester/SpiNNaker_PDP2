@@ -119,7 +119,7 @@ void tf_process (uint unused0, uint unused1)
           if (tcfg.write_out)
           {
             //TODO: check if need to schedule or can simply call
-            send_outputs_to_host (SPINN_HOST_NORMAL, tick);
+            record_outputs (SPINN_HOST_NORMAL, tick);
           }
 
           // send stop criterion packet,
@@ -555,14 +555,7 @@ void t_advance_example (void)
     // restore interrupts,
     spin1_mode_restore (cpsr);
 
-    // send outputs to host if requested,
-    if (tcfg.write_out)
-    {
-      //TODO: check if need to schedule or can simply call
-      send_outputs_to_host (SPINN_HOST_NORMAL, 0);
-    }
-
-    // and send unit outputs to w cores
+    // and send unit outputs to w cores,
     //TODO: check if need to schedule or can simply call
     t_init_outputs (0, 0);
   }
@@ -947,7 +940,7 @@ void out_hard_clamp (uint inx)
     t_outputs[inx] = it[t_it_idx + inx];
   }
 
-  // TODO: if training, store the injected value in SDRAM. This memory area needs
+  //TODO: if training, store the injected value in SDRAM. This memory area needs
   // to be allocated during initialisation
 /*
   if (xcfg.training)
@@ -986,7 +979,7 @@ void out_weak_clamp (uint inx)
   io_printf (IO_BUF, "out_weak_clamp\n");
 #endif
 
-  // TODO: if training, store the injected value in SDRAM. This memory area needs
+  //TODO: if training, store the injected value in SDRAM. This memory area needs
   // to be allocated during initialisation
 /*
   if (xcfg.training)
@@ -1119,7 +1112,7 @@ void out_integr_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-// TODO: BACKPROP phase for the hard clamp - this is a stub
+//TODO: BACKPROP phase for the hard clamp - this is a stub
 // ------------------------------------------------------------------------
 void out_hard_clamp_back (uint inx)
 {
@@ -1140,7 +1133,7 @@ void out_hard_clamp_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-// TODO: BACKPROP phase for the weak clamp - for the moment is a stub
+//TODO: BACKPROP phase for the weak clamp - for the moment is a stub
 // ------------------------------------------------------------------------
 void out_weak_clamp_back (uint inx)
 {
@@ -1154,7 +1147,7 @@ void out_weak_clamp_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-// TODO: BACKPROP phase for the bias clamp
+//TODO: BACKPROP phase for the bias clamp
 // ------------------------------------------------------------------------
 void out_bias_back (uint inx)
 {
@@ -1197,7 +1190,7 @@ void std_stop_crit (uint inx)
 // for each unit in the output group check if both the output and target values
 // are the maximum in the group and, in this case, if their difference is less
 // or equal than the tcfg.group_criterion value.
-// TODO: this routine needs to be modified to adapt to the case in which the
+//TODO: this routine needs to be modified to adapt to the case in which the
 // output group is split across multiple cores, as this is a global convergence
 // rule, rather than an individual one, as the standard convergence criterion.
 // ------------------------------------------------------------------------

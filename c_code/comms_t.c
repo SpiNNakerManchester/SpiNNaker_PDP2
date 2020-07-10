@@ -1,6 +1,9 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
+// front-end-common
+#include <recording.h>
+
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
@@ -132,7 +135,7 @@ void t_chainPacket (uint key)
     // report outputs to host if requested,
     if (tcfg.write_out)
     {
-      spin1_schedule_callback (send_outputs_to_host, SPINN_HOST_NORMAL, tick,
+      spin1_schedule_callback (record_outputs, SPINN_HOST_NORMAL, tick,
                                SPINN_T_SEND_OUTS_P);
     }
 
@@ -196,18 +199,10 @@ void t_syncPacket (uint ph)
         // clear synchronisation flag,
         t_sync_rdy = FALSE;
 
-        // schedule sending of unit outputs to w cores,
+        // and schedule sending of unit outputs to w cores
         spin1_schedule_callback (t_init_outputs,
                                   0, 0, SPINN_T_INIT_OUT_P
                                 );
-
-        // and, if required, send outputs to host
-        if (tcfg.write_out)
-        {
-          spin1_schedule_callback (send_outputs_to_host,
-                                    SPINN_HOST_NORMAL, 0, SPINN_T_SEND_OUTS_P
-                                  );
-        }
       }
       else
       {
@@ -339,102 +334,36 @@ void t_backpropPacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
-// send relevant data to host using SDP messages
-// TODO: all outputs may not fit in one SDP message!
+// record outputs to be picked up by the host
 // ------------------------------------------------------------------------
-void send_outputs_to_host (uint cmd, uint tick)
-{
-  // report epoch, example, event and tick,
-  t_sdp_msg.cmd_rc = cmd;
-  t_sdp_msg.seq    = tcfg.write_blk;
-  t_sdp_msg.arg1   = epoch;
-  t_sdp_msg.arg2   = (evt << 16) | example_cnt;
-  t_sdp_msg.arg3   = tick;
-
-  // set default message data length (no data)
-  uint len = 0;
-
-  if (cmd == SPINN_HOST_NORMAL)
-  {
-    // copy outputs and targets into msg buffer,
-    short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
-    for (uint i = 0; i < tcfg.num_units; i++)
-    {
-      if (tick == 0)
-      {
-        my_data[2 * i]     = 0;
-        my_data[2 * i + 1] = 0;
-      }
-      else
-      {
-        my_data[2 * i]     = (short_activ_t) (t_outputs[i]
-                >> (SPINN_ACTIV_SHIFT
-              - SPINN_SHORT_ACTIV_SHIFT));
-        if (tt[t_it_idx + i] == SPINN_ACTIV_ONE)
-        {
-          my_data[2 * i + 1] = SPINN_SHORT_ACTIV_MAX;
-        }
-        else
-        {
-          my_data[2 * i + 1] = (short_activ_t) (tt[t_it_idx + i]
-                  >> (SPINN_ACTIV_SHIFT
-                - SPINN_SHORT_ACTIV_SHIFT));
-        }
-      }
-    }
-
-    // and set message data length,
-    len = 2 * tcfg.num_units * sizeof (short_activ_t);
-  }
-
-  // set message length,
-  t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
-
-  // and send message
-  while (!spin1_send_sdp_msg (&t_sdp_msg, SPINN_SDP_TMOUT));
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// send an sdp packet to the host with information related to
-// various parameters of the simulation: id of the output group sending the
-// data, number of output units, number of groups writing outputs and number
-// of ticks of simulation
-// ------------------------------------------------------------------------
-void send_info_to_host (uint unused0, uint unused1)
+void record_outputs (uint unused0, uint unused1)
 {
   (void) unused0;
   (void) unused1;
 
-  // send initial info to host
-  // report number of units, number of write blocks and total ticks,
-  t_sdp_msg.cmd_rc = SPINN_HOST_INFO;
-  t_sdp_msg.seq    = tcfg.write_blk;
-  t_sdp_msg.arg1   = tcfg.num_units;
-  t_sdp_msg.arg2   = ncfg.num_write_blks;
-  t_sdp_msg.arg3   = t_tot_ticks + 1;
+//lap  tick_record_t tick_data;
+//lap  short_activ_t outputs[tcfg.num_units];
 
-  // copy initial outputs and targets into msg buffer,
-  short_activ_t * my_data = (short_activ_t *) t_sdp_msg.data;
-  for (uint i = 0; i < tcfg.num_units; i++)
-  {
-    my_data[2 * i]     = 0;
-    my_data[2 * i + 1] = 0;
+  // prepare tick data
+//lap  tick_data.epoch   = epoch;
+//lap  tick_data.example = example_cnt;
+//lap  tick_data.event   = evt;
+//lap  tick_data.tick    = tick;
+
+  // cast outputs to the right size,
+//lap  for (uint i = 0; i < tcfg.num_units; i++)
+//lap  {
+//lap    outputs[i] = (short_activ_t) (t_outputs[i]
+//lap            >> (SPINN_ACTIV_SHIFT- SPINN_SHORT_ACTIV_SHIFT));
+//lap  }
+
+  // and record outputs
+  if (stage_rec_flags) {
+//lap    recording_record(TICK_DATA, (void *) &tick_data, sizeof (tick_record_t));
+//lap    recording_record(OUTPUTS,
+//lap        (void *) outputs, tcfg.num_units * sizeof (short_activ_t)
+//lap    );
+//lap    recording_do_step_update(stage_step++);
   }
-
-  // set message length,
-  uint len = 2 * tcfg.num_units * sizeof (short_activ_t);
-  t_sdp_msg.length = sizeof (sdp_hdr_t) + sizeof (cmd_hdr_t) + len;
-
-  // and send message
-  while (!spin1_send_sdp_msg (&t_sdp_msg, SPINN_SDP_TMOUT));
-
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "sent info to host: nb:%d wb:%d no:%d tt:%d\n",
-             ncfg.num_write_blks, tcfg.write_blk,
-             tcfg.num_units, t_tot_ticks
-    );
-#endif
 }
 // ------------------------------------------------------------------------

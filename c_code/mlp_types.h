@@ -4,17 +4,24 @@
 #include "mlp_params.h"
 
 enum MLPRegions {
-  SYSTEM      =  0,
-  NETWORK     =  1,
-  CORE        =  2,
-  INPUTS      =  3,
-  TARGETS     =  4,
-  EXAMPLE_SET =  5,
-  EXAMPLES    =  6,
-  EVENTS      =  7,
-  WEIGHTS     =  8,
-  ROUTING     =  9,
-  STAGE       = 10
+  SYSTEM        =  0,
+  NETWORK       =  1,
+  CORE          =  2,
+  INPUTS        =  3,
+  TARGETS       =  4,
+  EXAMPLE_SET   =  5,
+  EXAMPLES      =  6,
+  EVENTS        =  7,
+  WEIGHTS       =  8,
+  ROUTING       =  9,
+  STAGE         = 10,
+  RECORDED_DATA = 11
+};
+
+enum MLPRecordings {
+//lap  OUTPUTS   = 0
+  OUTPUTS   = 0,
+  TICK_DATA = 1
 };
 
 // t cores can have more than one FWD key (due to partitions)
@@ -350,6 +357,18 @@ typedef struct stage_conf       // execution stage configuration
   uint  num_examples;           // number of examples to run in this stage
   uint  num_epochs;             // number of training epochs in this stage
 } stage_conf_t;
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// tick record
+// ------------------------------------------------------------------------
+typedef struct tick_record {
+  uint epoch;    // current epoch
+  uint example;  // current example
+  uint event;    // current event
+  uint tick;     // current tick
+} tick_record_t;
 // ------------------------------------------------------------------------
 
 

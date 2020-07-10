@@ -195,7 +195,7 @@ uint mem_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // TODO: the following memory allocation is to be used to store
+  //TODO: the following memory allocation is to be used to store
   // the history of this set of values. When training
   // continuous networks, this history always needs to be saved.
   // For non-continuous networks, they only need to be stored if the

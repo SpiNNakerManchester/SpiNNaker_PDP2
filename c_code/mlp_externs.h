@@ -19,6 +19,7 @@ extern uint ldsrKey;              // 32-bit packet ID for link delta summation r
 
 extern uint32_t stage_step;       // current stage step
 extern uint32_t stage_num_steps;  // current stage number of steps
+extern uint32_t stage_rec_flags;  // current stage recording flags
 
 extern uint         epoch;        // current training/testing iteration
 extern uint         example_cnt;  // example count in epoch

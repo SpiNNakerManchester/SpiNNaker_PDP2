@@ -137,14 +137,22 @@ class MLPErrorFuncs (Enum):
 class MLPRegions (Enum):
     """ regions used by MLP cores
     """
-    SYSTEM      =  0
-    NETWORK     =  1
-    CORE        =  2
-    INPUTS      =  3
-    TARGETS     =  4
-    EXAMPLE_SET =  5
-    EXAMPLES    =  6
-    EVENTS      =  7
-    WEIGHTS     =  8
-    ROUTING     =  9
-    STAGE       = 10
+    SYSTEM        =  0
+    NETWORK       =  1
+    CORE          =  2
+    INPUTS        =  3
+    TARGETS       =  4
+    EXAMPLE_SET   =  5
+    EXAMPLES      =  6
+    EVENTS        =  7
+    WEIGHTS       =  8
+    ROUTING       =  9
+    STAGE         = 10
+    RECORDED_DATA = 11
+
+
+class MLPRecordings (Enum):
+    """ regions used by MLP cores
+    """
+    OUTPUTS   = 0
+    TICK_DATA = 1

@@ -90,7 +90,7 @@ void i_forward_packet (uint key, uint payload)
   net_t net_tmp;
 
   // compute unit input,
-  // TODO: need to make sure this is the same as Lens
+  //TODO: need to make sure this is the same as Lens
   compute_in (inx);
 
   // saturate and cast the long nets before sending,
@@ -346,7 +346,7 @@ void if_advance_event (void)
   else
   {
     // if input or output group update input/target index
-    // TODO: to check if the target value is required in I cores
+    //TODO: to check if the target value is required in I cores
     // for the BACKPROP phase, otherwise remove the condition for the
     // output group
     if (icfg.input_grp || icfg.output_grp)
@@ -440,7 +440,7 @@ void compute_in (uint inx)
   }
 
   // check if in training mode, and if so, store nets
-  // TODO: for non-continuous networks, this needs to check the requirement
+  //TODO: for non-continuous networks, this needs to check the requirement
   // to have these histories saved, which needs to come as a configuration
   // parameter. For continuous networks, these histories are always required.
   if (xcfg.training)

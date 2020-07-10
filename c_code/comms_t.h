@@ -9,6 +9,8 @@ void t_chainPacket    (uint);
 void t_syncPacket     (uint);
 void t_networkStopPacket (void);
 
+void record_outputs   (uint, uint);
+
 void send_info_to_host    (uint, uint);
 void send_outputs_to_host (uint, uint);
 //#void send_weights_to_host (void);

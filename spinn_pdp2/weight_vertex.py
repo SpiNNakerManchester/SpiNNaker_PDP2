@@ -375,7 +375,6 @@ class WeightVertex(
         for c in self._network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # End the specification
         spec.end_specification ()
 
 
@@ -390,7 +389,6 @@ class WeightVertex(
         # write the stage configuration into spec
         for c in self._network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
-
 
         spec.end_specification()
 

@@ -4,6 +4,7 @@
 // front-end-common
 #include <data_specification.h>
 #include <simulation.h>
+#include <recording.h>
 
 // mlp
 #include "mlp_params.h"
@@ -55,6 +56,15 @@ uint cfg_init (void)
 
   // initialise core-specific configuration from SDRAM
   spin1_memcpy (&tcfg, dt, sizeof (t_conf_t));
+
+  // set up the recording infrastructure
+  if (tcfg.write_out)
+  {
+    void * recording_region = data_specification_get_region(RECORDED_DATA, data);
+    if (!recording_initialize(&recording_region, &stage_rec_flags)){
+      return (SPINN_CFG_UNAVAIL);
+    }
+  }
 
   // inputs
   if (tcfg.input_grp)
@@ -125,13 +135,12 @@ uint cfg_init (void)
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ");
+    io_printf (IO_BUF, "train (updates:%u)\n", xcfg.num_epochs);
   }
   else
   {
-    io_printf (IO_BUF, "test ");
+    io_printf (IO_BUF, "test (examples:%u)\n", xcfg.num_examples);
   }
-  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
@@ -221,7 +230,7 @@ uint mem_init (void)
   }
 
   // allocate memory for net packet queue
-  // TODO: use correct length!
+  //TODO: use correct length!
   if ((t_net_pkt_q.queue = ((packet_t *)
          spin1_malloc (SPINN_THLD_PQ_LEN * sizeof (packet_t)))) == NULL
      )
@@ -249,7 +258,7 @@ uint mem_init (void)
     }
   }
 
-  // TODO: the following memory allocations are to be used to store
+  //TODO: the following memory allocations are to be used to store
   // the histories of these sets of values. When training
   // continuous networks, these histories always need to be saved.
   // For non-continuous networks, they only need to be stored if the
@@ -334,7 +343,7 @@ void t_init_outputs (uint unused0, uint unused1)
     // and the two ways are not compatible
 
     // use initial values,
-    // TODO: need to verify initInput with Lens
+    //TODO: need to verify initInput with Lens
     // NOTE: The following code follows the output of Lens 2.63:
     // initialise the output value of the units
 
@@ -610,26 +619,11 @@ void var_init (void)
   t_net_pkt_q.head = 0;
   t_net_pkt_q.tail = 0;
 
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "wo:%d\n", tcfg.write_out);
-#endif
-
   // check if writing outputs to host
   if (tcfg.write_out)
   {
-    // initialise SDP message buffer,
-    // Fill in SDP destination fields
-    t_sdp_msg.tag = SPINN_SDP_IPTAG;      // IPTag
-    t_sdp_msg.dest_port = PORT_ETH;       // Ethernet
-    t_sdp_msg.dest_addr = sv->dbg_addr;   // Root chip
-
-    // Fill in SDP source & flag fields,
-    t_sdp_msg.flags = SPINN_SDP_FLAGS;
-    t_sdp_msg.srce_port = coreID;
-    t_sdp_msg.srce_addr = sv->p2p_addr;
-
     // compute total ticks in first example -- info to be sent to host,
-    //TODO: cannot compute correctly -- variable if completion criteria used
+    //TODO: compute correctly -- variable if completion criteria used
     t_tot_ticks = 0;
     for (uint i = 0; i < num_events; i++)
     {
@@ -671,28 +665,28 @@ void var_init (void)
   }
 
 #ifdef DEBUG
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-pkt_sent = 0;  // total packets sent
-sent_fwd = 0;  // packets sent in FORWARD phase
-sent_bkp = 0;  // packets sent in BACKPROP phase
-pkt_recv = 0;  // total packets received
-recv_fwd = 0;  // packets received in FORWARD phase
-recv_bkp = 0;  // packets received in BACKPROP phase
-spk_sent = 0;  // sync packets sent
-spk_recv = 0;  // sync packets received
-chn_sent = 0;  // chain packets sent
-chn_recv = 0;  // chain packets received
-stp_sent = 0;  // stop packets sent
-stp_recv = 0;  // stop packets received
-stn_sent = 0;  // network_stop packets sent
-stn_recv = 0;  // network_stop packets received
-wrng_phs = 0;  // packets received in wrong phase
-wrng_tck = 0;  // FORWARD packets received in wrong tick
-wrng_btk = 0;  // BACKPROP packets received in wrong tick
-tot_tick = 0;  // total number of ticks executed
-// ------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // DEBUG variables
+  // ------------------------------------------------------------------------
+  pkt_sent = 0;  // total packets sent
+  sent_fwd = 0;  // packets sent in FORWARD phase
+  sent_bkp = 0;  // packets sent in BACKPROP phase
+  pkt_recv = 0;  // total packets received
+  recv_fwd = 0;  // packets received in FORWARD phase
+  recv_bkp = 0;  // packets received in BACKPROP phase
+  spk_sent = 0;  // sync packets sent
+  spk_recv = 0;  // sync packets received
+  chn_sent = 0;  // chain packets sent
+  chn_recv = 0;  // chain packets received
+  stp_sent = 0;  // stop packets sent
+  stp_recv = 0;  // stop packets received
+  stn_sent = 0;  // network_stop packets sent
+  stn_recv = 0;  // network_stop packets received
+  wrng_phs = 0;  // packets received in wrong phase
+  wrng_tck = 0;  // FORWARD packets received in wrong tick
+  wrng_btk = 0;  // BACKPROP packets received in wrong tick
+  tot_tick = 0;  // total number of ticks executed
+  // ------------------------------------------------------------------------
 #endif
 }
 // ------------------------------------------------------------------------
@@ -842,17 +836,6 @@ void stage_var_init (void)
   // check if writing outputs to host
   if (tcfg.write_out)
   {
-    // initialise SDP message buffer,
-    // Fill in SDP destination fields
-    t_sdp_msg.tag = SPINN_SDP_IPTAG;      // IPTag
-    t_sdp_msg.dest_port = PORT_ETH;       // Ethernet
-    t_sdp_msg.dest_addr = sv->dbg_addr;   // Root chip
-
-    // Fill in SDP source & flag fields,
-    t_sdp_msg.flags = SPINN_SDP_FLAGS;
-    t_sdp_msg.srce_port = coreID;
-    t_sdp_msg.srce_addr = sv->p2p_addr;
-
     // compute total ticks in first example -- info to be sent to host,
     //TODO: cannot compute correctly -- variable if completion criteria used
     t_tot_ticks = 0;
@@ -896,28 +879,28 @@ void stage_var_init (void)
   }
 
 #ifdef DEBUG
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-pkt_sent = 0;  // total packets sent
-sent_fwd = 0;  // packets sent in FORWARD phase
-sent_bkp = 0;  // packets sent in BACKPROP phase
-pkt_recv = 0;  // total packets received
-recv_fwd = 0;  // packets received in FORWARD phase
-recv_bkp = 0;  // packets received in BACKPROP phase
-spk_sent = 0;  // sync packets sent
-spk_recv = 0;  // sync packets received
-chn_sent = 0;  // chain packets sent
-chn_recv = 0;  // chain packets received
-stp_sent = 0;  // stop packets sent
-stp_recv = 0;  // stop packets received
-stn_sent = 0;  // network_stop packets sent
-stn_recv = 0;  // network_stop packets received
-wrng_phs = 0;  // packets received in wrong phase
-wrng_tck = 0;  // FORWARD packets received in wrong tick
-wrng_btk = 0;  // BACKPROP packets received in wrong tick
-tot_tick = 0;  // total number of ticks executed
-// ------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // DEBUG variables
+  // ------------------------------------------------------------------------
+  pkt_sent = 0;  // total packets sent
+  sent_fwd = 0;  // packets sent in FORWARD phase
+  sent_bkp = 0;  // packets sent in BACKPROP phase
+  pkt_recv = 0;  // total packets received
+  recv_fwd = 0;  // packets received in FORWARD phase
+  recv_bkp = 0;  // packets received in BACKPROP phase
+  spk_sent = 0;  // sync packets sent
+  spk_recv = 0;  // sync packets received
+  chn_sent = 0;  // chain packets sent
+  chn_recv = 0;  // chain packets received
+  stp_sent = 0;  // stop packets sent
+  stp_recv = 0;  // stop packets received
+  stn_sent = 0;  // network_stop packets sent
+  stn_recv = 0;  // network_stop packets received
+  wrng_phs = 0;  // packets received in wrong phase
+  wrng_tck = 0;  // FORWARD packets received in wrong tick
+  wrng_btk = 0;  // BACKPROP packets received in wrong tick
+  tot_tick = 0;  // total number of ticks executed
+  // ------------------------------------------------------------------------
 #endif
 }
 // ------------------------------------------------------------------------
@@ -931,18 +914,23 @@ void stage_init (void)
   // clear output from previous stage
   sark_io_buf_reset();
 
+  // reset recording infrastructure
+  if (tcfg.write_out)
+  {
+    recording_reset();
+  }
+
   // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ");
+    io_printf (IO_BUF, "train (updates:%u)\n", xcfg.num_epochs);
   }
   else
   {
-    io_printf (IO_BUF, "test ");
+    io_printf (IO_BUF, "test (examples:%u)\n", xcfg.num_examples);
   }
-  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 
   // re-initialise variables for this stage
   stage_var_init ();
@@ -958,12 +946,6 @@ void stage_start (void)
   // start log,
   io_printf (IO_BUF, "----------------\n");
   io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
-
-  // send initial outputs to host -- if required,
-  if (tcfg.write_out)
-  {
-    spin1_schedule_callback (send_info_to_host, 0, 0, SPINN_T_SEND_OUTS_P);
-  }
 
   // and send initial outputs to w cores -- when simulation starts
   spin1_schedule_callback (t_init_outputs, 0, 0, SPINN_T_INIT_OUT_P);
@@ -1058,15 +1040,17 @@ void stage_done (uint ec)
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
 #endif
 
-  // let host know that reporting is finished,
-  if (tcfg.write_out)
-  {
-    send_outputs_to_host (SPINN_HOST_FINAL, 0);
-  }
-
   // close log,
   io_printf (IO_BUF, "stopping stage %u\n", xcfg.stage_id);
   io_printf (IO_BUF, "----------------\n");
+
+  //TODO: find out the semantics of recording_finalise,
+  if (tcfg.write_out)
+  {
+    if (stage_rec_flags) {
+        recording_finalise();
+    }
+  }
 
   // and let host know that we're done
   if (ec == SPINN_NO_ERROR)

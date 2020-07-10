@@ -136,7 +136,7 @@ uint mem_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // TODO: this variable can probably be removed
+  //TODO: this variable can probably be removed
   // allocate memory to store delta values during the first BACKPROP tick
   if ((i_init_delta = ((long_delta_t *)
          spin1_malloc (icfg.num_units * sizeof (long_delta_t)))) == NULL
@@ -174,7 +174,7 @@ uint mem_init (void)
   }
 
   // and allocate memory in SDRAM for net history
-  // TODO: this needs a condition on the requirement to have input history
+  //TODO: this needs a condition on the requirement to have input history
   // which needs to come as a configuration parameter
   if ((i_net_history = ((long_net_t *)
           sark_xalloc (sv->sdram_heap,

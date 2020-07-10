@@ -84,6 +84,7 @@ uint bkpKey;               // 32-bit packet ID for BACKPROP phase
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
+uint32_t stage_rec_flags;  // current stage recording flags
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch

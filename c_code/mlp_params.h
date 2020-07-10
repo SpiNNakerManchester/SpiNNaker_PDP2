@@ -150,7 +150,7 @@
 
 
 // ------------------------------------------------------------------------
-// implementation params
+// implementation parameters
 // ------------------------------------------------------------------------
 //TODO: check if size is appropriate
 #define SPINN_THLD_PQ_LEN    256
@@ -164,7 +164,7 @@
 // callback priorities
 // ------------------------------------------------------------------------
 // non-queueable callbacks
-#define SPINN_PACKET_P       -1
+#define SPINN_PACKET_P      -1
 #define SPINN_TIMER_P        0
 
 // queueable callbacks

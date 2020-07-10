@@ -9,7 +9,7 @@ from spinn_pdp2.input_vertex     import InputVertex
 from spinn_pdp2.sum_vertex       import SumVertex
 from spinn_pdp2.threshold_vertex import ThresholdVertex
 from spinn_pdp2.weight_vertex    import WeightVertex
-from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants
+from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants, MLPRecordings
 from spinn_pdp2.mlp_group        import MLPGroup
 from spinn_pdp2.mlp_link         import MLPLink
 from spinn_pdp2.mlp_examples     import MLPExampleSet
@@ -732,7 +732,34 @@ class MLPNetwork():
             self.generate_machine_graph ()
 
         # run stage
-        gfe.run_until_complete (self._stage_id)
+# #        gfe.run_until_complete (self._stage_id)
+        gfe.run_until_complete (90)
+
+# #         # read recorded data from each output group
+# #         buffer_manager = gfe.buffer_manager ()
+# #         rec_outputs = [None] * len (self.out_grps)
+# #         for g in self.out_grps:
+# #             rec_outputs[g.write_blk] = g.t_vertex.read (
+# #                 gfe.placements().get_placement_of_vertex (g.t_vertex),
+# #                 buffer_manager, MLPRecordings.OUTPUTS.value
+# #                 )
+# # 
+# #         # print recorded data in correct order
+# #         for i in range (1):
+# #             for g in self.output_chain:
+# #                 outputs = struct.unpack_from(
+# #                     "<{}H".format (g.units),
+# #                     rec_outputs[g.write_blk],
+# #                     i * (2 * g.units)
+# #                     )
+# #                 for d in range (g.units):
+# #                     # outputs are s16.15 fixed-point numbers
+# #                     out = (1.0 * outputs[d]) / (1.0 * (1 << 15))
+# #                     print ("{:8.6f}".format (out))
+# #                print ("")
+
+        # reset buffers for next stage
+# #        buffer_manager.reset()
 
         # pause to allow debugging
         input (f"stage {self._stage_id} paused: press enter to exit")
