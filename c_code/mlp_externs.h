@@ -156,7 +156,6 @@ extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
 extern uchar            t_active;      // processing nets/errors from queue?
 extern scoreboard_t     t_sync_arrived; // keep track of expected sync packets
 extern uchar            t_sync_rdy;    // have expected sync packets arrived?
-extern sdp_msg_t        t_sdp_msg;     // SDP message buffer for host comms.
 extern scoreboard_t     tf_arrived;    // keep track of expected nets
 extern uint             tf_thrds_pend; // sync. semaphore: proc & stop
 extern uchar            tf_chain_prev; // previous daisy chain (DC) value

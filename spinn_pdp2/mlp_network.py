@@ -732,34 +732,37 @@ class MLPNetwork():
             self.generate_machine_graph ()
 
         # run stage
-# #        gfe.run_until_complete (self._stage_id)
-        gfe.run_until_complete (90)
+        gfe.run_until_complete (self._stage_id)
 
-# #         # read recorded data from each output group
-# #         buffer_manager = gfe.buffer_manager ()
-# #         rec_outputs = [None] * len (self.out_grps)
-# #         for g in self.out_grps:
-# #             rec_outputs[g.write_blk] = g.t_vertex.read (
-# #                 gfe.placements().get_placement_of_vertex (g.t_vertex),
-# #                 buffer_manager, MLPRecordings.OUTPUTS.value
-# #                 )
-# # 
-# #         # print recorded data in correct order
-# #         for i in range (1):
-# #             for g in self.output_chain:
-# #                 outputs = struct.unpack_from(
-# #                     "<{}H".format (g.units),
-# #                     rec_outputs[g.write_blk],
-# #                     i * (2 * g.units)
-# #                     )
-# #                 for d in range (g.units):
-# #                     # outputs are s16.15 fixed-point numbers
-# #                     out = (1.0 * outputs[d]) / (1.0 * (1 << 15))
-# #                     print ("{:8.6f}".format (out))
-# #                print ("")
+        # read recorded data from each output group
+        buffer_manager = gfe.buffer_manager ()
+        rec_outputs = [None] * len (self.out_grps)
+        for g in self.out_grps:
+            rec_outputs[g.write_blk] = g.t_vertex.read (
+                gfe.placements().get_placement_of_vertex (g.t_vertex),
+                buffer_manager, MLPRecordings.OUTPUTS.value
+                )
+ 
+        # print recorded data in correct order
+        for tick in range (1):
+            for g in self.output_chain:
+                # get group tick outputs
+                outputs = struct.unpack_from(
+                    "<{}H".format (g.units),
+                    rec_outputs[g.write_blk],
+                    tick * (2 * g.units)
+                    )
+
+                # print outputs
+                for d in range (g.units):
+                    # outputs are s16.15 fixed-point numbers
+                    out = (1.0 * outputs[d]) / (1.0 * (1 << 15))
+                    print ("{:8.6f}".format (out))
+
+                print ("")
 
         # reset buffers for next stage
-# #        buffer_manager.reset()
+        buffer_manager.reset()
 
         # pause to allow debugging
         input (f"stage {self._stage_id} paused: press enter to exit")

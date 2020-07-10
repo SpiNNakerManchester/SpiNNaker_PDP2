@@ -341,29 +341,29 @@ void record_outputs (uint unused0, uint unused1)
   (void) unused0;
   (void) unused1;
 
-//lap  tick_record_t tick_data;
-//lap  short_activ_t outputs[tcfg.num_units];
+  tick_record_t tick_data;
+  short_activ_t outputs[tcfg.num_units];
 
   // prepare tick data
-//lap  tick_data.epoch   = epoch;
-//lap  tick_data.example = example_cnt;
-//lap  tick_data.event   = evt;
-//lap  tick_data.tick    = tick;
+  tick_data.epoch   = epoch;
+  tick_data.example = example_cnt;
+  tick_data.event   = evt;
+  tick_data.tick    = tick;
 
   // cast outputs to the right size,
-//lap  for (uint i = 0; i < tcfg.num_units; i++)
-//lap  {
-//lap    outputs[i] = (short_activ_t) (t_outputs[i]
-//lap            >> (SPINN_ACTIV_SHIFT- SPINN_SHORT_ACTIV_SHIFT));
-//lap  }
+  for (uint i = 0; i < tcfg.num_units; i++)
+  {
+    outputs[i] = (short_activ_t) (t_outputs[i]
+            >> (SPINN_ACTIV_SHIFT- SPINN_SHORT_ACTIV_SHIFT));
+  }
 
   // and record outputs
   if (stage_rec_flags) {
-//lap    recording_record(TICK_DATA, (void *) &tick_data, sizeof (tick_record_t));
-//lap    recording_record(OUTPUTS,
-//lap        (void *) outputs, tcfg.num_units * sizeof (short_activ_t)
-//lap    );
-//lap    recording_do_step_update(stage_step++);
+    recording_record(TICK_DATA, (void *) &tick_data, sizeof (tick_record_t));
+    recording_record(OUTPUTS,
+        (void *) outputs, tcfg.num_units * sizeof (short_activ_t)
+    );
+    recording_do_step_update(stage_step++);
   }
 }
 // ------------------------------------------------------------------------

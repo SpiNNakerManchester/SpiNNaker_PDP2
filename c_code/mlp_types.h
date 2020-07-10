@@ -19,7 +19,6 @@ enum MLPRegions {
 };
 
 enum MLPRecordings {
-//lap  OUTPUTS   = 0
   OUTPUTS   = 0,
   TICK_DATA = 1
 };

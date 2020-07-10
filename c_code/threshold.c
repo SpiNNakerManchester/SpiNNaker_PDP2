@@ -148,7 +148,6 @@ pkt_queue_t      t_net_pkt_q;       // queue to hold received nets
 uchar            t_active;          // processing nets/errors from queue?
 scoreboard_t     t_sync_arrived;    // keep track of expected sync packets
 uchar            t_sync_rdy;        // have expected sync packets arrived?
-sdp_msg_t        t_sdp_msg;         // SDP message buffer for host comms.
 
 // FORWARD phase specific
 // (output computation)
