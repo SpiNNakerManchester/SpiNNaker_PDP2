@@ -64,7 +64,7 @@ Acknowledgments
 Work on this repository started as part of the
 project 'PDP-squared: Meaningful PDP language models using parallel
 distributed processors', conducted in collaboration with researchers
-from the School of Psychology at The University of Manchester. The project
+from the Department of Psychology at The University of Manchester. The project
 was supported by EPSRC (the UK Engineering and Physical Sciences Research
 Council) under grant EP/F03430X/1. Ongoing development has been supported by
 the EU ICT Flagship Human Brain Project under Grants FP7-604102, H2020-720270,
