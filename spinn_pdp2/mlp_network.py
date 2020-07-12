@@ -484,6 +484,101 @@ class MLPNetwork():
         return True
 
 
+    def write_Lens_output_file (self,
+                                output_file
+                                ):
+        """ writes a Lens-style output file
+
+        Lens online manual:
+            http://web.stanford.edu/group/mbc/LENSManual/
+
+        File format:
+
+        for each example:
+          <I total-updates> <I example-number>
+          <I ticks-on-example> <I num-groups>
+          for each tick on the example:
+            <I tick-number> <I event-number>
+        for each WRITE_OUTPUTS group:
+              <I num-units> <B targets?>
+          for each unit:
+                <R output-value> <R target-value>
+        """
+        # prepare to retrieve recorded data
+        TICK_DATA_FORMAT = "<4I"
+        TICK_DATA_SIZE = struct.calcsize(TICK_DATA_FORMAT)
+
+        OUT_DATA_FORMATS = []
+        OUT_DATA_SIZES = []       
+        for g in self.output_chain:
+            OUT_DATA_FORMATS.append ("<{}H".format (g.units))
+            OUT_DATA_SIZES.append (struct.calcsize("<{}H".format (g.units)))       
+
+        # retrieve recorded tick_data from first output group
+        g = self.out_grps[0]
+        rec_tick_data = g.t_vertex.read (
+            gfe.placements().get_placement_of_vertex (g.t_vertex),
+            gfe.buffer_manager(), MLPRecordings.TICK_DATA.value
+            )
+
+        # retrieve recorded outputs from every output group
+        rec_outputs = [None] * len (self.out_grps)
+        for g in self.out_grps:
+            rec_outputs[g.write_blk] = g.t_vertex.read (
+                gfe.placements().get_placement_of_vertex (g.t_vertex),
+                gfe.buffer_manager(), MLPRecordings.OUTPUTS.value
+                )
+ 
+        # print recorded data in correct order
+        current_example = -1
+        for tk in range (40):
+            (epoch, example, event, tick) = struct.unpack_from(
+                TICK_DATA_FORMAT,
+                rec_tick_data,
+                tk * TICK_DATA_SIZE
+                )
+
+            # check if starting new example
+            if (example != current_example):
+                # print first (implicit) tick data
+                print (f"{epoch} {example}")
+                print (f"ticks_on_example {len (self.out_grps)}")
+                print ("0 -1")
+                for g in self.output_chain:
+                    print (f"{g.units} 1")
+                    for _ in range (g.units):
+                        print ("{:8.6f} {}".format (0, 0))
+
+                # and prepare for next
+                current_example = example
+
+            # print current tick data
+            print (f"{tick} {event}")
+
+            for g in self.output_chain:
+                # get group tick outputs
+                outputs = struct.unpack_from(
+                    OUT_DATA_FORMATS[self.output_chain.index(g)],
+                    rec_outputs[g.write_blk],
+                    tk * OUT_DATA_SIZES[self.output_chain.index(g)]
+                    )
+
+                # print outputs
+                if len (rec_outputs[g.write_blk]):
+                    print (f"{g.units} 1")
+                    for d in range (g.units):
+                        # outputs are s16.15 fixed-point numbers
+                        out = (1.0 * outputs[d]) / (1.0 * (1 << 15))
+                        _t = g.targets[d]
+                        if (_t is None) or (_t == float ('nan')):
+                            tgt = "-"
+                        else:
+                            tgt = int(_t)
+                        print ("{:8.6f} {}".format (out, tgt))
+
+        return True
+
+
     def generate_machine_graph (self):
         """ generates a machine graph for the application graph
         """
@@ -734,42 +829,21 @@ class MLPNetwork():
         # run stage
         gfe.run_until_complete (self._stage_id)
 
-        # read recorded data from each output group
-        buffer_manager = gfe.buffer_manager ()
-        rec_outputs = [None] * len (self.out_grps)
-        for g in self.out_grps:
-            rec_outputs[g.write_blk] = g.t_vertex.read (
-                gfe.placements().get_placement_of_vertex (g.t_vertex),
-                buffer_manager, MLPRecordings.OUTPUTS.value
-                )
- 
-        # print recorded data in correct order
-        for tick in range (1):
-            for g in self.output_chain:
-                # get group tick outputs
-                outputs = struct.unpack_from(
-                    "<{}H".format (g.units),
-                    rec_outputs[g.write_blk],
-                    tick * (2 * g.units)
-                    )
+#lap        # prepare to retrieve recorded data
+#        buffer_manager = gfe.buffer_manager ()
+#         placements = gfe.placements ()
 
-                # print outputs
-                if len(rec_outputs[g.write_blk]):
-                    for d in range (g.units):
-                        # outputs are s16.15 fixed-point numbers
-                        out = (1.0 * outputs[d]) / (1.0 * (1 << 15))
-                        print ("{:8.6f}".format (out))
-    
-                    print ("")
+        # write output file
+        if not self.write_Lens_output_file (output_file = None):
+            print ("error: failed to write output file")
 
-        # reset buffers for next stage
-        buffer_manager.reset()
+        # prepare for next stage
+        self._stage_id += 1
+        gfe.buffer_manager().reset()
 
         # pause to allow debugging
         input (f"stage {self._stage_id} paused: press enter to exit")
 
-        # prepare for next stage
-        self._stage_id += 1
 
     def end (self):
         """ clean up before exiting

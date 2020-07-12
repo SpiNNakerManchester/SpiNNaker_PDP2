@@ -475,14 +475,6 @@ class ThresholdVertex(
                 size = self._REC_INFO_BYTES
                 )
     
-            print (f"\n\n")
-            print (f"rec_info size: {self._REC_INFO_BYTES}")
-            print (f"num chan: {len(MLPRecordings)}")
-            print (f"chan ids: {[ch.value for ch in MLPRecordings]}")
-            print (f"rec_chan sizes: {self._REC_CHANNEL_SIZES}")
-            print (f"data_n_steps: {data_n_steps}")
-            print (f"\n\n")
-
             # write data for the recording
             spec.switch_write_focus(MLPRegions.REC_INFO.value)
             spec.write_array(recording_utilities.get_recording_header_array(

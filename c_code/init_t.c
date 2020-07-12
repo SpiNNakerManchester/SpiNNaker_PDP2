@@ -586,6 +586,7 @@ void var_init (void)
       tf_initChain = 0;
     }
     tf_chain_rdy = tf_initChain;
+  }
 
   // initialise processing thread flag
   t_active = FALSE;
@@ -627,7 +628,6 @@ void var_init (void)
     // "daisy chain" key
     tf_stop_key = rt[STP] | SPINN_STPC_KEY;
   }
-}
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
@@ -769,6 +769,7 @@ void stage_var_init (void)
       tf_initChain = 0;
     }
     tf_chain_rdy = tf_initChain;
+  }
 
   // initialise processing thread flag
   t_active = FALSE;
@@ -810,7 +811,6 @@ void stage_var_init (void)
     // "daisy chain" key
     tf_stop_key = rt[STP] | SPINN_STPC_KEY;
   }
-}
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
