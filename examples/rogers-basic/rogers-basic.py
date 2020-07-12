@@ -78,8 +78,14 @@ rogers.read_Lens_weights_file (
 # train the network for the default number of updates
 rogers.train (update_function = MLPUpdateFuncs.UPD_DOUGSMOMENTUM)
 
+# generate Lens-style output file
+rogers.write_Lens_output_file ("rogers-basic_train.out")
+
 # test the network for the complete example set
 rogers.test ()
+
+# generate Lens-style output file
+rogers.write_Lens_output_file ("rogers-basic_train_test_1e.out")
 
 # close the application
 rogers.end ()

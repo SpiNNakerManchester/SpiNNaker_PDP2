@@ -151,7 +151,6 @@ extern activation_t   * t_last_integr_output;   //last INTEGRATOR output value
 extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output deriv
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
 extern uint             t_it_idx;      // index into current inputs/targets
-extern uint             t_tot_ticks;   // total ticks on current example
 extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
 extern uchar            t_active;      // processing nets/errors from queue?
 extern scoreboard_t     t_sync_arrived; // keep track of expected sync packets

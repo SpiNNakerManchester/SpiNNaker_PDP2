@@ -504,77 +504,109 @@ class MLPNetwork():
           for each unit:
                 <R output-value> <R target-value>
         """
-        # prepare to retrieve recorded data
-        TICK_DATA_FORMAT = "<4I"
-        TICK_DATA_SIZE = struct.calcsize(TICK_DATA_FORMAT)
+        with open(output_file, 'w') as f:
+            # prepare to retrieve recorded data
+            TICK_DATA_FORMAT = "<4I"
+            TICK_DATA_SIZE = struct.calcsize(TICK_DATA_FORMAT)
 
-        OUT_DATA_FORMATS = []
-        OUT_DATA_SIZES = []       
-        for g in self.output_chain:
-            OUT_DATA_FORMATS.append ("<{}H".format (g.units))
-            OUT_DATA_SIZES.append (struct.calcsize("<{}H".format (g.units)))       
-
-        # retrieve recorded tick_data from first output group
-        g = self.out_grps[0]
-        rec_tick_data = g.t_vertex.read (
-            gfe.placements().get_placement_of_vertex (g.t_vertex),
-            gfe.buffer_manager(), MLPRecordings.TICK_DATA.value
-            )
-
-        # retrieve recorded outputs from every output group
-        rec_outputs = [None] * len (self.out_grps)
-        for g in self.out_grps:
-            rec_outputs[g.write_blk] = g.t_vertex.read (
-                gfe.placements().get_placement_of_vertex (g.t_vertex),
-                gfe.buffer_manager(), MLPRecordings.OUTPUTS.value
-                )
- 
-        # print recorded data in correct order
-        current_example = -1
-        for tk in range (40):
-            (epoch, example, event, tick) = struct.unpack_from(
-                TICK_DATA_FORMAT,
-                rec_tick_data,
-                tk * TICK_DATA_SIZE
-                )
-
-            # check if starting new example
-            if (example != current_example):
-                # print first (implicit) tick data
-                print (f"{epoch} {example}")
-                print (f"ticks_on_example {len (self.out_grps)}")
-                print ("0 -1")
-                for g in self.output_chain:
-                    print (f"{g.units} 1")
-                    for _ in range (g.units):
-                        print ("{:8.6f} {}".format (0, 0))
-
-                # and prepare for next
-                current_example = example
-
-            # print current tick data
-            print (f"{tick} {event}")
-
+            OUT_DATA_FORMATS = []
+            OUT_DATA_SIZES = []       
             for g in self.output_chain:
-                # get group tick outputs
-                outputs = struct.unpack_from(
-                    OUT_DATA_FORMATS[self.output_chain.index(g)],
-                    rec_outputs[g.write_blk],
-                    tk * OUT_DATA_SIZES[self.output_chain.index(g)]
+                OUT_DATA_FORMATS.append ("<{}H".format (g.units))
+                OUT_DATA_SIZES.append (struct.calcsize("<{}H".format (g.units)))       
+
+            # retrieve recorded tick_data from first output group
+            g = self.out_grps[0]
+            rec_tick_data = g.t_vertex.read (
+                gfe.placements().get_placement_of_vertex (g.t_vertex),
+                gfe.buffer_manager(), MLPRecordings.TICK_DATA.value
+                )
+
+            TOTAL_TICKS = len (rec_tick_data) // TICK_DATA_SIZE
+
+            # retrieve recorded outputs from every output group
+            rec_outputs = [None] * len (self.out_grps)
+            for g in self.out_grps:
+                rec_outputs[g.write_blk] = g.t_vertex.read (
+                    gfe.placements().get_placement_of_vertex (g.t_vertex),
+                    gfe.buffer_manager(), MLPRecordings.OUTPUTS.value
                     )
 
-                # print outputs
-                if len (rec_outputs[g.write_blk]):
-                    print (f"{g.units} 1")
-                    for d in range (g.units):
-                        # outputs are s16.15 fixed-point numbers
-                        out = (1.0 * outputs[d]) / (1.0 * (1 << 15))
-                        _t = g.targets[d]
-                        if (_t is None) or (_t == float ('nan')):
-                            tgt = "-"
-                        else:
-                            tgt = int(_t)
-                        print ("{:8.6f} {}".format (out, tgt))
+            # compute total ticks in first example
+            #TODO: need to get actual value from simulation, not max value
+            ticks_per_example = 0
+            for ev in self._ex_set.examples[0].events:
+                # use event max_time if available or default to set max_time,
+                if (ev.max_time is None) or (self.max_time == float ('nan')):
+                    max_time = int (self._ex_set.max_time)
+                else:
+                    max_time = int (ev.max_time)
+
+                # compute number of ticks for max time,
+                ticks_per_example += (max_time + 1) * self._ticks_per_interval
+
+                # and limit to the global maximum if required
+                if ticks_per_example > self.global_max_ticks:
+                    ticks_per_example = self.global_max_ticks
+
+            # print recorded data in correct order
+            current_epoch = -1
+            for tk in range (TOTAL_TICKS):
+                (epoch, example, event, tick) = struct.unpack_from(
+                    TICK_DATA_FORMAT,
+                    rec_tick_data,
+                    tk * TICK_DATA_SIZE
+                    )
+
+                # check if starting new epoch
+                if (epoch != current_epoch):
+                    current_epoch = epoch
+                    current_example = -1
+                    evt_inx = 0
+                    evt_inc = 0
+
+                # check if starting new example
+                if (example != current_example):
+                    # print first (implicit) tick data
+                    f.write (f"{epoch} {example}\n")
+                    f.write (f"{ticks_per_example} {len (self.out_grps)}\n")
+                    f.write ("0 -1\n")
+                    for g in self.output_chain:
+                        f.write (f"{g.units} 1\n")
+                        for _ in range (g.units):
+                            f.write ("{:8.6f} {}\n".format (0, 0))
+
+                    # and prepare for next 
+                    current_example = example
+                    evt_inx += evt_inc
+                    evt_inc = len (self._ex_set.examples[example].events)
+
+                # print current tick data
+                f.write (f"{tick} {event}\n")
+    
+                for g in self.output_chain:
+                    # get group tick outputs
+                    outputs = struct.unpack_from(
+                        OUT_DATA_FORMATS[self.output_chain.index(g)],
+                        rec_outputs[g.write_blk],
+                        tk * OUT_DATA_SIZES[self.output_chain.index(g)]
+                        )
+    
+                    # print outputs
+                    if len (rec_outputs[g.write_blk]):
+                        f.write (f"{g.units} 1\n")
+                        for u in range (g.units):
+                            # outputs are s16.15 fixed-point numbers
+                            out = (1.0 * outputs[u]) / (1.0 * (1 << 15))
+                            t = g.targets[((evt_inx + event) * g.units) + u]
+                            if (t is None) or (t == float ('nan')):
+                                tgt = "-"
+                            else:
+                                tgt = int(t)
+                            f.write ("{:8.6f} {}\n".format (out, tgt))
+
+        # prepare buffers for next stage
+        gfe.buffer_manager().reset()
 
         return True
 
@@ -829,20 +861,11 @@ class MLPNetwork():
         # run stage
         gfe.run_until_complete (self._stage_id)
 
-#lap        # prepare to retrieve recorded data
-#        buffer_manager = gfe.buffer_manager ()
-#         placements = gfe.placements ()
-
-        # write output file
-        if not self.write_Lens_output_file (output_file = None):
-            print ("error: failed to write output file")
+        # pause to allow debugging
+#lap        input (f"stage {self._stage_id} paused: press enter to exit")
 
         # prepare for next stage
         self._stage_id += 1
-        gfe.buffer_manager().reset()
-
-        # pause to allow debugging
-        input (f"stage {self._stage_id} paused: press enter to exit")
 
 
     def end (self):

@@ -143,7 +143,6 @@ activation_t   * t_instant_outputs; // current output value stored for the backw
 short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
 uint             t_it_idx;          // index into current inputs/targets
-uint             t_tot_ticks;       // total ticks on current example
 pkt_queue_t      t_net_pkt_q;       // queue to hold received nets
 uchar            t_active;          // processing nets/errors from queue?
 scoreboard_t     t_sync_arrived;    // keep track of expected sync packets

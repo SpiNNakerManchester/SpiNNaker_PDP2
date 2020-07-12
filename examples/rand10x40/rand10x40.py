@@ -59,11 +59,20 @@ rand10x40.read_Lens_weights_file (
 # test the network for 20 examples
 rand10x40.test (num_examples = 20)
 
+# generate Lens-style output file
+rand10x40.write_Lens_output_file ("rand10x40_test_20e.out")
+
 # train the network for the default number of updates
 rand10x40.train (update_function = MLPUpdateFuncs.UPD_STEEPEST)
 
+# generate Lens-style output file
+rand10x40.write_Lens_output_file ("rand10x40_train.out")
+
 # test the network again for 20 example
 rand10x40.test (num_examples = 20)
+
+# generate Lens-style output file
+rand10x40.write_Lens_output_file ("rand10x40_train_test_20e.out")
 
 # close the application
 rand10x40.end ()
