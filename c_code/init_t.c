@@ -60,8 +60,8 @@ uint cfg_init (void)
   // set up the recording infrastructure
   if (tcfg.write_out)
   {
-    void * recording_region = data_specification_get_region(RECORDED_DATA, data);
-    if (!recording_initialize(&recording_region, &stage_rec_flags)){
+    void * rec_info = data_specification_get_region(REC_INFO, data);
+    if (!recording_initialize(&rec_info, &stage_rec_flags)){
       return (SPINN_CFG_UNAVAIL);
     }
   }
@@ -587,25 +587,6 @@ void var_init (void)
     }
     tf_chain_rdy = tf_initChain;
 
-    if (tcfg.is_last_output_group)
-    {
-      // "broadcast" key
-      tf_stop_key = rt[STP] | SPINN_STOP_KEY;
-
-      // "stop final" key
-      tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
-    }
-    else
-    {
-      // "daisy chain" key
-      tf_stop_key = rt[STP] | SPINN_STPC_KEY;
-    }
-  }
-
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "tsk = 0x%08x\n", tf_stop_key);
-#endif
-
   // initialise processing thread flag
   t_active = FALSE;
 
@@ -618,37 +599,6 @@ void var_init (void)
   // initialise net packet queue
   t_net_pkt_q.head = 0;
   t_net_pkt_q.tail = 0;
-
-  // check if writing outputs to host
-  if (tcfg.write_out)
-  {
-    // compute total ticks in first example -- info to be sent to host,
-    //TODO: compute correctly -- variable if completion criteria used
-    t_tot_ticks = 0;
-    for (uint i = 0; i < num_events; i++)
-    {
-      // update number of ticks for new event
-      if (ev[event_idx + i].max_time != SPINN_FP_NaN)
-      {
-        t_tot_ticks += (((ev[event_idx + i].max_time + SPINN_SMALL_VAL)
-       * ncfg.ticks_per_int)
-                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
-                         >> SPINN_FPREAL_SHIFT;
-      }
-      else
-      {
-        t_tot_ticks += (((es->max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
-                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
-                         >> SPINN_FPREAL_SHIFT;
-      }
-    }
-
-    // and limit to the global maximum if required
-    if (t_tot_ticks > ncfg.global_max_ticks - 1)
-    {
-      t_tot_ticks = ncfg.global_max_ticks - 1;
-    }
-  }
 
   // initialise packet keys
   //NOTE: colour is initialised to 0
@@ -663,6 +613,21 @@ void var_init (void)
   {
     t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
   }
+
+  if (tcfg.is_last_output_group)
+  {
+    // "broadcast" key
+    tf_stop_key = rt[STP] | SPINN_STOP_KEY;
+
+    // "stop final" key
+    tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
+  }
+  else
+  {
+    // "daisy chain" key
+    tf_stop_key = rt[STP] | SPINN_STPC_KEY;
+  }
+}
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
@@ -805,21 +770,6 @@ void stage_var_init (void)
     }
     tf_chain_rdy = tf_initChain;
 
-    if (tcfg.is_last_output_group)
-    {
-      // "broadcast" key
-      tf_stop_key = rt[STP] | SPINN_STOP_KEY;
-
-      // "stop final" key
-      tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
-    }
-    else
-    {
-      // "daisy chain" key
-      tf_stop_key = rt[STP] | SPINN_STPC_KEY;
-    }
-  }
-
   // initialise processing thread flag
   t_active = FALSE;
 
@@ -832,37 +782,6 @@ void stage_var_init (void)
   // initialise net packet queue
   t_net_pkt_q.head = 0;
   t_net_pkt_q.tail = 0;
-
-  // check if writing outputs to host
-  if (tcfg.write_out)
-  {
-    // compute total ticks in first example -- info to be sent to host,
-    //TODO: cannot compute correctly -- variable if completion criteria used
-    t_tot_ticks = 0;
-    for (uint i = 0; i < num_events; i++)
-    {
-      // update number of ticks for new event
-      if (ev[event_idx + i].max_time != SPINN_FP_NaN)
-      {
-        t_tot_ticks += (((ev[event_idx + i].max_time + SPINN_SMALL_VAL)
-       * ncfg.ticks_per_int)
-                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
-                         >> SPINN_FPREAL_SHIFT;
-      }
-      else
-      {
-        t_tot_ticks += (((es->max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
-                         + (1 << (SPINN_FPREAL_SHIFT - 1)))
-                         >> SPINN_FPREAL_SHIFT;
-      }
-    }
-
-    // and limit to the global maximum if required
-    if (t_tot_ticks > ncfg.global_max_ticks - 1)
-    {
-      t_tot_ticks = ncfg.global_max_ticks - 1;
-    }
-  }
 
   // initialise packet keys
   //NOTE: colour is initialised to 0
@@ -877,6 +796,21 @@ void stage_var_init (void)
   {
     t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
   }
+
+  if (tcfg.is_last_output_group)
+  {
+    // "broadcast" key
+    tf_stop_key = rt[STP] | SPINN_STOP_KEY;
+
+    // "stop final" key
+    tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
+  }
+  else
+  {
+    // "daisy chain" key
+    tf_stop_key = rt[STP] | SPINN_STPC_KEY;
+  }
+}
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------

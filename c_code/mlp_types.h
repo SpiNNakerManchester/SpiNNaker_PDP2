@@ -15,7 +15,7 @@ enum MLPRegions {
   WEIGHTS       =  8,
   ROUTING       =  9,
   STAGE         = 10,
-  RECORDED_DATA = 11
+  REC_INFO      = 11
 };
 
 enum MLPRecordings {

@@ -754,12 +754,13 @@ class MLPNetwork():
                     )
 
                 # print outputs
-                for d in range (g.units):
-                    # outputs are s16.15 fixed-point numbers
-                    out = (1.0 * outputs[d]) / (1.0 * (1 << 15))
-                    print ("{:8.6f}".format (out))
-
-                print ("")
+                if len(rec_outputs[g.write_blk]):
+                    for d in range (g.units):
+                        # outputs are s16.15 fixed-point numbers
+                        out = (1.0 * outputs[d]) / (1.0 * (1 << 15))
+                        print ("{:8.6f}".format (out))
+    
+                    print ("")
 
         # reset buffers for next stage
         buffer_manager.reset()

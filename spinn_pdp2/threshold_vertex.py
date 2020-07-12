@@ -2,7 +2,7 @@ import struct
 
 from data_specification.enums.data_type import DataType
 
-#lap from pacman.model.constraints.placer_constraints import ChipAndCoreConstraint
+from pacman.model.constraints.placer_constraints import ChipAndCoreConstraint
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.resources import ResourceContainer, VariableSDRAM, ConstantSDRAM
 from pacman.executor.injection_decorator import inject_items
@@ -49,11 +49,10 @@ class ThresholdVertex(
                  ):
 
         # add placement constraint if OUTPUT group
-#lap        if group.output_grp:
-#lap            constraints = [ChipAndCoreConstraint (x = 0, y = 0)]
-#lap        else:
-#lap            constraints = None
-        constraints = None
+        if group.output_grp:
+            constraints = [ChipAndCoreConstraint (x = 0, y = 0)]
+        else:
+            constraints = None
 
         super(ThresholdVertex, self).__init__(
             label = "t_core{}".format (group.id),
@@ -166,7 +165,7 @@ class ThresholdVertex(
 
         # recording region and recording channel sizes
         if self.group.output_grp:
-            self._REC_REGION_BYTES = \
+            self._REC_INFO_BYTES = \
             recording_utilities.get_recording_header_size(len(MLPRecordings))
 
             # list of all recording channel sizes
@@ -177,7 +176,7 @@ class ThresholdVertex(
 
             self._REC_CHANNEL_BYTES = sum(self._REC_CHANNEL_SIZES)
         else:
-            self._REC_REGION_BYTES = 0
+            self._REC_INFO_BYTES = 0
             self._REC_CHANNEL_BYTES = 0
 
         # configuration data plus application core SDRAM usage
@@ -196,7 +195,7 @@ class ThresholdVertex(
             self._OUT_DERIV_HISTORY_BYTES + \
             self._NET_HISTORY_BYTES + \
             self._OUTPUT_HISTORY_BYTES + \
-            self._REC_REGION_BYTES
+            self._REC_INFO_BYTES
         )
 
         # recording channels SDRAM usage
@@ -348,7 +347,7 @@ class ThresholdVertex(
         # Generate the system data region for simulation.c requirements
         generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)
 
-        # Reserve and write the network configuration region
+        # reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,
                                     self._N_NETWORK_CONFIGURATION_BYTES)
 
@@ -358,7 +357,7 @@ class ThresholdVertex(
         for c in self._network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the core configuration region
+        # reserve and write the core configuration region
         spec.reserve_memory_region (MLPRegions.CORE.value,
                                     self._N_CORE_CONFIGURATION_BYTES)
 
@@ -368,7 +367,7 @@ class ThresholdVertex(
         for c in self.config:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the example set region
+        # reserve and write the example set region
         spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
                                     self._N_EXAMPLE_SET_BYTES)
 
@@ -378,7 +377,7 @@ class ThresholdVertex(
         for c in self._set_cfg:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the examples region
+        # reserve and write the examples region
         spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
                                     self._N_EXAMPLES_BYTES)
 
@@ -389,7 +388,7 @@ class ThresholdVertex(
             for c in ex:
                 spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the events region
+        # reserve and write the events region
         spec.reserve_memory_region (MLPRegions.EVENTS.value,
                                     self._N_EVENTS_BYTES)
 
@@ -400,7 +399,7 @@ class ThresholdVertex(
             for c in ev:
                 spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the input data region (if INPUT group)
+        # reserve and write the input data region (if INPUT group)
         if self._N_INPUTS_BYTES != 0:
             spec.reserve_memory_region (MLPRegions.INPUTS.value,
                                         self._N_INPUTS_BYTES)
@@ -416,7 +415,7 @@ class ThresholdVertex(
                     _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_inp, data_type = DataType.UINT32)
 
-        # Reserve and write the target data region
+        # reserve and write the target data region
         if self._N_TARGETS_BYTES != 0:
             spec.reserve_memory_region (MLPRegions.TARGETS.value,
                                         self._N_TARGETS_BYTES)
@@ -432,7 +431,7 @@ class ThresholdVertex(
                     _tgt = int (_t * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_tgt, data_type = DataType.UINT32)
 
-        # Reserve and write the routing region
+        # reserve and write the routing region
         spec.reserve_memory_region (MLPRegions.ROUTING.value,
                                     self._N_KEYS_BYTES)
 
@@ -459,7 +458,7 @@ class ThresholdVertex(
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.fwd_link[p]), data_type = DataType.UINT32)
 
-        # Reserve and write the stage configuration region
+        # reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
                                     self._N_STAGE_CONFIGURATION_BYTES)
 
@@ -469,15 +468,15 @@ class ThresholdVertex(
         for c in self._network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # generate the recording data region
+        # reserve and write the recording info region
         if self.group.output_grp:
             spec.reserve_memory_region(
-                region = MLPRegions.RECORDED_DATA.value,
-                size = self._REC_REGION_BYTES
+                region = MLPRegions.REC_INFO.value,
+                size = self._REC_INFO_BYTES
                 )
     
             print (f"\n\n")
-            print (f"rec reg size: {self._REC_REGION_BYTES}")
+            print (f"rec_info size: {self._REC_INFO_BYTES}")
             print (f"num chan: {len(MLPRecordings)}")
             print (f"chan ids: {[ch.value for ch in MLPRecordings]}")
             print (f"rec_chan sizes: {self._REC_CHANNEL_SIZES}")
@@ -485,7 +484,7 @@ class ThresholdVertex(
             print (f"\n\n")
 
             # write data for the recording
-            spec.switch_write_focus(MLPRegions.RECORDED_DATA.value)
+            spec.switch_write_focus(MLPRegions.REC_INFO.value)
             spec.write_array(recording_utilities.get_recording_header_array(
                 [data_n_steps * sz for sz in self._REC_CHANNEL_SIZES]
                 )
@@ -496,7 +495,7 @@ class ThresholdVertex(
 
     @overrides(AbstractRewritesDataSpecification.regenerate_data_specification)
     def regenerate_data_specification(self, spec, placement):
-        # Reserve and write the stage configuration region
+        # reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
                                     self._N_STAGE_CONFIGURATION_BYTES)
 
@@ -525,10 +524,13 @@ class ThresholdVertex(
 
     @overrides(AbstractReceiveBuffersToHost.get_recorded_region_ids)
     def get_recorded_region_ids(self):
-        return [ch.value for ch in MLPRecordings]
+        if self.group.output_grp:
+            return [ch.value for ch in MLPRecordings]
+        else:
+            return []
 
     
     @overrides(AbstractReceiveBuffersToHost.get_recording_region_base_address)
     def get_recording_region_base_address(self, txrx, placement):
         return locate_memory_region_for_placement(
-            placement, MLPRegions.RECORDED_DATA.value, txrx)
+            placement, MLPRegions.REC_INFO.value, txrx)
