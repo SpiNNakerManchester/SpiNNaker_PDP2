@@ -861,11 +861,15 @@ class MLPNetwork():
         # run stage
         gfe.run_until_complete (self._stage_id)
 
-        # pause to allow debugging
-#lap        input (f"stage {self._stage_id} paused: press enter to exit")
-
         # prepare for next stage
         self._stage_id += 1
+
+
+    def pause (self):
+        """ pause execution to allow debugging
+        """
+        # pause until a key is pressed
+        input ("network paused: press enter to continue")
 
 
     def end (self):

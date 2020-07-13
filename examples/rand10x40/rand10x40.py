@@ -68,6 +68,9 @@ rand10x40.train (update_function = MLPUpdateFuncs.UPD_STEEPEST)
 # generate Lens-style output file
 rand10x40.write_Lens_output_file ("rand10x40_train.out")
 
+# pause execution between stages for debugging
+rand10x40.pause ()
+
 # test the network again for 20 example
 rand10x40.test (num_examples = 20)
 
