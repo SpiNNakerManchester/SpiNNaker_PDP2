@@ -61,15 +61,15 @@ The development of the project has relied heavily on the work of the
 Acknowledgments
 ---------------
 
-The work on this repository started as part of the
+Work on this repository started as part of the
 project 'PDP-squared: Meaningful PDP language models using parallel
 distributed processors', conducted in collaboration with researchers
-from the School of Psychology at The University of Manchester. The project
+from the Department of Psychology at The University of Manchester. The project
 was supported by EPSRC (the UK Engineering and Physical Sciences Research
 Council) under grant EP/F03430X/1. Ongoing development has been supported by
 the EU ICT Flagship Human Brain Project under Grants FP7-604102, H2020-720270,
 H2020-785907 and H2020-945539.
-The work of LA Plana is supported by the RAIN Hub, which is
+LA Plana is supported by the RAIN Hub, which is
 funded by the Industrial Strategy Challenge Fund, part of the government’s
 modern Industrial Strategy. The fund is delivered by UK Research and
 Innovation and managed by EPSRC under grant EP/R026084/1.
