@@ -175,9 +175,6 @@ void get_started (void)
 // ------------------------------------------------------------------------
 void c_main ()
 {
-  // say hello,
-  io_printf (IO_BUF, ">> mlp\n");
-
   // get core IDs,
   chipID = spin1_get_chip_id ();
   coreID = spin1_get_core_id ();
@@ -199,7 +196,7 @@ void c_main ()
   }
 
   // initialise variables,
-  var_init ();
+  var_init (TRUE);
 
   // set up timer1 (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
@@ -212,10 +209,7 @@ void c_main ()
   // setup simulation,
   simulation_set_start_function (get_started);
 
-  // start execution,
+  // and start execution
   simulation_run ();
-
-  // and say goodbye
-  io_printf (IO_BUF, "<< mlp\n");
 }
 // ------------------------------------------------------------------------

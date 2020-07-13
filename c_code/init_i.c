@@ -22,7 +22,9 @@
 // ------------------------------------------------------------------------
 uint cfg_init (void)
 {
+#ifdef DEBUG
   io_printf (IO_BUF, "input\n");
+#endif
 
   // read the data specification header
   data_specification_metadata_t * data =
@@ -82,16 +84,18 @@ uint cfg_init (void)
   // initialise stage configuration from SDRAM
   xadr = data_specification_get_region (STAGE, data);
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+
+#ifdef DEBUG
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ");
+    io_printf (IO_BUF, "train (updates:%u)\n", xcfg.num_epochs);
   }
   else
   {
-    io_printf (IO_BUF, "test ");
+    io_printf (IO_BUF, "test (examples:%u)\n", xcfg.num_examples);
   }
-  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
+#endif
 
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "og: %d\n", icfg.output_grp);
@@ -224,115 +228,23 @@ uint init_in_integr ()
 // ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
-void var_init (void)
+void var_init (uint reset_examples)
 {
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch       = 0;
-  example_cnt = 0;
-  example_inx = 0;
-  evt         = 0;
-
-  // initialise number of events and event index
-  num_events = ex[example_inx].num_events;
-  event_idx  = ex[example_inx].ev_idx;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise tick
-  //NOTE: input cores do not have a tick 0
-  tick = SPINN_I_INIT_TICK;
-
-  // initialise scoreboards
-  if_done = 0;
-  ib_done = 0;
-
-  // initialise synchronisation semaphores
-  if_thrds_pend = 1;
-
-  // initialise processing thread flag
-  i_active = FALSE;
-
-  // initialise packet queue
-  i_pkt_queue.head = 0;
-  i_pkt_queue.tail = 0;
-
-  // initialise packet keys
-  //NOTE: colour is initialised to 0.
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
-  for (uint p = 0; p < icfg.partitions; p++)
-  {
-    i_bkpKey[p] = rt[BKPI + p] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  }
-
-  // if input or output group initialise event input/target index
-  if (icfg.input_grp || icfg.output_grp)
-  {
-    i_it_idx = ev[event_idx].it_idx * icfg.num_units;
-  }
-
-  // if the INPUT INTEGRATOR is used
-  // reset the memory of the INTEGRATOR state variables
-  if (icfg.in_integr_en)
-  {
-    for (uint i = 0; i<icfg.num_units; i++)
-    {
-      i_last_integr_net[i] = (long_net_t) icfg.initNets;
-      i_last_integr_delta[i] = 0;
-    }
-  }
-
-  // and initialise net history for tick 0.
-  //TODO: understand why the values for tick 0 are used!
-  for (uint i = 0; i < icfg.num_units; i++)
-  {
-    i_net_history[i] = 0;
-  }
-
-  #ifdef DEBUG
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-pkt_sent = 0;  // total packets sent
-sent_fwd = 0;  // packets sent in FORWARD phase
-sent_bkp = 0;  // packets sent in BACKPROP phase
-pkt_recv = 0;  // total packets received
-recv_fwd = 0;  // packets received in FORWARD phase
-recv_bkp = 0;  // packets received in BACKPROP phase
-spk_sent = 0;  // sync packets sent
-spk_recv = 0;  // sync packets received
-stp_sent = 0;  // stop packets sent
-stp_recv = 0;  // stop packets received
-stn_recv = 0;  // network_stop packets received
-wrng_phs = 0;  // packets received in wrong phase
-wrng_tck = 0;  // FORWARD packets received in wrong tick
-wrng_btk = 0;  // BACKPROP packets received in wrong tick
-tot_tick = 0;  // total number of ticks executed
-// ------------------------------------------------------------------------
-#endif
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// initialise variables for next stage
-// ------------------------------------------------------------------------
-void stage_var_init (void)
-{
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch       = 0;
-  example_cnt = 0;
-  evt         = 0;
-
   // reset example index if requested
-  if (xcfg.reset)
+  //TODO: alternative algorithms for choosing example order!
+  if (reset_examples)
   {
     example_inx = 0;
   }
 
-  // initialise number of events and event index
+  // initialise example counter
+  example_cnt = 0;
+
+  // initialise epoch
+  epoch = 0;
+
+  // initialise event id, number of events and event index
+  evt        = 0;
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
 
@@ -424,6 +336,8 @@ void stage_init (void)
 
   // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+
+#ifdef DEBUG
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
@@ -434,9 +348,10 @@ void stage_init (void)
     io_printf (IO_BUF, "test ");
   }
   io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
+#endif
 
-  // re-initialise variables for this stage
-  stage_var_init ();
+  // initialise variables for this stage
+  var_init (xcfg.reset);
 }
 // ------------------------------------------------------------------------
 
@@ -446,9 +361,11 @@ void stage_init (void)
 // ------------------------------------------------------------------------
 void stage_start (void)
 {
+#ifdef DEBUG
   // start log
   io_printf (IO_BUF, "----------------\n");
   io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -461,6 +378,7 @@ void stage_done (uint ec)
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
+#if defined(DEBUG) || defined(DEBUG_MIN)
   // report problems -- if any
   switch (ec)
   {
@@ -492,12 +410,11 @@ void stage_done (uint ec)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                       epoch, example_cnt, phase, tick
                     );
-      io_printf (IO_BUF, "stage aborted\n");
-#ifdef DEBUG_TO
       io_printf (IO_BUF, "(fd:%u bd:%u)\n", if_done, ib_done);
-#endif
+      io_printf (IO_BUF, "stage aborted\n");
       break;
   }
+#endif
 
 #ifdef DEBUG
   // report diagnostics
@@ -513,9 +430,11 @@ void stage_done (uint ec)
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
 #endif
 
+#ifdef DEBUG
   // close log,
   io_printf (IO_BUF, "stopping stage %u\n", xcfg.stage_id);
   io_printf (IO_BUF, "----------------\n");
+#endif
 
   // and let host know that we're done
   if (ec == SPINN_NO_ERROR)

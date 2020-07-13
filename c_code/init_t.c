@@ -729,6 +729,7 @@ void stage_done (uint ec)
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
+#if defined(DEBUG) || defined(DEBUG_MIN)
   // report problems -- if any
   switch (ec)
   {
@@ -760,8 +761,6 @@ void stage_done (uint ec)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                  epoch, example_cnt, phase, tick
                 );
-      io_printf (IO_BUF, "stage aborted\n");
-#ifdef DEBUG_TO
       io_printf (IO_BUF, "(tactive:%u ta:%u/%u tb:%u/%u)\n",
                   t_active, tf_arrived, tcfg.num_units,
                   tb_arrived, tcfg.num_units
@@ -772,9 +771,10 @@ void stage_done (uint ec)
       io_printf (IO_BUF, "(tcr:%u)\n",
                   tf_chain_rdy
                 );
-#endif
+      io_printf (IO_BUF, "stage aborted\n");
       break;
   }
+#endif
 
 #ifdef DEBUG
   // report diagnostics,

@@ -21,7 +21,9 @@
 // ------------------------------------------------------------------------
 uint cfg_init (void)
 {
+#ifdef DEBUG
   io_printf (IO_BUF, "weight\n");
+#endif
 
   // read the data specification header
   data_specification_metadata_t * data =
@@ -74,16 +76,18 @@ uint cfg_init (void)
   // initialise stage configuration from SDRAM
   xadr = data_specification_get_region (STAGE, data);
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+
+#ifdef DEBUG
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ");
+    io_printf (IO_BUF, "train (updates:%u)\n", xcfg.num_epochs);
   }
   else
   {
-    io_printf (IO_BUF, "test ");
+    io_printf (IO_BUF, "test (examples:%u)\n", xcfg.num_examples);
   }
-  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
+#endif
 
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
@@ -221,137 +225,46 @@ uint mem_init (void)
 // ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
-void var_init (void)
+void var_init (uint init_weights, uint reset_examples)
 {
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch       = 0;
-  example_cnt = 0;
-  example_inx = 0;
-  evt         = 0;
-
-  // initialise number of events and event index
-  num_events = ex[example_inx].num_events;
-  event_idx  = ex[example_inx].ev_idx;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise tick
-  tick = SPINN_W_INIT_TICK;
-
-  // initialise weights from SDRAM
-  //NOTE: could use DMA
-  for (uint i = 0; i < wcfg.num_rows; i++)
+  // initialise weights from SDRAM if requested
+  if (init_weights)
   {
-    spin1_memcpy (w_weights[i],
-                   &wt[i * wcfg.num_cols],
-                   wcfg.num_cols * sizeof (weight_t)
-                 );
-  }
+    //NOTE: could use DMA
+    for (uint i = 0; i < wcfg.num_rows; i++)
+    {
+      spin1_memcpy (w_weights[i],
+                     &wt[i * wcfg.num_cols],
+                     wcfg.num_cols * sizeof (weight_t)
+                   );
+    }
 
 #ifdef DEBUG_CFG2
-  for (uint r = 0; r < wcfg.num_rows; r++)
-  {
-    for (uint c =0; c < wcfg.num_cols; c++)
+    for (uint r = 0; r < wcfg.num_rows; r++)
     {
-      io_printf (IO_BUF, "w[%u][%u]: %k\n", r, c, w_weights[r][c]);
+      for (uint c =0; c < wcfg.num_cols; c++)
+      {
+        io_printf (IO_BUF, "w[%u][%u]: %k\n", r, c, w_weights[r][c]);
+      }
     }
-  }
 #endif
-
-  // initialise link deltas, weight changes
-  // error dot products and output history for tick 0
-  for (uint i = 0; i < wcfg.num_rows; i++)
-  {
-    for (uint j = 0; j < wcfg.num_cols; j++)
-    {
-      w_link_deltas[i][j] = 0;
-      w_wchanges[i][j] = 0;
-    }
-
-    w_errors[i] = 0;
-    w_output_history[i] = 0;
   }
-
-  // initialise delta scaling factor
-  // s15.16
-  w_delta_dt = (1 << SPINN_FPREAL_SHIFT) / ncfg.ticks_per_int;
-
-  // initialise pointers to received unit outputs
-  wf_procs = 0;
-  wf_comms = 1;
-
-  // initialise synchronisation semaphores
-  wf_thrds_pend = 0; // just wait for initial unit outputs
-  wb_thrds_pend = 0; // just wait for initial deltas
-
-  // initialise processing thread flag
-  wb_active = FALSE;
-
-  // initialise arrival scoreboards
-  wf_arrived = 0;
-  wb_arrived = 0;
-
-  // set weight update function
-  wb_update_func = w_update_procs[xcfg.update_function];
-
-  // initialise packet keys
-  //NOTE: colour is initialised to 0.
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD)
-      | SPINN_BLOCK_KEY(wcfg.col_blk);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP)
-      | SPINN_BLOCK_KEY(wcfg.row_blk);
-  ldsaKey = rt[LDS] | SPINN_LDSA_KEY;
-
-#ifdef DEBUG
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-pkt_sent = 0;  // total packets sent
-sent_fwd = 0;  // packets sent in FORWARD phase
-sent_bkp = 0;  // packets sent in BACKPROP phase
-pkt_recv = 0;  // total packets received
-recv_fwd = 0;  // packets received in FORWARD phase
-recv_bkp = 0;  // packets received in BACKPROP phase
-pkt_fwbk = 0;  // unused packets received in FORWARD phase
-pkt_bwbk = 0;  // unused packets received in BACKPROP phase
-spk_sent = 0;  // sync packets sent
-spk_recv = 0;  // sync packets received
-stp_sent = 0;  // stop packets sent
-stp_recv = 0;  // stop packets received
-stn_recv = 0;  // network_stop packets received
-lda_sent = 0;  // partial link_delta packets sent
-ldr_recv = 0;  // link_delta packets received
-wrng_phs = 0;  // packets received in wrong phase
-wrng_tck = 0;  // FORWARD packets received in wrong tick
-wrng_btk = 0;  // BACKPROP packets received in wrong tick
-wght_ups = 0;  // number of weight updates done
-tot_tick = 0;  // total number of ticks executed
-// ------------------------------------------------------------------------
-#endif
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// initialise variables for next stage
-// ------------------------------------------------------------------------
-void stage_var_init (void)
-{
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch       = 0;
-  example_cnt = 0;
-  evt         = 0;
 
   // reset example index if requested
-  if (xcfg.reset)
+  //TODO: alternative algorithms for choosing example order!
+  if (reset_examples)
   {
     example_inx = 0;
   }
 
-  // initialise number of events and event index
+  // initialise example counter
+  example_cnt = 0;
+
+  // initialise epoch
+  epoch = 0;
+
+  // initialise event id, number of events and event index
+  evt        = 0;
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
 
@@ -445,6 +358,8 @@ void stage_init (void)
 
   // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+
+#ifdef DEBUG
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
@@ -455,9 +370,10 @@ void stage_init (void)
     io_printf (IO_BUF, "test ");
   }
   io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
+#endif
 
-  // re-initialise variables for this stage
-  stage_var_init ();
+  // initialise variables for this stage (do NOT initialise weights)
+  var_init (FALSE, xcfg.reset);
 }
 // ------------------------------------------------------------------------
 
@@ -467,9 +383,11 @@ void stage_init (void)
 // ------------------------------------------------------------------------
 void stage_start (void)
 {
+#ifdef DEBUG
   // start log
   io_printf (IO_BUF, "----------------\n");
   io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -482,6 +400,7 @@ void stage_done (uint ec)
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
+#if defined(DEBUG) || defined(DEBUG_MIN)
   // report problems -- if any
   switch (ec)
   {
@@ -513,16 +432,15 @@ void stage_done (uint ec)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                  epoch, example_cnt, phase, tick
                 );
-      io_printf (IO_BUF, "stage aborted\n");
-#ifdef DEBUG_TO
       io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
       io_printf (IO_BUF, "(fptd:%u)\n", wf_thrds_pend);
       io_printf (IO_BUF, "(fa:%u ba:%u)\n",
                  wf_arrived, wb_arrived
                 );
-#endif
+      io_printf (IO_BUF, "stage aborted\n");
       break;
   }
+#endif
 
 #ifdef DEBUG
   // report diagnostics
@@ -543,9 +461,11 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
 #endif
 
+#ifdef DEBUG
   // close log,
   io_printf (IO_BUF, "stopping stage %u\n", xcfg.stage_id);
   io_printf (IO_BUF, "----------------\n");
+#endif
 
   // and let host know that we're done
   if (ec == SPINN_NO_ERROR) {
