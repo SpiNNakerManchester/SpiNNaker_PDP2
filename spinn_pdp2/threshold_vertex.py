@@ -28,7 +28,9 @@ from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
     import generate_steps_system_data_region
 
-from spinn_pdp2.mlp_types import MLPConstants, MLPRegions, MLPRecordings
+from spinn_pdp2.mlp_types \
+    import MLPConstants, MLPRegions, MLPRecordings, MLPExtraRecordings
+
 
 
 class ThresholdVertex(
@@ -163,17 +165,30 @@ class ThresholdVertex(
         self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
             self.group.units * self._network.global_max_ticks
 
-        # recording region and recording channel sizes
+        # recording info region and recording channel sizes
         if self.group.output_grp:
-            self._REC_INFO_BYTES = \
-            recording_utilities.get_recording_header_size(len(MLPRecordings))
+            # number of recording channels
+            _NUM_REC_CHANNS = len(MLPRecordings)
 
-            # list of all recording channel sizes
+            # list of recording channel sizes
             self._REC_CHANNEL_SIZES = [
-                self.group.units * (BYTES_PER_WORD // 2),  # OUTPUTS
-                4 * BYTES_PER_WORD                         # TICK_DATA
+                self.group.units * (BYTES_PER_WORD // 2)  # OUTPUTS
                 ]
 
+            # first output group has extra recording channels
+            if self.group.is_first_out:
+                # number of extra recording channels
+                _NUM_REC_CHANNS += len(MLPExtraRecordings)
+
+                # list of extra recording channel sizes
+                self._REC_CHANNEL_SIZES.extend ([
+                    4 * BYTES_PER_WORD  # TICK_DATA
+                    ]
+                    )
+    
+            self._REC_INFO_BYTES = \
+            recording_utilities.get_recording_header_size(_NUM_REC_CHANNS)
+    
             self._REC_CHANNEL_BYTES = sum(self._REC_CHANNEL_SIZES)
         else:
             self._REC_INFO_BYTES = 0
@@ -517,7 +532,13 @@ class ThresholdVertex(
     @overrides(AbstractReceiveBuffersToHost.get_recorded_region_ids)
     def get_recorded_region_ids(self):
         if self.group.output_grp:
-            return [ch.value for ch in MLPRecordings]
+            ids = [ch.value for ch in MLPRecordings]
+
+            # first output group has additional recording channels
+            if self.group.is_first_out:
+                ids.extend([ch.value for ch in MLPExtraRecordings])
+
+            return ids
         else:
             return []
 

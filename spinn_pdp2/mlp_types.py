@@ -135,7 +135,7 @@ class MLPErrorFuncs (Enum):
 
 
 class MLPRegions (Enum):
-    """ regions used by MLP cores
+    """ SDRAM regions used by MLP cores
     """
     SYSTEM        =  0
     NETWORK       =  1
@@ -152,7 +152,13 @@ class MLPRegions (Enum):
 
 
 class MLPRecordings (Enum):
-    """ regions used by MLP cores
+    """ t core recording channels
     """
-    OUTPUTS   = 0
-    TICK_DATA = 1
+    OUTPUTS = 0
+
+
+class MLPExtraRecordings (Enum):
+    """ additional recording channels
+        for first output t core
+    """
+    TICK_DATA = len (MLPRecordings)

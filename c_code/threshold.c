@@ -289,7 +289,7 @@ void c_main ()
   }
 
   // initialise variables,
-  var_init ();
+  var_init (TRUE);
 
   // set up timer1 (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);

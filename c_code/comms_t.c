@@ -359,7 +359,10 @@ void record_outputs (uint unused0, uint unused1)
 
   // and record outputs
   if (stage_rec_flags) {
-    recording_record(TICK_DATA, (void *) &tick_data, sizeof (tick_record_t));
+    if (tcfg.is_first_output_group)
+    {
+      recording_record(TICK_DATA, (void *) &tick_data, sizeof (tick_record_t));
+    }
     recording_record(OUTPUTS,
         (void *) outputs, tcfg.num_units * sizeof (short_activ_t)
     );

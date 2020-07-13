@@ -9,7 +9,8 @@ from spinn_pdp2.input_vertex     import InputVertex
 from spinn_pdp2.sum_vertex       import SumVertex
 from spinn_pdp2.threshold_vertex import ThresholdVertex
 from spinn_pdp2.weight_vertex    import WeightVertex
-from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants, MLPRecordings
+from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants, \
+    MLPRecordings, MLPExtraRecordings
 from spinn_pdp2.mlp_group        import MLPGroup
 from spinn_pdp2.mlp_link         import MLPLink
 from spinn_pdp2.mlp_examples     import MLPExampleSet
@@ -519,7 +520,7 @@ class MLPNetwork():
             g = self.out_grps[0]
             rec_tick_data = g.t_vertex.read (
                 gfe.placements().get_placement_of_vertex (g.t_vertex),
-                gfe.buffer_manager(), MLPRecordings.TICK_DATA.value
+                gfe.buffer_manager(), MLPExtraRecordings.TICK_DATA.value
                 )
 
             TOTAL_TICKS = len (rec_tick_data) // TICK_DATA_SIZE
