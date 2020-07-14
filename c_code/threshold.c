@@ -160,6 +160,7 @@ uchar            tf_group_crit;     // stop criterion met for all groups?
 uchar            tf_event_crit;     // stop criterion met for all events?
 uchar            tf_example_crit;   // stop criterion met for all examples?
 error_t          t_group_criterion; // convergence criterion value
+test_results_t   t_test_results;    // test results to report to host
 stop_crit_t      tf_stop_func;      // stop evaluation function
 uint             tf_stop_key;       // stop criterion packet key
 uint             tf_stpn_key;       // stop network packet key
@@ -286,7 +287,7 @@ void c_main ()
   }
 
   // initialise variables,
-  var_init (TRUE);
+  var_init (TRUE, TRUE);
 
   // set up timer1 (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);

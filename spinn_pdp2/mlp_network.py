@@ -612,6 +612,31 @@ class MLPNetwork():
         return True
 
 
+    def show_test_results (self):
+        """ show stage test results
+            if available
+        """
+        # prepare to retrieve recorded test results data
+        TEST_RESULTS_FORMAT = "<4I"
+        TEST_RESULTS_SIZE = struct.calcsize(TEST_RESULTS_FORMAT)
+
+        # retrieve recorded tick_data from first output group
+        g = self.out_grps[0]
+        rec_test_results = g.t_vertex.read (
+            gfe.placements().get_placement_of_vertex (g.t_vertex),
+            gfe.buffer_manager(), MLPRecordings.TEST_RESULTS.value
+            )
+
+        if len (rec_test_results) >= TEST_RESULTS_SIZE:
+            (epochs_trained, examples_tested, ticks_tested, examples_correct) = \
+            struct.unpack_from(TEST_RESULTS_FORMAT, rec_test_results, 0)
+
+            print("\n--------------------------------------------------")            
+            print (f"stage {self._stage_id} Test results: {epochs_trained}, {examples_tested}, {ticks_tested}, {examples_correct}")
+            print("--------------------------------------------------\n")            
+
+
+
     def generate_machine_graph (self):
         """ generates a machine graph for the application graph
         """
@@ -861,6 +886,9 @@ class MLPNetwork():
 
         # run stage
         gfe.run_until_complete (self._stage_id)
+
+        # show TEST RESULTS if available
+        self.show_test_results ()
 
         # prepare for next stage
         self._stage_id += 1

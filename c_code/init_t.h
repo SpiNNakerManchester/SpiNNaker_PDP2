@@ -3,7 +3,7 @@
 
 uint cfg_init (void);
 uint mem_init (void);
-void var_init (uint reset_examples);
+void var_init (uint reset_examples, uint reset_epochs_trained);
 
 void t_init_outputs (uint unused0, uint unused1);
 

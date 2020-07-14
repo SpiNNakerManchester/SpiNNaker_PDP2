@@ -405,7 +405,16 @@ void tf_advance_event (void)
     }
     else
     {
-      // if not training, initialise ticks for the next example
+      // if not training,
+      // add this example to the tally of examples tested for the current stage
+      t_test_results.examples_tested += 1;
+
+      // add the number of ticks on this example to the tally of ticks for the current stage
+      // [LENS adds one to the tick count for each example for some reason
+      // the same is done here for comparison purposes]
+      t_test_results.ticks_tested += (tick + 1);
+
+      // initialise ticks for the next example
       tick = SPINN_T_INIT_TICK;
       ev_tick = SPINN_T_INIT_TICK;
 
@@ -504,6 +513,17 @@ void t_advance_example (void)
       example_cnt = 0;
       tf_event_crit = 1;
       tf_example_crit = 1;
+
+      // reset the variables for test results
+      t_test_results.examples_tested = 0;
+      t_test_results.ticks_tested = 0;
+      t_test_results.examples_correct = 0;
+
+      // increment the count of epochs trained
+      if (xcfg.training)
+      {
+        t_test_results.epochs_trained++;
+      }
     }
   }
 
@@ -659,6 +679,11 @@ void tf_send_stop (uint unused0, uint unused1)
   if (tcfg.is_last_output_group)
   {
     tf_group_crit = tf_stop_crit;
+
+    if (!xcfg.training)
+    {
+      t_test_results.examples_correct += tf_stop_crit && (ev_tick >=min_ticks);
+    }
 
     tf_stop_crit = (ev_tick >= max_ticks)
                      || (tick == ncfg.global_max_ticks - 1)

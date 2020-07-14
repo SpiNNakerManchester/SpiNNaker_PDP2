@@ -155,6 +155,7 @@ class MLPRecordings (Enum):
     """ t core recording channels
     """
     OUTPUTS = 0
+    TEST_RESULTS = 1
 
 
 class MLPExtraRecordings (Enum):

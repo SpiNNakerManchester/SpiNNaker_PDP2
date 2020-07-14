@@ -50,7 +50,7 @@ class ThresholdVertex(
                  group
                  ):
 
-        # add placement constraint if OUTPUT group
+        # place OUTPUT groups "close" to the host
         if group.output_grp:
             constraints = [ChipAndCoreConstraint (x = 0, y = 0)]
         else:
@@ -172,7 +172,8 @@ class ThresholdVertex(
 
             # list of recording channel sizes
             self._REC_CHANNEL_SIZES = [
-                self.group.units * (BYTES_PER_WORD // 2)  # OUTPUTS
+                self.group.units * (BYTES_PER_WORD // 2),  # OUTPUTS
+                4 * BYTES_PER_WORD                         # TEST_RESULTS
                 ]
 
             # first output group has extra recording channels

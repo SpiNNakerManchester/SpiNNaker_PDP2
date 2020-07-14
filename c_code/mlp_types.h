@@ -19,8 +19,9 @@ enum MLPRegions {
 };
 
 enum MLPRecordings {
-  OUTPUTS   = 0,
-  TICK_DATA = 1
+  OUTPUTS      = 0,
+  TEST_RESULTS = 1,
+  TICK_DATA    = 2
 };
 
 // t cores can have more than one FWD key (due to partitions)
@@ -368,6 +369,18 @@ typedef struct tick_record {
   uint event;    // current event
   uint tick;     // current tick
 } tick_record_t;
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// test results record
+// ------------------------------------------------------------------------
+typedef struct test_results {
+  uint epochs_trained;    // epochs of training that have occurred
+  uint examples_tested;   // total number of examples tested
+  uint ticks_tested;      // total number of ticks in those examples
+  uint examples_correct;  // number of examples that met the testing criterion
+} test_results_t;
 // ------------------------------------------------------------------------
 
 

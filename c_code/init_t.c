@@ -487,8 +487,24 @@ uint init_out_weak_clamp ()
 // ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
-void var_init (uint reset_examples)
+void var_init (uint reset_examples, uint reset_epochs_trained)
 {
+  // initialise variables for holding test results
+  if (reset_epochs_trained)
+  {
+    t_test_results.epochs_trained = 0;
+  }
+  else
+  {
+    if (xcfg.training)
+    {
+      t_test_results.epochs_trained++;
+    }
+  }
+  t_test_results.examples_tested  = 0;
+  t_test_results.ticks_tested     = 0;
+  t_test_results.examples_correct = 0;
+
   // reset example index if requested
   //TODO: alternative algorithms for choosing example order!
   if (reset_examples)
@@ -699,7 +715,7 @@ void stage_init (void)
 #endif
 
   // initialise variables for this stage
-  var_init (xcfg.reset);
+  var_init (xcfg.reset, FALSE);
 }
 // ------------------------------------------------------------------------
 
@@ -728,6 +744,12 @@ void stage_done (uint ec)
 {
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
+
+  // report test results, if enabled,
+  if (stage_rec_flags && !xcfg.training && tcfg.output_grp)
+  {
+    recording_record(TEST_RESULTS, (void *) &t_test_results, sizeof (test_results_t));
+  }
 
 #if defined(DEBUG) || defined(DEBUG_MIN)
   // report problems -- if any
@@ -814,7 +836,8 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "----------------\n");
 #endif
 
-  //TODO: find out the semantics of recording_finalise,
+  // "close" recording channels,
+  //TODO: find out the semantics of recording_finalise
   if (tcfg.write_out)
   {
     if (stage_rec_flags) {
