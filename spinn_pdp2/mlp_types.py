@@ -151,15 +151,22 @@ class MLPRegions (Enum):
     REC_INFO      = 11
 
 
-class MLPRecordings (Enum):
+class MLPVarSizeRecordings (Enum):
     """ t core recording channels
+        with variable per-stage data size
     """
     OUTPUTS = 0
-    TEST_RESULTS = 1
+
+
+class MLPConstSizeRecordings (Enum):
+    """ t core recording channels
+        with constant per-stage data size
+    """
+    TEST_RESULTS = len (MLPVarSizeRecordings)
 
 
 class MLPExtraRecordings (Enum):
     """ additional recording channels
         for first output t core
     """
-    TICK_DATA = len (MLPRecordings)
+    TICK_DATA = len (MLPVarSizeRecordings) + len (MLPConstSizeRecordings)

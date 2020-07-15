@@ -28,8 +28,8 @@ from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
     import generate_steps_system_data_region
 
-from spinn_pdp2.mlp_types \
-    import MLPConstants, MLPRegions, MLPRecordings, MLPExtraRecordings
+from spinn_pdp2.mlp_types import MLPConstants, MLPRegions, \
+    MLPVarSizeRecordings, MLPConstSizeRecordings, MLPExtraRecordings
 
 
 
@@ -165,58 +165,74 @@ class ThresholdVertex(
         self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
             self.group.units * self._network.global_max_ticks
 
-        # recording info region and recording channel sizes
+        # recording info region size
         if self.group.output_grp:
             # number of recording channels
-            _NUM_REC_CHANNS = len(MLPRecordings)
-
-            # list of recording channel sizes
-            self._REC_CHANNEL_SIZES = [
-                self.group.units * (BYTES_PER_WORD // 2),  # OUTPUTS
-                4 * BYTES_PER_WORD                         # TEST_RESULTS
-                ]
+            NUM_REC_CHANNS = len(MLPVarSizeRecordings) + \
+                len(MLPConstSizeRecordings)
 
             # first output group has extra recording channels
             if self.group.is_first_out:
                 # number of extra recording channels
-                _NUM_REC_CHANNS += len(MLPExtraRecordings)
+                NUM_REC_CHANNS += len(MLPExtraRecordings)
 
-                # list of extra recording channel sizes
-                self._REC_CHANNEL_SIZES.extend ([
-                    4 * BYTES_PER_WORD  # TICK_DATA
-                    ]
-                    )
-    
             self._REC_INFO_BYTES = \
-            recording_utilities.get_recording_header_size(_NUM_REC_CHANNS)
-    
-            self._REC_CHANNEL_BYTES = sum(self._REC_CHANNEL_SIZES)
+                recording_utilities.get_recording_header_size(NUM_REC_CHANNS)
         else:
             self._REC_INFO_BYTES = 0
-            self._REC_CHANNEL_BYTES = 0
+
+        # recording channel sizes
+        if self.group.output_grp:
+            # list of variable-size recording channel sizes
+            self.VAR_CHANNEL_SIZES = [
+                self.group.units * (BYTES_PER_WORD // 2)  # OUTPUTS
+                ]
+
+            # list of constant-size recording channel sizes
+            self.CONST_CHANNEL_SIZES = [
+                4 * BYTES_PER_WORD  # TEST_RESULTS
+                ]
+
+            # list of extra recording channel sizes
+            if self.group.is_first_out:
+                # list of extra recording channel sizes
+                self.EXTRA_CHANNEL_SIZES = [
+                    4 * BYTES_PER_WORD  # TICK_DATA
+                    ]
+            else:
+                self.EXTRA_CHANNEL_SIZES = [0]
+
+            self._VAR_CHANNEL_BYTES = sum(self.VAR_CHANNEL_SIZES) + \
+                sum(self.EXTRA_CHANNEL_SIZES)
+
+            self._CONST_CHANNEL_BYTES = sum(self.CONST_CHANNEL_SIZES)
+        else:
+            self._VAR_CHANNEL_BYTES = 0
+            self._CONST_CHANNEL_BYTES = 0
 
         # configuration data plus application core SDRAM usage
         self._sdram_fixed = (
-            SYSTEM_BYTES_REQUIREMENT + \
-            self._N_NETWORK_CONFIGURATION_BYTES + \
-            self._N_CORE_CONFIGURATION_BYTES + \
-            self._N_EXAMPLE_SET_BYTES + \
-            self._N_EXAMPLES_BYTES + \
-            self._N_EVENTS_BYTES + \
-            self._N_INPUTS_BYTES + \
-            self._N_TARGETS_BYTES + \
-            self._N_KEYS_BYTES + \
-            self._N_STAGE_CONFIGURATION_BYTES + \
-            self._TARGET_HISTORY_BYTES + \
-            self._OUT_DERIV_HISTORY_BYTES + \
-            self._NET_HISTORY_BYTES + \
-            self._OUTPUT_HISTORY_BYTES + \
-            self._REC_INFO_BYTES
+            SYSTEM_BYTES_REQUIREMENT +
+            self._N_NETWORK_CONFIGURATION_BYTES +
+            self._N_CORE_CONFIGURATION_BYTES +
+            self._N_EXAMPLE_SET_BYTES +
+            self._N_EXAMPLES_BYTES +
+            self._N_EVENTS_BYTES +
+            self._N_INPUTS_BYTES +
+            self._N_TARGETS_BYTES +
+            self._N_KEYS_BYTES +
+            self._N_STAGE_CONFIGURATION_BYTES +
+            self._TARGET_HISTORY_BYTES +
+            self._OUT_DERIV_HISTORY_BYTES +
+            self._NET_HISTORY_BYTES +
+            self._OUTPUT_HISTORY_BYTES +
+            self._REC_INFO_BYTES +
+            self._CONST_CHANNEL_BYTES
         )
 
         # recording channels SDRAM usage
         self._sdram_variable = (
-            self._REC_CHANNEL_BYTES
+            self._VAR_CHANNEL_BYTES
         )
 
     @property
@@ -491,11 +507,17 @@ class ThresholdVertex(
                 size = self._REC_INFO_BYTES
                 )
     
-            # write data for the recording
+            # write the actual recording channel sizes for a stage
+            _sizes = [data_n_steps * sz for sz in self.VAR_CHANNEL_SIZES]
+            _sizes.extend([sz for sz in self.CONST_CHANNEL_SIZES])
+            if self.group.is_first_out:
+                _sizes.extend(
+                    [data_n_steps * sz for sz in self.EXTRA_CHANNEL_SIZES]
+                    )
+
             spec.switch_write_focus(MLPRegions.REC_INFO.value)
-            spec.write_array(recording_utilities.get_recording_header_array(
-                [data_n_steps * sz for sz in self._REC_CHANNEL_SIZES]
-                )
+            spec.write_array(
+                recording_utilities.get_recording_header_array(_sizes)
             )
 
         spec.end_specification ()
@@ -533,7 +555,8 @@ class ThresholdVertex(
     @overrides(AbstractReceiveBuffersToHost.get_recorded_region_ids)
     def get_recorded_region_ids(self):
         if self.group.output_grp:
-            ids = [ch.value for ch in MLPRecordings]
+            ids = [ch.value for ch in MLPVarSizeRecordings]
+            ids.extend([ch.value for ch in MLPConstSizeRecordings])
 
             # first output group has additional recording channels
             if self.group.is_first_out:

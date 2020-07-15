@@ -10,7 +10,7 @@ from spinn_pdp2.sum_vertex       import SumVertex
 from spinn_pdp2.threshold_vertex import ThresholdVertex
 from spinn_pdp2.weight_vertex    import WeightVertex
 from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants, \
-    MLPRecordings, MLPExtraRecordings
+    MLPVarSizeRecordings, MLPConstSizeRecordings, MLPExtraRecordings
 from spinn_pdp2.mlp_group        import MLPGroup
 from spinn_pdp2.mlp_link         import MLPLink
 from spinn_pdp2.mlp_examples     import MLPExampleSet
@@ -530,7 +530,7 @@ class MLPNetwork():
             for g in self.out_grps:
                 rec_outputs[g.write_blk] = g.t_vertex.read (
                     gfe.placements().get_placement_of_vertex (g.t_vertex),
-                    gfe.buffer_manager(), MLPRecordings.OUTPUTS.value
+                    gfe.buffer_manager(), MLPVarSizeRecordings.OUTPUTS.value
                     )
 
             # compute total ticks in first example
@@ -624,15 +624,18 @@ class MLPNetwork():
         g = self.out_grps[0]
         rec_test_results = g.t_vertex.read (
             gfe.placements().get_placement_of_vertex (g.t_vertex),
-            gfe.buffer_manager(), MLPRecordings.TEST_RESULTS.value
+            gfe.buffer_manager(), MLPConstSizeRecordings.TEST_RESULTS.value
             )
 
         if len (rec_test_results) >= TEST_RESULTS_SIZE:
             (epochs_trained, examples_tested, ticks_tested, examples_correct) = \
-            struct.unpack_from(TEST_RESULTS_FORMAT, rec_test_results, 0)
+                struct.unpack_from(TEST_RESULTS_FORMAT, rec_test_results, 0)
 
             print("\n--------------------------------------------------")            
-            print (f"stage {self._stage_id} Test results: {epochs_trained}, {examples_tested}, {ticks_tested}, {examples_correct}")
+            print ("stage {} Test results: {}, {}, {}, {}".format(
+                self._stage_id, epochs_trained, examples_tested,
+                ticks_tested, examples_correct
+                ))
             print("--------------------------------------------------\n")            
 
 
