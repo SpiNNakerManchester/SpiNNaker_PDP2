@@ -116,8 +116,8 @@ class MLPExampleSet ():
                                  ):
         """ reads a Lens-style examples file
 
-        Lens online manual:
-            http://web.stanford.edu/group/mbc/LENSManual/
+        Lens online manual @ CMU:
+            https://ni.cmu.edu/~plaut/Lens/Manual/
 
         File format:
 
