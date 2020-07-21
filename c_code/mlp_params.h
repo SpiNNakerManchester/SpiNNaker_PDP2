@@ -180,6 +180,7 @@
 #define SPINN_I_PROCESS_P    2
 
 //TODO: review priorities
+#define SPINN_T_REC_OUTS_P   1
 #define SPINN_T_SEND_OUTS_P  1
 #define SPINN_T_SEND_STOP_P  2
 #define SPINN_T_INIT_OUT_P   2

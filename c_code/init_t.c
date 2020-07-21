@@ -790,8 +790,8 @@ void stage_done (uint ec)
       io_printf (IO_BUF, "(tsr:%u tsa:%u/%u)\n",
                   t_sync_rdy, t_sync_arrived, tcfg.fwd_sync_expected
                 );
-      io_printf (IO_BUF, "(tcr:%u)\n",
-                  tf_chain_rdy
+      io_printf (IO_BUF, "(tcr:%u fptd:%u)\n",
+                  tf_chain_rdy, tf_thrds_pend
                 );
       io_printf (IO_BUF, "stage aborted\n");
       break;

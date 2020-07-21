@@ -136,10 +136,12 @@ void t_chainPacket (uint key)
     if (tcfg.write_out)
     {
       spin1_schedule_callback (record_outputs, SPINN_HOST_NORMAL, tick,
-                               SPINN_T_SEND_OUTS_P);
+                               SPINN_T_REC_OUTS_P);
     }
 
     // send stop packet,
+    //TODO: sending packets from priority -1 callbacks is hazardous
+    //NOTE: this is probably safe as no other packets are being sent!
     spin1_schedule_callback (tf_send_stop, 0, 0, SPINN_T_SEND_STOP_P);
 
     // and advance tick if last_output_group
