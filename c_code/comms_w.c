@@ -106,7 +106,7 @@ void w_stopPacket (uint key)
   // check if all other threads done
   if (wf_thrds_pend == 0)
   {
-    // if done initialise synchronisation semaphore,
+    // if done initialise thread semaphore,
     wf_thrds_pend = 2;
 
     // and advance tick
@@ -213,7 +213,7 @@ void w_forwardPacket (uint key, uint payload)
     // and check if all other threads are done,
     if (wf_thrds_pend == 0)
     {
-      // if done initialise synchronisation semaphore,
+      // if done initialise thread semaphore,
       wf_thrds_pend = 2;
 
       // and advance tick

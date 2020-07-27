@@ -67,13 +67,13 @@ void wf_process (uint unused0, uint unused1)
 #endif
   }
 
-  // access synchronisation semaphore with interrupts disabled
+  // access thread semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
   // and check if all other threads done
   if (wf_thrds_pend == 0)
   {
-    // if done initialise synchronisation semaphore,
+    // if done initialise thread semaphore,
     wf_thrds_pend = 2;
 
     // restore interrupts after flag access,
@@ -233,13 +233,13 @@ void wb_process (uint unused0, uint unused1)
       // initialise arrival scoreboard for next tick,
       wb_arrived = 0;
 
-      // access synchronisation semaphore with interrupts disabled
+      // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
       // and check if all other threads done
       if (wb_thrds_pend == 0)
       {
-        // if done initialise synchronisation semaphore,
+        // if done initialise thread semaphore,
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we have to wait for the total link delta sum to
@@ -809,10 +809,10 @@ void wf_advance_event (void)
   // check if done with example's FORWARD phase
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
-    // access synchronisation semaphore with interrupts disabled
+    // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-    // initialise synchronisation semaphore,
+    // initialise thread semaphore,
     wf_thrds_pend = 0;  // no processing and no stop in tick 0
 
     // restore interrupts after flag access,

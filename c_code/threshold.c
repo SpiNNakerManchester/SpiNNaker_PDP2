@@ -79,8 +79,8 @@ out_error_t const
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 
-uint fwdKey;               // 32-bit packet ID for FORWARD phase
-uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+uint fwdKey;               // packet ID for FORWARD phase
+uint bkpKey;               // packet ID for BACKPROP phase
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
@@ -151,7 +151,7 @@ uchar            t_sync_rdy;        // have expected sync packets arrived?
 // FORWARD phase specific
 // (output computation)
 scoreboard_t     tf_arrived;        // keep track of expected nets
-uint             tf_thrds_pend;     // sync. semaphore: proc & stop
+uint             tf_thrds_pend;     // thread semaphore
 uchar            tf_chain_prev;     // previous daisy chain (DC) value
 uchar            tf_initChain;      // previous DC received init value
 uchar            tf_chain_rdy;      // local DC value can be forwarded
@@ -170,7 +170,7 @@ uint             tf_stpn_key;       // stop network packet key
 uint             tb_procs;          // pointer to processing errors
 uint             tb_comms;          // pointer to receiving errors
 scoreboard_t     tb_arrived;        // keep track of expected errors
-uint             tb_thrds_pend;     // sync. semaphore: proc & stop
+uint             tb_thrds_pend;     // thread semaphore
 
 int              t_max_output_unit; // unit with highest output
 int              t_max_target_unit; // unit with highest target

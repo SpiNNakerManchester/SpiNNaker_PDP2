@@ -128,7 +128,7 @@ void i_forward_packet (uint key, uint payload)
     // prepare for next tick,
     if_done = 0;
 
-    // access synchronisation semaphore with interrupts disabled
+    // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
     // check if all other threads done

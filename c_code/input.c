@@ -58,8 +58,8 @@ in_proc_init_t const
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 
-uint fwdKey;               // 32-bit packet ID for FORWARD phase
-uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+uint fwdKey;               // packet ID for FORWARD phase
+uint bkpKey;               // packet ID for BACKPROP phase
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
@@ -123,7 +123,7 @@ uint             i_it_idx;          // index into current inputs/targets
 // FORWARD phase specific
 // (net processing)
 scoreboard_t     if_done;           // current tick net computation done
-uint             if_thrds_pend;     // sync. semaphore: proc & stop
+uint             if_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific
 // (delta processing)

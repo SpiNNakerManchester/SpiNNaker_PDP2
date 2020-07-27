@@ -573,7 +573,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tf_arrived = 0;
   tb_arrived = 0;
 
-  // initialise synchronisation semaphores
+  // initialise thread semaphores
   tf_thrds_pend = 1;
   tb_thrds_pend = 1;
 

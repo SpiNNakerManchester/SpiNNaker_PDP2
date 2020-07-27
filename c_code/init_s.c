@@ -228,7 +228,7 @@ void var_init (uint reset_examples)
   s_ldsa_arrived = 0;
   s_ldst_arrived = 0;
 
-  // initialise synchronisation semaphores
+  // initialise thread semaphores
   sf_thrds_pend = 1;
   sb_thrds_pend = 0;
 

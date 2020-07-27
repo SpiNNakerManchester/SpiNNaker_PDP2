@@ -112,7 +112,7 @@ void s_ldsa_packet (uint payload)
 #endif
     }
 
-    // access synchronisation semaphore with interrupts disabled
+    // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
     // check if all other threads done
@@ -167,7 +167,7 @@ void s_ldst_packet (uint payload)
     ldr_sent++;
 #endif
 
-    // access synchronisation semaphore with interrupts disabled
+    // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
     // check if all other threads done
@@ -264,7 +264,7 @@ void s_forward_packet (uint key, uint payload)
        // prepare for next tick,
        sf_done = 0;
 
-      // access synchronisation semaphore with interrupts disabled
+      // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
       // check if all other threads done
@@ -366,7 +366,7 @@ void s_backprop_packet (uint key, uint payload)
       // prepare for next tick,
       sb_done = 0;
 
-      // access synchronisation semaphore with interrupts disabled
+      // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
       // check if all other threads done

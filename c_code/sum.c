@@ -24,11 +24,11 @@
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 
-uint fwdKey;               // 32-bit packet ID for FORWARD phase
-uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-uint syncKey;              // synchronisation: next example can start
-uint ldstKey;              // 32-bit packet ID for link delta summation totals
-uint ldsrKey;              // 32-bit packet ID for link delta summation reports
+uint fwdKey;               // packet ID for FORWARD phase
+uint bkpKey;               // packet ID for BACKPROP phase
+uint ldstKey;              // packet ID for link delta summation totals
+uint ldsrKey;              // packet ID for link delta summation reports
+uint syncKey;              // packet ID for synchronisation (state-dependent meaning)
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
@@ -86,13 +86,13 @@ lds_t            s_lds_part;        // partial link delta sum
 // (net computation)
 scoreboard_t   * sf_arrived[2];     // keep track of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
-uint             sf_thrds_pend;     // sync. semaphore: proc & stop
+uint             sf_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific
 // (error computation)
 scoreboard_t   * sb_arrived[2];     // keep track of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
-uint             sb_thrds_pend;     // sync. semaphore: proc & stop
+uint             sb_thrds_pend;     // thread semaphore
 scoreboard_t     s_ldsa_arrived;    // keep track of the number of partial link delta sums
 scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta sum totals
 // ------------------------------------------------------------------------

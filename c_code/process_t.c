@@ -96,7 +96,7 @@ void tf_process (uint unused0, uint unused1)
       // initialise scoreboard for next tick,
       tf_arrived = 0;
 
-      // access synchronisation flags with interrupts disabled
+      // access thread semaphore with interrupts disabled
       cpsr = spin1_int_disable ();
 
       // report processing done and forward stop criterion if OUTPUT group
@@ -245,13 +245,13 @@ void tb_process (uint unused0, uint unused1)
 #endif
   }
 
-  // access synchronisation semaphore with interrupts disabled
+  // access thread semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
   // and check if all other threads done
   if (tb_thrds_pend == 0)
   {
-    // if done initialise synchronisation semaphore,
+    // if done initialise thread semaphore,
     tb_thrds_pend = 1;
 
     // restore interrupts after flag access,

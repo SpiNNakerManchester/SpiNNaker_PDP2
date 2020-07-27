@@ -259,7 +259,7 @@ void var_init (uint reset_examples)
   if_done = 0;
   ib_done = 0;
 
-  // initialise synchronisation semaphores
+  // initialise thread semaphores
   if_thrds_pend = 1;
 
   // initialise processing thread flag

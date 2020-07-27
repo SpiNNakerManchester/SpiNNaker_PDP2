@@ -38,9 +38,9 @@ weight_update_t const
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 
-uint fwdKey;               // 32-bit packet ID for FORWARD phase
-uint bkpKey;               // 32-bit packet ID for BACKPROP phase
-uint ldsaKey;              // 32-bit packet ID for link delta summation
+uint fwdKey;               // packet ID for FORWARD phase
+uint bkpKey;               // packet ID for BACKPROP phase
+uint ldsaKey;              // packet ID for link delta summation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
@@ -107,13 +107,13 @@ lds_t              w_lds_final;       // final link delta sum
 uint             wf_procs;          // pointer to processing unit outputs
 uint             wf_comms;          // pointer to receiving unit outputs
 scoreboard_t     wf_arrived;        // keeps track of received unit outputs
-uint             wf_thrds_pend;     // sync. semaphore: comms, proc & stop
+uint             wf_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific variables
 // (error b-d-p computation)
 uchar            wb_active;         // processing deltas from queue?
 scoreboard_t     wb_arrived;        // keeps track of received deltas
-uint             wb_thrds_pend;     // sync. semaphore: comms, proc & stop
+uint             wb_thrds_pend;     // thread semaphore
 weight_update_t  wb_update_func;    // weight update function
 
 // history arrays

@@ -296,7 +296,7 @@ void var_init (uint init_weights, uint reset_examples)
   wf_procs = 0;
   wf_comms = 1;
 
-  // initialise synchronisation semaphores
+  // initialise thread semaphores
   wf_thrds_pend = 0; // just wait for initial unit outputs
   wb_thrds_pend = 0; // just wait for initial deltas
 

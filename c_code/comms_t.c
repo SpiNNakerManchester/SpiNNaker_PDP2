@@ -60,7 +60,7 @@ void t_receivePacket (uint key, uint payload)
   uint sync = ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY);
   if (sync)
   {
-    // process tick synchronisation packet
+    // process synchronisation packet
     t_syncPacket (ph);
     return;
   }
@@ -315,7 +315,7 @@ void t_backpropPacket (uint key, uint payload)
     // and check if all other threads are done,
     if (tb_thrds_pend == 0)
     {
-      // if done initialise synchronisation semaphore,
+      // if done initialise thread semaphore,
       tb_thrds_pend = 1;
 
       // and advance tick
