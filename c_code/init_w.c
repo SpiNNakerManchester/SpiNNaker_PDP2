@@ -11,6 +11,7 @@
 #include "mlp_externs.h"
 #include "init_w.h"
 #include "comms_w.h"
+#include "process_w.h"
 
 
 // ------------------------------------------------------------------------
@@ -274,10 +275,12 @@ void var_init (uint init_weights, uint reset_examples)
   // initialise tick
   tick = SPINN_W_INIT_TICK;
 
-  // initialise link deltas, weight changes
+  // initialise unit outputs, link deltas, weight changes
   // error dot products and output history for tick 0
   for (uint i = 0; i < wcfg.num_rows; i++)
   {
+    w_outputs[0][i] = wcfg.initOutput;
+
     for (uint j = 0; j < wcfg.num_cols; j++)
     {
       w_link_deltas[i][j] = 0;
@@ -297,8 +300,8 @@ void var_init (uint init_weights, uint reset_examples)
   wf_comms = 1;
 
   // initialise thread semaphores
-  wf_thrds_pend = 0; // just wait for initial unit outputs
-  wb_thrds_pend = 0; // just wait for initial deltas
+  wf_thrds_pend = 2;
+  wb_thrds_pend = 0; // no need to synchronise until last BACKPROP tick
 
   // initialise processing thread flag
   wb_active = FALSE;
@@ -388,6 +391,9 @@ void stage_start (void)
   io_printf (IO_BUF, "----------------\n");
   io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
 #endif
+
+  // trigger computation, when execution starts
+  spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
 }
 // ------------------------------------------------------------------------
 

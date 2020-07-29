@@ -84,7 +84,7 @@
 #define SPINN_FORWARD       0
 #define SPINN_BACKPROP      (!SPINN_FORWARD)
 
-#define SPINN_W_INIT_TICK   0
+#define SPINN_W_INIT_TICK   1
 #define SPINN_S_INIT_TICK   1
 #define SPINN_I_INIT_TICK   1
 #define SPINN_T_INIT_TICK   1

@@ -228,6 +228,7 @@ class WeightVertex(
               uint           num_cols;
               uint           row_blk;
               uint           col_blk;
+              activation_t   initOutput;
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
               short_fpreal_t momentum;
@@ -236,6 +237,10 @@ class WeightVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # init output is an MLP fixed-point activation_t
+        init_output = int (self.group.init_output *\
+                           (1 << MLPConstants.ACTIV_SHIFT))
+
         # learning_rate is an MLP short fixed-point fpreal
         learning_rate = int (self.learning_rate *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
@@ -248,11 +253,12 @@ class WeightVertex(
         momentum = int (self.momentum *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<4I3h2x",
+        return struct.pack ("<4Ii3h2x",
                             self._num_rows,
                             self._num_cols,
                             self._row_blk,
                             self._col_blk,
+                            init_output,
                             learning_rate & 0xffff,
                             weight_decay & 0xffff,
                             momentum & 0xffff

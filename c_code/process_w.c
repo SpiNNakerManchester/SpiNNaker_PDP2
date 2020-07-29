@@ -813,7 +813,7 @@ void wf_advance_event (void)
     uint cpsr = spin1_int_disable ();
 
     // initialise thread semaphore,
-    wf_thrds_pend = 0;  // no processing and no stop in tick 0
+    wf_thrds_pend = 2;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
@@ -913,6 +913,15 @@ void w_advance_example (void)
   // start from first event for next example,
   evt = 0;
   num_events = ex[example_inx].num_events;
+
+  // initialise unit outputs,
+  for (uint i = 0; i < wcfg.num_rows; i++)
+  {
+    w_outputs[wf_procs][i] = wcfg.initOutput;
+  }
+
+  // and trigger computation
+  spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
 }
 // ------------------------------------------------------------------------
 

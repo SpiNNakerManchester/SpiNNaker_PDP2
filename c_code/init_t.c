@@ -365,18 +365,6 @@ void t_init_outputs (uint unused0, uint unused1)
 #ifdef DEBUG_CFG3
     io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
 #endif
-
-    // and send unit output to weight cores
-    while (!spin1_send_mc_packet ((t_fwdKey[i >> SPINN_BLOCK_SHIFT] | i),
-                                   (uint) t_outputs[i],
-                                   WITH_PAYLOAD
-                                 )
-          );
-
-#ifdef DEBUG
-    pkt_sent++;
-    sent_fwd++;
-#endif
   }
 }
 // ------------------------------------------------------------------------
@@ -556,6 +544,9 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
                     >> SPINN_FPREAL_SHIFT;
   }
 
+  // initialise unit outputs
+  t_init_outputs (0, 0);
+
   // initialise output derivatives, deltas and errors
   for (uint i = 0; i < tcfg.num_units; i++)
   {
@@ -730,9 +721,6 @@ void stage_start (void)
   io_printf (IO_BUF, "----------------\n");
   io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
 #endif
-
-  // and send initial outputs to w cores -- when simulation starts
-  spin1_schedule_callback (t_init_outputs, 0, 0, SPINN_T_INIT_OUT_P);
 }
 // ------------------------------------------------------------------------
 
