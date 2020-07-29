@@ -818,10 +818,6 @@ void wf_advance_event (void)
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
 
-    // initialise stop criterion for next example,
-    // first tick does not get a stop packet!
-    tick_stop = FALSE;
-
     // and check if in training mode
     if (xcfg.training)
     {

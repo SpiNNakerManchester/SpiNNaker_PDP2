@@ -563,30 +563,9 @@ void t_advance_example (void)
                      >> SPINN_FPREAL_SHIFT;
   }
 
-  // check if ready to send initial unit outputs,
-  // access flags with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-  if (t_sync_rdy)
-  {
-    // if ready clear synchronisation flag,
-    t_sync_rdy = FALSE;
-
-    // restore interrupts,
-    spin1_mode_restore (cpsr);
-
-    // and send unit outputs to w cores,
-    //TODO: check if need to schedule or can simply call
-    t_init_outputs (0, 0);
-  }
-  else
-  {
-    // if not flag sync as ready
-    t_sync_rdy = TRUE;
-
-    // restore interrupts
-    spin1_mode_restore (cpsr);
-  }
+  // and initialise unit outputs
+  //TODO: check if need to schedule or can simply call
+  t_init_outputs (0, 0);
 }
 // ------------------------------------------------------------------------
 

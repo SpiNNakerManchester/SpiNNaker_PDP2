@@ -238,7 +238,7 @@ class WeightVertex(
             explicit padding
         """
         # init output is an MLP fixed-point activation_t
-        init_output = int (self.group.init_output *\
+        init_output = int (self._from_group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
 
         # learning_rate is an MLP short fixed-point fpreal

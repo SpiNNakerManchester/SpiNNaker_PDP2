@@ -193,7 +193,10 @@ void w_forwardPacket (uint key, uint payload)
   w_outputs[wf_comms][inx] = (activation_t) payload;
 
   // store output for use in BACKPROP phase,
+  if (tick > 0)
+  {
   store_output (inx);
+  }
 
   // and update scoreboard,
   wf_arrived++;
