@@ -238,17 +238,17 @@ void var_init (uint init_weights, uint reset_examples)
                      wcfg.num_cols * sizeof (weight_t)
                    );
     }
+  }
 
 #ifdef DEBUG_CFG2
-    for (uint r = 0; r < wcfg.num_rows; r++)
+  for (uint r = 0; r < wcfg.num_rows; r++)
+  {
+    for (uint c =0; c < wcfg.num_cols; c++)
     {
-      for (uint c =0; c < wcfg.num_cols; c++)
-      {
-        io_printf (IO_BUF, "w[%u][%u]: %k\n", r, c, w_weights[r][c]);
-      }
+      io_printf (IO_BUF, "w[%u][%u]: %k\n", r, c, w_weights[r][c]);
     }
-#endif
   }
+#endif
 
   // reset example index if requested
   //TODO: alternative algorithms for choosing example order!
