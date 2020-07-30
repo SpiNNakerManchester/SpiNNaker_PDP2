@@ -71,6 +71,8 @@ extern error_t          * w_errors;      // computed errors next tick
 extern pkt_queue_t        w_delta_pkt_q; // queue to hold received deltas
 extern fpreal             w_delta_dt;    // scaling factor for link deltas
 extern lds_t              w_lds_final;   // final link delta sum
+extern scoreboard_t       w_sync_arrived; // keep track of expected sync packets
+extern uchar              w_sync_rdy;    // have expected sync packets arrived?
 extern uint               wf_procs;      // pointer to processing unit outputs
 extern uint               wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t       wf_arrived;    // keeps track of received unit outputs

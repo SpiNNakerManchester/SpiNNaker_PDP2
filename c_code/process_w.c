@@ -916,8 +916,29 @@ void w_advance_example (void)
     w_outputs[wf_procs][i] = wcfg.initOutput;
   }
 
-  // and trigger computation
-  spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+  // access sync flag with interrupts disabled
+  uint cpsr = spin1_int_disable ();
+
+  // and check if can trigger next example computation
+  if (w_sync_rdy)
+  {
+    // clear synchronisation flag,
+    w_sync_rdy = FALSE;
+
+    // restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+
+    // and trigger computation
+    spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+  }
+  else
+  {
+    // if not flag sync as ready,
+    w_sync_rdy = TRUE;
+
+    // and restore interrupts after flag access
+    spin1_mode_restore (cpsr);
+  }
 }
 // ------------------------------------------------------------------------
 

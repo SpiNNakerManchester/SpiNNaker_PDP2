@@ -50,6 +50,15 @@ void w_receivePacket (uint key, uint payload)
     return;
   }
 
+  // check if packet is sync type
+  uint sync = ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY);
+  if (sync)
+  {
+    // process synchronisation packet
+    w_syncPacket ();
+    return;
+  }
+
   // computation packet - get packet phase and block
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
   uint blk = (key & SPINN_BLOCK_MASK) >> SPINN_BLOCK_SHIFT;
@@ -170,6 +179,43 @@ void w_ldsrPacket (uint payload)
   {
     // if not done report processing thread done,
     wb_thrds_pend -= 1;
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a sync packet
+// ------------------------------------------------------------------------
+void w_syncPacket (void)
+{
+#ifdef DEBUG
+  spk_recv++;
+#endif
+
+  // keep track of sync packets,
+  w_sync_arrived++;
+
+  // and check if all expected packets arrived
+  if (w_sync_arrived == wcfg.sync_expected)
+  {
+    // initialise for next synchronisation,
+    w_sync_arrived = 0;
+
+    // and check if can trigger next example computation
+    if (w_sync_rdy)
+    {
+      // clear synchronisation flag,
+      w_sync_rdy = FALSE;
+
+      // and trigger computation
+      spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+    }
+    else
+    {
+      // if not flag sync as ready
+      w_sync_rdy = TRUE;
+    }
   }
 }
 // ------------------------------------------------------------------------

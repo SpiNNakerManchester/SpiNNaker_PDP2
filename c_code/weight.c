@@ -98,6 +98,8 @@ error_t          * w_errors;          // computed errors next tick
 pkt_queue_t        w_delta_pkt_q;     // queue to hold received deltas
 fpreal             w_delta_dt;        // scaling factor for link deltas
 lds_t              w_lds_final;       // final link delta sum
+scoreboard_t       w_sync_arrived;    // keep track of expected sync packets
+uchar              w_sync_rdy;        // have expected sync packets arrived?
 
 // FORWARD phase specific variables
 // (net b-d-p computation)

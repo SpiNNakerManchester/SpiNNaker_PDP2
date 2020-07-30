@@ -720,10 +720,10 @@ class MLPNetwork():
                 gfe.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
                                              first.s_vertex.lds_link)
 
-            # create forward synchronisation s to t (multicast) links
-            for sgrp in self.groups:
-                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex, sgrp.t_vertex),
-                                             grp.s_vertex.fds_link)
+                # create example synchronisation s to w (multicast) links
+                for sgrp in self.groups:
+                    gfe.add_machine_edge_instance (MachineEdge (sgrp.s_vertex, w),
+                                                 sgrp.s_vertex.fds_link)
 
             # create forward s to i link
             gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
