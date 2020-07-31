@@ -161,6 +161,23 @@
 
 
 // ------------------------------------------------------------------------
+// multithreading parameters
+// ------------------------------------------------------------------------
+#define SPINN_THRD_PROC      1
+#define SPINN_THRD_COMS      ((SPINN_THRD_PROC) << 1)
+#define SPINN_THRD_STOP      ((SPINN_THRD_COMS) << 1)
+#define SPINN_THRD_LDSA      ((SPINN_THRD_STOP) << 1)
+#define SPINN_THRD_LDST      ((SPINN_THRD_LDSA) << 1)
+#define SPINN_THRD_LDSR      (SPINN_THRD_LDSA)
+
+#define SPINN_SF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
+#define SPINN_SB_THRDS       (SPINN_THRD_PROC)
+#define SPINN_IF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
+
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // callback priorities
 // ------------------------------------------------------------------------
 // non-queueable callbacks

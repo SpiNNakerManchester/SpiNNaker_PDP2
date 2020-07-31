@@ -115,11 +115,16 @@ void s_ldsa_packet (uint payload)
     // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
+#ifdef DEBUG
+    if (!(sb_thrds_pend & SPINN_THRD_LDSA))
+      wrng_cth++;
+#endif
+
     // check if all other threads done
-    if (sb_thrds_pend == 0)
+    if (sb_thrds_pend == SPINN_THRD_LDSA)
     {
       // if done initialise semaphore
-      sb_thrds_pend = 0;
+      sb_thrds_pend = SPINN_SB_THRDS;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
@@ -131,7 +136,7 @@ void s_ldsa_packet (uint payload)
     else
     {
       // if not done report processing thread done,
-      sb_thrds_pend -= 1;
+      sb_thrds_pend &= ~SPINN_THRD_LDSA;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -170,11 +175,16 @@ void s_ldst_packet (uint payload)
     // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
+#ifdef DEBUG
+    if (!(sb_thrds_pend & SPINN_THRD_LDST))
+      wrng_cth++;
+#endif
+
     // check if all other threads done
-    if (sb_thrds_pend == 0)
+    if (sb_thrds_pend == SPINN_THRD_LDST)
     {
       // if done initialise semaphore
-      sb_thrds_pend = 0;
+      sb_thrds_pend = SPINN_SB_THRDS;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
@@ -186,7 +196,7 @@ void s_ldst_packet (uint payload)
     else
     {
       // if not done report processing thread done,
-      sb_thrds_pend -= 1;
+      sb_thrds_pend &= ~SPINN_THRD_LDST;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -267,11 +277,16 @@ void s_forward_packet (uint key, uint payload)
       // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-      // check if all other threads done
-      if (sf_thrds_pend == 0)
+#ifdef DEBUG
+      if (!(sf_thrds_pend & SPINN_THRD_PROC))
+        wrng_pth++;
+#endif
+
+      // and check if all other threads done
+      if (sf_thrds_pend == SPINN_THRD_PROC)
       {
         // if done initialise semaphore
-        sf_thrds_pend = 1;
+        sf_thrds_pend = SPINN_SF_THRDS;
 
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
@@ -283,7 +298,7 @@ void s_forward_packet (uint key, uint payload)
       else
       {
         // if not done report processing thread done,
-        sf_thrds_pend -= 1;
+        sf_thrds_pend &= ~SPINN_THRD_PROC;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
@@ -369,8 +384,13 @@ void s_backprop_packet (uint key, uint payload)
       // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
+#ifdef DEBUG
+      if (!(sb_thrds_pend & SPINN_THRD_PROC))
+        wrng_pth++;
+#endif
+
       // check if all other threads done
-      if (sb_thrds_pend == 0)
+      if (sb_thrds_pend == SPINN_THRD_PROC)
       {
         // if done initialise semaphore:
         // if we are using Doug's Momentum, and we have reached the end of the
@@ -382,22 +402,17 @@ void s_backprop_packet (uint key, uint payload)
             && tick == SPINN_SB_END_TICK + 1)
         {
           // if this s core relates to the first group in the network, then we
-          // also need to wait for the link delta sum totals, so set the threads
-          // pending to 2
-          if (scfg.is_first_group == 1)
+          // also need to wait for the link delta sum totals
+          if (scfg.is_first_group)
           {
-            sb_thrds_pend = 2;
+            sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA | SPINN_THRD_LDST;
           }
-          // for all other groups, set threads pending to 1
           else
           {
-            sb_thrds_pend = 1;
+            sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA;
           }
         }
-        else
-        {
-          sb_thrds_pend = 0;
-        }
+
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
 
@@ -408,7 +423,7 @@ void s_backprop_packet (uint key, uint payload)
       else
       {
         // if not done report processing thread done,
-        sb_thrds_pend -= 1;
+        sb_thrds_pend &= ~SPINN_THRD_PROC;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);

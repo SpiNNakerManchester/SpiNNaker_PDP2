@@ -225,6 +225,9 @@ extern long_deriv_t   * t_output_deriv_history;
   extern uint wrng_phs;  // packets received in wrong phase
   extern uint wrng_tck;  // FORWARD packets received in wrong tick
   extern uint wrng_btk;  // BACKPROP packets received in wrong tick
+  extern uint wrng_pth;  // unexpected processing thread
+  extern uint wrng_cth;  // unexpected comms thread
+  extern uint wrng_sth;  // unexpected stop thread
 #endif
 // ------------------------------------------------------------------------
 

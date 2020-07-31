@@ -466,7 +466,7 @@ void tf_advance_event (void)
 
 
 // ------------------------------------------------------------------------
-// FORWARD phase: update the example at the end of a simulation tick
+// update example at the end of a (FORWARD or BACKPROP) tick
 // ------------------------------------------------------------------------
 void t_advance_example (void)
 {

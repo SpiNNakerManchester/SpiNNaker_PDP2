@@ -29,6 +29,9 @@ void s_receivePacket (uint key, uint payload)
     // stop packet received
 #ifdef DEBUG
     stp_recv++;
+
+    if (!(sf_thrds_pend & SPINN_THRD_STOP))
+      wrng_sth++;
 #endif
 
     // STOP decision arrived
@@ -39,10 +42,10 @@ void s_receivePacket (uint key, uint payload)
 #endif
 
     // check if all other threads done
-    if (sf_thrds_pend == 0)
+    if (sf_thrds_pend == SPINN_THRD_STOP)
     {
       // if done initialise semaphore
-      sf_thrds_pend = 1;
+      sf_thrds_pend = SPINN_SF_THRDS;
 
       // and advance tick
       spin1_schedule_callback (sf_advance_tick, 0, 0, SPINN_S_TICK_P);
@@ -50,7 +53,7 @@ void s_receivePacket (uint key, uint payload)
     else
     {
       // if not done report processing thread done
-      sf_thrds_pend -= 1;
+      sf_thrds_pend &= ~SPINN_THRD_STOP;
     }
 
     return;
