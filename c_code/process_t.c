@@ -474,74 +474,66 @@ void t_advance_example (void)
   io_printf (IO_BUF, "t_advance_example\n");
 #endif
 
-  // point to next example in the set - wrap around if at the end
+  // network stop decision,
+  uchar exc = 0;
+
+  // point to next example in the set - wrap around if at the end,
   if (++example_inx >= es->num_examples)
   {
     example_inx = 0;
   }
 
-  // check if done with examples
+  // check if done with examples,
   //TODO: alternative algorithms for choosing example order!
   if (++example_cnt >= xcfg.num_examples)
   {
-    // check if done with epochs
-    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
-    {
-      // report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
-    }
-    // check if terminating "early"
-    else if (tcfg.is_last_output_group && tf_example_crit)
-    {
-      // broadcast network_stop decision,
-      while (!spin1_send_mc_packet (tf_stpn_key, 0, NO_PAYLOAD)
-          );
+    // prepare for next epoch,
+    epoch++;
 
-#ifdef DEBUG
-      pkt_sent++;
-      stn_sent++;
-#endif
+    // reset example count for next epoch,
+    example_cnt = 0;
 
-      // and report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
-    }
-    else
+    // make a note of the network stop decision,
+    exc = (!xcfg.training || (epoch >= xcfg.num_epochs)) ? 1 : tf_example_crit;
+
+    // initialise stopping criteria for next epoch,
+    tf_event_crit = 1;
+    tf_example_crit = 1;
+
+    // reset the variables for test results,
+    if (!exc)
     {
-      // reset example count for next epoch
-      example_cnt = 0;
-      tf_event_crit = 1;
-      tf_example_crit = 1;
-
-      // reset the variables for test results
       t_test_results.examples_tested = 0;
       t_test_results.ticks_tested = 0;
       t_test_results.examples_correct = 0;
+    }
 
-      // increment the count of epochs trained
-      if (xcfg.training)
-      {
-        t_test_results.epochs_trained++;
-      }
+    // and increment the count of epochs trained
+    if (xcfg.training)
+    {
+      t_test_results.epochs_trained++;
     }
   }
 
-  // start from first event for next example
+  // start from first event for next example,
   evt = 0;
   num_events = ex[example_inx].num_events;
   event_idx = ex[example_inx].ev_idx;
   tf_event_crit = 1;
 
-  // if input or output group initialise new event input/target index
+  // if input or output group initialise new event input/target index,
   if (tcfg.input_grp || tcfg.output_grp)
   {
     t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
   }
 
-  // update number of ticks for new event
+  // initialise output function outputs,
+  t_init_outputs ();
+
+  // and complete additional work if last output group
   if (tcfg.is_last_output_group)
   {
+    // update number of ticks for new event,
     // maximum
     if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
       max_ticks = (((ev[event_idx + evt].max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
@@ -561,11 +553,25 @@ void t_advance_example (void)
       min_ticks = (((es->min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
                      + (1 << (SPINN_FPREAL_SHIFT - 1)))
                      >> SPINN_FPREAL_SHIFT;
-  }
 
-  // and initialise unit outputs
-  //TODO: check if need to schedule or can simply call
-  t_init_outputs (0, 0);
+    // broadcast network_stop decision,
+    while (!spin1_send_mc_packet (tf_stpn_key | exc,
+        0, NO_PAYLOAD)
+        );
+
+#ifdef DEBUG
+    pkt_sent++;
+    stn_sent++;
+#endif
+
+    // and finish if done with epochs
+    if (exc)
+    {
+      // report no error
+      stage_done (SPINN_NO_ERROR);
+      return;
+    }
+  }
 }
 // ------------------------------------------------------------------------
 

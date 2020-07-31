@@ -540,7 +540,7 @@ void sf_advance_event (void)
 
 
 // ------------------------------------------------------------------------
-// FORWARD phase: update the example at the end of a simulation tick
+// update example at the end of a (FORWARD or BACKPROP) tick
 // ------------------------------------------------------------------------
 void s_advance_example (void)
 {
@@ -557,25 +557,18 @@ void s_advance_example (void)
   // check if done with examples
   if (++example_cnt >= xcfg.num_examples)
   {
-    // check if done with epochs
-    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
-    {
-      // report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
-    }
-    else
-    {
-      // reset example count for next epoch
-      example_cnt = 0;
+    // prepare for next epoch
+    epoch++;
 
-      // reset the partial link delta sum
-      if (xcfg.training)
-      {
-        s_lds_part = 0;
-        s_ldsa_arrived = 0;
-        s_ldst_arrived = 0;
-      }
+    // reset example count for next epoch
+    example_cnt = 0;
+
+    // reset the partial link delta sum
+    if (xcfg.training)
+    {
+      s_lds_part = 0;
+      s_ldsa_arrived = 0;
+      s_ldst_arrived = 0;
     }
   }
 

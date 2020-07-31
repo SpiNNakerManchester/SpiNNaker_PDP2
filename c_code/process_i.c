@@ -362,7 +362,7 @@ void if_advance_event (void)
 
 
 // ------------------------------------------------------------------------
-// FORWARD phase: update the example at the end of a simulation tick
+// update example at the end of a (FORWARD or BACKPROP) tick
 // ------------------------------------------------------------------------
 void i_advance_example (void)
 {
@@ -379,18 +379,11 @@ void i_advance_example (void)
   // check if done with examples
   if (++example_cnt >= xcfg.num_examples)
   {
-    // check if done with epochs
-    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
-    {
-      // report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
-    }
-    else
-    {
-      // reset example count for next epoch
-      example_cnt = 0;
-    }
+    // prepare for next epoch
+    epoch++;
+
+    // reset example count for next epoch
+    example_cnt = 0;
   }
 
   // start from first event for next example

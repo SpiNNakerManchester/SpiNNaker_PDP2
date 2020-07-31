@@ -64,8 +64,13 @@ void i_receivePacket (uint key, uint payload)
     stn_recv++;
 #endif
 
-    // report no error
-    stage_done (SPINN_NO_ERROR);
+    // check network error decision
+    if (key & SPINN_STPD_MASK)
+    {
+      // finish and report no error
+      stage_done (SPINN_NO_ERROR);
+    }
+
     return;
   }
 

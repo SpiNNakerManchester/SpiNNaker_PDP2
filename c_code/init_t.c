@@ -330,41 +330,32 @@ uint mem_init (void)
 // versions 2.63 and 2.64 of LENS. This function LENS version 2.63.
 // Added comments indicate changes to apply LENS version 2.64
 // ------------------------------------------------------------------------
-void t_init_outputs (uint unused0, uint unused1)
+void t_init_outputs (void)
 {
-  (void) unused0;
-  (void) unused1;
-
 #ifdef TRACE
   io_printf (IO_BUF, "t_init_outputs\n");
 #endif
 
-  // initialise every unit output and send for processing
-  for (uint i = 0; i < tcfg.num_units; i++)
-  {
-    // setup the initial output value.
-    // Lens has two ways of initialise the output value,
-    // as defined in Lens 2.63 and Lens 2.64,
-    // and the two ways are not compatible
+  // if the OUTPUT INTEGRATOR is used
+  // reset the array of the last values
+  if (tcfg.out_integr_en) {
+    // initialise every unit output and send for processing
+    for (uint i = 0; i < tcfg.num_units; i++)
+    {
+      // setup the initial output value.
+      // Lens has two ways of initialise the output value,
+      // as defined in Lens 2.63 and Lens 2.64,
+      // and the two ways are not compatible
 
-    // use initial values,
-    //TODO: need to verify initInput with Lens
-    // NOTE: The following code follows the output of Lens 2.63:
-    // initialise the output value of the units
+      // use initial values,
+      //TODO: need to verify initInput with Lens
+      // NOTE: The following code follows the output of Lens 2.63:
+      // initialise the output value of the units
 
-    t_outputs[i] = tcfg.initOutput;
-
-    // if the OUTPUT INTEGRATOR is used
-    // reset the array of the last values
-    if (tcfg.out_integr_en) {
       t_last_integr_output[i] = tcfg.initOutput;
 
       t_last_integr_output_deriv[i] = 0;
     }
-
-#ifdef DEBUG_CFG3
-    io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
-#endif
   }
 }
 // ------------------------------------------------------------------------
@@ -544,8 +535,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
                     >> SPINN_FPREAL_SHIFT;
   }
 
-  // initialise unit outputs
-  t_init_outputs (0, 0);
+  // initialise output function outputs
+  t_init_outputs ();
 
   // initialise output derivatives, deltas and errors
   for (uint i = 0; i < tcfg.num_units; i++)

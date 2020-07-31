@@ -45,6 +45,9 @@ uint ldsaKey;              // packet ID for link delta summation
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 
+uchar        net_stop;     // network stop decision
+uchar        net_stop_rdy; // ready to deal with network stop decision
+
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
 uint         example_inx;  // current example index

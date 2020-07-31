@@ -49,21 +49,12 @@ void t_receivePacket (uint key, uint payload)
   if (stpn)
   {
     // process network stop decision packet
-    t_networkStopPacket ();
+    t_networkStopPacket (key);
     return;
   }
 
   // get packet phase
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
-
-  // check if packet is sync type
-  uint sync = ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY);
-  if (sync)
-  {
-    // process synchronisation packet
-    t_syncPacket (ph);
-    return;
-  }
 
   // computation packet
     if (ph == SPINN_FORWARD)
@@ -81,7 +72,7 @@ void t_receivePacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
-// process a stop final decision packet
+// process a tick stop packet
 // ------------------------------------------------------------------------
 void t_stopPacket (uint key)
 {
@@ -89,7 +80,7 @@ void t_stopPacket (uint key)
   stp_recv++;
 #endif
 
-  // STOP decision arrived
+  // tick stop decision arrived,
   tick_stop = key & SPINN_STPD_MASK;
 
 #ifdef DEBUG_VRB
@@ -164,85 +155,22 @@ void t_chainPacket (uint key)
 // ------------------------------------------------------------------------
 // process a network stop decision packet
 // ------------------------------------------------------------------------
-void t_networkStopPacket (void)
+void t_networkStopPacket (uint key)
 {
 #ifdef DEBUG
   stn_recv++;
 #endif
 
-  // report no error
-  stage_done (SPINN_NO_ERROR);
+  // check network error decision
+  if (key & SPINN_STPD_MASK)
+  {
+    // finish and report no error
+    stage_done (SPINN_NO_ERROR);
+  }
+
+  return;
 }
 // ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// process a sync packet
-// ------------------------------------------------------------------------
-void t_syncPacket (uint ph)
-{
-#ifdef DEBUG
-  spk_recv++;
-#endif
-
-  if (ph == SPINN_FORWARD)
-  {
-    // keep track of FORWARD sync packets,
-    t_sync_arrived++;
-
-    // and check if all expected packets arrived
-    if (t_sync_arrived == tcfg.fwd_sync_expected)
-    {
-      // initialise for next synchronisation,
-      t_sync_arrived = 0;
-
-      // and check if can trigger sending data
-      if (t_sync_rdy)
-      {
-        // clear synchronisation flag,
-        t_sync_rdy = FALSE;
-
-        // and schedule sending of unit outputs to w cores
-        spin1_schedule_callback (t_init_outputs,
-                                  0, 0, SPINN_T_INIT_OUT_P
-                                );
-      }
-      else
-      {
-        // if not flag sync as ready
-        t_sync_rdy = TRUE;
-      }
-    }
-  }
-/*
-  //NOTE: no longer using BACKPROP synchronisation packets
-  else
-  {
-    // keep track of BACKPROP sync packets,
-    t_sync_arrived++;
-
-    // and check if all expected packets arrived,
-    if (t_sync_arrived == tcfg.bkp_sync_expected)
-    {
-      // initialise for next synchronisation,
-      t_sync_arrived = 0;
-
-      // check if can trigger sending data
-      if (phase == SPINN_BACKPROP)
-      {
-        // schedule sending of deltas
-        //#spin1_schedule_callback (t_init_deltas, 0, 0, SPINN_T_INIT_DLT_P);
-      }
-      else
-      {
-        // if not ready flag sync done
-        t_sync_rdy = TRUE;
-      }
-    }
-  }
-*/
-}
-// ------------------------------------------------------------------------
-
 
 // ------------------------------------------------------------------------
 // enqueue FORWARD phase packet for later processing

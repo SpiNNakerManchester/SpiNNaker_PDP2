@@ -5,7 +5,7 @@ uint cfg_init (void);
 uint mem_init (void);
 void var_init (uint reset_examples, uint reset_epochs_trained);
 
-void t_init_outputs (uint unused0, uint unused1);
+void t_init_outputs (void);
 
 uint init_out_integr     (void);
 uint init_out_hard_clamp (void);

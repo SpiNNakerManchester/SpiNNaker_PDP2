@@ -303,6 +303,9 @@ void var_init (uint init_weights, uint reset_examples)
   wf_thrds_pend = 2;
   wb_thrds_pend = 0; // no need to synchronise until last BACKPROP tick
 
+  // initialise network stop flag
+  net_stop_rdy = FALSE;
+
   // initialise processing thread flag
   wb_active = FALSE;
 

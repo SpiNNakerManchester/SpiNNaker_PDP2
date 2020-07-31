@@ -37,7 +37,7 @@ void w_receivePacket (uint key, uint payload)
   if (stpn)
   {
     // process network stop decision packet
-    w_networkStopPacket ();
+    w_networkStopPacket (key);
     return;
   }
 
@@ -95,7 +95,7 @@ void w_receivePacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
-// process a stop packet
+// process a tick stop packet
 // ------------------------------------------------------------------------
 void w_stopPacket (uint key)
 {
@@ -105,7 +105,7 @@ void w_stopPacket (uint key)
     wrng_phs++;
 #endif
 
-  // STOP decision arrived
+  // tick stop decision arrived,
   tick_stop = key & SPINN_STPD_MASK;
 
 #ifdef DEBUG_VRB
@@ -137,14 +137,38 @@ void w_stopPacket (uint key)
 // ------------------------------------------------------------------------
 // process a network stop decision packet
 // ------------------------------------------------------------------------
-void w_networkStopPacket (void)
+void w_networkStopPacket (uint key)
 {
 #ifdef DEBUG
   stn_recv++;
 #endif
 
-    // report no error
-    stage_done (SPINN_NO_ERROR);
+  // network stop decision arrived
+  net_stop = key & SPINN_STPD_MASK;
+
+  // check if ready for network stop decision
+  if (net_stop_rdy)
+  {
+    // clear flag,
+    net_stop_rdy = FALSE;
+
+    // and decide what to do
+    if (net_stop)
+    {
+      // finish stage and report no error
+      stage_done (SPINN_NO_ERROR);
+    }
+    else
+    {
+      // and trigger computation
+      spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+    }
+  }
+  else
+  {
+    // flag ready for net_stop decision
+    net_stop_rdy = TRUE;
+  }
 }
 // ------------------------------------------------------------------------
 
@@ -208,8 +232,28 @@ void w_syncPacket (void)
       // clear synchronisation flag,
       w_sync_rdy = FALSE;
 
-      // and trigger computation
-      spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+      // check if network stop decision arrived
+      if (net_stop_rdy)
+      {
+        // clear flag
+        net_stop_rdy = FALSE;
+
+        // and trigger computation
+        if (net_stop)
+        {
+          // finish stage and report no error
+          stage_done (SPINN_NO_ERROR);
+        }
+        else
+        {
+          spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+        }
+      }
+      else
+      {
+        // flag ready for net_stop decision
+        net_stop_rdy = TRUE;
+      }
     }
     else
     {

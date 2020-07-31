@@ -849,7 +849,7 @@ void wf_advance_event (void)
 
 
 // ------------------------------------------------------------------------
-// update the example at the end of a simulation tick
+// update example at the end of a (FORWARD or BACKPROP) tick
 // ------------------------------------------------------------------------
 void w_advance_example (void)
 {
@@ -866,41 +866,23 @@ void w_advance_example (void)
   // check if done with examples
   if (++example_cnt >= xcfg.num_examples)
   {
-    // if training update weights at end of epoch
+    // prepare for next epoch
+    epoch++;
+
+    // reset example count for next epoch
+    example_cnt = 0;
+
+    // and, if training, update weights and initialise weight changes
+    //TODO: find a better place for this operation
     if (xcfg.training)
     {
-      //TODO: should be called or scheduled?
       wb_update_func ();
 
-#if WEIGHT_HISTORY == TRUE
-      // send weight history to host
-      //TODO: write this function!
-      //send_weights_to_host ();
-#endif
-    }
-
-    // check if done with epochs
-    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
-    {
-      // report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
-    }
-    else
-    {
-      // reset example count for next epoch
-      example_cnt = 0;
-
-      // and, if training, initialise weight changes
-      //TODO: find a better place for this operation
-      if (xcfg.training)
+      for (uint i = 0; i < wcfg.num_rows; i++)
       {
-        for (uint i = 0; i < wcfg.num_rows; i++)
+        for (uint j = 0; j < wcfg.num_cols; j++)
         {
-          for (uint j = 0; j < wcfg.num_cols; j++)
-          {
-            w_link_deltas[i][j] = 0;
-          }
+          w_link_deltas[i][j] = 0;
         }
       }
     }
@@ -916,7 +898,7 @@ void w_advance_example (void)
     w_outputs[wf_procs][i] = wcfg.initOutput;
   }
 
-  // access sync flag with interrupts disabled
+  // access sync and net_stop flags with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
   // and check if can trigger next example computation
@@ -925,11 +907,34 @@ void w_advance_example (void)
     // clear synchronisation flag,
     w_sync_rdy = FALSE;
 
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
+    // check if network stop decision arrived,
+    if (net_stop_rdy)
+    {
+      // clear flag
+      net_stop_rdy = FALSE;
 
-    // and trigger computation
-    spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // and trigger computation
+      if (net_stop)
+      {
+        // finish stage and report no error
+        stage_done (SPINN_NO_ERROR);
+      }
+      else
+      {
+        spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+      }
+    }
+    else
+    {
+      // flag ready for net_stop decision
+      net_stop_rdy = TRUE;
+
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+    }
   }
   else
   {
