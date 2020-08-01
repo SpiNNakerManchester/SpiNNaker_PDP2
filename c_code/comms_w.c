@@ -103,6 +103,9 @@ void w_stopPacket (uint key)
   stp_recv++;
   if (phase == SPINN_BACKPROP)
     wrng_phs++;
+
+  if (!(wf_thrds_pend & SPINN_THRD_STOP))
+    wrng_sth++;
 #endif
 
   // tick stop decision arrived,
@@ -113,10 +116,10 @@ void w_stopPacket (uint key)
 #endif
 
   // check if all other threads done
-  if (wf_thrds_pend == 0)
+  if (wf_thrds_pend == SPINN_THRD_STOP)
   {
     // if done initialise thread semaphore,
-    wf_thrds_pend = 2;
+    wf_thrds_pend = SPINN_WF_THRDS;
 
     // and advance tick
 #ifdef TRACE_VRB
@@ -128,7 +131,7 @@ void w_stopPacket (uint key)
   else
   {
     // if not done report stop thread done
-    wf_thrds_pend -= 1;
+    wf_thrds_pend &= ~SPINN_THRD_STOP;
   }
 }
 // ------------------------------------------------------------------------
@@ -180,16 +183,19 @@ void w_ldsrPacket (uint payload)
 {
 #ifdef DEBUG
   ldr_recv++;
+
+  if (!(wb_thrds_pend & SPINN_THRD_LDSR))
+    wrng_cth++;
 #endif
 
   // the final link delta sum for the epoch arrived
   w_lds_final = (lds_t) payload;
 
   // check if all other threads done
-  if (wb_thrds_pend == 0)
+  if (wb_thrds_pend == SPINN_THRD_LDSR)
   {
-    //NOTE: no need to initialise semaphore
-    //wb_thrds_pend = 0;
+    // initialise semaphore (no link delta summation in next tick),
+    wb_thrds_pend = SPINN_WB_THRDS;
 
 #ifdef TRACE_VRB
     io_printf (IO_BUF, "ldsr calling wb_advance_tick\n");
@@ -202,7 +208,7 @@ void w_ldsrPacket (uint payload)
   else
   {
     // if not done report processing thread done,
-    wb_thrds_pend -= 1;
+    wb_thrds_pend &= ~SPINN_THRD_LDSR;
   }
 }
 // ------------------------------------------------------------------------
@@ -300,11 +306,16 @@ void w_forwardPacket (uint key, uint payload)
     // update pointer to received unit outputs,
     wf_comms = 1 - wf_comms;
 
+#ifdef DEBUG
+    if (!(wf_thrds_pend & SPINN_THRD_COMS))
+      wrng_cth++;
+#endif
+
     // and check if all other threads are done,
-    if (wf_thrds_pend == 0)
+    if (wf_thrds_pend == SPINN_THRD_COMS)
     {
       // if done initialise thread semaphore,
-      wf_thrds_pend = 2;
+      wf_thrds_pend = SPINN_WF_THRDS;
 
       // and advance tick
 #ifdef TRACE_VRB
@@ -316,7 +327,7 @@ void w_forwardPacket (uint key, uint payload)
     else
     {
       // if not done report comms thread done
-      wf_thrds_pend -= 1;
+      wf_thrds_pend &= ~SPINN_THRD_COMS;
     }
   }
 }

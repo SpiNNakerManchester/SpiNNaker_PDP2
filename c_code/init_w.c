@@ -300,8 +300,8 @@ void var_init (uint init_weights, uint reset_examples)
   wf_comms = 1;
 
   // initialise thread semaphores
-  wf_thrds_pend = 2;
-  wb_thrds_pend = 0; // no need to synchronise until last BACKPROP tick
+  wf_thrds_pend = SPINN_WF_THRDS;
+  wb_thrds_pend = SPINN_WB_THRDS; // no link delta sum until last BP tick
 
   // initialise network stop flag
   net_stop_rdy = FALSE;
@@ -347,6 +347,9 @@ wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
 wght_ups = 0;  // number of weight updates done
+wrng_pth = 0;  // unexpected processing thread
+wrng_cth = 0;  // unexpected comms thread
+wrng_sth = 0;  // unexpected stop thread
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -442,7 +445,7 @@ void stage_done (uint ec)
                  epoch, example_cnt, phase, tick
                 );
       io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-      io_printf (IO_BUF, "(fptd:%u)\n", wf_thrds_pend);
+      io_printf (IO_BUF, "(fptd:%u bptd:%u)\n", wf_thrds_pend, wb_thrds_pend);
       io_printf (IO_BUF, "(fa:%u ba:%u)\n",
                  wf_arrived, wb_arrived
                 );
@@ -466,6 +469,9 @@ void stage_done (uint ec)
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+  if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
+  if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
+  if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
   io_printf (IO_BUF, "------\n");
   io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
 #endif

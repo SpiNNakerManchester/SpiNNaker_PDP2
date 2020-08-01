@@ -70,11 +70,16 @@ void wf_process (uint unused0, uint unused1)
   // access thread semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
+#ifdef DEBUG
+  if (!(wf_thrds_pend & SPINN_THRD_PROC))
+    wrng_pth++;
+#endif
+
   // and check if all other threads done
-  if (wf_thrds_pend == 0)
+  if (wf_thrds_pend == SPINN_THRD_PROC)
   {
     // if done initialise thread semaphore,
-    wf_thrds_pend = 2;
+    wf_thrds_pend = SPINN_WF_THRDS;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
@@ -90,7 +95,7 @@ void wf_process (uint unused0, uint unused1)
   else
   {
     // if not done report processing thread done,
-    wf_thrds_pend -= 1;
+    wf_thrds_pend &= ~SPINN_THRD_PROC;
 
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
@@ -236,8 +241,13 @@ void wb_process (uint unused0, uint unused1)
       // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
+#ifdef DEBUG
+      if (!(wb_thrds_pend & SPINN_THRD_PROC))
+        wrng_pth++;
+#endif
+
       // and check if all other threads done
-      if (wb_thrds_pend == 0)
+      if (wb_thrds_pend == SPINN_THRD_PROC)
       {
         // if done initialise thread semaphore,
         // if we are using Doug's Momentum, and we have reached the end of the
@@ -248,11 +258,7 @@ void wb_process (uint unused0, uint unused1)
             && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_WB_END_TICK + 1)
         {
-          wb_thrds_pend = 1;
-        }
-        else
-        {
-          wb_thrds_pend = 0;
+          wb_thrds_pend = SPINN_WB_THRDS | SPINN_THRD_LDSR;
         }
 
         // restore interrupts after flag access,
@@ -268,7 +274,7 @@ void wb_process (uint unused0, uint unused1)
       else
       {
         // if not done report processing thread done,
-        wb_thrds_pend -= 1;
+        wb_thrds_pend &= ~SPINN_THRD_PROC;
 
         // and restore interrupts after flag access
         spin1_mode_restore (cpsr);
@@ -813,7 +819,7 @@ void wf_advance_event (void)
     uint cpsr = spin1_int_disable ();
 
     // initialise thread semaphore,
-    wf_thrds_pend = 2;
+    wf_thrds_pend = SPINN_WF_THRDS;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
