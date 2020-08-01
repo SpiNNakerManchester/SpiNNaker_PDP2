@@ -78,6 +78,11 @@ void t_stopPacket (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
+
+#ifdef DEBUG_THRDS
+  if (!(tf_thrds_pend & SPINN_THRD_STOP))
+    wrng_sth++;
+#endif
 #endif
 
   // tick stop decision arrived,
@@ -88,10 +93,10 @@ void t_stopPacket (uint key)
 #endif
 
   // check if all other threads done
-  if (tf_thrds_pend == 0)
+  if (tf_thrds_pend == SPINN_THRD_STOP)
   {
     // initialise semaphore
-    tf_thrds_pend = 1;
+    tf_thrds_pend = SPINN_TF_THRDS;
 
     // and advance tick
     spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_TF_TICK_P);
@@ -99,7 +104,7 @@ void t_stopPacket (uint key)
   else
   {
     // if not done report stop thread done
-    tf_thrds_pend -= 1;
+    tf_thrds_pend &= ~SPINN_THRD_STOP;
   }
 }
 // ------------------------------------------------------------------------
@@ -167,10 +172,9 @@ void t_networkStopPacket (uint key)
     // finish and report no error
     stage_done (SPINN_NO_ERROR);
   }
-
-  return;
 }
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // enqueue FORWARD phase packet for later processing
@@ -240,11 +244,16 @@ void t_backpropPacket (uint key, uint payload)
     // update pointer to received errors,
     tb_comms = 1 - tb_comms;
 
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+    if (!(tb_thrds_pend & SPINN_THRD_COMS))
+      wrng_cth++;
+#endif
+
     // and check if all other threads are done,
-    if (tb_thrds_pend == 0)
+    if (tb_thrds_pend == SPINN_THRD_COMS)
     {
-      // if done initialise thread semaphore,
-      tb_thrds_pend = 1;
+      // if done initialise synchronisation semaphore,
+      tb_thrds_pend = SPINN_TB_THRDS;
 
       // and advance tick
 #ifdef TRACE_VRB
@@ -256,7 +265,7 @@ void t_backpropPacket (uint key, uint payload)
     else
     {
       // if not done report comms thread done
-      tb_thrds_pend -= 1;
+      tb_thrds_pend &= ~SPINN_THRD_COMS;
     }
   }
 }

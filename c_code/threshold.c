@@ -211,6 +211,9 @@ uint stn_recv;  // network_stop packets received
 uint wrng_phs;  // packets received in wrong phase
 uint wrng_tck;  // FORWARD packets received in wrong tick
 uint wrng_btk;  // BACKPROP packets received in wrong tick
+uint wrng_pth;  // unexpected processing thread
+uint wrng_cth;  // unexpected comms thread
+uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif

@@ -556,8 +556,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tb_arrived = 0;
 
   // initialise thread semaphores
-  tf_thrds_pend = 1;
-  tb_thrds_pend = 1;
+  tf_thrds_pend = SPINN_TF_THRDS;
+  tb_thrds_pend = SPINN_TB_THRDS;
 
   // initialise stop function and related flags
   if (tcfg.output_grp)
@@ -661,6 +661,12 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   wrng_tck = 0;  // FORWARD packets received in wrong tick
   wrng_btk = 0;  // BACKPROP packets received in wrong tick
   tot_tick = 0;  // total number of ticks executed
+
+#ifdef DEBUG_THRDS
+  wrng_pth = 0;  // unexpected processing thread
+  wrng_cth = 0;  // unexpected comms thread
+  wrng_sth = 0;  // unexpected stop thread
+#endif
   // ------------------------------------------------------------------------
 #endif
 }
@@ -769,8 +775,8 @@ void stage_done (uint ec)
       io_printf (IO_BUF, "(tsr:%u tsa:%u/%u)\n",
                   t_sync_rdy, t_sync_arrived, tcfg.fwd_sync_expected
                 );
-      io_printf (IO_BUF, "(tcr:%u fptd:%u)\n",
-                  tf_chain_rdy, tf_thrds_pend
+      io_printf (IO_BUF, "(tcr:%u fptd:%u bptd:%u)\n",
+                  tf_chain_rdy, tf_thrds_pend, tb_thrds_pend
                 );
       io_printf (IO_BUF, "stage aborted\n");
       break;
@@ -807,6 +813,12 @@ void stage_done (uint ec)
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+
+#ifdef DEBUG_THRDS
+  if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
+  if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
+  if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
+#endif
 #endif
 
 #ifdef DEBUG

@@ -173,6 +173,8 @@
 #define SPINN_SF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
 #define SPINN_SB_THRDS       (SPINN_THRD_PROC)
 #define SPINN_IF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
+#define SPINN_TF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
+#define SPINN_TB_THRDS       (SPINN_THRD_PROC | SPINN_THRD_COMS)
 
 // ------------------------------------------------------------------------
 

@@ -104,7 +104,7 @@ void tf_process (uint unused0, uint unused1)
       {
         // report processing thread done,
         //NOTE: stop criterion cannot have arrived!
-        tf_thrds_pend -= 1;
+        tf_thrds_pend &= ~SPINN_THRD_PROC;
 
         // check if chain value can be forwarded
         if (tf_chain_rdy)
@@ -146,10 +146,10 @@ void tf_process (uint unused0, uint unused1)
       else
       {
         // check if all other threads done
-        if (tf_thrds_pend == 0)
+        if (tf_thrds_pend == SPINN_THRD_PROC)
         {
           // initialise semaphore,
-          tf_thrds_pend = 1;
+          tf_thrds_pend = SPINN_TF_THRDS;
 
           // restore interrupts after flag access,
           spin1_mode_restore (cpsr);
@@ -161,7 +161,7 @@ void tf_process (uint unused0, uint unused1)
         else
         {
           // if not done report processing thread done,
-          tf_thrds_pend -= 1;
+          tf_thrds_pend &= ~SPINN_THRD_PROC;
 
           // and restore interrupts after flag access
           spin1_mode_restore (cpsr);
@@ -248,11 +248,16 @@ void tb_process (uint unused0, uint unused1)
   // access thread semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+  if (!(tb_thrds_pend & SPINN_THRD_PROC))
+    wrng_pth++;
+#endif
+
   // and check if all other threads done
-  if (tb_thrds_pend == 0)
+  if (tb_thrds_pend == SPINN_THRD_PROC)
   {
     // if done initialise thread semaphore,
-    tb_thrds_pend = 1;
+    tb_thrds_pend = SPINN_TB_THRDS;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
@@ -268,7 +273,7 @@ void tb_process (uint unused0, uint unused1)
   else
   {
     // if not done report processing thread done,
-    tb_thrds_pend -= 1;
+    tb_thrds_pend &= ~SPINN_THRD_PROC;
 
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
