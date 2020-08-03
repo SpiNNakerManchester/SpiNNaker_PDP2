@@ -620,8 +620,8 @@ class MLPNetwork():
             TEST_RESULTS_FORMAT = "<4I"
             TEST_RESULTS_SIZE = struct.calcsize(TEST_RESULTS_FORMAT)
     
-            # retrieve recorded tick_data from first output group
-            g = self.out_grps[0]
+            # retrieve recorded tick_data from last output group
+            g = self.out_grps[-1]
             rec_test_results = g.t_vertex.read (
                 gfe.placements().get_placement_of_vertex (g.t_vertex),
                 gfe.buffer_manager(), MLPConstSizeRecordings.TEST_RESULTS.value
