@@ -480,7 +480,7 @@ void t_advance_example (void)
 #endif
 
   // network stop decision,
-  uchar exc = 0;
+  uchar nsd = 0;
 
   // point to next example in the set - wrap around if at the end,
   if (++example_inx >= es->num_examples)
@@ -495,18 +495,70 @@ void t_advance_example (void)
     // prepare for next epoch,
     epoch++;
 
+    // check if stage done,
+    if (tcfg.is_last_output_group)
+    {
+      // report network stop decision,
+      nsd = (!xcfg.training || (epoch >= xcfg.num_epochs)) ? 1 : tf_example_crit;
+
+      // broadcast network_stop decision,
+      while (!spin1_send_mc_packet (tf_stpn_key | nsd,
+          0, NO_PAYLOAD)
+          );
+
+#ifdef DEBUG
+      pkt_sent++;
+      stn_sent++;
+#endif
+
+      // and finish if done with epochs
+      if (nsd)
+      {
+        // report no error
+        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+      }
+    }
+    else
+    {
+      // access network stop flag with interrupts disabled,
+      uint cpsr = spin1_int_disable ();
+
+      // check if network stop decision ready,
+      if (net_stop_rdy)
+      {
+        // clear flag,
+        net_stop_rdy = FALSE;
+
+        // restore interrupts,
+        spin1_mode_restore (cpsr);
+
+        // and decide what to do
+        if (net_stop)
+        {
+          // finish stage and report no error
+          spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+        }
+      }
+      else
+      {
+        // flag ready for net_stop decision,
+        net_stop_rdy = TRUE;
+
+        // and restore interrupts
+        spin1_mode_restore (cpsr);
+      }
+    }
+
     // reset example count for next epoch,
     example_cnt = 0;
-
-    // make a note of the network stop decision,
-    exc = (!xcfg.training || (epoch >= xcfg.num_epochs)) ? 1 : tf_example_crit;
 
     // initialise stopping criteria for next epoch,
     tf_event_crit = 1;
     tf_example_crit = 1;
 
-    // reset the variables for test results,
-    if (!exc)
+    // initialise test result variables for next epoch,
+    //NOTE: do not initialise if reporting!
+    if (!nsd)
     {
       t_test_results.examples_tested = 0;
       t_test_results.ticks_tested = 0;
@@ -535,7 +587,7 @@ void t_advance_example (void)
   // initialise output function outputs,
   t_init_outputs ();
 
-  // and complete additional work if last output group
+  // and update next event data
   if (tcfg.is_last_output_group)
   {
     // update number of ticks for new event,
@@ -558,24 +610,6 @@ void t_advance_example (void)
       min_ticks = (((es->min_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
                      + (1 << (SPINN_FPREAL_SHIFT - 1)))
                      >> SPINN_FPREAL_SHIFT;
-
-    // broadcast network_stop decision,
-    while (!spin1_send_mc_packet (tf_stpn_key | exc,
-        0, NO_PAYLOAD)
-        );
-
-#ifdef DEBUG
-    pkt_sent++;
-    stn_sent++;
-#endif
-
-    // and finish if done with epochs
-    if (exc)
-    {
-      // report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
-    }
   }
 }
 // ------------------------------------------------------------------------

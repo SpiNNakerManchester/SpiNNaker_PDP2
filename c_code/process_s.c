@@ -563,22 +563,50 @@ void s_advance_example (void)
   io_printf (IO_BUF, "s_advance_example\n");
 #endif
 
-  // point to next example in the set - wrap around if at the end
+  // point to next example in the set - wrap around if at the end,
   if (++example_inx >= es->num_examples)
   {
     example_inx = 0;
   }
 
-  // check if done with examples
+  // check if done with examples,
   if (++example_cnt >= xcfg.num_examples)
   {
-    // prepare for next epoch
+    // prepare for next epoch,
     epoch++;
 
-    // reset example count for next epoch
+    // access network stop flag with interrupts disabled,
+    uint cpsr = spin1_int_disable ();
+
+    // check if network stop decision ready,
+    if (net_stop_rdy)
+    {
+      // clear flag,
+      net_stop_rdy = FALSE;
+
+      // restore interrupts,
+      spin1_mode_restore (cpsr);
+
+      // and decide what to do
+      if (net_stop)
+      {
+        // and finish stage - report no error
+        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+      }
+    }
+    else
+    {
+      // flag ready for net_stop decision,
+      net_stop_rdy = TRUE;
+
+      // and restore interrupts
+      spin1_mode_restore (cpsr);
+    }
+
+    // reset example count for next epoch,
     example_cnt = 0;
 
-    // reset the partial link delta sum
+    // and reset the partial link delta sum
     if (xcfg.training)
     {
       s_lds_part = 0;
@@ -587,11 +615,11 @@ void s_advance_example (void)
     }
   }
 
-  // start from first event for next example
+  // start from first event for next example,
   evt = 0;
   num_events = ex[example_inx].num_events;
 
-  // and send sync packet to allow unit outputs to be sent
+  // and send sync packet to allow next example to start
   while (!spin1_send_mc_packet (syncKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG

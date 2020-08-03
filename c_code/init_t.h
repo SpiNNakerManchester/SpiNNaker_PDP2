@@ -13,7 +13,7 @@ uint init_out_weak_clamp (void);
 
 void stage_init     (void);
 void stage_start    (void);
-void stage_done     (uint exit_code);
+void stage_done     (uint exit_code, uint unused);
 
 #endif
  

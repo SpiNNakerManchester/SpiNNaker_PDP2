@@ -21,8 +21,10 @@ extern uint32_t stage_step;       // current stage step
 extern uint32_t stage_num_steps;  // current stage number of steps
 extern uint32_t stage_rec_flags;  // current stage recording flags
 
-extern uchar        net_stop;     // network stop decision
+extern uchar        sync_rdy;     // have expected sync packets arrived?
+extern uchar        epoch_rdy;    // this tick completed an epoch?
 extern uchar        net_stop_rdy; // ready to deal with network stop decision
+extern uchar        net_stop;     // network stop decision
 
 extern uint         epoch;        // current training/testing iteration
 extern uint         example_cnt;  // example count in epoch
@@ -75,7 +77,6 @@ extern pkt_queue_t        w_delta_pkt_q; // queue to hold received deltas
 extern fpreal             w_delta_dt;    // scaling factor for link deltas
 extern lds_t              w_lds_final;   // final link delta sum
 extern scoreboard_t       w_sync_arrived; // keep track of expected sync packets
-extern uchar              w_sync_rdy;    // have expected sync packets arrived?
 extern uint               wf_procs;      // pointer to processing unit outputs
 extern uint               wf_comms;      // pointer to receiving unit outputs
 extern scoreboard_t       wf_arrived;    // keeps track of received unit outputs

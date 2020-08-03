@@ -210,6 +210,8 @@
 #define SPINN_TB_TICK_P      2
 #define SPINN_TF_PROCESS_P   3
 #define SPINN_TB_PROCESS_P   3
+
+#define SPINN_DONE_P         4
 // ------------------------------------------------------------------------
 
 

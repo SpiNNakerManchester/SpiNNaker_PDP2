@@ -166,11 +166,26 @@ void t_networkStopPacket (uint key)
   stn_recv++;
 #endif
 
-  // check network error decision
-  if (key & SPINN_STPD_MASK)
+  // network stop decision arrived
+  net_stop = key & SPINN_STPD_MASK;
+
+  // check if ready for network stop decision
+  if (net_stop_rdy)
   {
-    // finish and report no error
-    stage_done (SPINN_NO_ERROR);
+    // clear flag,
+    net_stop_rdy = FALSE;
+
+    // and decide what to do
+    if (net_stop)
+    {
+      // finish stage and report no error
+      spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+    }
+  }
+  else
+  {
+    // flag ready for net_stop decision
+    net_stop_rdy = TRUE;
   }
 }
 // ------------------------------------------------------------------------
@@ -193,7 +208,7 @@ void t_forwardPacket (uint key, uint payload)
   if (new_tail == t_net_pkt_q.head)
   {
     // report queue full error
-    stage_done (SPINN_QUEUE_FULL);
+    stage_done (SPINN_QUEUE_FULL, 0);
   }
   else
   {

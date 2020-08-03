@@ -863,19 +863,19 @@ void w_advance_example (void)
   io_printf (IO_BUF, "w_advance_example\n");
 #endif
 
-  // point to next example in the set - wrap around if at the end
+  // point to next example in the set - wrap around if at the end,
   if (++example_inx >= es->num_examples)
   {
     example_inx = 0;
   }
 
-  // check if done with examples
+  // check if done with examples,
   if (++example_cnt >= xcfg.num_examples)
   {
-    // prepare for next epoch
+    // prepare for next epoch,
     epoch++;
 
-    // reset example count for next epoch
+    // reset example count for next epoch,
     example_cnt = 0;
 
     // and, if training, update weights and initialise weight changes
@@ -893,6 +893,12 @@ void w_advance_example (void)
       }
     }
   }
+  else
+  {
+    // fake network stop packet (expected only at end of epoch)
+    //NOTE: safe to do it without disabling interrupts.
+    net_stop_rdy = TRUE;
+  }
 
   // start from first event for next example,
   evt = 0;
@@ -904,50 +910,37 @@ void w_advance_example (void)
     w_outputs[wf_procs][i] = wcfg.initOutput;
   }
 
-  // access sync and net_stop flags with interrupts disabled
+  // access sync and net_stop flags with interrupts disabled,
   uint cpsr = spin1_int_disable ();
 
   // and check if can trigger next example computation
-  if (w_sync_rdy)
+  if (sync_rdy && net_stop_rdy)
   {
-    // clear synchronisation flag,
-    w_sync_rdy = FALSE;
+    // clear flags for next tick,
+    sync_rdy = FALSE;
+    net_stop_rdy = FALSE;
 
-    // check if network stop decision arrived,
-    if (net_stop_rdy)
+    // restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+
+    // and decide what to do
+    if (net_stop)
     {
-      // clear flag
-      net_stop_rdy = FALSE;
-
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
-
-      // and trigger computation
-      if (net_stop)
-      {
-        // finish stage and report no error
-        stage_done (SPINN_NO_ERROR);
-      }
-      else
-      {
-        spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
-      }
+      // finish stage and report no error
+      spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
     }
     else
     {
-      // flag ready for net_stop decision
-      net_stop_rdy = TRUE;
-
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
+      // trigger computation
+      spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
     }
   }
   else
   {
-    // if not flag sync as ready,
-    w_sync_rdy = TRUE;
+    // flag as ready
+    epoch_rdy = TRUE;
 
-    // and restore interrupts after flag access
+    // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
   }
 }

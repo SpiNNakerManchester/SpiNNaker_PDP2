@@ -375,31 +375,58 @@ void i_advance_example (void)
   io_printf (IO_BUF, "i_advance_example\n");
 #endif
 
-  // point to next example in the set - wrap around if at the end
+  // point to next example in the set - wrap around if at the end,
   if (++example_inx >= es->num_examples)
   {
     example_inx = 0;
   }
 
-  // check if done with examples
+  // check if done with examples,
   if (++example_cnt >= xcfg.num_examples)
   {
-    // prepare for next epoch
+    // prepare for next epoch,
     epoch++;
 
-    // reset example count for next epoch
+    // access network stop flag with interrupts disabled,
+    uint cpsr = spin1_int_disable ();
+
+    // check if network stop decision ready,
+    if (net_stop_rdy)
+    {
+      // clear flag,
+      net_stop_rdy = FALSE;
+
+      // restore interrupts,
+      spin1_mode_restore (cpsr);
+
+      // and decide what to do
+      if (net_stop)
+      {
+        // finish stage and report no error
+        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+      }
+    }
+    else
+    {
+      // flag ready for net_stop decision,
+      net_stop_rdy = TRUE;
+
+      // and restore interrupts
+      spin1_mode_restore (cpsr);
+    }
+
+    // and reset example count for next epoch
     example_cnt = 0;
   }
 
-  // start from first event for next example
+  // start from first event for next example,
   evt = 0;
   num_events = ex[example_inx].num_events;
   event_idx = ex[example_inx].ev_idx;
 
-  // if input or output group initialise new event input/target index
+  // and initialise event input and target indices - if input or output group
   //TODO: check if the target value is required in I cores
-  // for the BACKPROP phase, otherwise remove the condition for the
-  // output group
+  // for the BACKPROP phase, otherwise remove condition for output group
   if (icfg.input_grp || icfg.output_grp)
   {
     i_it_idx = ev[event_idx].it_idx * icfg.num_units;

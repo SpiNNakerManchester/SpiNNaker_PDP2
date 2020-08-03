@@ -473,13 +473,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   {
     t_test_results.epochs_trained = 0;
   }
-  else
-  {
-    if (xcfg.training)
-    {
-      t_test_results.epochs_trained++;
-    }
-  }
+
   t_test_results.examples_tested  = 0;
   t_test_results.ticks_tested     = 0;
   t_test_results.examples_correct = 0;
@@ -508,6 +502,10 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
   ev_tick = SPINN_T_INIT_TICK;
+
+  // initialise network stop flag
+  net_stop_rdy = FALSE;
+  net_stop = 0;
 
   // initialise max and min ticks
   if (tcfg.is_last_output_group)
@@ -725,8 +723,10 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec)
+void stage_done (uint ec, uint unused)
 {
+  (void) unused;
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
@@ -790,7 +790,6 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (tcfg.is_first_output_group)
   {
     io_printf (IO_BUF, "chain recv: first\n");

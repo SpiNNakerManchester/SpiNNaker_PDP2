@@ -255,6 +255,10 @@ void var_init (uint reset_examples)
   //NOTE: input cores do not have a tick 0
   tick = SPINN_I_INIT_TICK;
 
+  // initialise network stop flag
+  net_stop_rdy = FALSE;
+  net_stop = 0;
+
   // initialise scoreboards
   if_done = 0;
   ib_done = 0;
@@ -375,8 +379,10 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec)
+void stage_done (uint ec, uint unused)
 {
+  (void) unused;
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 

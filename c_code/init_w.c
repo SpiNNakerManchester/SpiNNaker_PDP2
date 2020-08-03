@@ -275,6 +275,12 @@ void var_init (uint init_weights, uint reset_examples)
   // initialise tick
   tick = SPINN_W_INIT_TICK;
 
+  // initialise sync flags
+  sync_rdy = FALSE;
+  epoch_rdy = FALSE;
+  net_stop_rdy = FALSE;
+  net_stop = 0;
+
   // initialise unit outputs, link deltas, weight changes
   // error dot products and output history for tick 0
   for (uint i = 0; i < wcfg.num_rows; i++)
@@ -302,9 +308,6 @@ void var_init (uint init_weights, uint reset_examples)
   // initialise thread semaphores
   wf_thrds_pend = SPINN_WF_THRDS;
   wb_thrds_pend = SPINN_WB_THRDS; // no link delta sum until last BP tick
-
-  // initialise network stop flag
-  net_stop_rdy = FALSE;
 
   // initialise processing thread flag
   wb_active = FALSE;
@@ -407,8 +410,10 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec)
+void stage_done (uint ec, uint unused)
 {
+  (void) unused;
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
@@ -466,6 +471,7 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "ldsr recv:%d\n", ldr_recv);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);

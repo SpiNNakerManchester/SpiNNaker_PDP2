@@ -211,6 +211,10 @@ void var_init (uint reset_examples)
   //NOTE: SUM cores do not have a tick 0
   tick = SPINN_S_INIT_TICK;
 
+  // initialise network stop flag
+  net_stop_rdy = FALSE;
+  net_stop = 0;
+
   // initialise nets, errors and scoreboards
   for (uint i = 0; i < scfg.num_units; i++)
   {
@@ -328,8 +332,10 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec)
+void stage_done (uint ec, uint unused)
 {
+  (void) unused;
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
@@ -385,7 +391,6 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
   if (scfg.is_first_group)
   {
@@ -398,6 +403,7 @@ void stage_done (uint ec)
   }
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);

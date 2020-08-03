@@ -23,9 +23,8 @@ void w_receivePacket (uint key, uint payload)
   pkt_recv++;
 #endif
 
-  // check if packet is stop type
-  uint stop = ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY);
-  if (stop)
+  // check if packet is tick stop type
+  if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
   {
     // process stop packet
     w_stopPacket (key);
@@ -33,8 +32,7 @@ void w_receivePacket (uint key, uint payload)
   }
 
   // check if packet is network stop type
-  uint stpn = ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY);
-  if (stpn)
+  if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
   {
     // process network stop decision packet
     w_networkStopPacket (key);
@@ -42,8 +40,7 @@ void w_receivePacket (uint key, uint payload)
   }
 
   // check if packet is ldsr type
-  uint ldsr = ((key & SPINN_TYPE_MASK) == SPINN_LDSR_KEY);
-  if (ldsr)
+  if ((key & SPINN_TYPE_MASK) == SPINN_LDSR_KEY)
   {
     // process ldsr packet
     w_ldsrPacket (payload);
@@ -51,8 +48,7 @@ void w_receivePacket (uint key, uint payload)
   }
 
   // check if packet is sync type
-  uint sync = ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY);
-  if (sync)
+  if ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY)
   {
     // process synchronisation packet
     w_syncPacket ();
@@ -150,26 +146,27 @@ void w_networkStopPacket (uint key)
   net_stop = key & SPINN_STPD_MASK;
 
   // check if ready for network stop decision
-  if (net_stop_rdy)
+  if (sync_rdy && epoch_rdy)
   {
-    // clear flag,
-    net_stop_rdy = FALSE;
+    // clear flags for next tick,
+    sync_rdy = FALSE;
+    epoch_rdy = FALSE;
 
     // and decide what to do
     if (net_stop)
     {
       // finish stage and report no error
-      stage_done (SPINN_NO_ERROR);
+      spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
     }
     else
     {
-      // and trigger computation
+      // trigger computation
       spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
     }
   }
   else
   {
-    // flag ready for net_stop decision
+    // flag as ready
     net_stop_rdy = TRUE;
   }
 }
@@ -229,42 +226,32 @@ void w_syncPacket (void)
   // and check if all expected packets arrived
   if (w_sync_arrived == wcfg.sync_expected)
   {
-    // initialise for next synchronisation,
+    // prepare for next tick,
     w_sync_arrived = 0;
 
     // and check if can trigger next example computation
-    if (w_sync_rdy)
+    if (net_stop_rdy && epoch_rdy)
     {
-      // clear synchronisation flag,
-      w_sync_rdy = FALSE;
+      // clear flags for next tick,
+      net_stop_rdy = FALSE;
+      epoch_rdy = FALSE;
 
-      // check if network stop decision arrived
-      if (net_stop_rdy)
+      // and decide what to do
+      if (net_stop)
       {
-        // clear flag
-        net_stop_rdy = FALSE;
-
-        // and trigger computation
-        if (net_stop)
-        {
-          // finish stage and report no error
-          stage_done (SPINN_NO_ERROR);
-        }
-        else
-        {
-          spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
-        }
+        // finish stage and report no error
+        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
       }
       else
       {
-        // flag ready for net_stop decision
-        net_stop_rdy = TRUE;
+        // and trigger computation
+        spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
       }
     }
     else
     {
-      // if not flag sync as ready
-      w_sync_rdy = TRUE;
+      // flag as ready
+      sync_rdy = TRUE;
     }
   }
 }
@@ -351,7 +338,7 @@ void w_backpropPacket (uint key, uint payload)
   if (new_tail == w_delta_pkt_q.head)
   {
       // report queue full error
-      stage_done (SPINN_QUEUE_FULL);
+      stage_done (SPINN_QUEUE_FULL, 0);
   }
   else
   {
