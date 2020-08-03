@@ -31,16 +31,14 @@ void i_receivePacket (uint key, uint payload)
     // stop packet received
 #ifdef DEBUG
     stp_recv++;
-
-    if (!(if_thrds_pend & SPINN_THRD_STOP))
-      wrng_sth++;
 #endif
 
     // tick STOP decision arrived
     tick_stop = key & SPINN_STPD_MASK;
 
-#ifdef DEBUG_VRB
-    io_printf (IO_BUF, "sc:%x\n", tick_stop);
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+    if (!(if_thrds_pend & SPINN_THRD_STOP))
+      wrng_sth++;
 #endif
 
     // check if all other threads done

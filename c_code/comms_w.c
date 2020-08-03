@@ -101,16 +101,14 @@ void w_stopPacket (uint key)
   stp_recv++;
   if (phase == SPINN_BACKPROP)
     wrng_phs++;
-
-  if (!(wf_thrds_pend & SPINN_THRD_STOP))
-    wrng_sth++;
 #endif
 
   // tick stop decision arrived,
   tick_stop = key & SPINN_STPD_MASK;
 
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "sc:%x\n", tick_stop);
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+  if (!(wf_thrds_pend & SPINN_THRD_STOP))
+    wrng_sth++;
 #endif
 
   // check if all other threads done
@@ -182,13 +180,15 @@ void w_ldsrPacket (uint payload)
 {
 #ifdef DEBUG
   ldr_recv++;
-
-  if (!(wb_thrds_pend & SPINN_THRD_LDSR))
-    wrng_cth++;
 #endif
 
   // the final link delta sum for the epoch arrived
   w_lds_final = (lds_t) payload;
+
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+  if (!(wb_thrds_pend & SPINN_THRD_LDSR))
+    wrng_cth++;
+#endif
 
   // check if all other threads done
   if (wb_thrds_pend == SPINN_THRD_LDSR)
@@ -295,7 +295,7 @@ void w_forwardPacket (uint key, uint payload)
     // update pointer to received unit outputs,
     wf_comms = 1 - wf_comms;
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(DEBUG_THRDS)
     if (!(wf_thrds_pend & SPINN_THRD_COMS))
       wrng_cth++;
 #endif

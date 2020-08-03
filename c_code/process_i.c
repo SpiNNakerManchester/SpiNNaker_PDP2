@@ -131,7 +131,7 @@ void i_forward_packet (uint key, uint payload)
     // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(DEBUG_THRDS)
     if (!(if_thrds_pend & SPINN_THRD_PROC))
       wrng_pth++;
 #endif

@@ -70,7 +70,7 @@ void wf_process (uint unused0, uint unused1)
   // access thread semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(DEBUG_THRDS)
   if (!(wf_thrds_pend & SPINN_THRD_PROC))
     wrng_pth++;
 #endif
@@ -241,7 +241,7 @@ void wb_process (uint unused0, uint unused1)
       // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(DEBUG_THRDS)
       if (!(wb_thrds_pend & SPINN_THRD_PROC))
         wrng_pth++;
 #endif

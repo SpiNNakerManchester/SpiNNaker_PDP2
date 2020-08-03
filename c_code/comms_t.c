@@ -78,18 +78,14 @@ void t_stopPacket (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
-
-#ifdef DEBUG_THRDS
-  if (!(tf_thrds_pend & SPINN_THRD_STOP))
-    wrng_sth++;
-#endif
 #endif
 
   // tick stop decision arrived,
   tick_stop = key & SPINN_STPD_MASK;
 
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "sc:%x\n", tick_stop);
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+  if (!(tf_thrds_pend & SPINN_THRD_STOP))
+    wrng_sth++;
 #endif
 
   // check if all other threads done
