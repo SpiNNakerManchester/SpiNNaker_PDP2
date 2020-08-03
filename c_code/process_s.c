@@ -115,7 +115,7 @@ void s_ldsa_packet (uint payload)
     // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(DEBUG_THRDS)
     if (!(sb_thrds_pend & SPINN_THRD_LDSA))
       wrng_cth++;
 #endif
@@ -175,7 +175,7 @@ void s_ldst_packet (uint payload)
     // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(DEBUG_THRDS)
     if (!(sb_thrds_pend & SPINN_THRD_LDST))
       wrng_cth++;
 #endif
@@ -249,10 +249,6 @@ void s_forward_packet (uint key, uint payload)
       net_tmp = (net_t) s_nets[clr][inx];
     }
 
-#ifdef DEBUG_CFG3
-    io_printf (IO_BUF, "sn[%u]: 0x%08x\n", inx, net_tmp);
-#endif
-
     // incorporate net index to the packet key and send,
     while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
@@ -277,7 +273,7 @@ void s_forward_packet (uint key, uint payload)
       // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(DEBUG_THRDS)
       if (!(sf_thrds_pend & SPINN_THRD_PROC))
         wrng_pth++;
 #endif
@@ -356,10 +352,6 @@ void s_backprop_packet (uint key, uint payload)
     }
 */
 
-#ifdef DEBUG_CFG4
-    io_printf (IO_BUF, "se[%u]: 0x%08x\n", inx, error);
-#endif
-
     // incorporate error index to the packet key and send,
     while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
 
@@ -384,7 +376,7 @@ void s_backprop_packet (uint key, uint payload)
       // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(DEBUG_THRDS)
       if (!(sb_thrds_pend & SPINN_THRD_PROC))
         wrng_pth++;
 #endif

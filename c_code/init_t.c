@@ -736,7 +736,7 @@ void stage_done (uint ec, uint unused)
     recording_record(TEST_RESULTS, (void *) &t_test_results, sizeof (test_results_t));
   }
 
-#if defined(DEBUG) || defined(DEBUG_MIN)
+#if defined(DEBUG) || defined(DEBUG_EXIT)
   // report problems -- if any
   switch (ec)
   {

@@ -386,7 +386,7 @@ void stage_done (uint ec, uint unused)
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
-#if defined(DEBUG) || defined(DEBUG_MIN)
+#if defined(DEBUG) || defined(DEBUG_EXIT)
   // report problems -- if any
   switch (ec)
   {
