@@ -23,8 +23,10 @@ void w_receivePacket (uint key, uint payload)
   pkt_recv++;
 #endif
 
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
   // check if packet is tick stop type
-  if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
+  if (pkt_type == SPINN_STOP_KEY)
   {
     // process stop packet
     w_stopPacket (key);
@@ -32,7 +34,7 @@ void w_receivePacket (uint key, uint payload)
   }
 
   // check if packet is network stop type
-  if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
+  if (pkt_type == SPINN_STPN_KEY)
   {
     // process network stop decision packet
     w_networkStopPacket (key);
@@ -40,7 +42,7 @@ void w_receivePacket (uint key, uint payload)
   }
 
   // check if packet is ldsr type
-  if ((key & SPINN_TYPE_MASK) == SPINN_LDSR_KEY)
+  if (pkt_type == SPINN_LDSR_KEY)
   {
     // process ldsr packet
     w_ldsrPacket (payload);
@@ -48,7 +50,7 @@ void w_receivePacket (uint key, uint payload)
   }
 
   // check if packet is sync type
-  if ((key & SPINN_TYPE_MASK) == SPINN_SYNC_KEY)
+  if (pkt_type == SPINN_SYNC_KEY)
   {
     // process synchronisation packet
     w_syncPacket ();
@@ -226,7 +228,7 @@ void w_syncPacket (void)
   // and check if all expected packets arrived
   if (w_sync_arrived == wcfg.sync_expected)
   {
-    // prepare for next tick,
+    // prepare for next synchronisation,
     w_sync_arrived = 0;
 
     // and check if can trigger next example computation

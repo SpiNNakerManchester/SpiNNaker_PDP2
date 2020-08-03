@@ -23,8 +23,10 @@ void s_receivePacket (uint key, uint payload)
   pkt_recv++;
 #endif
 
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
   // check if stop packet
-  if ((key & SPINN_TYPE_MASK) == SPINN_STOP_KEY)
+  if (pkt_type == SPINN_STOP_KEY)
   {
     // stop packet received
 #ifdef DEBUG
@@ -58,7 +60,7 @@ void s_receivePacket (uint key, uint payload)
   }
 
   // check if network stop packet
-  if ((key & SPINN_TYPE_MASK) == SPINN_STPN_KEY)
+  if (pkt_type == SPINN_STPN_KEY)
   {
     // network stop packet received
 #ifdef DEBUG
