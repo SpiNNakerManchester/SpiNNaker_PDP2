@@ -98,8 +98,7 @@ void s_forward_packet (uint key, uint payload)
         spin1_mode_restore (cpsr);
 
         // and advance tick
-        //TODO: check if need to schedule or can simply call
-        sf_advance_tick (0, 0);
+        sf_advance_tick ();
       }
       else
       {
@@ -219,8 +218,7 @@ void s_backprop_packet (uint key, uint payload)
         spin1_mode_restore (cpsr);
 
         // and advance tick
-        //TODO: check if need to schedule or can simply call
-        sb_advance_tick (0, 0);
+        sb_advance_tick ();
       }
       else
       {
@@ -284,8 +282,7 @@ void s_ldsa_packet (uint payload)
       spin1_mode_restore (cpsr);
 
       // and advance tick
-      //TODO: check if need to schedule or can simply call
-      sb_advance_tick (0, 0);
+      sb_advance_tick ();
     }
     else
     {
@@ -340,19 +337,18 @@ void s_ldst_packet (uint payload)
       // if done initialise semaphore
       sb_thrds_pend = SPINN_SB_THRDS;
 
-      // restore interrupts after flag access,
+      // restore interrupts after semaphore access,
       spin1_mode_restore (cpsr);
 
       // and advance tick
-      //TODO: check if need to schedule or can simply call
-      sb_advance_tick (0, 0);
+      sb_advance_tick ();
     }
     else
     {
       // if not done report processing thread done,
       sb_thrds_pend &= ~SPINN_THRD_LDST;
 
-      // and restore interrupts after flag access
+      // and restore interrupts after semaphore access
       spin1_mode_restore (cpsr);
     }
   }
@@ -372,6 +368,9 @@ void s_stop_packet (uint key)
   // tick stop decision arrived
   tick_stop = key & SPINN_STPD_MASK;
 
+  // access thread semaphore with interrupts disabled
+  uint cpsr = spin1_int_disable ();
+
 #if defined(DEBUG) && defined(DEBUG_THRDS)
   if (!(sf_thrds_pend & SPINN_THRD_STOP))
     wrng_sth++;
@@ -380,16 +379,22 @@ void s_stop_packet (uint key)
   // check if all other threads done
   if (sf_thrds_pend == SPINN_THRD_STOP)
   {
-    // if done initialise semaphore
+    // if done initialise semaphore,
     sf_thrds_pend = SPINN_SF_THRDS;
 
+    // restore interrupts after semaphore access,
+    spin1_mode_restore (cpsr);
+
     // and advance tick
-    spin1_schedule_callback (sf_advance_tick, 0, 0, SPINN_S_TICK_P);
+    sf_advance_tick ();
   }
   else
   {
     // if not done report processing thread done
     sf_thrds_pend &= ~SPINN_THRD_STOP;
+
+    // and restore interrupts after semaphore access
+    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------
@@ -404,26 +409,36 @@ void s_net_stop_packet (uint key)
   stn_recv++;
 #endif
 
-  // network stop decision arrived
+  // network stop decision arrived,
   net_stop = key & SPINN_STPD_MASK;
 
-  // check if ready for network stop decision
+  // access flag with interrupts disabled,
+  uint cpsr = spin1_int_disable ();
+
+  // and check if ready for network stop decision
   if (net_stop_rdy)
   {
     // clear flag,
     net_stop_rdy = FALSE;
 
+    // restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+
     // and decide what to do
     if (net_stop)
     {
       // finish stage and report no error
+      //TODO: check if need to schedule or can simply call
       spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
     }
   }
   else
   {
-    // flag ready for net_stop decision
+    // flag ready for net_stop decision,
     net_stop_rdy = TRUE;
+
+    // and restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------
@@ -433,11 +448,8 @@ void s_net_stop_packet (uint key)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sf_advance_tick (uint unused0, uint unused1)
+void sf_advance_tick (void)
 {
-  (void) unused0;
-  (void) unused1;
-
 #ifdef TRACE
   io_printf (IO_BUF, "sf_advance_tick\n");
 #endif
@@ -468,11 +480,8 @@ void sf_advance_tick (uint unused0, uint unused1)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sb_advance_tick (uint unused0, uint unused1)
+void sb_advance_tick (void)
 {
-  (void) unused0;
-  (void) unused1;
-
 #ifdef TRACE
   io_printf (IO_BUF, "sb_advance_tick\n");
 #endif
@@ -586,6 +595,7 @@ void s_advance_example (void)
       if (net_stop)
       {
         // and finish stage - report no error
+        //TODO: check if need to schedule or can simply call
         spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
       }
     }

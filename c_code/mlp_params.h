@@ -194,8 +194,7 @@
 #define SPINN_WF_PROCESS_P   2
 #define SPINN_WB_PROCESS_P   2
 
-#define SPINN_S_TICK_P       1
-#define SPINN_S_PROCESS_P    2
+#define SPINN_S_PROCESS_P    1
 
 #define SPINN_I_TICK_P       1
 #define SPINN_I_PROCESS_P    2
