@@ -6,12 +6,6 @@
 // ------------------------------------------------------------------------
 // MLP parameters
 // ------------------------------------------------------------------------
-// software configuration
-// ------------------------------------------------------------------------
-#define SPINN_WEIGHT_HISTORY     FALSE
-#define SPINN_OUTPUT_HISTORY     FALSE
-
-
 // ------------------------------------------------------------------------
 // setup constants
 // ------------------------------------------------------------------------
@@ -152,7 +146,7 @@
 // ------------------------------------------------------------------------
 // implementation parameters
 // ------------------------------------------------------------------------
-//TODO: check if size is appropriate
+//TODO: check if sizes are appropriate
 #define SPINN_THLD_PQ_LEN    256
 #define SPINN_WEIGHT_PQ_LEN  512
 #define SPINN_SUM_PQ_LEN     2048
@@ -161,7 +155,7 @@
 
 
 // ------------------------------------------------------------------------
-// multithreading parameters
+// thread parameters
 // ------------------------------------------------------------------------
 #define SPINN_THRD_PROC      1
 #define SPINN_THRD_COMS      ((SPINN_THRD_PROC) << 1)

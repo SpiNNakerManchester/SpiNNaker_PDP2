@@ -114,7 +114,6 @@ address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 long_net_t     * i_nets;            // unit nets computed in current tick
 long_delta_t   * i_deltas;          // deltas computed in current tick
-long_delta_t   * i_init_delta;      // deltas computed in initial tick
 pkt_queue_t      i_pkt_queue;       // queue to hold received packets
 uchar            i_active;          // processing packets from queue?
 

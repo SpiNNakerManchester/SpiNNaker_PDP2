@@ -120,7 +120,6 @@ extern in_proc_init_t const i_init_in_procs[SPINN_NUM_IN_PROCS];
 
 extern long_net_t     * i_nets;        // unit nets computed in current tick
 extern long_delta_t   * i_deltas;      // deltas computed in current tick
-extern long_delta_t   * i_init_delta;  // deltas computed in first tick
 extern pkt_queue_t      i_pkt_queue;   // queue to hold received packets
 extern uchar            i_active;      // processing packets from queue?
 extern uint             i_it_idx;      // index into current inputs/targets

@@ -303,10 +303,6 @@ void tf_advance_tick (uint unused0, uint unused1)
   io_printf (IO_BUF, "tf_tick: %d/%d\n", tick, tot_tick);
 #endif
 
-#if SPINN_OUTPUT_HISTORY == TRUE
-  //TODO: dump outputs to SDRAM for record keeping,
-#endif
-
   // check if done with event
   if (tick_stop)
   {
