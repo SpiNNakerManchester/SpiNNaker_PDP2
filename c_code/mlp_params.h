@@ -196,8 +196,7 @@
 
 #define SPINN_S_PROCESS_P    1
 
-#define SPINN_I_TICK_P       1
-#define SPINN_I_PROCESS_P    2
+#define SPINN_I_PROCESS_P    1
 
 //TODO: review priorities
 #define SPINN_T_REC_OUTS_P   1

@@ -15,7 +15,7 @@
 // sum core communications routines
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// enqueue received packet (FORWARD, BACKPROP, ldsa, ldst, stop, stpn types)
+// enqueue received packet (FORWARD, BACKPROP, ldsa, ldst, stop and stpn types)
 // ------------------------------------------------------------------------
 void s_receivePacket (uint key, uint payload)
 {
@@ -115,14 +115,14 @@ void s_processQueue (uint unused0, uint unused1)
       s_stop_packet (key);
     }
 
-    // check if network stop packet
+    // check if network stop packet,
     else if (pkt_type == SPINN_STPN_KEY)
     {
       // network stop packet received
       s_net_stop_packet (key);
     }
 
-    // access queue with interrupts disabled
+    // and access queue with interrupts disabled
     cpsr = spin1_int_disable ();
   }
 

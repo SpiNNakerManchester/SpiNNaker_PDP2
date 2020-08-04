@@ -198,6 +198,7 @@ void s_backprop_packet (uint key, uint payload)
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we need have to wait for the partial link delta sums
         // to arrive
+        //TODO: find a better place to do this calculation
         if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
             && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_SB_END_TICK + 1)

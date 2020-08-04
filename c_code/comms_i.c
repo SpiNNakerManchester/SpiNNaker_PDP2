@@ -15,82 +15,13 @@
 // input core communications routines
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// process received packets (stop, FORWARD and BACKPROP types)
+// enqueue received packet (FORWARD, BACKPROP, stop and stpn types)
 // ------------------------------------------------------------------------
 void i_receivePacket (uint key, uint payload)
 {
 #ifdef DEBUG
   pkt_recv++;
 #endif
-
-  uint pkt_type = key & SPINN_TYPE_MASK;
-
-  // check if stop packet
-  if (pkt_type == SPINN_STOP_KEY)
-  {
-    // stop packet received
-#ifdef DEBUG
-    stp_recv++;
-#endif
-
-    // tick STOP decision arrived
-    tick_stop = key & SPINN_STPD_MASK;
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(if_thrds_pend & SPINN_THRD_STOP))
-      wrng_sth++;
-#endif
-
-    // check if all other threads done
-    if (if_thrds_pend == SPINN_THRD_STOP)
-    {
-      // if done initialise semaphore,
-      if_thrds_pend = SPINN_IF_THRDS;
-
-      // and advance tick
-      spin1_schedule_callback (if_advance_tick, 0, 0, SPINN_I_TICK_P);
-    }
-    else
-    {
-      // if not done report processing thread done
-      if_thrds_pend &= ~SPINN_THRD_STOP;
-    }
-
-    return;
-  }
-
-  // check if network stop packet
-  if (pkt_type == SPINN_STPN_KEY)
-  {
-    // network stop packet received
-#ifdef DEBUG
-    stn_recv++;
-#endif
-
-    // network stop decision arrived
-    net_stop = key & SPINN_STPD_MASK;
-
-    // check if ready for network stop decision
-    if (net_stop_rdy)
-    {
-      // clear flag,
-      net_stop_rdy = FALSE;
-
-      // and decide what to do
-      if (net_stop)
-      {
-        // finish stage and report no error
-        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
-      }
-    }
-    else
-    {
-      // flag ready for net_stop decision
-      net_stop_rdy = TRUE;
-    }
-
-    return;
-  }
 
   // queue packet - if space available
   uint new_tail = (i_pkt_queue.tail + 1) % SPINN_INPUT_PQ_LEN;
@@ -110,8 +41,81 @@ void i_receivePacket (uint key, uint payload)
     if (!i_active)
     {
       i_active = TRUE;
-      spin1_schedule_callback (i_process, 0, 0, SPINN_I_PROCESS_P);
+      spin1_schedule_callback (i_processQueue, 0, 0, SPINN_I_PROCESS_P);
     }
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process packet queue until empty
+// ------------------------------------------------------------------------
+void i_processQueue (uint unused0, uint unused1)
+{
+  (void) unused0;
+  (void) unused1;
+
+#ifdef TRACE
+  io_printf (IO_BUF, "i_process\n");
+#endif
+
+  // access queue with interrupts disabled
+  uint cpsr = spin1_int_disable ();
+
+  // process until queue empty
+  while (i_pkt_queue.head != i_pkt_queue.tail)
+  {
+    // if not empty dequeue packet,
+    uint key = i_pkt_queue.queue[i_pkt_queue.head].key;
+    uint payload = i_pkt_queue.queue[i_pkt_queue.head].payload;
+    i_pkt_queue.head = (i_pkt_queue.head + 1) % SPINN_INPUT_PQ_LEN;
+
+    // restore interrupts after queue access,
+    spin1_mode_restore (cpsr);
+
+    uint pkt_type = key & SPINN_TYPE_MASK;
+
+    // check if data packet,
+    if (pkt_type == SPINN_DATA_KEY)
+    {
+      // check packet phase and process accordingly
+      uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
+
+      if (ph == SPINN_FORWARD)
+      {
+        // process FORWARD phase packet
+        i_forward_packet (key, payload);
+      }
+      else
+      {
+        // process BACKPROP phase packet
+        i_backprop_packet (key, payload);
+      }
+    }
+
+    // check if stop packet,
+    else if (pkt_type == SPINN_STOP_KEY)
+    {
+      // stop packet received
+      i_stop_packet (key);
+    }
+
+    // check if network stop packet,
+    else if (pkt_type == SPINN_STPN_KEY)
+    {
+      // network stop packet received
+      i_net_stop_packet (key);
+    }
+
+    // and access queue with interrupts disabled
+    cpsr = spin1_int_disable ();
+  }
+
+  // when done, flag that going to sleep,
+  i_active = FALSE;
+
+  // restore interrupts and leave
+  spin1_mode_restore (cpsr);
 }
 // ------------------------------------------------------------------------
