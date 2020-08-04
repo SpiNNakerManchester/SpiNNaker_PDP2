@@ -15,82 +15,13 @@
 // sum core communications routines
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// process received packets (stop, FORWARD and BACKPROP types)
+// enqueue received packet (FORWARD, BACKPROP, ldsa, ldst, stop, stpn types)
 // ------------------------------------------------------------------------
 void s_receivePacket (uint key, uint payload)
 {
 #ifdef DEBUG
   pkt_recv++;
 #endif
-
-  uint pkt_type = key & SPINN_TYPE_MASK;
-
-  // check if stop packet
-  if (pkt_type == SPINN_STOP_KEY)
-  {
-    // stop packet received
-#ifdef DEBUG
-    stp_recv++;
-#endif
-
-    // STOP decision arrived
-    tick_stop = key & SPINN_STPD_MASK;
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(sf_thrds_pend & SPINN_THRD_STOP))
-      wrng_sth++;
-#endif
-
-    // check if all other threads done
-    if (sf_thrds_pend == SPINN_THRD_STOP)
-    {
-      // if done initialise semaphore
-      sf_thrds_pend = SPINN_SF_THRDS;
-
-      // and advance tick
-      spin1_schedule_callback (sf_advance_tick, 0, 0, SPINN_S_TICK_P);
-    }
-    else
-    {
-      // if not done report processing thread done
-      sf_thrds_pend &= ~SPINN_THRD_STOP;
-    }
-
-    return;
-  }
-
-  // check if network stop packet
-  if (pkt_type == SPINN_STPN_KEY)
-  {
-    // network stop packet received
-#ifdef DEBUG
-    stn_recv++;
-#endif
-
-    // network stop decision arrived
-    net_stop = key & SPINN_STPD_MASK;
-
-    // check if ready for network stop decision
-    if (net_stop_rdy)
-    {
-      // clear flag,
-      net_stop_rdy = FALSE;
-
-      // and decide what to do
-      if (net_stop)
-      {
-        // finish stage and report no error
-        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
-      }
-    }
-    else
-    {
-      // flag ready for net_stop decision
-      net_stop_rdy = TRUE;
-    }
-
-    return;
-  }
 
   // queue packet - if space available
   uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
@@ -110,8 +41,95 @@ void s_receivePacket (uint key, uint payload)
     if (!s_active)
     {
       s_active = TRUE;
-      spin1_schedule_callback (s_process, 0, 0, SPINN_S_PROCESS_P);
+      spin1_schedule_callback (s_processQueue, 0, 0, SPINN_S_PROCESS_P);
     }
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process packet queue until empty
+// ------------------------------------------------------------------------
+void s_processQueue (uint unused0, uint unused1)
+{
+  (void) unused0;
+  (void) unused1;
+
+#ifdef TRACE
+  io_printf (IO_BUF, "s_process\n");
+#endif
+
+  // access queue with interrupts disabled
+  uint cpsr = spin1_int_disable ();
+
+  // process until queue empty
+  while (s_pkt_queue.head != s_pkt_queue.tail)
+  {
+    // if not empty dequeue packet,
+    uint key = s_pkt_queue.queue[s_pkt_queue.head].key;
+    uint payload = s_pkt_queue.queue[s_pkt_queue.head].payload;
+    s_pkt_queue.head = (s_pkt_queue.head + 1) % SPINN_SUM_PQ_LEN;
+
+    // restore interrupts after queue access,
+    spin1_mode_restore (cpsr);
+
+    uint pkt_type = key & SPINN_TYPE_MASK;
+
+    // check if data packet,
+    if (pkt_type == SPINN_DATA_KEY)
+    {
+      // check packet phase and process accordingly
+      uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
+
+      if (ph == SPINN_FORWARD)
+      {
+        // process FORWARD phase packet
+        s_forward_packet (key, payload);
+      }
+      else
+      {
+        // process BACKPROP phase packet
+        s_backprop_packet (key, payload);
+      }
+    }
+
+    // check for an LDS "accumulation" packet,
+    else if (pkt_type == SPINN_LDSA_KEY)
+    {
+      // process LDS "accumulation" packet
+      s_ldsa_packet (payload);
+    }
+
+    // check for LDS "total" packet,
+    else if (pkt_type == SPINN_LDST_KEY)
+    {
+      // process LDS "total" packet
+      s_ldst_packet (payload);
+    }
+
+    // check if stop packet,
+    else if (pkt_type == SPINN_STOP_KEY)
+    {
+      // stop packet received
+      s_stop_packet (key);
+    }
+
+    // check if network stop packet
+    else if (pkt_type == SPINN_STPN_KEY)
+    {
+      // network stop packet received
+      s_net_stop_packet (key);
+    }
+
+    // access queue with interrupts disabled
+    cpsr = spin1_int_disable ();
+  }
+
+  // when done, flag that going to sleep,
+  s_active = FALSE;
+
+  // restore interrupts and leave
+  spin1_mode_restore (cpsr);
 }
 // ------------------------------------------------------------------------
