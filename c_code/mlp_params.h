@@ -200,15 +200,14 @@
 
 //TODO: review priorities
 #define SPINN_T_REC_OUTS_P   1
-#define SPINN_T_SEND_OUTS_P  1
 #define SPINN_T_SEND_STOP_P  2
-#define SPINN_T_INIT_OUT_P   2
-#define SPINN_T_INIT_DLT_P   2
 #define SPINN_TF_TICK_P      2
 #define SPINN_TB_TICK_P      2
 #define SPINN_TF_PROCESS_P   3
 #define SPINN_TB_PROCESS_P   3
 
+// stage exit function
+//TODO: check if need to schedule or can simply call
 #define SPINN_DONE_P         4
 // ------------------------------------------------------------------------
 

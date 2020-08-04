@@ -95,8 +95,8 @@ extern activation_t     * w_output_history;
 // ------------------------------------------------------------------------
 extern long_net_t     * s_nets[2];     // unit nets computed in current tick
 extern long_error_t   * s_errors[2];   // errors computed in current tick
-extern pkt_queue_t      s_pkt_queue;   // queue to hold received b-d-ps
-extern uchar            s_active;      // processing b-d-ps from queue?
+extern pkt_queue_t      s_pkt_queue;   // queue to hold received packets
+extern uchar            s_active;      // processing packets from queue?
 extern lds_t            s_lds_part;    // partial link delta sum
 extern scoreboard_t   * sf_arrived[2]; // keep track of expected net b-d-p
 extern scoreboard_t     sf_done;       // current tick net computation done
@@ -121,8 +121,8 @@ extern in_proc_init_t const i_init_in_procs[SPINN_NUM_IN_PROCS];
 extern long_net_t     * i_nets;        // unit nets computed in current tick
 extern long_delta_t   * i_deltas;      // deltas computed in current tick
 extern long_delta_t   * i_init_delta;  // deltas computed in first tick
-extern pkt_queue_t      i_pkt_queue;   // queue to hold received nets/deltas
-extern uchar            i_active;      // processing b-d-ps from queue?
+extern pkt_queue_t      i_pkt_queue;   // queue to hold received packets
+extern uchar            i_active;      // processing packets from queue?
 extern uint             i_it_idx;      // index into current inputs/targets
 extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_pend; // thread semaphore
