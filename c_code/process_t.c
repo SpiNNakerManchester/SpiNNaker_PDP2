@@ -628,7 +628,6 @@ void t_switch_to_fw (void)
   phase = SPINN_FORWARD;
 
   // check if ready to start processing in FORWARD phase,
-  //TODO: need to check this? -- see comms_t.c
   if (t_net_pkt_q.head != t_net_pkt_q.tail)
   {
     // if queue not empty schedule FORWARD processing
@@ -669,7 +668,7 @@ void t_switch_to_bp (void)
   }
 
   // start processing in BACKPROP phase,
-  //TODO: check!
+  //TODO: check if need to schedule or can simply call
   spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
 
   // and restore interrupts

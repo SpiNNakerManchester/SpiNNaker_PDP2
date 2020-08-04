@@ -235,7 +235,6 @@ uint mem_init (void)
   }
 
   // allocate memory for net packet queue
-  //TODO: use correct length!
   if ((t_net_pkt_q.queue = ((packet_t *)
          spin1_malloc (SPINN_THLD_PQ_LEN * sizeof (packet_t)))) == NULL
      )
@@ -827,7 +826,6 @@ void stage_done (uint ec, uint unused)
 #endif
 
   // "close" recording channels,
-  //TODO: find out the semantics of recording_finalise
   if (tcfg.write_out)
   {
     if (stage_rec_flags) {

@@ -290,7 +290,6 @@ void var_init (uint reset_examples)
   }
 
   // and initialise net history for tick 0.
-  //TODO: understand why the values for tick 0 are used!
   for (uint i = 0; i < icfg.num_units; i++)
   {
     i_net_history[i] = 0;
