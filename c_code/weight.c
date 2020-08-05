@@ -236,9 +236,6 @@ void c_main ()
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
-  // set up user event (used for FORWARD packet handling),
-  spin1_callback_on (USER_EVENT, w_handleFWDPacket, SPINN_WF_HDLPKT_P);
-
   // set up packet received callbacks,
   spin1_callback_on (MC_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);
   spin1_callback_on (MCPL_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);

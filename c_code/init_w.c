@@ -410,10 +410,8 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec, uint unused)
+void stage_done (uint ec, uint key)
 {
-  (void) unused;
-
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
@@ -442,6 +440,7 @@ void stage_done (uint ec, uint unused)
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
+      io_printf (IO_BUF, "k:0x%0x\n", key);
       io_printf (IO_BUF, "stage aborted\n");
       break;
 

@@ -27,10 +27,10 @@ void w_receivePacket (uint key, uint payload)
   // check packet phase,
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
-  // FORWARD-phase packets are handled immediately through user event
+  // FORWARD-phase packets are handled immediately
   if (ph == SPINN_FORWARD)
   {
-    spin1_trigger_user_event (key, payload);
+    w_handleFWDPacket (key, payload);
     return;
   }
 
@@ -101,7 +101,7 @@ void w_handleFWDPacket (uint key, uint payload)
 
 #ifdef DEBUG
   // report unknown packet type
-  stage_done (SPINN_UNXPD_PKT, 0);
+  stage_done (SPINN_UNXPD_PKT, key);
 #endif
 }
 // ------------------------------------------------------------------------
@@ -143,7 +143,7 @@ void w_processBKPQueue (uint unused0, uint unused1)
     }
 
     // process LDS result packet,
-    else if (pkt_type == SPINN_LDSA_KEY)
+    else if (pkt_type == SPINN_LDSR_KEY)
     {
       w_ldsr_packet (payload);
     }
@@ -152,7 +152,7 @@ void w_processBKPQueue (uint unused0, uint unused1)
     // report unknown packet type,
     else
     {
-      stage_done (SPINN_UNXPD_PKT, 0);
+      stage_done (SPINN_UNXPD_PKT, key);
     }
 #endif
 
@@ -208,9 +208,6 @@ void w_forward_packet (uint key, uint payload)
     // update pointer to received unit outputs,
     wf_comms = 1 - wf_comms;
 
-    // access thread semaphore with interrupts disabled,
-    uint cpsr = spin1_int_disable ();
-
 #if defined(DEBUG) && defined(DEBUG_THRDS)
     if (!(wf_thrds_pend & SPINN_THRD_COMS))
       wrng_cth++;
@@ -222,19 +219,13 @@ void w_forward_packet (uint key, uint payload)
       // if done initialise thread semaphore,
       wf_thrds_pend = SPINN_WF_THRDS;
 
-      // restore interrupts after semaphore access,
-      spin1_mode_restore (cpsr);
-
       // and advance tick
-      wf_advance_tick ();
+      spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
     }
     else
     {
-      // if not done report comms thread done,
+      // if not done report comms thread done
       wf_thrds_pend &= ~SPINN_THRD_COMS;
-
-      // and restore interrupts after semaphore access
-      spin1_mode_restore (cpsr);
     }
   }
 }
@@ -255,9 +246,6 @@ void w_stop_packet (uint key)
   // tick stop decision arrived,
   tick_stop = key & SPINN_STPD_MASK;
 
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
 #if defined(DEBUG) && defined(DEBUG_THRDS)
   if (!(wf_thrds_pend & SPINN_THRD_STOP))
     wrng_sth++;
@@ -269,19 +257,13 @@ void w_stop_packet (uint key)
     // if done initialise thread semaphore,
     wf_thrds_pend = SPINN_WF_THRDS;
 
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
     // and advance tick
-    wf_advance_tick ();
+    spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
   }
   else
   {
-    // if not done report stop thread done,
+    // if not done report stop thread done
     wf_thrds_pend &= ~SPINN_THRD_STOP;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------
@@ -299,18 +281,12 @@ void w_net_stop_packet (uint key)
   // network stop decision arrived
   net_stop = key & SPINN_STPD_MASK;
 
-  // access flags with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
   // check if ready for network stop decision
   if (sync_rdy && epoch_rdy)
   {
     // clear flags for next tick,
     sync_rdy = FALSE;
     epoch_rdy = FALSE;
-
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
 
     // and decide what to do
     if (net_stop)
@@ -327,11 +303,8 @@ void w_net_stop_packet (uint key)
   }
   else
   {
-    // flag as ready,
+    // flag as ready
     net_stop_rdy = TRUE;
-
-    // and restore interrupts after flag access
-    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------
@@ -355,18 +328,12 @@ void w_sync_packet (void)
     // prepare for next synchronisation,
     w_sync_arrived = 0;
 
-    // access flags with interrupts disabled,
-    uint cpsr = spin1_int_disable ();
-
     // and check if can trigger next example computation
     if (net_stop_rdy && epoch_rdy)
     {
       // clear flags for next tick,
       net_stop_rdy = FALSE;
       epoch_rdy = FALSE;
-
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
 
       // and decide what to do
       if (net_stop)
@@ -383,11 +350,8 @@ void w_sync_packet (void)
     }
     else
     {
-      // flag as ready,
+      // flag as ready
       sync_rdy = TRUE;
-
-      // and restore interrupts after flag access
-      spin1_mode_restore (cpsr);
     }
   }
 }

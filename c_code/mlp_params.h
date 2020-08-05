@@ -189,9 +189,9 @@
 #define SPINN_TIMER_P        0
 
 // weight core priorities
-#define SPINN_WF_HDLPKT_P    0
-#define SPINN_WF_PROCESS_P   1
-#define SPINN_WB_PROCESS_P   1
+#define SPINN_WF_TICK_P      1
+#define SPINN_WF_PROCESS_P   2
+#define SPINN_WB_PROCESS_P   3
 
 // sum core priorities
 #define SPINN_S_PROCESS_P    1

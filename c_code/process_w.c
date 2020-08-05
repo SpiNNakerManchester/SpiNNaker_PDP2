@@ -86,7 +86,7 @@ void wf_process (uint unused0, uint unused1)
     spin1_mode_restore (cpsr);
 
     // and advance tick
-    wf_advance_tick ();
+    wf_advance_tick (0, 0);
   }
   else
   {
@@ -663,8 +663,11 @@ void dougsmomentum_update_weights (void)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void wf_advance_tick (void)
+void wf_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "wf_advance_tick\n");
 #endif
