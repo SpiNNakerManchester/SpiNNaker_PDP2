@@ -81,8 +81,8 @@ address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 long_net_t     * s_nets[2];         // unit nets computed in current tick
 long_error_t   * s_errors[2];       // errors computed in current tick
-pkt_queue_t      s_pkt_queue;       // queue to hold received b-d-ps
-uchar            s_active;          // processing b-d-ps from queue?
+pkt_queue_t      s_pkt_queue;       // queue to hold received packets
+uchar            s_active;          // processing packets from queue?
 lds_t            s_lds_part;        // partial link delta sum
 
 // FORWARD phase specific
@@ -204,7 +204,7 @@ void c_main ()
   // initialise variables,
   var_init (TRUE);
 
-  // set up timer1 (used for background deadlock check),
+  // set up timer (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 

@@ -375,13 +375,12 @@ void stage_init (void)
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ");
+    io_printf (IO_BUF, "train (updates:%u)\n", xcfg.num_epochs);
   }
   else
   {
-    io_printf (IO_BUF, "test ");
+    io_printf (IO_BUF, "test (examples:%u)\n", xcfg.num_examples);
   }
-  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 #endif
 
   // initialise variables for this stage (do NOT initialise weights)
@@ -412,6 +411,11 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 void stage_done (uint ec, uint key)
 {
+#if !defined(DEBUG)
+  //NOTE: parameter 'key' is used only in DEBUG reporting
+  (void) key;
+#endif
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 

@@ -140,15 +140,6 @@ uint mem_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  //TODO: this variable can probably be removed
-  // allocate memory to store delta values during the first BACKPROP tick
-  if ((i_init_delta = ((long_delta_t *)
-         spin1_malloc (icfg.num_units * sizeof (long_delta_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
   // allocate memory for packet queue
   if ((i_pkt_queue.queue = ((packet_t *)
          spin1_malloc (SPINN_INPUT_PQ_LEN * sizeof (packet_t)))) == NULL
@@ -300,7 +291,6 @@ void var_init (uint reset_examples)
   }
 
   // and initialise net history for tick 0.
-  //TODO: understand why the values for tick 0 are used!
   for (uint i = 0; i < icfg.num_units; i++)
   {
     i_net_history[i] = 0;

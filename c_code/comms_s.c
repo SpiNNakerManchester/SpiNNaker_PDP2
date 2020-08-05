@@ -127,7 +127,7 @@ void s_processQueue (uint unused0, uint unused1)
     // report unknown packet type,
     else
     {
-      stage_done (SPINN_UNXPD_PKT, 0);
+      stage_done (SPINN_UNXPD_PKT, key);
     }
 #endif
 

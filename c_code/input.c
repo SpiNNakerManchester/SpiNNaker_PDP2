@@ -114,9 +114,8 @@ address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 long_net_t     * i_nets;            // unit nets computed in current tick
 long_delta_t   * i_deltas;          // deltas computed in current tick
-long_delta_t   * i_init_delta;      // deltas computed in initial tick
-pkt_queue_t      i_pkt_queue;       // queue to hold received nets/deltas
-uchar            i_active;          // processing b-d-ps from queue?
+pkt_queue_t      i_pkt_queue;       // queue to hold received packets
+uchar            i_active;          // processing packets from queue?
 
 long_net_t     * i_last_integr_net; //last INTEGRATOR output value
 long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
@@ -239,7 +238,7 @@ void c_main ()
   // initialise variables,
   var_init (TRUE);
 
-  // set up timer1 (used for background deadlock check),
+  // set up timer (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 

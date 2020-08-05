@@ -207,6 +207,7 @@ void wb_process (uint key, uint payload)
           && tick == SPINN_WB_END_TICK)
   {
     // cast to a 32-bit value,
+    //TODO: link_delta_sum should be saturated before casting!
     lds_t link_delta_sum_short = (lds_t) link_delta_sum;
 
     // and send partial link delta sum
@@ -382,6 +383,7 @@ void steepest_update_weights (void)
   }
 }
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // perform a weight update using momentum descent

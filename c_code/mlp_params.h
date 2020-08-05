@@ -152,7 +152,7 @@
 // ------------------------------------------------------------------------
 // implementation parameters
 // ------------------------------------------------------------------------
-//TODO: check if size is appropriate
+//TODO: check if sizes are appropriate
 #define SPINN_THLD_PQ_LEN    256
 #define SPINN_WEIGHT_PQ_LEN  512
 #define SPINN_SUM_PQ_LEN     2048
@@ -161,7 +161,7 @@
 
 
 // ------------------------------------------------------------------------
-// multithreading parameters
+// thread parameters
 // ------------------------------------------------------------------------
 #define SPINN_THRD_PROC      1
 #define SPINN_THRD_COMS      ((SPINN_THRD_PROC) << 1)
@@ -202,15 +202,13 @@
 // threshold core priorities
 //TODO: review priorities
 #define SPINN_T_REC_OUTS_P   1
-#define SPINN_T_SEND_OUTS_P  1
 #define SPINN_T_SEND_STOP_P  2
-#define SPINN_T_INIT_OUT_P   2
-#define SPINN_T_INIT_DLT_P   2
 #define SPINN_TF_TICK_P      2
 #define SPINN_TB_TICK_P      2
 #define SPINN_TF_PROCESS_P   3
 #define SPINN_TB_PROCESS_P   3
 
+// stage exit function
 #define SPINN_DONE_P         4
 // ------------------------------------------------------------------------
 
