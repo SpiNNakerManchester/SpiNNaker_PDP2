@@ -178,20 +178,22 @@
 // ------------------------------------------------------------------------
 // callback priorities
 // ------------------------------------------------------------------------
-// non-queueable callbacks
+// common non-queueable callbacks
 #define SPINN_PACKET_P      -1
 #define SPINN_TIMER_P        0
 
-// queueable callbacks
+// weight core priorities
 #define SPINN_WF_TICK_P      1
-#define SPINN_WB_TICK_P      1
 #define SPINN_WF_PROCESS_P   2
-#define SPINN_WB_PROCESS_P   2
+#define SPINN_WB_PROCESS_P   3
 
+// sum core priorities
 #define SPINN_S_PROCESS_P    1
 
+// input core priorities
 #define SPINN_I_PROCESS_P    1
 
+// threshold core priorities
 //TODO: review priorities
 #define SPINN_T_REC_OUTS_P   1
 #define SPINN_T_SEND_STOP_P  2
@@ -201,7 +203,6 @@
 #define SPINN_TB_PROCESS_P   3
 
 // stage exit function
-//TODO: check if need to schedule or can simply call
 #define SPINN_DONE_P         4
 // ------------------------------------------------------------------------
 

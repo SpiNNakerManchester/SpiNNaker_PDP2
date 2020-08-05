@@ -193,7 +193,7 @@ uint mem_init (void)
   }
 
   // allocate memory for packet queue
-  if ((w_delta_pkt_q.queue = ((packet_t *)
+  if ((w_pkt_queue.queue = ((packet_t *)
          spin1_malloc (SPINN_WEIGHT_PQ_LEN * sizeof (packet_t)))) == NULL
      )
   {
@@ -325,7 +325,7 @@ void var_init (uint init_weights, uint reset_examples)
       | SPINN_BLOCK_KEY(wcfg.col_blk);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP)
       | SPINN_BLOCK_KEY(wcfg.row_blk);
-  ldsaKey = rt[LDS] | SPINN_LDSA_KEY;
+  ldsaKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
 #ifdef DEBUG
 // ------------------------------------------------------------------------
@@ -409,9 +409,12 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec, uint unused)
+void stage_done (uint ec, uint key)
 {
-  (void) unused;
+#if !defined(DEBUG)
+  //NOTE: parameter 'key' is used only in DEBUG reporting
+  (void) key;
+#endif
 
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
@@ -441,6 +444,7 @@ void stage_done (uint ec, uint unused)
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
+      io_printf (IO_BUF, "k:0x%0x\n", key);
       io_printf (IO_BUF, "stage aborted\n");
       break;
 
@@ -450,8 +454,8 @@ void stage_done (uint ec, uint unused)
                 );
       io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
       io_printf (IO_BUF, "(fptd:%u bptd:%u)\n", wf_thrds_pend, wb_thrds_pend);
-      io_printf (IO_BUF, "(fa:%u ba:%u)\n",
-                 wf_arrived, wb_arrived
+      io_printf (IO_BUF, "(fa:%u/%u ba:%u/%u)\n",
+                 wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
                 );
       io_printf (IO_BUF, "stage aborted\n");
       break;

@@ -250,6 +250,12 @@ void var_init (uint reset_examples)
   net_stop_rdy = FALSE;
   net_stop = 0;
 
+  // if input or output group initialise event input/target index
+  if (icfg.input_grp || icfg.output_grp)
+  {
+    i_it_idx = ev[event_idx].it_idx * icfg.num_units;
+  }
+
   // initialise scoreboards
   if_done = 0;
   ib_done = 0;
@@ -267,15 +273,10 @@ void var_init (uint reset_examples)
   // initialise packet keys
   //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
+
   for (uint p = 0; p < icfg.partitions; p++)
   {
     i_bkpKey[p] = rt[BKPI + p] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  }
-
-  // if input or output group initialise event input/target index
-  if (icfg.input_grp || icfg.output_grp)
-  {
-    i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
   // if the INPUT INTEGRATOR is used

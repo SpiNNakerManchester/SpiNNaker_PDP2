@@ -250,9 +250,9 @@ void var_init (uint reset_examples)
   //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  syncKey = rt[FDS] | SPINN_SYNC_KEY;
-  ldstKey = rt[LDS] | SPINN_LDST_KEY;
-  ldsrKey = rt[LDS] | SPINN_LDSR_KEY;
+  syncKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+  ldstKey = rt[LDS] | SPINN_LDST_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  ldsrKey = rt[LDS] | SPINN_LDSR_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
 #ifdef DEBUG
 // ------------------------------------------------------------------------

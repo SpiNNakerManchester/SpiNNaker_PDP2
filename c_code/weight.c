@@ -100,7 +100,7 @@ long_wchange_t * * w_wchanges;        // accumulated weight changes
 activation_t     * w_outputs[2];      // unit outputs for b-d-p
 long_delta_t   * * w_link_deltas;     // computed link deltas
 error_t          * w_errors;          // computed errors next tick
-pkt_queue_t        w_delta_pkt_q;     // queue to hold received deltas
+pkt_queue_t        w_pkt_queue;       // queue to hold received packets
 fpreal             w_delta_dt;        // scaling factor for link deltas
 lds_t              w_lds_final;       // final link delta sum
 scoreboard_t       w_sync_arrived;    // keep track of expected sync packets
@@ -232,7 +232,7 @@ void c_main ()
   // initialise variables,
   var_init (TRUE, TRUE);
 
-  // set up timer1 (used for background deadlock check),
+  // set up timer (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
