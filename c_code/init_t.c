@@ -332,11 +332,7 @@ uint mem_init (void)
 // ------------------------------------------------------------------------
 void t_init_outputs (void)
 {
-#ifdef TRACE
-  io_printf (IO_BUF, "t_init_outputs\n");
-#endif
-
-  // if the OUTPUT INTEGRATOR is used
+  // if OUTPUT INTEGRATOR is used
   // reset the array of the last values
   if (tcfg.out_integr_en) {
     // initialise every unit output and send for processing
@@ -533,6 +529,12 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
                     >> SPINN_FPREAL_SHIFT;
   }
 
+  // if input or output group initialise event input/target index
+  if (tcfg.input_grp || tcfg.output_grp)
+  {
+    t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
+  }
+
   // initialise output function outputs
   t_init_outputs ();
 
@@ -615,26 +617,21 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   {
     t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
-  // if input or output group initialise event input/target index
-  if (tcfg.input_grp || tcfg.output_grp)
-  {
-    t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
-  }
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
   if (tcfg.is_last_output_group)
   {
     // "broadcast" key
-    tf_stop_key = rt[STP] | SPINN_STOP_KEY;
+    tf_stop_key = rt[STP] | SPINN_STOP_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
 
     // "stop final" key
-    tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
+    tf_stpn_key = rt[STP] | SPINN_STPN_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
   else
   {
     // "daisy chain" key
-    tf_stop_key = rt[STP] | SPINN_STPC_KEY;
+    tf_stop_key = rt[STP] | SPINN_STPC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
 
 #ifdef DEBUG

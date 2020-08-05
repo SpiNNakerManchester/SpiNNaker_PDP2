@@ -19,7 +19,7 @@
 // ------------------------------------------------------------------------
 // process FORWARD phase: apply input pipeline elements
 // ------------------------------------------------------------------------
-void i_forward_packet (uint key, uint payload)
+void if_process (uint key, uint payload)
 {
 #ifdef DEBUG
   recv_fwd++;
@@ -111,7 +111,7 @@ void i_forward_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 // process BACKPROP phase: apply BACKPROP input pipeline elements
 // ------------------------------------------------------------------------
-void i_backprop_packet (uint key, uint payload)
+void ib_process (uint key, uint payload)
 {
 #ifdef DEBUG
   recv_bkp++;
@@ -128,7 +128,7 @@ void i_backprop_packet (uint key, uint payload)
     << (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
 
   // restore net for the previous tick
-  restore_nets (inx, tick - 1);
+  restore_net (inx, tick - 1);
 
   compute_in_back (inx);
 
@@ -173,94 +173,6 @@ void i_backprop_packet (uint key, uint payload)
 
     // and advance tick
     ib_advance_tick ();
-  }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process a tick stop packet
-// ------------------------------------------------------------------------
-void i_stop_packet (uint key)
-{
-#ifdef DEBUG
-  stp_recv++;
-#endif
-
-  // tick STOP decision arrived
-  tick_stop = key & SPINN_STPD_MASK;
-
-  // access thread semaphore with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(if_thrds_pend & SPINN_THRD_STOP))
-      wrng_sth++;
-#endif
-
-  // check if all other threads done
-  if (if_thrds_pend == SPINN_THRD_STOP)
-  {
-    // if done initialise semaphore,
-    if_thrds_pend = SPINN_IF_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    if_advance_tick ();
-  }
-  else
-  {
-    // if not done report processing thread done
-    if_thrds_pend &= ~SPINN_THRD_STOP;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-  }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process a network stop packet
-// ------------------------------------------------------------------------
-void i_net_stop_packet (uint key)
-{
-#ifdef DEBUG
-  stn_recv++;
-#endif
-
-  // network stop decision arrived,
-  net_stop = key & SPINN_STPD_MASK;
-
-  // access flag with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
-  // and check if ready for network stop decision
-  if (net_stop_rdy)
-  {
-    // clear flag,
-    net_stop_rdy = FALSE;
-
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
-
-    // and decide what to do
-    if (net_stop)
-    {
-      // finish stage and report no error
-      //TODO: check if need to schedule or can simply call
-      spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
-    }
-  }
-  else
-  {
-    // flag ready for net_stop decision,
-    net_stop_rdy = TRUE;
-
-    // and restore interrupts after flag access
-    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------
@@ -498,36 +410,8 @@ void compute_in (uint inx)
   // parameter. For continuous networks, these histories are always required.
   if (xcfg.training)
   {
-    store_nets(inx);
+    store_net(inx);
   }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores nets for the current tick
-// ------------------------------------------------------------------------
-void store_nets (uint inx)
-{
-#ifdef TRACE_VRB
-  io_printf (IO_BUF, "store_nets\n");
-#endif
-
-  i_net_history[(tick * icfg.num_units) + inx] = i_nets[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the net of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_nets (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_nets\n");
-#endif
-
-  i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
 }
 // ------------------------------------------------------------------------
 

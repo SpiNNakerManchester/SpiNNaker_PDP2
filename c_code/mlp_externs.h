@@ -73,7 +73,7 @@ extern long_wchange_t * * w_wchanges;    // accumulated weight changes
 extern activation_t     * w_outputs[2]; // unit outputs for b-d-p
 extern long_delta_t   * * w_link_deltas; // computed link deltas
 extern error_t          * w_errors;      // computed errors next tick
-extern pkt_queue_t        w_delta_pkt_q; // queue to hold received deltas
+extern pkt_queue_t        w_pkt_queue;   // queue to hold received packets
 extern fpreal             w_delta_dt;    // scaling factor for link deltas
 extern lds_t              w_lds_final;   // final link delta sum
 extern scoreboard_t       w_sync_arrived; // keep track of expected sync packets

@@ -184,20 +184,22 @@
 // ------------------------------------------------------------------------
 // callback priorities
 // ------------------------------------------------------------------------
-// non-queueable callbacks
+// common non-queueable callbacks
 #define SPINN_PACKET_P      -1
 #define SPINN_TIMER_P        0
 
-// queueable callbacks
-#define SPINN_WF_TICK_P      1
-#define SPINN_WB_TICK_P      1
-#define SPINN_WF_PROCESS_P   2
-#define SPINN_WB_PROCESS_P   2
+// weight core priorities
+#define SPINN_WF_HDLPKT_P    0
+#define SPINN_WF_PROCESS_P   1
+#define SPINN_WB_PROCESS_P   1
 
+// sum core priorities
 #define SPINN_S_PROCESS_P    1
 
+// input core priorities
 #define SPINN_I_PROCESS_P    1
 
+// threshold core priorities
 //TODO: review priorities
 #define SPINN_T_REC_OUTS_P   1
 #define SPINN_T_SEND_OUTS_P  1
