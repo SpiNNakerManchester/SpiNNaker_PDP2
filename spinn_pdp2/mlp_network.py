@@ -689,8 +689,8 @@ class MLPNetwork():
             gfe.add_machine_vertex_instance (tv)
             self._num_vertices += 1
 
-        # create associated forward, backprop, synchronisation and
-        # stop machine edges for every network group
+        # create associated forward, backprop, link delta summation,
+        # synchronisation and stop machine edges for every network group
         first = self.groups[0]
         for grp in self.groups:
             for w in grp.w_vertices:

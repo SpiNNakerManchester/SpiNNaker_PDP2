@@ -16,7 +16,7 @@
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // enqueue received packet
-// (FORWARD, BACKPROP, ldsa, ldst, stop and stpn types)
+// (FORWARD, BACKPROP, ldsa, ldst, stop and net_stop types)
 // ------------------------------------------------------------------------
 void s_receivePacket (uint key, uint payload)
 {

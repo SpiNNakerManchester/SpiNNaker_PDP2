@@ -16,7 +16,7 @@
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // initial handling of received packets
-// (FORWARD, BACKPROP, ldsr, stop, stpn and sync types)
+// (FORWARD, BACKPROP, ldsr, stop, net_stop and sync types)
 // ------------------------------------------------------------------------
 void w_receivePacket (uint key, uint payload)
 {
@@ -64,7 +64,7 @@ void w_receivePacket (uint key, uint payload)
 
 // ------------------------------------------------------------------------
 // handle FORWARD-phase packets
-// (FORWARD, stop, stpn and sync types)
+// (FORWARD, stop, net_stop and sync types)
 // ------------------------------------------------------------------------
 void w_handleFWDPacket (uint key, uint payload)
 {

@@ -73,4 +73,5 @@ LA Plana is supported by the RAIN Hub, which is
 funded by the Industrial Strategy Challenge Fund, part of the government’s
 modern Industrial Strategy. The fund is delivered by UK Research and
 Innovation and managed by EPSRC under grant EP/R026084/1.
+
 We gratefully acknowledge these institutions for their support.
