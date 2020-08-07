@@ -9,7 +9,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "mlp_externs.h"  // allows compiler to check extern types!
+#include "mlp_externs.h"
 
 #include "init_s.h"
 #include "comms_s.h"
@@ -32,6 +32,9 @@ uint syncKey;              // packet ID for synchronisation (state-dependent mea
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
+
+uchar        net_stop;     // network stop decision
+uchar        net_stop_rdy; // ready to deal with network stop decision
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
@@ -78,23 +81,23 @@ address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 long_net_t     * s_nets[2];         // unit nets computed in current tick
 long_error_t   * s_errors[2];       // errors computed in current tick
-pkt_queue_t      s_pkt_queue;       // queue to hold received b-d-ps
-uchar            s_active;          // processing b-d-ps from queue?
+pkt_queue_t      s_pkt_queue;       // queue to hold received packets
+uchar            s_active;          // processing packets from queue?
 lds_t            s_lds_part;        // partial link delta sum
 
 // FORWARD phase specific
 // (net computation)
-scoreboard_t   * sf_arrived[2];     // keep track of expected net b-d-p
+scoreboard_t   * sf_arrived[2];     // keep count of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
 uint             sf_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific
 // (error computation)
-scoreboard_t   * sb_arrived[2];     // keep track of expected error b-d-p
+scoreboard_t   * sb_arrived[2];     // keep count of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
 uint             sb_thrds_pend;     // thread semaphore
-scoreboard_t     s_ldsa_arrived;    // keep track of the number of partial link delta sums
-scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta sum totals
+scoreboard_t     s_ldsa_arrived;    // keep count of the number of partial link delta sums
+scoreboard_t     s_ldst_arrived;    // keep count of the number of link delta sum totals
 // ------------------------------------------------------------------------
 
 
@@ -120,6 +123,9 @@ uint ldr_sent;  // link_delta packets sent
 uint wrng_phs;  // packets received in wrong phase
 uint wrng_tck;  // FORWARD packets received in wrong tick
 uint wrng_btk;  // BACKPROP packets received in wrong tick
+uint wrng_pth;  // unexpected processing thread
+uint wrng_cth;  // unexpected comms thread
+uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -138,7 +144,7 @@ void timeout (uint ticks, uint unused)
   if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
     // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT);
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
   }
   else
   {
@@ -184,7 +190,7 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // allocate memory in DTCM and SDRAM,
@@ -192,13 +198,13 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // initialise variables,
   var_init (TRUE);
 
-  // set up timer1 (used for background deadlock check),
+  // set up timer (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 

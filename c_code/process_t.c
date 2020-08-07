@@ -17,173 +17,145 @@
 // threshold core computation routines
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// process FORWARD phase: compute outputs
+// process FORWARD data packet
+// compute a unit output from received net
 // ------------------------------------------------------------------------
-void tf_process (uint unused0, uint unused1)
+void tf_process (uint key, uint payload)
 {
-  (void) unused0;
-  (void) unused1;
-
 #ifdef TRACE
   io_printf (IO_BUF, "tb_process\n");
 #endif
 
-  // process packet queue
-  // access queue with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-  // process until queue empty
-  while (t_net_pkt_q.head != t_net_pkt_q.tail)
-  {
-    // if not empty dequeue packet,
-    uint key = t_net_pkt_q.queue[t_net_pkt_q.head].key;
-    net_t net = (net_t) t_net_pkt_q.queue[t_net_pkt_q.head].payload;
-    t_net_pkt_q.head = (t_net_pkt_q.head + 1) % SPINN_THLD_PQ_LEN;
-
-    // restore interrupts after queue access,
-    spin1_mode_restore (cpsr);
-
-    // get net index: mask out block, phase and colour data,
-    uint inx = (key & SPINN_NET_MASK);
-
-    // store net for BACKPROP computation,
-    t_nets[inx] = net;
-    if (xcfg.training)
-    {
-      store_nets (inx);
-    }
-
-    // compute unit output,
-    //TODO: need to make sure this is the same as Lens
-    compute_out (inx);
-
-    activation_t activation = (activation_t) t_outputs[inx];
-
-    if (xcfg.training)
-    {
-      store_outputs (inx);
-    }
-
-#ifdef DEBUG_VRB
-    io_printf (IO_BUF, "o[%2d]:%11.7f (0x%08x)\n", inx,
-               SPINN_CONV_TO_PRINT(activation, SPINN_SHORT_ACTIV_SHIFT),
-               activation
-      );
+#ifdef DEBUG
+  recv_fwd++;
+  if (phase == SPINN_BACKPROP)
+    wrng_phs++;
 #endif
 
-    // incorporate output index into packet key and send to next stage,
-    while (!spin1_send_mc_packet ((t_fwdKey[inx >> SPINN_BLOCK_SHIFT] | inx),
-                                   (uint) activation,
-                                   WITH_PAYLOAD
-                                 )
-          );
+  // get net index: mask out block, phase and colour data,
+  uint inx = (key & SPINN_NET_MASK);
+
+  // packet carries a net as payload,
+  t_nets[inx] = (net_t) payload;
+
+  // store net for BACKPROP computation,
+  if (xcfg.training)
+  {
+    store_net (inx);
+  }
+
+  // compute unit output,
+  //TODO: need to make sure this is the same as Lens
+  compute_out (inx);
+
+  // store output for BACKPROP computation,
+  if (xcfg.training)
+  {
+    store_output (inx);
+  }
+
+  // send newly computed output to w cores,
+  while (!spin1_send_mc_packet ((t_fwdKey[inx >> SPINN_BLOCK_SHIFT] | inx),
+                                 (uint) t_outputs[inx],
+                                 WITH_PAYLOAD
+                               )
+        );
 
 #ifdef DEBUG
-    pkt_sent++;
-    sent_fwd++;
+  pkt_sent++;
+  sent_fwd++;
 #endif
 
-    // evaluate stop criterion,
-    if (tcfg.output_grp)
-      tf_stop_func (inx);
+  // evaluate stop criterion,
+  if (tcfg.output_grp)
+    tf_stop_func (inx);
 
-    // mark net as arrived,
-    tf_arrived++;
+  // mark net as arrived,
+  tf_arrived++;
 
-    // and check if all nets arrived (i.e., all outputs done)
-    if (tf_arrived == tcfg.num_units)
+  // and check if all nets arrived (i.e., all outputs done)
+  if (tf_arrived == tcfg.num_units)
+  {
+    // initialise scoreboard for next tick,
+    tf_arrived = 0;
+
+    // record outputs (for host to collect) if requested,
+    if (tcfg.write_out)
     {
-      // initialise scoreboard for next tick,
-      tf_arrived = 0;
+      record_outputs ();
+    }
 
-      // access thread semaphore with interrupts disabled
-      cpsr = spin1_int_disable ();
+    // access thread semaphore and flags with interrupts disabled,
+    uint cpsr = spin1_int_disable ();
 
-      // report processing done and forward stop criterion if OUTPUT group
-      if (tcfg.output_grp)
+    // and check if all other threads done
+    if (tcfg.output_grp)
+    {
+      // report processing thread done,
+      //NOTE: tick stop decision cannot have arrived!
+      tf_thrds_pend &= ~SPINN_THRD_PROC;
+
+      // check if criterion value can be forwarded
+      if (tf_crit_rdy)
       {
-        // report processing thread done,
-        //NOTE: stop criterion cannot have arrived!
-        tf_thrds_pend -= 1;
+        // initialise semaphore,
+        tf_crit_rdy = tf_init_crit;
 
-        // check if chain value can be forwarded
-        if (tf_chain_rdy)
+        // restore interrupts after flag access,
+        spin1_mode_restore (cpsr);
+
+        // send (criterion/tick stop) packet,
+        tf_send_stop ();
+
+        // and advance tick if last group
+        //NOTE: last group does not get a stop decision
+        if (tcfg.is_last_output_group)
         {
-          // initialise semaphore,
-          tf_chain_rdy = tf_initChain;
-
-          // restore interrupts after flag access,
-          spin1_mode_restore (cpsr);
-
-          // report outputs to host if requested,
-          if (tcfg.write_out)
-          {
-            //TODO: check if need to schedule or can simply call
-            record_outputs (SPINN_HOST_NORMAL, tick);
-          }
-
-          // send stop criterion packet,
           //TODO: check if need to schedule or can simply call
-          tf_send_stop (0, 0);
-
-          // and advance tick if last group
-          //NOTE: last group in the chain does not get a stop decision
-          if (tcfg.is_last_output_group)
-          {
-            //TODO: check if need to schedule or can simply call
-            tf_advance_tick (0, 0);
-          }
-        }
-        else
-        {
-          // flag that local value is ready,
-          tf_chain_rdy = 1;
-
-          // and restore interrupts after flag access
-          spin1_mode_restore (cpsr);
+          tf_advance_tick ();
         }
       }
       else
       {
-        // check if all other threads done
-        if (tf_thrds_pend == 0)
-        {
-          // initialise semaphore,
-          tf_thrds_pend = 1;
+        // flag that local value is ready,
+        tf_crit_rdy = 1;
 
-          // restore interrupts after flag access,
-          spin1_mode_restore (cpsr);
-
-          // and advance tick
-          //TODO: check if need to schedule or can simply call
-          tf_advance_tick (0, 0);
-        }
-        else
-        {
-          // if not done report processing thread done,
-          tf_thrds_pend -= 1;
-
-          // and restore interrupts after flag access
-          spin1_mode_restore (cpsr);
-        }
+        // and restore interrupts after flag access
+        spin1_mode_restore (cpsr);
       }
     }
+    else
+    {
+      // check if all other threads done
+      if (tf_thrds_pend == SPINN_THRD_PROC)
+      {
+        // initialise semaphore,
+        tf_thrds_pend = SPINN_TF_THRDS;
 
-    // access queue with interrupts disabled
-    cpsr = spin1_int_disable ();
+        // restore interrupts after flag access,
+        spin1_mode_restore (cpsr);
+
+        // and advance tick
+        //TODO: check if need to schedule or can simply call
+        tf_advance_tick ();
+      }
+      else
+      {
+        // if not done report processing thread done,
+        tf_thrds_pend &= ~SPINN_THRD_PROC;
+
+        // and restore interrupts after flag access
+        spin1_mode_restore (cpsr);
+      }
+    }
   }
-
-  // when done flag going to sleep,
-  t_active = FALSE;
-
-  // and restore interrupts after queue access and leave
-  spin1_mode_restore (cpsr);
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// process BACKPROP phase: compute error deltas
+// process BACKPROP-phase tick
+// compute error deltas
 // ------------------------------------------------------------------------
 void tb_process (uint unused0, uint unused1)
 {
@@ -216,14 +188,15 @@ void tb_process (uint unused0, uint unused1)
                                << (SPINN_LONG_DERIV_SHIFT - SPINN_ERROR_SHIFT);
     }
 
-    // restore outputs for the current tick
-    restore_nets (inx, tick);
+    // restore net for the current tick
+    restore_net (inx, tick);
 
     compute_out_back (inx);
 
     delta_t delta = t_deltas[inx];
 
-    restore_outputs (inx, tick - 1);
+    // restore output for the previous forward tick
+    restore_output (inx, tick - 1);
 
 #ifdef DEBUG_CFG4
     io_printf (IO_BUF, "td[%u]: 0x%08x\n", inx, delta);
@@ -248,27 +221,31 @@ void tb_process (uint unused0, uint unused1)
   // access thread semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+  if (!(tb_thrds_pend & SPINN_THRD_PROC))
+    wrng_pth++;
+#endif
+
   // and check if all other threads done
-  if (tb_thrds_pend == 0)
+  if (tb_thrds_pend == SPINN_THRD_PROC)
   {
     // if done initialise thread semaphore,
-    tb_thrds_pend = 1;
+    tb_thrds_pend = SPINN_TB_THRDS;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
 
     // and advance tick
-    //TODO: check if need to schedule or can simply call
+    tb_advance_tick (0, 0);
+
 #ifdef TRACE_VRB
     io_printf (IO_BUF, "tbp calling tb_advance_tick\n");
 #endif
-
-    tb_advance_tick (0, 0);
   }
   else
   {
     // if not done report processing thread done,
-    tb_thrds_pend -= 1;
+    tb_thrds_pend &= ~SPINN_THRD_PROC;
 
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
@@ -281,11 +258,8 @@ void tb_process (uint unused0, uint unused1)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void tf_advance_tick (uint unused0, uint unused1)
+void tf_advance_tick (void)
 {
-  (void) unused0;
-  (void) unused1;
-
 #ifdef TRACE
   io_printf (IO_BUF, "tf_advance_tick\n");
 #endif
@@ -296,10 +270,6 @@ void tf_advance_tick (uint unused0, uint unused1)
 
 #ifdef DEBUG_TICK
   io_printf (IO_BUF, "tf_tick: %d/%d\n", tick, tot_tick);
-#endif
-
-#if SPINN_OUTPUT_HISTORY == TRUE
-  //TODO: dump outputs to SDRAM for record keeping,
 #endif
 
   // check if done with event
@@ -466,7 +436,7 @@ void tf_advance_event (void)
 
 
 // ------------------------------------------------------------------------
-// FORWARD phase: update the example at the end of a simulation tick
+// update example at the end of a (FORWARD or BACKPROP) tick
 // ------------------------------------------------------------------------
 void t_advance_example (void)
 {
@@ -474,28 +444,31 @@ void t_advance_example (void)
   io_printf (IO_BUF, "t_advance_example\n");
 #endif
 
-  // point to next example in the set - wrap around if at the end
+  // network stop decision,
+  uchar nsd = 0;
+
+  // point to next example in the set - wrap around if at the end,
   if (++example_inx >= es->num_examples)
   {
     example_inx = 0;
   }
 
-  // check if done with examples
+  // check if done with examples,
   //TODO: alternative algorithms for choosing example order!
   if (++example_cnt >= xcfg.num_examples)
   {
-    // check if done with epochs
-    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
+    // prepare for next epoch,
+    epoch++;
+
+    // check if stage done,
+    if (tcfg.is_last_output_group)
     {
-      // report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
-    }
-    // check if terminating "early"
-    else if (tcfg.is_last_output_group && tf_example_crit)
-    {
+      // report network stop decision,
+      nsd = (!xcfg.training || (epoch >= xcfg.num_epochs)) ? 1 : tf_example_crit;
+
       // broadcast network_stop decision,
-      while (!spin1_send_mc_packet (tf_stpn_key, 0, NO_PAYLOAD)
+      while (!spin1_send_mc_packet (tf_stpn_key | nsd,
+          0, NO_PAYLOAD)
           );
 
 #ifdef DEBUG
@@ -503,45 +476,86 @@ void t_advance_example (void)
       stn_sent++;
 #endif
 
-      // and report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
+      // and finish if done with epochs
+      if (nsd)
+      {
+        // report no error
+        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+      }
     }
     else
     {
-      // reset example count for next epoch
-      example_cnt = 0;
-      tf_event_crit = 1;
-      tf_example_crit = 1;
+      // access network stop flag with interrupts disabled,
+      uint cpsr = spin1_int_disable ();
 
-      // reset the variables for test results
+      // check if network stop decision ready,
+      if (net_stop_rdy)
+      {
+        // clear flag,
+        net_stop_rdy = FALSE;
+
+        // restore interrupts,
+        spin1_mode_restore (cpsr);
+
+        // and decide what to do
+        if (net_stop)
+        {
+          // finish stage and report no error
+          spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+        }
+      }
+      else
+      {
+        // flag ready for net_stop decision,
+        net_stop_rdy = TRUE;
+
+        // and restore interrupts
+        spin1_mode_restore (cpsr);
+      }
+    }
+
+    // reset example count for next epoch,
+    example_cnt = 0;
+
+    // initialise stopping criteria for next epoch,
+    tf_event_crit = 1;
+    tf_example_crit = 1;
+
+    // initialise test result variables for next epoch,
+    //NOTE: do not initialise if reporting!
+    if (!nsd)
+    {
       t_test_results.examples_tested = 0;
       t_test_results.ticks_tested = 0;
       t_test_results.examples_correct = 0;
+    }
 
-      // increment the count of epochs trained
-      if (xcfg.training)
-      {
-        t_test_results.epochs_trained++;
-      }
+    // and increment the count of epochs trained
+    if (xcfg.training)
+    {
+      t_test_results.epochs_trained++;
     }
   }
 
-  // start from first event for next example
+  // start from first event for next example,
   evt = 0;
   num_events = ex[example_inx].num_events;
   event_idx = ex[example_inx].ev_idx;
   tf_event_crit = 1;
 
-  // if input or output group initialise new event input/target index
+  // if input or output group initialise new event input/target index,
   if (tcfg.input_grp || tcfg.output_grp)
   {
     t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
   }
 
-  // update number of ticks for new event
+  // initialise output function outputs,
+  t_init_outputs ();
+
+  // and update next event data
   if (tcfg.is_last_output_group)
   {
+    // update number of ticks for new event,
     // maximum
     if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
       max_ticks = (((ev[event_idx + evt].max_time + SPINN_SMALL_VAL) * ncfg.ticks_per_int)
@@ -562,31 +576,6 @@ void t_advance_example (void)
                      + (1 << (SPINN_FPREAL_SHIFT - 1)))
                      >> SPINN_FPREAL_SHIFT;
   }
-
-  // check if ready to send initial unit outputs,
-  // access flags with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-  if (t_sync_rdy)
-  {
-    // if ready clear synchronisation flag,
-    t_sync_rdy = FALSE;
-
-    // restore interrupts,
-    spin1_mode_restore (cpsr);
-
-    // and send unit outputs to w cores,
-    //TODO: check if need to schedule or can simply call
-    t_init_outputs (0, 0);
-  }
-  else
-  {
-    // if not flag sync as ready
-    t_sync_rdy = TRUE;
-
-    // restore interrupts
-    spin1_mode_restore (cpsr);
-  }
 }
 // ------------------------------------------------------------------------
 
@@ -601,27 +590,8 @@ void t_switch_to_fw (void)
   io_printf (IO_BUF, "t_switch_to_fw\n");
 #endif
 
-  // access queues with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
   // move to new FORWARD phase,
   phase = SPINN_FORWARD;
-
-  // check if ready to start processing in FORWARD phase,
-  //TODO: need to check this? -- see comms_t.c
-  if (t_net_pkt_q.head != t_net_pkt_q.tail)
-  {
-    // if queue not empty schedule FORWARD processing
-    spin1_schedule_callback (tf_process, 0, 0, SPINN_TF_PROCESS_P);
-  }
-  else
-  {
-    // if empty flag going inactive
-    t_active = FALSE;
-  }
-
-  // and restore interrupts
-  spin1_mode_restore (cpsr);
 }
 // ------------------------------------------------------------------------
 
@@ -636,102 +606,29 @@ void t_switch_to_bp (void)
   io_printf (IO_BUF, "t_switch_to_bp\n");
 #endif
 
-  // access flags and queues with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 
-  // initialise t_errors for next example
+  // initialise t_errors for next example,
   for (uint i = 0; i < tcfg.num_units; i++)
   {
     t_errors[tb_procs][i] = 0;
   }
 
-  // start processing in BACKPROP phase,
-  //TODO: check!
+  // and start processing the BACKPROP phase
   spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
-
-  // and restore interrupts
-  spin1_mode_restore (cpsr);
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// in the FORWARD phase the convergence criterion may require the simulation to
-// stop before the maximum time is reached. This routine sends a broadcast
-// message to communicate the final decision if the criterion has been reached
-// across all the output groups to all the cores in the simulation
-// ------------------------------------------------------------------------
-void tf_send_stop (uint unused0, uint unused1)
-{
-  (void) unused0;
-  (void) unused1;
-
-#ifdef TRACE
-  io_printf (IO_BUF, "tf_send_stop\n");
-#endif
-
-  // "aggregate" criteria,
-  tf_stop_crit = tf_stop_crit && tf_chain_prev;
-
-  if (tcfg.is_last_output_group)
-  {
-    tf_group_crit = tf_stop_crit;
-
-    if (!xcfg.training)
-    {
-      t_test_results.examples_correct += tf_stop_crit && (ev_tick >=min_ticks);
-    }
-
-    tf_stop_crit = (ev_tick >= max_ticks)
-                     || (tick == ncfg.global_max_ticks - 1)
-                     || (tf_stop_crit && (ev_tick >= min_ticks));
-    tick_stop = tf_stop_crit;
-  }
-
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "M:%d t:%d sc:%x\n", max_ticks, ev_tick, tf_stop_crit);
-#endif
-
-  // FORWARD aggregated criterion,
-  while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit),
-                                 0,
-                                 NO_PAYLOAD
-                               )
-        );
-
-#ifdef DEBUG
-  pkt_sent++;
-  if (tcfg.is_last_output_group)
-  {
-    stp_sent++;
-  }
-  else
-  {
-    chn_sent++;
-  }
-#endif
-
-  // and initialise criterion for next tick
-  tf_stop_crit = TRUE;
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// This routine calls in the appropriate order all the elements of the output
-// pipeline, as expressed in the array tcfg.procs_list[i].
-// the routines to be called are listed in the array t_out_procs[]
-// The SPINN_STORE_OUTPUT and the SPINN_STORE_TARGET flags are currently set
-// at compile time, but they should be passed through the tcfg structure.
-// This has also an implication in the initialisation routine, as the memory
-// where to store the history needs to be allocated in SDRAM.
-// Finally also the return values of the error function (output_deriv) need to
-// be stored to be used in the BACKPROP phase
-// The output pipeline is computer for each single unit (inx) before passing to
-// the next unit
+// this routine calls, in the appropriate order, all the elements of the
+// output pipeline, as expressed in array tcfg.procs_list.
+// the routines to be called are listed in array t_out_procs.
+// the return value of the error function (output_deriv) needs to
+// be stored to be used in the BACKPROP phase.
+// the network type has implications for the initialisation routines,
+// as the memory where to store histories needs to be allocated in SDRAM.
 // ------------------------------------------------------------------------
 void compute_out (uint inx)
 {
@@ -780,108 +677,11 @@ void compute_out (uint inx)
   //TODO: For continuous networks, these are always required.
   if (xcfg.training)
   {
-    store_targets (inx);
     store_output_deriv (inx);
   }
 }
 // ------------------------------------------------------------------------
 
-
-// ------------------------------------------------------------------------
-// stores the targets for the current tick
-// ------------------------------------------------------------------------
-void store_targets (uint inx)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "store_targets\n");
-#endif
-
-  t_target_history[(tick * tcfg.num_units) + inx] = tt[t_it_idx + inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores the output derivatives for the current tick
-// ------------------------------------------------------------------------
-void store_output_deriv (uint inx)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "store_output_deriv\n");
-#endif
-
-  t_output_deriv_history[(tick * tcfg.num_units) + inx] = t_output_deriv[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the output derivative of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_output_deriv (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_output_deriv\n");
-#endif
-
-  t_output_deriv[inx] =
-    t_output_deriv_history[(tick * tcfg.num_units) + inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores nets for the current tick
-// ------------------------------------------------------------------------
-void store_nets (uint inx)
-{
-#ifdef TRACE_VRB
-  io_printf (IO_BUF, "store_nets\n");
-#endif
-
-  t_net_history[(tick * tcfg.num_units) + inx] = t_nets[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the net of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_nets (uint inx, uint tick)
-{
-#ifdef TRACE
-    io_printf (IO_BUF, "restore_nets\n");
-#endif
-
-  t_nets[inx] = t_net_history[((tick * tcfg.num_units) + inx)];
-}
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// stores outputs for the current tick
-// ------------------------------------------------------------------------
-void store_outputs (uint inx)
-{
-#ifdef TRACE_VRB
-  io_printf (IO_BUF, "store_outputs\n");
-#endif
-
-  t_output_history[(tick * tcfg.num_units) + inx] = t_outputs[inx];
-}
-// ------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------
-// restores the output of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_outputs (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_outputs\n");
-#endif
-
-  t_outputs[inx] = t_output_history[((tick * tcfg.num_units) + inx)];
-}
-// ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
 // compute the logistic function starting from the value received through the

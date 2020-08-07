@@ -11,6 +11,7 @@
 #include "mlp_externs.h"
 #include "init_w.h"
 #include "comms_w.h"
+#include "process_w.h"
 
 
 // ------------------------------------------------------------------------
@@ -192,7 +193,7 @@ uint mem_init (void)
   }
 
   // allocate memory for packet queue
-  if ((w_delta_pkt_q.queue = ((packet_t *)
+  if ((w_pkt_queue.queue = ((packet_t *)
          spin1_malloc (SPINN_WEIGHT_PQ_LEN * sizeof (packet_t)))) == NULL
      )
   {
@@ -274,10 +275,18 @@ void var_init (uint init_weights, uint reset_examples)
   // initialise tick
   tick = SPINN_W_INIT_TICK;
 
-  // initialise link deltas, weight changes
+  // initialise sync flags
+  sync_rdy = FALSE;
+  epoch_rdy = FALSE;
+  net_stop_rdy = FALSE;
+  net_stop = 0;
+
+  // initialise unit outputs, link deltas, weight changes
   // error dot products and output history for tick 0
   for (uint i = 0; i < wcfg.num_rows; i++)
   {
+    w_outputs[0][i] = wcfg.initOutput;
+
     for (uint j = 0; j < wcfg.num_cols; j++)
     {
       w_link_deltas[i][j] = 0;
@@ -297,8 +306,8 @@ void var_init (uint init_weights, uint reset_examples)
   wf_comms = 1;
 
   // initialise thread semaphores
-  wf_thrds_pend = 0; // just wait for initial unit outputs
-  wb_thrds_pend = 0; // just wait for initial deltas
+  wf_thrds_pend = SPINN_WF_THRDS;
+  wb_thrds_pend = SPINN_WB_THRDS; // no link delta sum until last BP tick
 
   // initialise processing thread flag
   wb_active = FALSE;
@@ -316,7 +325,7 @@ void var_init (uint init_weights, uint reset_examples)
       | SPINN_BLOCK_KEY(wcfg.col_blk);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP)
       | SPINN_BLOCK_KEY(wcfg.row_blk);
-  ldsaKey = rt[LDS] | SPINN_LDSA_KEY;
+  ldsaKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
 #ifdef DEBUG
 // ------------------------------------------------------------------------
@@ -341,6 +350,9 @@ wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
 wght_ups = 0;  // number of weight updates done
+wrng_pth = 0;  // unexpected processing thread
+wrng_cth = 0;  // unexpected comms thread
+wrng_sth = 0;  // unexpected stop thread
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -363,13 +375,12 @@ void stage_init (void)
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ");
+    io_printf (IO_BUF, "train (updates:%u)\n", xcfg.num_epochs);
   }
   else
   {
-    io_printf (IO_BUF, "test ");
+    io_printf (IO_BUF, "test (examples:%u)\n", xcfg.num_examples);
   }
-  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
 #endif
 
   // initialise variables for this stage (do NOT initialise weights)
@@ -388,6 +399,9 @@ void stage_start (void)
   io_printf (IO_BUF, "----------------\n");
   io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
 #endif
+
+  // trigger computation, when execution starts
+  spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
 }
 // ------------------------------------------------------------------------
 
@@ -395,12 +409,17 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec)
+void stage_done (uint ec, uint key)
 {
+#if !defined(DEBUG)
+  //NOTE: parameter 'key' is used only in DEBUG reporting
+  (void) key;
+#endif
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
-#if defined(DEBUG) || defined(DEBUG_MIN)
+#if defined(DEBUG) || defined(DEBUG_EXIT)
   // report problems -- if any
   switch (ec)
   {
@@ -425,6 +444,7 @@ void stage_done (uint ec)
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
+      io_printf (IO_BUF, "k:0x%0x\n", key);
       io_printf (IO_BUF, "stage aborted\n");
       break;
 
@@ -433,9 +453,9 @@ void stage_done (uint ec)
                  epoch, example_cnt, phase, tick
                 );
       io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-      io_printf (IO_BUF, "(fptd:%u)\n", wf_thrds_pend);
-      io_printf (IO_BUF, "(fa:%u ba:%u)\n",
-                 wf_arrived, wb_arrived
+      io_printf (IO_BUF, "(fptd:%u bptd:%u)\n", wf_thrds_pend, wb_thrds_pend);
+      io_printf (IO_BUF, "(fa:%u/%u ba:%u/%u)\n",
+                 wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
                 );
       io_printf (IO_BUF, "stage aborted\n");
       break;
@@ -454,9 +474,13 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "ldsr recv:%d\n", ldr_recv);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+  if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
+  if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
+  if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
   io_printf (IO_BUF, "------\n");
   io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
 #endif

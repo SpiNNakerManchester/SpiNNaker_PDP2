@@ -17,62 +17,9 @@
 // input core computation routines
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// process queued packets until queue empty
-// ------------------------------------------------------------------------
-void i_process (uint unused0, uint unused1)
-{
-  (void) unused0;
-  (void) unused1;
-
-#ifdef TRACE
-  io_printf (IO_BUF, "i_process\n");
-#endif
-
-  // process packet queue
-  // access queue with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-  // process until queue empty
-  while (i_pkt_queue.head != i_pkt_queue.tail)
-  {
-    // if not empty dequeue packet,
-    uint key = i_pkt_queue.queue[i_pkt_queue.head].key;
-    uint payload = i_pkt_queue.queue[i_pkt_queue.head].payload;
-    i_pkt_queue.head = (i_pkt_queue.head + 1) % SPINN_INPUT_PQ_LEN;
-
-    // restore interrupts after queue access,
-    spin1_mode_restore (cpsr);
-
-    // and check packet phase and process accordingly
-    uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
-    if (ph == SPINN_FORWARD)
-    {
-      // process FORWARD phase packet
-      i_forward_packet (key, payload);
-    }
-    else
-    {
-      // process BACKPROP phase packet
-      i_backprop_packet (key, payload);
-    }
-
-    // access queue with interrupts disabled
-    cpsr = spin1_int_disable ();
-  }
-
-  // when done, flag that going to sleep,
-  i_active = FALSE;
-
-  // restore interrupts and leave
-  spin1_mode_restore (cpsr);
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
 // process FORWARD phase: apply input pipeline elements
 // ------------------------------------------------------------------------
-void i_forward_packet (uint key, uint payload)
+void if_process (uint key, uint payload)
 {
 #ifdef DEBUG
   recv_fwd++;
@@ -131,23 +78,27 @@ void i_forward_packet (uint key, uint payload)
     // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+    if (!(if_thrds_pend & SPINN_THRD_PROC))
+      wrng_pth++;
+#endif
+
     // check if all other threads done
-    if (if_thrds_pend == 0)
+    if (if_thrds_pend == SPINN_THRD_PROC)
     {
       // if done initialise semaphore,
-      if_thrds_pend = 1;
+      if_thrds_pend = SPINN_IF_THRDS;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
       // and advance tick
-      //TODO: check if need to schedule or can simply call
-      if_advance_tick (0, 0);
+      if_advance_tick ();
     }
     else
     {
       // if not done report processing thread done,
-      if_thrds_pend -= 1;
+      if_thrds_pend &= ~SPINN_THRD_PROC;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -160,7 +111,7 @@ void i_forward_packet (uint key, uint payload)
 // ------------------------------------------------------------------------
 // process BACKPROP phase: apply BACKPROP input pipeline elements
 // ------------------------------------------------------------------------
-void i_backprop_packet (uint key, uint payload)
+void ib_process (uint key, uint payload)
 {
 #ifdef DEBUG
   recv_bkp++;
@@ -177,7 +128,7 @@ void i_backprop_packet (uint key, uint payload)
     << (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
 
   // restore net for the previous tick
-  restore_nets (inx, tick - 1);
+  restore_net (inx, tick - 1);
 
   compute_in_back (inx);
 
@@ -221,8 +172,7 @@ void i_backprop_packet (uint key, uint payload)
     ib_done = 0;
 
     // and advance tick
-    //TODO: check if need to schedule or can simply call
-    ib_advance_tick (0, 0);
+    ib_advance_tick ();
   }
 }
 // ------------------------------------------------------------------------
@@ -232,11 +182,8 @@ void i_backprop_packet (uint key, uint payload)
 // FORWARD phase: the tick has been completed, move FORWARD to the next tick
 // updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
-void if_advance_tick (uint unused0, uint unused1)
+void if_advance_tick (void)
 {
-  (void) unused0;
-  (void) unused1;
-
 #ifdef TRACE
   io_printf (IO_BUF, "if_advance_tick\n");
 #endif
@@ -267,11 +214,8 @@ void if_advance_tick (uint unused0, uint unused1)
 // BACKPROP phase: the tick has been completed, move FORWARD to the next tick
 // updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
-void ib_advance_tick (uint unused0, uint unused1)
+void ib_advance_tick (void)
 {
-  (void) unused0;
-  (void) unused1;
-
 #ifdef TRACE
   io_printf (IO_BUF, "ib_advance_tick\n");
 #endif
@@ -346,7 +290,7 @@ void if_advance_event (void)
   else
   {
     // if input or output group update input/target index
-    //TODO: to check if the target value is required in I cores
+    //TODO: check if the target value is required in I cores
     // for the BACKPROP phase, otherwise remove the condition for the
     // output group
     if (icfg.input_grp || icfg.output_grp)
@@ -362,7 +306,7 @@ void if_advance_event (void)
 
 
 // ------------------------------------------------------------------------
-// FORWARD phase: update the example at the end of a simulation tick
+// update example at the end of a (FORWARD or BACKPROP) tick
 // ------------------------------------------------------------------------
 void i_advance_example (void)
 {
@@ -370,38 +314,59 @@ void i_advance_example (void)
   io_printf (IO_BUF, "i_advance_example\n");
 #endif
 
-  // point to next example in the set - wrap around if at the end
+  // point to next example in the set - wrap around if at the end,
   if (++example_inx >= es->num_examples)
   {
     example_inx = 0;
   }
 
-  // check if done with examples
+  // check if done with examples,
   if (++example_cnt >= xcfg.num_examples)
   {
-    // check if done with epochs
-    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
+    // prepare for next epoch,
+    epoch++;
+
+    // access network stop flag with interrupts disabled,
+    uint cpsr = spin1_int_disable ();
+
+    // check if network stop decision ready,
+    if (net_stop_rdy)
     {
-      // report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
+      // clear flag,
+      net_stop_rdy = FALSE;
+
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // and decide what to do
+      if (net_stop)
+      {
+        // finish stage and report no error
+        //TODO: check if need to schedule or can simply call
+        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+      }
     }
     else
     {
-      // reset example count for next epoch
-      example_cnt = 0;
+      // flag ready for net_stop decision,
+      net_stop_rdy = TRUE;
+
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
     }
+
+    // and reset example count for next epoch
+    example_cnt = 0;
   }
 
-  // start from first event for next example
+  // start from first event for next example,
   evt = 0;
   num_events = ex[example_inx].num_events;
   event_idx = ex[example_inx].ev_idx;
 
-  // if input or output group initialise new event input/target index
+  // and initialise event input and target indices - if input or output group
   //TODO: check if the target value is required in I cores
-  // for the BACKPROP phase, otherwise remove the condition for the
-  // output group
+  // for the BACKPROP phase, otherwise remove condition for output group
   if (icfg.input_grp || icfg.output_grp)
   {
     i_it_idx = ev[event_idx].it_idx * icfg.num_units;
@@ -445,36 +410,8 @@ void compute_in (uint inx)
   // parameter. For continuous networks, these histories are always required.
   if (xcfg.training)
   {
-    store_nets(inx);
+    store_net(inx);
   }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores nets for the current tick
-// ------------------------------------------------------------------------
-void store_nets (uint inx)
-{
-#ifdef TRACE_VRB
-  io_printf (IO_BUF, "store_nets\n");
-#endif
-
-  i_net_history[(tick * icfg.num_units) + inx] = i_nets[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the net of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_nets (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_nets\n");
-#endif
-
-  i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
 }
 // ------------------------------------------------------------------------
 

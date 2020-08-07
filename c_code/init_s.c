@@ -211,6 +211,10 @@ void var_init (uint reset_examples)
   //NOTE: SUM cores do not have a tick 0
   tick = SPINN_S_INIT_TICK;
 
+  // initialise network stop flag
+  net_stop_rdy = FALSE;
+  net_stop = 0;
+
   // initialise nets, errors and scoreboards
   for (uint i = 0; i < scfg.num_units; i++)
   {
@@ -229,8 +233,8 @@ void var_init (uint reset_examples)
   s_ldst_arrived = 0;
 
   // initialise thread semaphores
-  sf_thrds_pend = 1;
-  sb_thrds_pend = 0;
+  sf_thrds_pend = SPINN_SF_THRDS;
+  sb_thrds_pend = SPINN_SB_THRDS;
 
   // initialise processing thread flag
   s_active = FALSE;
@@ -246,9 +250,9 @@ void var_init (uint reset_examples)
   //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  syncKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
-  ldstKey = rt[LDS] | SPINN_LDST_KEY;
-  ldsrKey = rt[LDS] | SPINN_LDSR_KEY;
+  syncKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+  ldstKey = rt[LDS] | SPINN_LDST_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  ldsrKey = rt[LDS] | SPINN_LDSR_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
 #ifdef DEBUG
 // ------------------------------------------------------------------------
@@ -272,6 +276,9 @@ ldr_sent = 0;  // link_delta packets sent
 wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
+wrng_pth = 0;  // unexpected processing thread
+wrng_cth = 0;  // unexpected comms thread
+wrng_sth = 0;  // unexpected stop thread
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -325,12 +332,17 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec)
+void stage_done (uint ec, uint key)
 {
+#if !defined(DEBUG)
+  //NOTE: parameter 'key' is used only in DEBUG reporting
+  (void) key;
+#endif
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
-#if defined(DEBUG) || defined(DEBUG_MIN)
+#if defined(DEBUG) || defined(DEBUG_EXIT)
   // report problems -- if any
   switch (ec)
   {
@@ -355,6 +367,7 @@ void stage_done (uint ec)
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
+      io_printf (IO_BUF, "k:0x%0x\n", key);
       io_printf (IO_BUF, "stage aborted\n");
       break;
 
@@ -382,7 +395,6 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
   if (scfg.is_first_group)
   {
@@ -395,9 +407,13 @@ void stage_done (uint ec)
   }
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+  if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
+  if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
+  if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
 #endif
 
 #ifdef DEBUG

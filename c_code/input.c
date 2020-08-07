@@ -10,7 +10,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
-#include "mlp_externs.h"  // allows compiler to check extern types!
+#include "mlp_externs.h"
 
 #include "init_i.h"
 #include "comms_i.h"
@@ -64,6 +64,9 @@ uint bkpKey;               // packet ID for BACKPROP phase
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 
+uchar        net_stop;     // network stop decision
+uchar        net_stop_rdy; // ready to deal with network stop decision
+
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
 uint         example_inx;  // current example index
@@ -111,9 +114,8 @@ address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 long_net_t     * i_nets;            // unit nets computed in current tick
 long_delta_t   * i_deltas;          // deltas computed in current tick
-long_delta_t   * i_init_delta;      // deltas computed in initial tick
-pkt_queue_t      i_pkt_queue;       // queue to hold received nets/deltas
-uchar            i_active;          // processing b-d-ps from queue?
+pkt_queue_t      i_pkt_queue;       // queue to hold received packets
+uchar            i_active;          // processing packets from queue?
 
 long_net_t     * i_last_integr_net; //last INTEGRATOR output value
 long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
@@ -155,6 +157,9 @@ uint stn_recv;  // network_stop packets received
 uint wrng_phs;  // packets received in wrong phase
 uint wrng_tck;  // FORWARD packets received in wrong tick
 uint wrng_btk;  // BACKPROP packets received in wrong tick
+uint wrng_pth;  // unexpected processing thread
+uint wrng_cth;  // unexpected comms thread
+uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -173,7 +178,7 @@ void timeout (uint ticks, uint unused)
   if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
     // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT);
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
   }
   else
   {
@@ -219,7 +224,7 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // allocate memory in DTCM and SDRAM,
@@ -227,13 +232,13 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // initialise variables,
   var_init (TRUE);
 
-  // set up timer1 (used for background deadlock check),
+  // set up timer (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 

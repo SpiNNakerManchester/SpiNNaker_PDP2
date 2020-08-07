@@ -140,15 +140,6 @@ uint mem_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  //TODO: this variable can probably be removed
-  // allocate memory to store delta values during the first BACKPROP tick
-  if ((i_init_delta = ((long_delta_t *)
-         spin1_malloc (icfg.num_units * sizeof (long_delta_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
   // allocate memory for packet queue
   if ((i_pkt_queue.queue = ((packet_t *)
          spin1_malloc (SPINN_INPUT_PQ_LEN * sizeof (packet_t)))) == NULL
@@ -255,12 +246,22 @@ void var_init (uint reset_examples)
   //NOTE: input cores do not have a tick 0
   tick = SPINN_I_INIT_TICK;
 
+  // initialise network stop flag
+  net_stop_rdy = FALSE;
+  net_stop = 0;
+
+  // if input or output group initialise event input/target index
+  if (icfg.input_grp || icfg.output_grp)
+  {
+    i_it_idx = ev[event_idx].it_idx * icfg.num_units;
+  }
+
   // initialise scoreboards
   if_done = 0;
   ib_done = 0;
 
   // initialise thread semaphores
-  if_thrds_pend = 1;
+  if_thrds_pend = SPINN_IF_THRDS;
 
   // initialise processing thread flag
   i_active = FALSE;
@@ -272,15 +273,10 @@ void var_init (uint reset_examples)
   // initialise packet keys
   //NOTE: colour is initialised to 0.
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
+
   for (uint p = 0; p < icfg.partitions; p++)
   {
     i_bkpKey[p] = rt[BKPI + p] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  }
-
-  // if input or output group initialise event input/target index
-  if (icfg.input_grp || icfg.output_grp)
-  {
-    i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
   // if the INPUT INTEGRATOR is used
@@ -295,7 +291,6 @@ void var_init (uint reset_examples)
   }
 
   // and initialise net history for tick 0.
-  //TODO: understand why the values for tick 0 are used!
   for (uint i = 0; i < icfg.num_units; i++)
   {
     i_net_history[i] = 0;
@@ -319,6 +314,9 @@ stn_recv = 0;  // network_stop packets received
 wrng_phs = 0;  // packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
+wrng_pth = 0;  // unexpected processing thread
+wrng_cth = 0;  // unexpected comms thread
+wrng_sth = 0;  // unexpected stop thread
 tot_tick = 0;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -372,12 +370,17 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec)
+void stage_done (uint ec, uint key)
 {
+#if !defined(DEBUG)
+  //NOTE: parameter 'key' is used only in DEBUG reporting
+  (void) key;
+#endif
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
-#if defined(DEBUG) || defined(DEBUG_MIN)
+#if defined(DEBUG) || defined(DEBUG_EXIT)
   // report problems -- if any
   switch (ec)
   {
@@ -402,6 +405,7 @@ void stage_done (uint ec)
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
+      io_printf (IO_BUF, "k:0x%0x\n", key);
       io_printf (IO_BUF, "stage aborted\n");
       break;
 
@@ -427,6 +431,9 @@ void stage_done (uint ec)
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+  if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
+  if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
+  if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
 #endif
 
 #ifdef DEBUG

@@ -9,7 +9,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "mlp_externs.h"  // allows compiler to check extern types!
+#include "mlp_externs.h"
 
 #include "init_w.h"
 #include "comms_w.h"
@@ -44,6 +44,11 @@ uint ldsaKey;              // packet ID for link delta summation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
+
+uchar        sync_rdy;     // have expected sync packets arrived?
+uchar        epoch_rdy;    // this tick completed an epoch?
+uchar        net_stop_rdy; // ready to deal with network stop decision
+uchar        net_stop;     // network stop decision
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
@@ -95,9 +100,11 @@ long_wchange_t * * w_wchanges;        // accumulated weight changes
 activation_t     * w_outputs[2];      // unit outputs for b-d-p
 long_delta_t   * * w_link_deltas;     // computed link deltas
 error_t          * w_errors;          // computed errors next tick
-pkt_queue_t        w_delta_pkt_q;     // queue to hold received deltas
+pkt_queue_t        w_pkt_queue;       // queue to hold received packets
 fpreal             w_delta_dt;        // scaling factor for link deltas
 lds_t              w_lds_final;       // final link delta sum
+scoreboard_t       w_sync_arrived;    // keep count of expected sync packets
+uchar              w_sync_rdy;        // have expected sync packets arrived?
 
 // FORWARD phase specific variables
 // (net b-d-p computation)
@@ -106,13 +113,13 @@ lds_t              w_lds_final;       // final link delta sum
 // comms = being received for next tick
 uint             wf_procs;          // pointer to processing unit outputs
 uint             wf_comms;          // pointer to receiving unit outputs
-scoreboard_t     wf_arrived;        // keeps track of received unit outputs
+scoreboard_t     wf_arrived;        // keep count of received unit outputs
 uint             wf_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific variables
 // (error b-d-p computation)
 uchar            wb_active;         // processing deltas from queue?
-scoreboard_t     wb_arrived;        // keeps track of received deltas
+scoreboard_t     wb_arrived;        // keep count of received deltas
 uint             wb_thrds_pend;     // thread semaphore
 weight_update_t  wb_update_func;    // weight update function
 
@@ -144,6 +151,9 @@ uint wrng_phs;  // packets received in wrong phase
 uint wrng_tck;  // FORWARD packets received in wrong tick
 uint wrng_btk;  // BACKPROP packets received in wrong tick
 uint wght_ups;  // number of weight updates done
+uint wrng_pth;  // unexpected processing thread
+uint wrng_cth;  // unexpected comms thread
+uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -162,7 +172,7 @@ void timeout (uint ticks, uint unused)
   if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
     // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT);
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
   }
   else
   {
@@ -208,7 +218,7 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // allocate memory in DTCM and SDRAM,
@@ -216,13 +226,13 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // initialise variables,
   var_init (TRUE, TRUE);
 
-  // set up timer1 (used for background deadlock check),
+  // set up timer (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 

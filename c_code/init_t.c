@@ -235,8 +235,7 @@ uint mem_init (void)
   }
 
   // allocate memory for net packet queue
-  //TODO: use correct length!
-  if ((t_net_pkt_q.queue = ((packet_t *)
+  if ((t_pkt_queue.queue = ((packet_t *)
          spin1_malloc (SPINN_THLD_PQ_LEN * sizeof (packet_t)))) == NULL
      )
   {
@@ -269,18 +268,6 @@ uint mem_init (void)
   // For non-continuous networks, they only need to be stored if the
   // backpropTicks field of the network is greater than one. This
   // information needs to come in the tcfg structure.
-
-  // allocate memory in SDRAM for target history
-  if ((t_target_history = ((activation_t *)
-          sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks
-           * sizeof (activation_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
 
   // allocate memory in SDRAM for output derivative history
   if ((t_output_deriv_history = ((long_deriv_t *)
@@ -330,53 +317,28 @@ uint mem_init (void)
 // versions 2.63 and 2.64 of LENS. This function LENS version 2.63.
 // Added comments indicate changes to apply LENS version 2.64
 // ------------------------------------------------------------------------
-void t_init_outputs (uint unused0, uint unused1)
+void t_init_outputs (void)
 {
-  (void) unused0;
-  (void) unused1;
+  // if OUTPUT INTEGRATOR is used
+  // reset the array of the last values
+  if (tcfg.out_integr_en) {
+    // initialise every unit output and send for processing
+    for (uint i = 0; i < tcfg.num_units; i++)
+    {
+      // setup the initial output value.
+      // Lens has two ways of initialise the output value,
+      // as defined in Lens 2.63 and Lens 2.64,
+      // and the two ways are not compatible
 
-#ifdef TRACE
-  io_printf (IO_BUF, "t_init_outputs\n");
-#endif
+      // use initial values,
+      //TODO: need to verify initInput with Lens
+      // NOTE: The following code follows the output of Lens 2.63:
+      // initialise the output value of the units
 
-  // initialise every unit output and send for processing
-  for (uint i = 0; i < tcfg.num_units; i++)
-  {
-    // setup the initial output value.
-    // Lens has two ways of initialise the output value,
-    // as defined in Lens 2.63 and Lens 2.64,
-    // and the two ways are not compatible
-
-    // use initial values,
-    //TODO: need to verify initInput with Lens
-    // NOTE: The following code follows the output of Lens 2.63:
-    // initialise the output value of the units
-
-    t_outputs[i] = tcfg.initOutput;
-
-    // if the OUTPUT INTEGRATOR is used
-    // reset the array of the last values
-    if (tcfg.out_integr_en) {
       t_last_integr_output[i] = tcfg.initOutput;
 
       t_last_integr_output_deriv[i] = 0;
     }
-
-#ifdef DEBUG_CFG3
-    io_printf (IO_BUF, "to[%u]: 0x%08x\n", i, t_outputs[i]);
-#endif
-
-    // and send unit output to weight cores
-    while (!spin1_send_mc_packet ((t_fwdKey[i >> SPINN_BLOCK_SHIFT] | i),
-                                   (uint) t_outputs[i],
-                                   WITH_PAYLOAD
-                                 )
-          );
-
-#ifdef DEBUG
-    pkt_sent++;
-    sent_fwd++;
-#endif
   }
 }
 // ------------------------------------------------------------------------
@@ -494,13 +456,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   {
     t_test_results.epochs_trained = 0;
   }
-  else
-  {
-    if (xcfg.training)
-    {
-      t_test_results.epochs_trained++;
-    }
-  }
+
   t_test_results.examples_tested  = 0;
   t_test_results.ticks_tested     = 0;
   t_test_results.examples_correct = 0;
@@ -530,6 +486,10 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tick = SPINN_T_INIT_TICK;
   ev_tick = SPINN_T_INIT_TICK;
 
+  // initialise network stop flag
+  net_stop_rdy = FALSE;
+  net_stop = 0;
+
   // initialise max and min ticks
   if (tcfg.is_last_output_group)
   {
@@ -556,6 +516,15 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
                     >> SPINN_FPREAL_SHIFT;
   }
 
+  // if input or output group initialise event input/target index
+  if (tcfg.input_grp || tcfg.output_grp)
+  {
+    t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
+  }
+
+  // initialise output function outputs
+  t_init_outputs ();
+
   // initialise output derivatives, deltas and errors
   for (uint i = 0; i < tcfg.num_units; i++)
   {
@@ -574,8 +543,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tb_arrived = 0;
 
   // initialise thread semaphores
-  tf_thrds_pend = 1;
-  tb_thrds_pend = 1;
+  tf_thrds_pend = SPINN_TF_THRDS;
+  tb_thrds_pend = SPINN_TB_THRDS;
 
   // initialise stop function and related flags
   if (tcfg.output_grp)
@@ -603,21 +572,21 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
     t_max_target = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
                - SPINN_SHORT_ACTIV_SHIFT);
 
-    // no need to wait for previous value if first in chain
+    // no need to wait for previous value if first group
     if (tcfg.is_first_output_group)
     {
-      tf_initChain = 1;
-      tf_chain_prev = TRUE;
+      tf_init_crit = 1;
+      tf_crit_prev = TRUE;
     }
     else
     {
-      tf_initChain = 0;
+      tf_init_crit = 0;
     }
-    tf_chain_rdy = tf_initChain;
+    tf_crit_rdy = tf_init_crit;
   }
 
   // initialise processing thread flag
-  t_active = FALSE;
+  tf_active = FALSE;
 
   // initialise received sync packets scoreboard
   t_sync_arrived = 0;
@@ -626,8 +595,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   t_sync_rdy = FALSE;
 
   // initialise net packet queue
-  t_net_pkt_q.head = 0;
-  t_net_pkt_q.tail = 0;
+  t_pkt_queue.head = 0;
+  t_pkt_queue.tail = 0;
 
   // initialise packet keys
   //NOTE: colour is initialised to 0
@@ -635,26 +604,21 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   {
     t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
-  // if input or output group initialise event input/target index
-  if (tcfg.input_grp || tcfg.output_grp)
-  {
-    t_it_idx = ev[event_idx].it_idx * tcfg.num_units;
-  }
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
   if (tcfg.is_last_output_group)
   {
-    // "broadcast" key
-    tf_stop_key = rt[STP] | SPINN_STOP_KEY;
+    // tick stop key
+    tf_stop_key = rt[STP] | SPINN_STOP_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
 
-    // "stop final" key
-    tf_stpn_key = rt[STP] | SPINN_STPN_KEY;
+    // network stop key
+    tf_stpn_key = rt[STP] | SPINN_STPN_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
   else
   {
-    // "daisy chain" key
-    tf_stop_key = rt[STP] | SPINN_STPC_KEY;
+    // criterion key
+    tf_stop_key = rt[STP] | SPINN_CRIT_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
 
 #ifdef DEBUG
@@ -669,8 +633,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   recv_bkp = 0;  // packets received in BACKPROP phase
   spk_sent = 0;  // sync packets sent
   spk_recv = 0;  // sync packets received
-  chn_sent = 0;  // chain packets sent
-  chn_recv = 0;  // chain packets received
+  crt_sent = 0;  // criterion packets sent
+  crt_recv = 0;  // criterion packets received
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_sent = 0;  // network_stop packets sent
@@ -679,8 +643,14 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   wrng_tck = 0;  // FORWARD packets received in wrong tick
   wrng_btk = 0;  // BACKPROP packets received in wrong tick
   tot_tick = 0;  // total number of ticks executed
-  // ------------------------------------------------------------------------
 #endif
+
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+  wrng_pth = 0;  // unexpected processing thread
+  wrng_cth = 0;  // unexpected comms thread
+  wrng_sth = 0;  // unexpected stop thread
+#endif
+  // ------------------------------------------------------------------------
 }
 // ------------------------------------------------------------------------
 
@@ -730,9 +700,6 @@ void stage_start (void)
   io_printf (IO_BUF, "----------------\n");
   io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
 #endif
-
-  // and send initial outputs to w cores -- when simulation starts
-  spin1_schedule_callback (t_init_outputs, 0, 0, SPINN_T_INIT_OUT_P);
 }
 // ------------------------------------------------------------------------
 
@@ -740,18 +707,23 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec)
+void stage_done (uint ec, uint key)
 {
+#if !defined(DEBUG)
+  //NOTE: parameter 'key' is used only in DEBUG reporting
+  (void) key;
+#endif
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
   // report test results, if enabled,
-  if (stage_rec_flags && !xcfg.training && tcfg.output_grp)
+  if (stage_rec_flags && !xcfg.training && tcfg.is_last_output_group)
   {
     recording_record(TEST_RESULTS, (void *) &t_test_results, sizeof (test_results_t));
   }
 
-#if defined(DEBUG) || defined(DEBUG_MIN)
+#if defined(DEBUG) || defined(DEBUG_EXIT)
   // report problems -- if any
   switch (ec)
   {
@@ -776,6 +748,7 @@ void stage_done (uint ec)
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
+      io_printf (IO_BUF, "k:0x%0x\n", key);
       io_printf (IO_BUF, "stage aborted\n");
       break;
 
@@ -784,14 +757,14 @@ void stage_done (uint ec)
                  epoch, example_cnt, phase, tick
                 );
       io_printf (IO_BUF, "(tactive:%u ta:%u/%u tb:%u/%u)\n",
-                  t_active, tf_arrived, tcfg.num_units,
+                  tf_active, tf_arrived, tcfg.num_units,
                   tb_arrived, tcfg.num_units
                 );
       io_printf (IO_BUF, "(tsr:%u tsa:%u/%u)\n",
                   t_sync_rdy, t_sync_arrived, tcfg.fwd_sync_expected
                 );
-      io_printf (IO_BUF, "(tcr:%u fptd:%u)\n",
-                  tf_chain_rdy, tf_thrds_pend
+      io_printf (IO_BUF, "(tcr:%u fptd:%u bptd:%u)\n",
+                  tf_crit_rdy, tf_thrds_pend, tb_thrds_pend
                 );
       io_printf (IO_BUF, "stage aborted\n");
       break;
@@ -805,14 +778,13 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (tcfg.is_first_output_group)
   {
-    io_printf (IO_BUF, "chain recv: first\n");
+    io_printf (IO_BUF, "criterion recv: first\n");
   }
   else
   {
-  io_printf (IO_BUF, "chain recv:%d\n", chn_recv);
+  io_printf (IO_BUF, "criterion recv:%d\n", crt_recv);
   }
   if (tcfg.is_last_output_group)
   {
@@ -821,13 +793,19 @@ void stage_done (uint ec)
   }
   else
   {
-    io_printf (IO_BUF, "chain sent:%d\n", chn_sent);
+    io_printf (IO_BUF, "criterion sent:%d\n", crt_sent);
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   }
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+#endif
+
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+  if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
+  if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
+  if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
 #endif
 
 #ifdef DEBUG
@@ -837,7 +815,6 @@ void stage_done (uint ec)
 #endif
 
   // "close" recording channels,
-  //TODO: find out the semantics of recording_finalise
   if (tcfg.write_out)
   {
     if (stage_rec_flags) {

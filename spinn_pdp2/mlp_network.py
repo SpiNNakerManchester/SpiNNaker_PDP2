@@ -620,8 +620,8 @@ class MLPNetwork():
             TEST_RESULTS_FORMAT = "<4I"
             TEST_RESULTS_SIZE = struct.calcsize(TEST_RESULTS_FORMAT)
     
-            # retrieve recorded tick_data from first output group
-            g = self.out_grps[0]
+            # retrieve recorded tick_data from last output group
+            g = self.out_grps[-1]
             rec_test_results = g.t_vertex.read (
                 gfe.placements().get_placement_of_vertex (g.t_vertex),
                 gfe.buffer_manager(), MLPConstSizeRecordings.TEST_RESULTS.value
@@ -689,8 +689,8 @@ class MLPNetwork():
             gfe.add_machine_vertex_instance (tv)
             self._num_vertices += 1
 
-        # create associated forward, backprop, synchronisation and
-        # stop machine edges for every network group
+        # create associated forward, backprop, link delta summation,
+        # synchronisation and stop machine edges for every network group
         first = self.groups[0]
         for grp in self.groups:
             for w in grp.w_vertices:
@@ -720,10 +720,10 @@ class MLPNetwork():
                 gfe.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
                                              first.s_vertex.lds_link)
 
-            # create forward synchronisation s to t (multicast) links
-            for sgrp in self.groups:
-                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex, sgrp.t_vertex),
-                                             grp.s_vertex.fds_link)
+                # create example synchronisation s to w (multicast) links
+                for sgrp in self.groups:
+                    gfe.add_machine_edge_instance (MachineEdge (sgrp.s_vertex, w),
+                                                 sgrp.s_vertex.fds_link)
 
             # create forward s to i link
             gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
