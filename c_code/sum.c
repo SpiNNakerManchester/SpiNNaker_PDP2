@@ -9,7 +9,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "mlp_externs.h"  // allows compiler to check extern types!
+#include "mlp_externs.h"
 
 #include "init_s.h"
 #include "comms_s.h"
@@ -87,17 +87,17 @@ lds_t            s_lds_part;        // partial link delta sum
 
 // FORWARD phase specific
 // (net computation)
-scoreboard_t   * sf_arrived[2];     // keep track of expected net b-d-p
+scoreboard_t   * sf_arrived[2];     // keep count of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
 uint             sf_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific
 // (error computation)
-scoreboard_t   * sb_arrived[2];     // keep track of expected error b-d-p
+scoreboard_t   * sb_arrived[2];     // keep count of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
 uint             sb_thrds_pend;     // thread semaphore
-scoreboard_t     s_ldsa_arrived;    // keep track of the number of partial link delta sums
-scoreboard_t     s_ldst_arrived;    // keep track of the number of link delta sum totals
+scoreboard_t     s_ldsa_arrived;    // keep count of the number of partial link delta sums
+scoreboard_t     s_ldst_arrived;    // keep count of the number of link delta sum totals
 // ------------------------------------------------------------------------
 
 

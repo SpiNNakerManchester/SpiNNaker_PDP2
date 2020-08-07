@@ -9,7 +9,7 @@
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
-#include "mlp_externs.h"  // allows compiler to check extern types!
+#include "mlp_externs.h"
 
 #include "init_w.h"
 #include "comms_w.h"
@@ -103,7 +103,7 @@ error_t          * w_errors;          // computed errors next tick
 pkt_queue_t        w_pkt_queue;       // queue to hold received packets
 fpreal             w_delta_dt;        // scaling factor for link deltas
 lds_t              w_lds_final;       // final link delta sum
-scoreboard_t       w_sync_arrived;    // keep track of expected sync packets
+scoreboard_t       w_sync_arrived;    // keep count of expected sync packets
 uchar              w_sync_rdy;        // have expected sync packets arrived?
 
 // FORWARD phase specific variables
@@ -113,13 +113,13 @@ uchar              w_sync_rdy;        // have expected sync packets arrived?
 // comms = being received for next tick
 uint             wf_procs;          // pointer to processing unit outputs
 uint             wf_comms;          // pointer to receiving unit outputs
-scoreboard_t     wf_arrived;        // keeps track of received unit outputs
+scoreboard_t     wf_arrived;        // keep count of received unit outputs
 uint             wf_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific variables
 // (error b-d-p computation)
 uchar            wb_active;         // processing deltas from queue?
-scoreboard_t     wb_arrived;        // keeps track of received deltas
+scoreboard_t     wb_arrived;        // keep count of received deltas
 uint             wb_thrds_pend;     // thread semaphore
 weight_update_t  wb_update_func;    // weight update function
 

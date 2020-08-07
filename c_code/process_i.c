@@ -290,7 +290,7 @@ void if_advance_event (void)
   else
   {
     // if input or output group update input/target index
-    //TODO: to check if the target value is required in I cores
+    //TODO: check if the target value is required in I cores
     // for the BACKPROP phase, otherwise remove the condition for the
     // output group
     if (icfg.input_grp || icfg.output_grp)

@@ -122,7 +122,7 @@ void wb_process (uint key, uint payload)
   // get delta index: mask out phase and block data,
   uint inx = key & SPINN_BLKDLT_MASK;
 
-  // cast payload as delta
+  // packet carries a delta as payload
   delta_t delta = (delta_t) payload;
 
   // update scoreboard,

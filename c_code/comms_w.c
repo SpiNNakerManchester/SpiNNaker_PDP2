@@ -13,6 +13,7 @@
 
 // ------------------------------------------------------------------------
 // weight core communications routines
+// includes functions to transfer data between DTCM and SDRAM
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // initial handling of received packets
@@ -319,7 +320,7 @@ void w_sync_packet (void)
   spk_recv++;
 #endif
 
-  // keep track of sync packets,
+  // update count of sync packets,
   w_sync_arrived++;
 
   // and check if all expected packets arrived
@@ -394,13 +395,16 @@ void w_ldsr_packet (uint payload)
   {
     // if not done report processing thread done,
     wb_thrds_pend &= ~SPINN_THRD_LDSR;
+
+    // and restore interrupts after semaphore access
+    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// stores unit output received for the current tick
+// stores unit output of the specified unit for the current tick
 // ------------------------------------------------------------------------
 void store_output (uint inx)
 {
@@ -414,7 +418,7 @@ void store_output (uint inx)
 
 
 // ------------------------------------------------------------------------
-// restores unit outputs for requested tick
+// restores all unit outputs for the requested tick
 // ------------------------------------------------------------------------
 void restore_outputs (uint tick)
 {
