@@ -515,7 +515,7 @@ class MLPNetwork():
                 OUT_DATA_SIZES = []       
                 for g in self.output_chain:
                     OUT_DATA_FORMATS.append ("<{}H".format (g.units))
-                    OUT_DATA_SIZES.append (struct.calcsize("<{}H".format (g.units)))       
+                    OUT_DATA_SIZES.append (struct.calcsize("<{}H".format (g.units)))
     
                 # retrieve recorded tick_data from first output group
                 g = self.out_grps[0]
