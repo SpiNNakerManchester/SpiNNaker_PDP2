@@ -235,7 +235,7 @@ uint mem_init (void)
   }
 
   // allocate memory for net packet queue
-  if ((t_net_pkt_q.queue = ((packet_t *)
+  if ((t_pkt_queue.queue = ((packet_t *)
          spin1_malloc (SPINN_THLD_PQ_LEN * sizeof (packet_t)))) == NULL
      )
   {
@@ -268,18 +268,6 @@ uint mem_init (void)
   // For non-continuous networks, they only need to be stored if the
   // backpropTicks field of the network is greater than one. This
   // information needs to come in the tcfg structure.
-
-  // allocate memory in SDRAM for target history
-  if ((t_target_history = ((activation_t *)
-          sark_xalloc (sv->sdram_heap,
-                       tcfg.num_units * ncfg.global_max_ticks
-           * sizeof (activation_t),
-                       0, ALLOC_LOCK)
-                       )) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
 
   // allocate memory in SDRAM for output derivative history
   if ((t_output_deriv_history = ((long_deriv_t *)
@@ -584,21 +572,21 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
     t_max_target = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
                - SPINN_SHORT_ACTIV_SHIFT);
 
-    // no need to wait for previous value if first in chain
+    // no need to wait for previous value if first group
     if (tcfg.is_first_output_group)
     {
-      tf_initChain = 1;
-      tf_chain_prev = TRUE;
+      tf_init_crit = 1;
+      tf_crit_prev = TRUE;
     }
     else
     {
-      tf_initChain = 0;
+      tf_init_crit = 0;
     }
-    tf_chain_rdy = tf_initChain;
+    tf_crit_rdy = tf_init_crit;
   }
 
   // initialise processing thread flag
-  t_active = FALSE;
+  tf_active = FALSE;
 
   // initialise received sync packets scoreboard
   t_sync_arrived = 0;
@@ -607,8 +595,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   t_sync_rdy = FALSE;
 
   // initialise net packet queue
-  t_net_pkt_q.head = 0;
-  t_net_pkt_q.tail = 0;
+  t_pkt_queue.head = 0;
+  t_pkt_queue.tail = 0;
 
   // initialise packet keys
   //NOTE: colour is initialised to 0
@@ -621,16 +609,16 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
 
   if (tcfg.is_last_output_group)
   {
-    // "broadcast" key
+    // tick stop key
     tf_stop_key = rt[STP] | SPINN_STOP_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
 
-    // "stop final" key
+    // network stop key
     tf_stpn_key = rt[STP] | SPINN_STPN_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
   else
   {
-    // "daisy chain" key
-    tf_stop_key = rt[STP] | SPINN_STPC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+    // criterion key
+    tf_stop_key = rt[STP] | SPINN_CRIT_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
 
 #ifdef DEBUG
@@ -645,8 +633,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   recv_bkp = 0;  // packets received in BACKPROP phase
   spk_sent = 0;  // sync packets sent
   spk_recv = 0;  // sync packets received
-  chn_sent = 0;  // chain packets sent
-  chn_recv = 0;  // chain packets received
+  crt_sent = 0;  // criterion packets sent
+  crt_recv = 0;  // criterion packets received
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_sent = 0;  // network_stop packets sent
@@ -769,14 +757,14 @@ void stage_done (uint ec, uint key)
                  epoch, example_cnt, phase, tick
                 );
       io_printf (IO_BUF, "(tactive:%u ta:%u/%u tb:%u/%u)\n",
-                  t_active, tf_arrived, tcfg.num_units,
+                  tf_active, tf_arrived, tcfg.num_units,
                   tb_arrived, tcfg.num_units
                 );
       io_printf (IO_BUF, "(tsr:%u tsa:%u/%u)\n",
                   t_sync_rdy, t_sync_arrived, tcfg.fwd_sync_expected
                 );
       io_printf (IO_BUF, "(tcr:%u fptd:%u bptd:%u)\n",
-                  tf_chain_rdy, tf_thrds_pend, tb_thrds_pend
+                  tf_crit_rdy, tf_thrds_pend, tb_thrds_pend
                 );
       io_printf (IO_BUF, "stage aborted\n");
       break;
@@ -792,11 +780,11 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   if (tcfg.is_first_output_group)
   {
-    io_printf (IO_BUF, "chain recv: first\n");
+    io_printf (IO_BUF, "criterion recv: first\n");
   }
   else
   {
-  io_printf (IO_BUF, "chain recv:%d\n", chn_recv);
+  io_printf (IO_BUF, "criterion recv:%d\n", crt_recv);
   }
   if (tcfg.is_last_output_group)
   {
@@ -805,7 +793,7 @@ void stage_done (uint ec, uint key)
   }
   else
   {
-    io_printf (IO_BUF, "chain sent:%d\n", chn_sent);
+    io_printf (IO_BUF, "criterion sent:%d\n", crt_sent);
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   }

@@ -10,7 +10,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
-#include "mlp_externs.h"  // allows compiler to check extern types!
+#include "mlp_externs.h"
 
 #include "init_t.h"
 #include "comms_t.h"
@@ -146,18 +146,18 @@ activation_t   * t_instant_outputs; // current output value stored for the backw
 short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
 uint             t_it_idx;          // index into current inputs/targets
-pkt_queue_t      t_net_pkt_q;       // queue to hold received nets
-uchar            t_active;          // processing nets/errors from queue?
-scoreboard_t     t_sync_arrived;    // keep track of expected sync packets
+pkt_queue_t      t_pkt_queue;       // queue to hold received nets
+scoreboard_t     t_sync_arrived;    // keep count of expected sync packets
 uchar            t_sync_rdy;        // have expected sync packets arrived?
 
 // FORWARD phase specific
 // (output computation)
-scoreboard_t     tf_arrived;        // keep track of expected nets
+uchar            tf_active;         // processing FWD-phase packet queue?
+scoreboard_t     tf_arrived;        // keep count of expected nets
 uint             tf_thrds_pend;     // thread semaphore
-uchar            tf_chain_prev;     // previous daisy chain (DC) value
-uchar            tf_initChain;      // previous DC received init value
-uchar            tf_chain_rdy;      // local DC value can be forwarded
+uchar            tf_crit_prev;      // criterion value received
+uchar            tf_init_crit;      // criterion init value
+uchar            tf_crit_rdy;       // criterion can be forwarded
 uchar            tf_stop_crit;      // stop criterion met?
 uchar            tf_group_crit;     // stop criterion met for all groups?
 uchar            tf_event_crit;     // stop criterion met for all events?
@@ -172,7 +172,7 @@ uint             tf_stpn_key;       // stop network packet key
 // (error delta computation)
 uint             tb_procs;          // pointer to processing errors
 uint             tb_comms;          // pointer to receiving errors
-scoreboard_t     tb_arrived;        // keep track of expected errors
+scoreboard_t     tb_arrived;        // keep count of expected errors
 uint             tb_thrds_pend;     // thread semaphore
 
 int              t_max_output_unit; // unit with highest output
@@ -188,7 +188,6 @@ uint           * t_fwdKey;          // t cores have one fwdKey per partition
 // history arrays
 net_t          * t_net_history;
 activation_t   * t_output_history;
-activation_t   * t_target_history;
 long_deriv_t   * t_output_deriv_history;
 // ------------------------------------------------------------------------
 
@@ -205,8 +204,8 @@ uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
 uint spk_sent;  // sync packets sent
 uint spk_recv;  // sync packets received
-uint chn_sent;  // chain packets sent
-uint chn_recv;  // chain packets received
+uint crt_sent;  // criterion packets sent
+uint crt_recv;  // criterion packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_sent;  // network_stop packets sent

@@ -70,19 +70,19 @@ extern weight_update_t const w_update_procs[SPINN_NUM_UPDATE_PROCS];
 
 extern weight_t       * * w_weights;     // connection weights block
 extern long_wchange_t * * w_wchanges;    // accumulated weight changes
-extern activation_t     * w_outputs[2]; // unit outputs for b-d-p
+extern activation_t     * w_outputs[2];  // unit outputs for b-d-p
 extern long_delta_t   * * w_link_deltas; // computed link deltas
 extern error_t          * w_errors;      // computed errors next tick
 extern pkt_queue_t        w_pkt_queue;   // queue to hold received packets
 extern fpreal             w_delta_dt;    // scaling factor for link deltas
 extern lds_t              w_lds_final;   // final link delta sum
-extern scoreboard_t       w_sync_arrived; // keep track of expected sync packets
+extern scoreboard_t       w_sync_arrived; // keep count of expected sync packets
 extern uint               wf_procs;      // pointer to processing unit outputs
 extern uint               wf_comms;      // pointer to receiving unit outputs
-extern scoreboard_t       wf_arrived;    // keeps track of received unit outputs
+extern scoreboard_t       wf_arrived;    // keep count of received unit outputs
 extern uint               wf_thrds_pend; // thread semaphore
-extern uchar              wb_active;     // processing deltas from queue?
-extern scoreboard_t       wb_arrived;    // keeps track of received deltas
+extern uchar              wb_active;     // processing BKP-phase packet queue?
+extern scoreboard_t       wb_arrived;    // keep count of received deltas
 extern uint               wb_thrds_pend; // thread semaphore
 extern weight_update_t    wb_update_func; // weight update function
 
@@ -98,14 +98,14 @@ extern long_error_t   * s_errors[2];   // errors computed in current tick
 extern pkt_queue_t      s_pkt_queue;   // queue to hold received packets
 extern uchar            s_active;      // processing packets from queue?
 extern lds_t            s_lds_part;    // partial link delta sum
-extern scoreboard_t   * sf_arrived[2]; // keep track of expected net b-d-p
+extern scoreboard_t   * sf_arrived[2]; // keep count of expected net b-d-p
 extern scoreboard_t     sf_done;       // current tick net computation done
 extern uint             sf_thrds_pend; // thread semaphore
-extern scoreboard_t   * sb_arrived[2]; // keep track of expected error b-d-p
+extern scoreboard_t   * sb_arrived[2]; // keep count of expected error b-d-p
 extern scoreboard_t     sb_done;       // current tick error computation done
 extern uint             sb_thrds_pend; // thread semaphore
-extern scoreboard_t     s_ldsa_arrived; // keep track of the number of partial link delta sums
-extern scoreboard_t     s_ldst_arrived; // keep track of the number of link delta sum totals
+extern scoreboard_t     s_ldsa_arrived; // keep count of the number of partial link delta sums
+extern scoreboard_t     s_ldst_arrived; // keep count of the number of link delta sum totals
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -156,15 +156,15 @@ extern activation_t   * t_last_integr_output;   //last INTEGRATOR output value
 extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output deriv
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
 extern uint             t_it_idx;      // index into current inputs/targets
-extern pkt_queue_t      t_net_pkt_q;   // queue to hold received nets
-extern uchar            t_active;      // processing nets/errors from queue?
-extern scoreboard_t     t_sync_arrived; // keep track of expected sync packets
+extern pkt_queue_t      t_pkt_queue;   // queue to hold received packets
+extern scoreboard_t     t_sync_arrived; // keep count of expected sync packets
 extern uchar            t_sync_rdy;    // have expected sync packets arrived?
-extern scoreboard_t     tf_arrived;    // keep track of expected nets
+extern uchar            tf_active;     // processing FWD-phase packet queue?
+extern scoreboard_t     tf_arrived;    // keep count of expected nets
 extern uint             tf_thrds_pend; // thread semaphore
-extern uchar            tf_chain_prev; // previous daisy chain (DC) value
-extern uchar            tf_initChain;  // previous DC received init value
-extern uchar            tf_chain_rdy;  // local DC value can be forwarded
+extern uchar            tf_crit_prev;  // criterion value received
+extern uchar            tf_init_crit;  // criterion init value
+extern uchar            tf_crit_rdy;   // criterion can be forwarded
 extern uchar            tf_stop_crit;  // stop criterion met?
 extern uchar            tf_group_crit;     // stop criterion met for all groups?
 extern uchar            tf_event_crit;     // stop criterion met for all events?
@@ -176,7 +176,7 @@ extern uint             tf_stop_key;   // stop criterion packet key
 extern uint             tf_stpn_key;   // stop network packet key
 extern uint             tb_procs;      // pointer to processing errors
 extern uint             tb_comms;      // pointer to receiving errors
-extern scoreboard_t     tb_arrived;    // keep track of expected errors
+extern scoreboard_t     tb_arrived;    // keep count of expected errors
 extern uint             tb_thrds_pend; // thread semaphore
 extern int              t_max_output_unit; // unit with highest output
 extern int              t_max_target_unit; // unit with highest target
@@ -190,7 +190,6 @@ extern uint           * t_fwdKey;      // t cores have one fwdKey per partition
 // history arrays
 extern net_t          * t_net_history;
 extern activation_t   * t_output_history;
-extern activation_t   * t_target_history;
 extern long_deriv_t   * t_output_deriv_history;
 // ------------------------------------------------------------------------
 
@@ -208,8 +207,8 @@ extern long_deriv_t   * t_output_deriv_history;
   extern uint pkt_bwbk;  // unused packets received in BACKPROP phase
   extern uint spk_sent;  // sync packets sent
   extern uint spk_recv;  // sync packets received
-  extern uint chn_sent;  // chain packets sent
-  extern uint chn_recv;  // chain packets received
+  extern uint crt_sent;  // criterion packets sent
+  extern uint crt_recv;  // criterion packets received
   extern uint stp_sent;  // stop packets sent
   extern uint stp_recv;  // stop packets received
   extern uint stn_sent;  // network_stop packets sent
