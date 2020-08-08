@@ -191,7 +191,7 @@ uint mem_init (void)
 // ------------------------------------------------------------------------
 uint init_in_integr ()
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "init_in_integr\n");
 #endif
 

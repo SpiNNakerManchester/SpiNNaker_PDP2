@@ -31,7 +31,6 @@ void if_process (uint key, uint payload)
   uint inx = key & SPINN_NET_MASK;
 
   // store received net to be processed,
-  // s40.23
   i_nets[inx] = (long_net_t) ((net_t) payload);
 
   net_t net_tmp;
@@ -53,10 +52,6 @@ void if_process (uint key, uint payload)
   {
     net_tmp = (net_t) i_nets[inx];
   }
-
-#ifdef DEBUG_CFG3
-  io_printf (IO_BUF, "in[%u]: 0x%08x\n", inx, net_tmp);
-#endif
 
   // incorporate net index to the packet key and send,
   while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
@@ -123,7 +118,6 @@ void ib_process (uint key, uint payload)
   uint inx = key & SPINN_DELTA_MASK;
 
   // store received delta to be processed,
-  // s36.27 = s8.23 << (27 -23)
   i_deltas[inx] = ((long_delta_t) ((delta_t) payload))
     << (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
 
@@ -149,10 +143,6 @@ void ib_process (uint key, uint payload)
   {
     delta = (delta_t) delta_tmp;
   }
-
-#ifdef DEBUG_CFG4
-  io_printf (IO_BUF, "id[%u]: 0x%08x\n", inx, delta);
-#endif
 
   // incorporate delta index to the packet key and send,
   while (!spin1_send_mc_packet ((i_bkpKey[inx >> SPINN_BLOCK_SHIFT] | inx), delta, WITH_PAYLOAD));
@@ -192,10 +182,6 @@ void if_advance_tick (void)
   tot_tick++;
 #endif
 
-#ifdef DEBUG_TICK
-  io_printf (IO_BUF, "if_tick: %d/%d\n", tick, tot_tick);
-#endif
-
   // check if end of event
   if (tick_stop)
   {
@@ -224,23 +210,11 @@ void ib_advance_tick (void)
   tot_tick++;
 #endif
 
-#ifdef DEBUG_TICK
-  io_printf (IO_BUF, "ib_tick: %d/%d\n", tick, tot_tick);
-#endif
-
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "ib_advance_tick - tick: %d, num_ticks: %d\n", tick, num_ticks);
-#endif
-
   // check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
   {
     // initialise the tick count
     tick = SPINN_I_INIT_TICK;
-
-#ifdef TRACE
-    io_printf (IO_BUF, "w_switch_to_fw\n");
-#endif
 
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;
@@ -389,14 +363,8 @@ void i_advance_example (void)
 // ------------------------------------------------------------------------
 void compute_in (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "compute_in\n");
-#endif
-
-#ifdef DEBUG_VRB
-  char* group;
-  group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
-  io_printf (IO_BUF, "compute_in - Group: %s - Example: %d - Tick: %d\n", group, example_cnt, tick);
 #endif
 
   for (uint i = 0; i < icfg.num_in_procs; i++)
@@ -421,21 +389,17 @@ void compute_in (uint inx)
 // ------------------------------------------------------------------------
 void in_integr (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "in_integr\n");
 #endif
 
-  // representation: s40.23 in a 64 bit variable
-  long_net_t last_net = i_last_integr_net[inx];
-  // representation: s40.23 in a 64 bit variable
-  long_net_t desired_net = i_nets[inx];
-  // representation: 48.16 in a 64 bit variable
-  long long  dt = icfg.in_integr_dt;
+  long_net_t  last_net = i_last_integr_net[inx];
+  long_net_t  desired_net = i_nets[inx];
+  long_fpreal dt = icfg.in_integr_dt;
 
   // compute the new value of the net as indicated by lens
-  // representation: 40.23 + (48.16 * ( 40.23 - 40.23) >> 16) = 40.23
-  // all the variables are expanded to 64 bits to avoid overflows and wrap-around
-  long_net_t net = last_net + (dt * (desired_net - last_net) >> 16);
+  // all the variables are expanded to long types to avoid overflows and wrap-around
+  long_net_t net = last_net + (dt * (desired_net - last_net) >> SPINN_LONG_FPREAL_SHIFT);
 
   // saturate the value computed and assign it to the nets variable
   // to be used in the next stage of computation
@@ -457,19 +421,20 @@ void in_integr (uint inx)
 // ------------------------------------------------------------------------
 void in_soft_clamp (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "in_soft_clamp\n");
 #endif
 
   // compute only if input is not NaN
   if (it[i_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-    long_activ_t external_input = it[i_it_idx + inx];           // s36.27
-    long_fpreal soft_clamp_strength = icfg.soft_clamp_strength; // s48.16
-    long_activ_t init_output = icfg.initOutput;                 // s36.27
+    long_activ_t external_input = it[i_it_idx + inx];
+
+    long_fpreal soft_clamp_strength = icfg.soft_clamp_strength;
+
+    long_activ_t init_output = icfg.initOutput;
 
     // computation of the soft clamp operator following Lens code
-    // representation: 36.27 + (48.16 * (36.27 - 36.27)) >> 16 = 36.27
     long_activ_t output = init_output
                              + ((soft_clamp_strength
                                  * (external_input - init_output))
@@ -488,27 +453,21 @@ void in_soft_clamp (uint inx)
 // ------------------------------------------------------------------------
 void compute_in_back (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "compute_in_back\n");
 #endif
-
-#ifdef DEBUG_VRB
-  char* group;
-  group = (icfg.input_grp) ? "Input" : ((icfg.output_grp) ? "Output" : ((icfg.num_units == 1) ? "Bias" : "Hidden"));
-  io_printf (IO_BUF, "compute_in_back - Group: %s - Example: %d - Tick: %d\n", group, example_cnt, tick);
-#endif
-
-  int i;
 
   // the set of procedures needs to be executed in the reverse order, starting
   // from the last input pipeline element, and executing the routine only if the
   // element in the list is not NULL
   if (icfg.num_in_procs >= 1)
-    for (i = icfg.num_in_procs-1; i >= 0; i--)
+  {
+    for (int i = icfg.num_in_procs - 1; i >= 0; i--)
     {
       if (i_in_back_procs[icfg.procs_list[i]] != NULL)
         i_in_back_procs[icfg.procs_list[i]] (inx);
     }
+  }
 }
 // ------------------------------------------------------------------------
 
@@ -518,20 +477,16 @@ void compute_in_back (uint inx)
 // ------------------------------------------------------------------------
 void in_integr_back (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "in_integr_back\n");
 #endif
 
-  // s36.27
   long_delta_t last_delta = i_last_integr_delta[inx];
 
-  // s47.16
   long_fpreal dt = icfg.in_integr_dt;
 
-  // s36.27 = (s47.16 * s36.27) >> 16
   long_delta_t d = (dt * last_delta) >> SPINN_FPREAL_SHIFT;
 
-  // s36.27 = s36.27 + s36.27 - s36.27
   last_delta += i_deltas[inx] - d;
 
   i_deltas[inx] = d;
@@ -547,7 +502,7 @@ void in_integr_back (uint inx)
 /*
 void in_soft_clamp_back (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "in_soft_clamp_back\n");
 #endif
 }

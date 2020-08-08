@@ -241,7 +241,7 @@ void var_init (uint init_weights, uint reset_examples)
     }
   }
 
-#ifdef DEBUG_CFG2
+#ifdef DEBUG_WEIGHTS
   for (uint r = 0; r < wcfg.num_rows; r++)
   {
     for (uint c =0; c < wcfg.num_cols; c++)

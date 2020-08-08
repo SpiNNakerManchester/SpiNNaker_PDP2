@@ -32,14 +32,12 @@ void wf_process (uint unused0, uint unused1)
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
-    // s40.23
     long_net_t net_part_tmp = 0;
 
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      // s40.23 = s40.23 + ((s4.27 * s3.12) >> 16)
       net_part_tmp += (((long_net_t) w_outputs[wf_procs][i] * (long_net_t) w_weights[i][j])
-                  >> (SPINN_ACTIV_SHIFT + SPINN_WEIGHT_SHIFT - SPINN_NET_SHIFT));
+                  >> (SPINN_ACTIV_SHIFT + SPINN_WEIGHT_SHIFT - SPINN_LONG_NET_SHIFT));
     }
 
     net_t net_part = 0;
@@ -50,14 +48,10 @@ void wf_process (uint unused0, uint unused1)
       net_part = (net_t) SPINN_NET_MAX;
     else if (net_part_tmp < (long_net_t) SPINN_NET_MIN)
       // negative saturation
-      net_part = (net_t) SPINN_NET_MAX;
+      net_part = (net_t) SPINN_NET_MIN;
     else
-      // representation in 40.23 within the range (-255; 255) can be reduced to 8.23
+      // no saturation needed
       net_part = (net_t) net_part_tmp;
-
-#ifdef DEBUG_CFG3
-    io_printf (IO_BUF, "wn[%u]: 0x%08x\n", j, net_part);
-#endif
 
     // incorporate net index to the packet key and send
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));
@@ -135,7 +129,6 @@ void wb_process (uint key, uint payload)
   for (uint i = 0; i < wcfg.num_rows; i++)
   {
     // compute link derivatives,
-    // s36.27 = (s4.27 * s8.23) >> 23
     w_link_deltas[i][inx] += ((long_delta_t) w_outputs[0][i]
                                * (long_delta_t) delta)
                                >> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
@@ -156,7 +149,6 @@ void wb_process (uint key, uint payload)
         // scale the link derivatives
         if (ncfg.net_type == SPINN_NET_CONT)
         {
-          // 60.4 = (s36.27 * s15.16) >> 39
           link_delta_tmp = (w_link_deltas[i][inx] * (long_delta_t) w_delta_dt)
                                >> (SPINN_LONG_DELTA_SHIFT + SPINN_FPREAL_SHIFT
                                    - SPINN_LONG_LDS_SHIFT);
@@ -167,14 +159,12 @@ void wb_process (uint key, uint payload)
         }
 
         // square the link derivatives
-        // 60.4 = (60.4 * 60.4) >> 4
         link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT);
         link_delta_sum = link_delta_sum + link_delta_tmp;
       }
     }
 
     // partially compute error dot products,
-    // s16.15 = s16.15 + (s3.12 * s8.23) >> 20
     //NOTE: may need to make w_errors a long_error_t type and saturate!
     w_errors[i] += (error_t) (((long_error_t) w_weights[i][inx]
                      * (long_error_t) delta)
@@ -206,14 +196,20 @@ void wb_process (uint key, uint payload)
           && example_cnt == (xcfg.num_examples - 1)
           && tick == SPINN_WB_END_TICK)
   {
-    // cast to a 32-bit value,
-    //TODO: link_delta_sum should be saturated before casting!
-    lds_t link_delta_sum_short = (lds_t) link_delta_sum;
+    // cast link_delta_sum to send as payload,
+    //NOTE: link deltas are unsigned!
+    lds_t lds_to_send;
+
+    if (link_delta_sum > (long_lds_t) SPINN_LDS_MAX)
+      // positive saturation
+      lds_to_send = (lds_t) SPINN_LDS_MAX;
+    else
+      // no saturation needed
+      lds_to_send = (lds_t) link_delta_sum;
 
     // and send partial link delta sum
-    while (!spin1_send_mc_packet (ldsaKey,
-              (uint) link_delta_sum_short, WITH_PAYLOAD)
-          );
+    while (!spin1_send_mc_packet (ldsaKey, (uint) lds_to_send, WITH_PAYLOAD));
+
 #ifdef DEBUG
     pkt_sent++;
     lda_sent++;
@@ -272,7 +268,7 @@ void wb_process (uint key, uint payload)
 // perform a weight update using steepest descent
 // a weight of 0 means that there is no connection between the two units.
 // the zero value is represented by the lowest possible (positive or negative)
-// weight. A weight value is a s16.15 variable in fixed point
+// weight.
 // ------------------------------------------------------------------------
 void steepest_update_weights (void)
 {
@@ -289,24 +285,18 @@ void steepest_update_weights (void)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-#ifdef DEBUG_VRB
-      weight_t old_weight = w_weights[i][j];
-#endif
-
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
       {
         // scale the link derivatives
         if (ncfg.net_type == SPINN_NET_CONT)
         {
-          // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
                                  * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
         // compute weight change,
-        // s48.15 = (s0.15 * s36.27) >> 27
         long_wchange_t change_tmp = ((long_wchange_t) -wcfg.learningRate *
                              (long_wchange_t) w_link_deltas[i][j]);
 
@@ -368,17 +358,6 @@ void steepest_update_weights (void)
           w_weights[i][j] = (weight_t) temp;
         }
       }
-
-#ifdef DEBUG_VRB
-      io_printf (IO_BUF,
-                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                 i, j,
-                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-                 old_weight,
-                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-                 w_weights[i][j]
-        );
-#endif
     }
   }
 }
@@ -389,7 +368,7 @@ void steepest_update_weights (void)
 // perform a weight update using momentum descent
 // a weight of 0 means that there is no connection between the two units.
 // the zero value is represented by the lowest possible (positive or negative)
-// weight. A weight value is a s16.15 variable in fixed point
+// weight.
 // ------------------------------------------------------------------------
 void momentum_update_weights (void)
 {
@@ -406,24 +385,18 @@ void momentum_update_weights (void)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-#ifdef DEBUG_VRB
-      weight_t old_weight = w_weights[i][j];
-#endif
-
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
       {
         // scale the link derivatives
         if (ncfg.net_type == SPINN_NET_CONT)
         {
-          // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
                                  * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
         // compute weight change,
-        // s48.15 = (s0.15 * s36.27) >> 27
         long_wchange_t change_tmp = ((long_wchange_t) -wcfg.learningRate *
                              (long_wchange_t) w_link_deltas[i][j]);
 
@@ -434,7 +407,6 @@ void momentum_update_weights (void)
                                         - SPINN_WEIGHT_SHIFT - 1));
 
         // compute momentum factor
-        // s48.15 = (s0.15 * s48.15) >> 15
         long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
 
         // round off
@@ -497,17 +469,6 @@ void momentum_update_weights (void)
           w_weights[i][j] = (weight_t) temp;
         }
       }
-
-#ifdef DEBUG_VRB
-      io_printf (IO_BUF,
-                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                 i, j,
-                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-                 old_weight,
-                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-                 w_weights[i][j]
-        );
-#endif
     }
   }
 }
@@ -518,7 +479,7 @@ void momentum_update_weights (void)
 // perform a weight update using doug's momentum
 // a weight of 0 means that there is no connection between the two units.
 // the zero value is represented by the lowest possible (positive or negative)
-// weight. A weight value is a s16.15 variable in fixed point
+// weight.
 // ------------------------------------------------------------------------
 void dougsmomentum_update_weights (void)
 {
@@ -545,7 +506,6 @@ void dougsmomentum_update_weights (void)
   }
 
   // multiply learning scale by learning rate
-  // s16.15 = (s16.15 * s0.15) >> 15
   scale = (scale * wcfg.learningRate) >> SPINN_SHORT_FPREAL_SHIFT;
 
   // update weights
@@ -553,24 +513,18 @@ void dougsmomentum_update_weights (void)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-#ifdef DEBUG_VRB
-      weight_t old_weight = w_weights[i][j];
-#endif
-
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
       {
         // scale the link derivatives
         if (ncfg.net_type == SPINN_NET_CONT)
         {
-          // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
                                  * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
         // compute weight change,
-        // s48.15 = (s16.15 * s36.27) >> 27
         long_wchange_t change_tmp = ((long_wchange_t) -scale *
                              (long_wchange_t) w_link_deltas[i][j]);
 
@@ -581,7 +535,6 @@ void dougsmomentum_update_weights (void)
                                         - SPINN_WEIGHT_SHIFT - 1));
 
         // compute momentum factor
-        // s48.15 = (s0.15 * s48.15) >> 15
         long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
 
         // round off
@@ -644,17 +597,6 @@ void dougsmomentum_update_weights (void)
           w_weights[i][j] = (weight_t) temp;
         }
       }
-
-#ifdef DEBUG_VRB
-      io_printf (IO_BUF,
-                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                 i, j,
-                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-                 old_weight,
-                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-                 w_weights[i][j]
-        );
-#endif
     }
   }
 }
@@ -679,14 +621,6 @@ void wf_advance_tick (uint unused0, uint unused1)
   if (tick)
   {
     tot_tick++;
-  }
-#endif
-
-#ifdef DEBUG_TICK
-  //NOTE: tick 0 is not a computation tick
-  if (tick)
-  {
-    io_printf (IO_BUF, "wf_tick: %d/%d\n", tick, tot_tick);
   }
 #endif
 
@@ -725,14 +659,6 @@ void wb_advance_tick (void)
 
 #ifdef DEBUG
   tot_tick++;
-#endif
-
-#ifdef DEBUG_TICK
-  io_printf (IO_BUF, "wb_tick: %d/%d\n", tick, tot_tick);
-#endif
-
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
 #endif
 
   // change packet key colour,

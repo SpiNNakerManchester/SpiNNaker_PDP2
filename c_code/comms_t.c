@@ -332,10 +332,6 @@ void t_backprop_packet (uint key, uint payload)
 
       // and advance tick
       spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
-
-#ifdef TRACE_VRB
-      io_printf (IO_BUF, "tbpkt scheduling tb_advance_tick\n");
-#endif
     }
     else
     {
@@ -377,10 +373,6 @@ void tf_send_stop (void)
     tick_stop = tf_stop_crit;
   }
 
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "M:%d t:%d sc:%x\n", max_ticks, ev_tick, tf_stop_crit);
-#endif
-
   // FORWARD aggregated criterion,
   while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit),
                                  0,
@@ -411,7 +403,7 @@ void tf_send_stop (void)
 // ------------------------------------------------------------------------
 void store_net (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "store_net\n");
 #endif
 
@@ -439,7 +431,7 @@ void restore_net (uint inx, uint tick)
 // ------------------------------------------------------------------------
 void store_output (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "store_output\n");
 #endif
 

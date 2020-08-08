@@ -198,17 +198,6 @@ void tb_process (uint unused0, uint unused1)
     // restore output for the previous forward tick
     restore_output (inx, tick - 1);
 
-#ifdef DEBUG_CFG4
-    io_printf (IO_BUF, "td[%u]: 0x%08x\n", inx, delta);
-#endif
-
-#ifdef DEBUG_VRB
-    io_printf(IO_BUF, "d[%2d] = %10.7f (%08x)\n", inx,
-              SPINN_CONV_TO_PRINT (delta, SPINN_DELTA_SHIFT),
-              delta
-      );
-#endif
-
     // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
 
@@ -237,10 +226,6 @@ void tb_process (uint unused0, uint unused1)
 
     // and advance tick
     tb_advance_tick (0, 0);
-
-#ifdef TRACE_VRB
-    io_printf (IO_BUF, "tbp calling tb_advance_tick\n");
-#endif
   }
   else
   {
@@ -266,10 +251,6 @@ void tf_advance_tick (void)
 
 #ifdef DEBUG
   tot_tick++;
-#endif
-
-#ifdef DEBUG_TICK
-  io_printf (IO_BUF, "tf_tick: %d/%d\n", tick, tot_tick);
 #endif
 
   // check if done with event
@@ -310,10 +291,6 @@ void tb_advance_tick (uint unused0, uint unused1)
 
 #ifdef DEBUG
   tot_tick++;
-#endif
-
-#ifdef DEBUG_TICK
-  io_printf (IO_BUF, "tb_tick: %d/%d\n", tick, tot_tick);
 #endif
 
   // update pointer to processing unit outputs,
@@ -632,14 +609,8 @@ void t_switch_to_bp (void)
 // ------------------------------------------------------------------------
 void compute_out (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "compute_out\n");
-#endif
-
-#ifdef DEBUG_VRB
-  char* group;
-  group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
-  io_printf (IO_BUF, "compute_out - Group: %s - Example: %d - Tick: %d, Unit: %d\n", group, example_cnt, tick, inx);
 #endif
 
   // initialise the array element where to store the output value for the
@@ -659,10 +630,6 @@ void compute_out (uint inx)
   // using the appropriate function
   if (xcfg.training && tcfg.output_grp)
   {
-#ifdef TRACE_VRB
-    io_printf (IO_BUF, "compute output deriv\n");
-#endif
-
     // if the error function to be called is not NULL,
     // compute the output derivative
     if (t_out_error[tcfg.error_function] != NULL)
@@ -689,7 +656,7 @@ void compute_out (uint inx)
 // ------------------------------------------------------------------------
 void out_logistic (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_logistic\n");
 #endif
 
@@ -704,17 +671,14 @@ void out_logistic (uint inx)
 // ------------------------------------------------------------------------
 void out_integr (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_integr\n");
 #endif
 
-  // s4.27
   activation_t last_output = t_last_integr_output[inx];
 
-  // s4.27
   activation_t new_output = t_outputs[inx];
 
-  // s0.16
   long_fpreal dt = tcfg.out_integr_dt;
 
 
@@ -722,7 +686,6 @@ void out_integr (uint inx)
   t_instant_outputs[((tick - 1) * tcfg.num_units) + inx] = t_outputs[inx];
 
   // compute the of the output INTEGRATOR and round off
-  // s36.27 = (s0.16 * (s4.27 - s4.27)) >> 16
   long_activ_t out_tmp = ((dt * (new_output - last_output))
                             + (1 << SPINN_ACTIV_SHIFT))
                             >> SPINN_FPREAL_SHIFT;
@@ -733,11 +696,11 @@ void out_integr (uint inx)
   if (out_tmp > (long_activ_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
     // positive saturation
     t_outputs[inx] = (activation_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
-  else if (out_tmp < (long_activ_t) (SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
+  else if (out_tmp < (long_activ_t) (SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
     // negative saturation
-    t_outputs[inx] = (activation_t) (SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+    t_outputs[inx] = (activation_t) (SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
   else
-    // representation in 36.27 within the range (-1; 1) can be reduced to 4.27
+    // no saturation needed
     t_outputs[inx] = (activation_t) out_tmp;
 
   // store the INTEGRATOR state for the next iteration
@@ -754,7 +717,7 @@ void out_integr (uint inx)
 // ------------------------------------------------------------------------
 void out_hard_clamp (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_hard_clamp\n");
 #endif
 
@@ -784,7 +747,7 @@ void out_hard_clamp (uint inx)
 // ------------------------------------------------------------------------
 void out_bias (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_bias\n");
 #endif
 
@@ -800,7 +763,7 @@ void out_bias (uint inx)
 // ------------------------------------------------------------------------
 void out_weak_clamp (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_weak_clamp\n");
 #endif
 
@@ -818,23 +781,22 @@ void out_weak_clamp (uint inx)
   // compute only if input is not NaN
   if (it[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-    long_activ_t external_input = it[t_it_idx + inx];           // s36.27
-    long_fpreal weak_clamp_strength = tcfg.weak_clamp_strength; // s48.16
-    long_activ_t output_value = t_outputs[inx];                 // s36.27
+    long_activ_t external_input = it[t_it_idx + inx];
+    long_fpreal weak_clamp_strength = tcfg.weak_clamp_strength;
+    long_activ_t output_value = t_outputs[inx];
 
     // computation of the weak clamp output following Lens implementation
-    // representation: s36.27 + (48.16 * (s36.27 - s36.27) >> 16) = s36.27
     long_activ_t output = output_value
                              + ((weak_clamp_strength
                                  * (external_input - output_value))
                                    >> SPINN_FPREAL_SHIFT
                                );
 
-    // saturate output and cast into 1.15 representation
+    // saturate and cast output
     if (output > (long_activ_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
       t_outputs[inx] = (activation_t) SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
-    else if (output < (long_activ_t) (SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
-      t_outputs[inx] = (activation_t) SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
+    else if (output < (long_activ_t) (SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
+      t_outputs[inx] = (activation_t) SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT);
     else
       t_outputs[inx] = (activation_t) output;
   }
@@ -848,23 +810,15 @@ void out_weak_clamp (uint inx)
 // ------------------------------------------------------------------------
 void compute_out_back (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "compute_out_back\n");
 #endif
-
-#ifdef DEBUG_VRB
-  char* group;
-  group = (tcfg.input_grp) ? "Input" : ((tcfg.output_grp) ? "Output" : ((tcfg.num_units == 1) ? "Bias" : "Hidden"));
-  io_printf (IO_BUF, "compute_out_back - Group: %s - Example: %d - Tick: %d - Unit: %d\n", group, example_cnt, tick, inx);
-#endif
-
-  int i;
 
   // if the output pipeline includes one or more elements, compute them in the
   // reverse order
   if (tcfg.num_out_procs >= 1)
   {
-    for (i = tcfg.num_out_procs-1; i >= 0; i--)
+    for (int i = tcfg.num_out_procs - 1; i >= 0; i--)
     {
       if (t_out_back_procs[tcfg.procs_list[i]] != NULL)
       {
@@ -881,28 +835,25 @@ void compute_out_back (uint inx)
 // ------------------------------------------------------------------------
 void out_logistic_back (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_logistic_back\n");
 #endif
 
-  // compute o * (1 - o),
-  // s36.27 = s4.27 * s4.27
+  // compute output * (1 - output),
   long_activ_t tmp1 = (long_activ_t) t_outputs[inx] * (long_activ_t) ((1 << SPINN_ACTIV_SHIFT) - t_outputs[inx]);
 
   // round off
   tmp1 += 1 << (SPINN_ACTIV_SHIFT + SPINN_ACTIV_SHIFT - SPINN_ACTIV_SHIFT - 1);
 
-  // shift back to 27 decimal places
+  // adjust decimal point position
   tmp1 = (tmp1 >> (SPINN_ACTIV_SHIFT + SPINN_ACTIV_SHIFT - SPINN_ACTIV_SHIFT));
 
   // compute error delta,
-  // s36.27 = s36.27 * s36.27
   long_delta_t tmp2 = (long_delta_t) t_output_deriv[inx] * tmp1;
 
   // round off,
   tmp2 += 1 << (SPINN_LONG_DERIV_SHIFT + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT - 1);
 
-  // s8.23 = s36.27 >> (27 + 27 - 23)
   t_deltas[inx] = (delta_t) (tmp2 >> (SPINN_LONG_DERIV_SHIFT
                               + SPINN_ACTIV_SHIFT - SPINN_DELTA_SHIFT));
 }
@@ -914,7 +865,7 @@ void out_logistic_back (uint inx)
 // ------------------------------------------------------------------------
 void out_integr_back (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_integr_back\n");
 #endif
 
@@ -925,7 +876,6 @@ void out_integr_back (uint inx)
   // reset output to value stored during forward pass
   t_outputs[inx] = t_instant_outputs[((tick - 1) * tcfg.num_units) + inx];
 
-  // s36.27 = (s47.16 * s36.27) >> 16
   long_deriv_t d = (dt * last_output_deriv) >> SPINN_FPREAL_SHIFT;
   last_output_deriv += t_output_deriv[inx] - d;
   t_output_deriv[inx] = d;
@@ -937,11 +887,12 @@ void out_integr_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-//TODO: BACKPROP phase for the hard clamp - this is a stub
+// BACKPROP phase for the hard clam
+//TODO: this is a stub
 // ------------------------------------------------------------------------
 void out_hard_clamp_back (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_hard_clamp_back\n");
 #endif
 
@@ -958,11 +909,12 @@ void out_hard_clamp_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-//TODO: BACKPROP phase for the weak clamp - for the moment is a stub
+// BACKPROP phase for the weak clamp
+//TODO: this is a stub
 // ------------------------------------------------------------------------
 void out_weak_clamp_back (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_weak_clamp_back\n");
 #endif
 
@@ -972,11 +924,11 @@ void out_weak_clamp_back (uint inx)
 
 
 // ------------------------------------------------------------------------
-//TODO: BACKPROP phase for the bias clamp
+//BACKPROP phase for the bias clamp
 // ------------------------------------------------------------------------
 void out_bias_back (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "out_bias_back\n");
 #endif
 
@@ -993,14 +945,13 @@ void out_bias_back (uint inx)
 // ------------------------------------------------------------------------
 void std_stop_crit (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "std_stop_crit\n");
 #endif
 
   // evaluate only if target is not NaN
   if (tt[t_it_idx + inx] != SPINN_ACTIV_NaN)
   {
-    // s16.15 = (s4.27 - s4.27) >> (27 - 15)
     error_t error = (error_t) ABS ((t_outputs[inx] - tt[t_it_idx + inx]) >>
                 (SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
@@ -1021,7 +972,7 @@ void std_stop_crit (uint inx)
 // ------------------------------------------------------------------------
 void max_stop_crit (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "max_stop_crit\n");
 #endif
 
@@ -1040,7 +991,6 @@ void max_stop_crit (uint inx)
       t_max_target_unit = inx;
     }
 
-    // s16.15 = (s4.27 - s4.27) >> (27 - 15)
     error_t error = (error_t) ABS ((t_max_output - t_max_target) >>
                         (SPINN_ACTIV_SHIFT - SPINN_ERROR_SHIFT));
 
@@ -1063,7 +1013,7 @@ void max_stop_crit (uint inx)
 // ------------------------------------------------------------------------
 void error_squared (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "error_squared\n");
 #endif
 
@@ -1086,7 +1036,7 @@ void error_squared (uint inx)
 // ------------------------------------------------------------------------
 void error_cross_entropy (uint inx)
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "error_cross_entropy\n");
 #endif
 
@@ -1107,12 +1057,11 @@ void error_cross_entropy (uint inx)
       // otherwise compute 1 / (1 - output)
       else
       {
-        derivative_t numerator = (derivative_t) SPINN_DERIV_ONE; //representation: 17.15
-        derivative_t denominator = (derivative_t) SPINN_DERIV_ONE - (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)); //representation: 17.15
+        derivative_t numerator = (derivative_t) SPINN_DERIV_ONE;
+        derivative_t denominator = (derivative_t) SPINN_DERIV_ONE - (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT));
 
-        // the left shift needs to be done before the division, as the
-        // precision reduces with the division
-        // representation: s36.27
+        // the left shift needs to be done before the division, as
+        // precision decreases with the division
         t_output_deriv[inx] = (((long_deriv_t) numerator << SPINN_LONG_DERIV_SHIFT) / (long_deriv_t) denominator);
       }
     }
@@ -1125,17 +1074,16 @@ void error_cross_entropy (uint inx)
       // negative value that can be represented
       if (t_outputs[inx] <= (activation_t) (SPINN_SMALL_VAL << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
       {
-        t_output_deriv[inx] = (long_deriv_t) SPINN_DERIV_MIN_NEG;
+        t_output_deriv[inx] = (long_deriv_t) SPINN_DERIV_MIN;
       }
       // otherwise compute -1 / output
       else
       {
-        derivative_t numerator = (derivative_t) SPINN_DERIV_NEG_ONE; //representation: 17.15
-        derivative_t denominator = (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)); //representation: 17.15
+        derivative_t numerator = (derivative_t) SPINN_DERIV_NEG_ONE;
+        derivative_t denominator = (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT));
 
         // the left shift needs to be done before the division, as the
         // precision reduces with the division
-        // representation: s36.27
         t_output_deriv[inx] = (((long_deriv_t) numerator << SPINN_LONG_DERIV_SHIFT) / (long_deriv_t) denominator);
       }
     }
@@ -1154,11 +1102,10 @@ void error_cross_entropy (uint inx)
       // (output - target) / (output * (1 - output))
       else
       {
-        derivative_t numerator = ((derivative_t) (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)) - (derivative_t) (tt[t_it_idx + inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT))); //representation: 17.15
-        derivative_t one = (derivative_t) SPINN_DERIV_ONE; //representation: 17.15
-        long_deriv_t denominator = ((long_deriv_t) t_outputs[inx] * (long_deriv_t) (one - (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)))) >> SPINN_ACTIV_SHIFT; //representation: 49.15
+        derivative_t numerator = ((derivative_t) (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)) - (derivative_t) (tt[t_it_idx + inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)));
+        derivative_t one = (derivative_t) SPINN_DERIV_ONE;
+        long_deriv_t denominator = ((long_deriv_t) t_outputs[inx] * (long_deriv_t) (one - (t_outputs[inx] >> (SPINN_ACTIV_SHIFT - SPINN_DERIV_SHIFT)))) >> SPINN_ACTIV_SHIFT;
 
-        // representation: s36.27
         t_output_deriv[inx] = (((long_deriv_t) numerator << SPINN_LONG_DERIV_SHIFT) / (long_deriv_t) denominator);
       }
     }

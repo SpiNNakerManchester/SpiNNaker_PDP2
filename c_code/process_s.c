@@ -34,7 +34,6 @@ void sf_process (uint key, uint payload)
   uint clr = (key & SPINN_COLOUR_MASK) >> SPINN_COLOUR_SHIFT;
 
   // accumulate new net b-d-p,
-  // s40.23 = s40.23 + s8.23
   s_nets[clr][inx] += (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,
@@ -249,10 +248,6 @@ void sf_advance_tick (void)
   tot_tick++;
 #endif
 
-#ifdef DEBUG_TICK
-  io_printf (IO_BUF, "sf_tick: %d/%d\n", tick, tot_tick);
-#endif
-
   // check if end of event
   if (tick_stop)
   {
@@ -281,19 +276,11 @@ void sb_advance_tick (void)
   tot_tick++;
 #endif
 
-#ifdef DEBUG_TICK
-  io_printf (IO_BUF, "sb_tick: %d/%d\n", tick, tot_tick);
-#endif
-
   // check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)
   {
     // initialise the tick count
     tick = SPINN_S_INIT_TICK;
-
-#ifdef TRACE
-    io_printf (IO_BUF, "s_switch_to_fw\n");
-#endif
 
     // switch to FORWARD phase,
     phase = SPINN_FORWARD;

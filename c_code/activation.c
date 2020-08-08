@@ -35,7 +35,7 @@ activation_t sigmoid (net_t input)
   }
   else if (temp <= (net_t) SPINN_SIGMD_MIN_INPUT)
   {
-    return ((activation_t) (SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)));
+    return ((activation_t) (SPINN_SHORT_ACTIV_MIN_POS << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)));
   }
   else
   // the input value is inside the range of the lookup table. The value needs
@@ -78,9 +78,9 @@ activation_t sigmoid (net_t input)
     if (out_tmp2 > (long_activ_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
       // positive saturation
       output = (activation_t) (SPINN_SHORT_ACTIV_MAX << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
-    else if (out_tmp2 < (long_activ_t) (SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
+    else if (out_tmp2 < (long_activ_t) (SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT)))
       // negative saturation
-      output = (activation_t) (SPINN_SHORT_ACTIV_MIN_NEG << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
+      output = (activation_t) (SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
     else
       // representation in 36.27 within the range (-1; 1) can be reduced to 4.27
       output = (activation_t) out_tmp2;

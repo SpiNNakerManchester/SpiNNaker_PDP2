@@ -86,7 +86,7 @@ uint cfg_init (void)
   es = (mlp_set_t *) data_specification_get_region
       (EXAMPLE_SET, data);
 
-#ifdef DEBUG_CFG5
+#ifdef DEBUG_EXAMPLES
   io_printf (IO_BUF, "ne: %u\n", es->num_examples);
   io_printf (IO_BUF, "mt: %f\n", es->max_time);
   io_printf (IO_BUF, "nt: %f\n", es->min_time);
@@ -98,7 +98,7 @@ uint cfg_init (void)
   ex = (mlp_example_t *) data_specification_get_region
       (EXAMPLES, data);
 
-#ifdef DEBUG_CFG5
+#ifdef DEBUG_EXAMPLES
   for (uint i = 0; i < es->num_examples; i++)
   {
     io_printf (IO_BUF, "nx[%u]: %u\n", i, ex[i].num);
@@ -112,7 +112,7 @@ uint cfg_init (void)
   ev = (mlp_event_t *) data_specification_get_region
       (EVENTS, data);
 
-#ifdef DEBUG_CFG5
+#ifdef DEBUG_EXAMPLES
   uint evi = 0;
   for (uint i = 0; i < es->num_examples; i++)
   {
@@ -349,7 +349,7 @@ void t_init_outputs (void)
 // ------------------------------------------------------------------------
 uint init_out_integr ()
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "init_out_integr\n");
 #endif
 
@@ -388,7 +388,7 @@ uint init_out_integr ()
 // ------------------------------------------------------------------------
 uint init_out_hard_clamp ()
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "init_out_hard_clamp\n");
 #endif
 
@@ -421,7 +421,7 @@ uint init_out_hard_clamp ()
 // ------------------------------------------------------------------------
 uint init_out_weak_clamp ()
 {
-#ifdef TRACE_VRB
+#ifdef TRACE
   io_printf (IO_BUF, "init_out_weak_clamp\n");
 #endif
 
@@ -567,9 +567,9 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
     // variables for stop criterion computation
     t_max_output_unit = -1;
     t_max_target_unit = -1;
-    t_max_output = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
+    t_max_output = SPINN_SHORT_ACTIV_MIN_POS << (SPINN_ACTIV_SHIFT
                - SPINN_SHORT_ACTIV_SHIFT);
-    t_max_target = SPINN_SHORT_ACTIV_MIN << (SPINN_ACTIV_SHIFT
+    t_max_target = SPINN_SHORT_ACTIV_MIN_POS << (SPINN_ACTIV_SHIFT
                - SPINN_SHORT_ACTIV_SHIFT);
 
     // no need to wait for previous value if first group
