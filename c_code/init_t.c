@@ -384,7 +384,7 @@ uint init_out_integr ()
 
 // ------------------------------------------------------------------------
 // allocate memory for HARD CLAMP state
-//NOTE: This function is currently a stub
+//TODO: This function is currently a stub
 // ------------------------------------------------------------------------
 uint init_out_hard_clamp ()
 {
@@ -417,7 +417,7 @@ uint init_out_hard_clamp ()
 
 // ------------------------------------------------------------------------
 // allocate memory for WEAK CLAMP state
-//NOTE: This function is currently a stub
+//TODO: This function is currently a stub
 // ------------------------------------------------------------------------
 uint init_out_weak_clamp ()
 {
@@ -814,7 +814,7 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "----------------\n");
 #endif
 
-  // "close" recording channels,
+  // close recording channels,
   if (tcfg.write_out)
   {
     if (stage_rec_flags) {
