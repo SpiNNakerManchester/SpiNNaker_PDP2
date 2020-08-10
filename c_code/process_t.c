@@ -79,8 +79,8 @@ void tf_process (uint key, uint payload)
     // initialise scoreboard for next tick,
     tf_arrived = 0;
 
-    // record outputs (for host to collect) if requested,
-    if (tcfg.write_out)
+    // record outputs if recording all ticks,
+    if (tcfg.write_out && !tcfg.last_tick_only)
     {
       record_outputs ();
     }
@@ -341,6 +341,13 @@ void tf_advance_event (void)
   // check if done with example's FORWARD phase
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
+    // record outputs if only recording last tick,
+    if (tcfg.write_out && tcfg.last_tick_only)
+    {
+      evt--;  // correct event number before recording outputs
+      record_outputs ();
+    }
+
     // check if in training mode
     if (xcfg.training)
     {

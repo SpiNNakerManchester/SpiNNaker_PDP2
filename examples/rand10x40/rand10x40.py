@@ -43,14 +43,20 @@ set1.read_Lens_examples_file ("rand10x40.ex")
 
 # set example set parameters
 set1.set (grace_time = 1.0,
-          min_time   = 1.0,
-          max_time   = 4.0
+          min_time = 1.0,
+          max_time = 4.0
           )
 
 # set network parameters
 rand10x40.set (num_updates = 300,
                train_group_crit = 0.2
                )
+
+# set recording option
+rand10x40.recording_options (rec_test_results = True,
+                             rec_outputs = True,
+                             rec_example_last_tick_only = False
+                             )
 
 # read initial weights from Lens-generated file
 rand10x40.read_Lens_weights_file (

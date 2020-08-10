@@ -314,7 +314,9 @@ typedef struct t_conf                  // threshold core configuration
   uint          partitions;            // this group's number of partitions
   scoreboard_t  fwd_sync_expected;     // all expected FORWARD sync packets
   scoreboard_t  bkp_sync_expected;     // all expected BACKPROP sync packets
-  uchar         write_out;             // write outputs (send to host)?
+  uchar         write_results;         // record test results?
+  uchar         write_out;             // record outputs?
+  uchar         last_tick_only;        // record only last tick of examples?
   uint          write_blk;             // this core's write block
   uchar         hard_clamp_en;         // HARD CLAMP in use
   uchar         out_integr_en;         // output INTEGRATOR in use

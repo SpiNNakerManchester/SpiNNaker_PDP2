@@ -264,9 +264,9 @@ class WeightVertex(
                             self._col_blk,
                             fwd_sync_expected,
                             init_output,
-                            learning_rate & 0xffff,
-                            weight_decay & 0xffff,
-                            momentum & 0xffff
+                            learning_rate,
+                            weight_decay,
+                            momentum
                             )
 
     @property

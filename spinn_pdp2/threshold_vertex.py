@@ -103,7 +103,7 @@ class ThresholdVertex(
 
         # threshold core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
-        self._fwd_sync_expect = len (self._network.groups)
+        self._fwd_sync_expect = len (self.network.groups)
 
         # NOTE: not used any more, may need reviewing if re-introduced
         self._bkp_sync_expect = 0
@@ -117,7 +117,7 @@ class ThresholdVertex(
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.network_config)
+            len (self.network.network_config)
 
         # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
@@ -150,20 +150,20 @@ class ThresholdVertex(
 
         # stage configuration structure
         self._N_STAGE_CONFIGURATION_BYTES = \
-            len (self._network.stage_config)
+            len (self.network.stage_config)
 
         # reserve SDRAM space used to store historic data
         self._TARGET_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
         self._OUT_DERIV_HISTORY_BYTES = (MLPConstants.LONG_DERIV_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
         self._NET_HISTORY_BYTES = (MLPConstants.NET_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
         self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
         # recording info region size
         if self.group.output_grp:
@@ -236,6 +236,10 @@ class ThresholdVertex(
         )
 
     @property
+    def network (self):
+        return self._network
+
+    @property
     def group (self):
         return self._group
 
@@ -264,7 +268,9 @@ class ThresholdVertex(
               uint          partitions;
               scoreboard_t  fwd_sync_expect;
               scoreboard_t  bkp_sync_expect;
+              uchar         write_results;
               uchar         write_out;
+              uchar         last_tick_only;
               uint          write_blk;
               uchar         hard_clamp_en;
               uchar         out_integr_en;
@@ -284,6 +290,15 @@ class ThresholdVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # recording options
+        #TODO: Cannot get no recording to work - for now minimise recorded data!
+        if self.network.rec_outputs:
+            write_out = self.group.write_out
+            last_tick_only = self.network.rec_example_last_tick_only
+        else:
+            write_out = self.group.write_out
+            last_tick_only = True
+
         # integration dt is an MLP fixed-point fpreal
         out_integr_dt = int (self._out_integr_dt *\
                               (1 << MLPConstants.FPREAL_SHIFT))
@@ -302,17 +317,19 @@ class ThresholdVertex(
         trn_group_criterion = int (self._trn_group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2x4IB3xI2B2xi6I4i4B",
-                            self.group.output_grp & 0xff,
-                            self.group.input_grp & 0xff,
+        return struct.pack ("<2B2x4I3BxI2B2xi6I4i4B",
+                            self.group.output_grp,
+                            self.group.input_grp,
                             self.group.units,
                             self.group.partitions,
                             self._fwd_sync_expect,
                             self._bkp_sync_expect,
-                            self.group.write_out & 0xff,
+                            self.network.rec_test_results,
+                            write_out,
+                            last_tick_only,
                             self.group.write_blk,
-                            self.group.hard_clamp_en & 0xff,
-                            self.group.out_integr_en & 0xff,
+                            self.group.hard_clamp_en,
+                            self.group.out_integr_en,
                             out_integr_dt,
                             self.group.num_out_procs,
                             self.group.out_procs_list[0].value,
@@ -324,10 +341,10 @@ class ThresholdVertex(
                             init_output,
                             tst_group_criterion,
                             trn_group_criterion,
-                            self.group.criterion_function.value & 0xff,
-                            self.group.is_first_out & 0xff,
-                            self._is_last_output_group & 0xff,
-                            self.group.error_function.value & 0xff
+                            self.group.criterion_function.value,
+                            self.group.is_first_out,
+                            self._is_last_output_group,
+                            self.group.error_function.value
                             )
 
     @property
@@ -386,7 +403,7 @@ class ThresholdVertex(
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.network_config:
+        for c in self.network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # reserve and write the core configuration region
@@ -497,7 +514,7 @@ class ThresholdVertex(
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # reserve and write the recording info region
@@ -532,7 +549,7 @@ class ThresholdVertex(
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification()

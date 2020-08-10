@@ -718,7 +718,9 @@ void stage_done (uint ec, uint key)
   simulation_handle_pause_resume (stage_init);
 
   // report test results, if enabled,
-  if (stage_rec_flags && !xcfg.training && tcfg.is_last_output_group)
+  if (tcfg.write_results && tcfg.is_last_output_group &&
+      !xcfg.training && stage_rec_flags
+      )
   {
     recording_record(TEST_RESULTS, (void *) &t_test_results, sizeof (test_results_t));
   }

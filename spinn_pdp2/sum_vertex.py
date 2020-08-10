@@ -159,7 +159,7 @@ class SumVertex(
                             self._bkp_expect,
                             self._ldsa_expect,
                             self._ldst_expect,
-                            self._is_first_group & 0xff
+                            self._is_first_group
                             )
 
     @property
