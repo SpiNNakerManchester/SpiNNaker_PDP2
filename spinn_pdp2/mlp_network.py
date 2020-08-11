@@ -430,17 +430,30 @@ class MLPNetwork():
         :type rec_outputs: boolean
         :type rec_example_last_tick_only: boolean
         """
+        #TODO: changing recording options between stages not currently supported
+        if self._stage_id:
+            print ("\n--------------------------------------------------")            
+            print ("warning: new recording options ignored - cannot change between stages")
+            print ("--------------------------------------------------\n")            
+            return
+
         if rec_test_results is not None:
-            print (f"setting num_updates to {rec_test_results}")
+            print (f"setting rec_test_results to {rec_test_results}")
             self._rec_test_results = rec_test_results
+        else:
+            print (f"rec_test_results pre-set to {self._rec_test_results}")
 
         if rec_outputs is not None:
             print (f"setting rec_outputs to {rec_outputs}")
             self._rec_outputs = rec_outputs
+        else:
+            print (f"rec_outputs pre-set to {self._rec_outputs}")
 
         if rec_example_last_tick_only is not None:
             print (f"setting rec_example_last_tick_only to {rec_example_last_tick_only}")
             self._rec_example_last_tick_only = rec_example_last_tick_only
+        else:
+            print (f"rec_example_last_tick_only pre-set to {self._rec_example_last_tick_only}")
 
 
     def read_Lens_weights_file (self,
