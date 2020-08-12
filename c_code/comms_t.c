@@ -54,8 +54,8 @@ void t_receivePacket (uint key, uint payload)
     t_pkt_queue.queue[t_pkt_queue.tail].payload = payload;
     t_pkt_queue.tail = new_tail;
 
-    // and schedule processing thread -- if not active already
-    //TODO: need to check phase?
+    // and schedule FORWARD processing thread -- if not active already
+    //TODO: do we need to check phase?
     if (!tf_active)
     {
       tf_active = TRUE;
@@ -72,16 +72,27 @@ void t_receivePacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void w_handleBKPPacket (uint key, uint payload)
 {
-#ifdef DEBUG
-  // report unknown packet type
-  if ((key & SPINN_TYPE_MASK) != SPINN_DATA_KEY)
-  {
-    stage_done (SPINN_UNXPD_PKT, key);
-  }
-#endif
+  // check packet type,
+  uint pkt_type = key & SPINN_TYPE_MASK;
 
-  // process BACKPROP data packet
-  t_backprop_packet (key, payload);
+  // process BACKPROP data packet,
+  if (pkt_type == SPINN_DATA_KEY)
+  {
+    t_backprop_packet (key, payload);
+    return;
+  }
+
+  // process synchronisation packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    t_sync_packet ();
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -136,7 +147,7 @@ void t_processFWDQueue (uint unused0, uint unused1)
     }
 
 #ifdef DEBUG
-    // report unknown packet type,
+    // or report unexpected packet type,
     else
     {
       stage_done (SPINN_UNXPD_PKT, key);
@@ -337,6 +348,43 @@ void t_backprop_packet (uint key, uint payload)
     {
       // if not done report comms thread done
       tb_thrds_pend &= ~SPINN_THRD_COMS;
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a sync packet
+// ------------------------------------------------------------------------
+void t_sync_packet (void)
+{
+#ifdef DEBUG
+  spk_recv++;
+#endif
+
+  // update count of sync packets,
+  t_sync_arrived++;
+
+  // and check if all expected packets arrived
+  if (t_sync_arrived == tcfg.sync_expected)
+  {
+    // prepare for next synchronisation,
+    t_sync_arrived = 0;
+
+    // and check if can start processing the BACKPROP phase
+    if (sync_rdy)
+    {
+      // clear flag for next synchronisation,
+      sync_rdy = FALSE;
+
+      // and trigger BACKPROP computation
+      spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
+    }
+    else
+    {
+      // flag as ready
+      sync_rdy = TRUE;
     }
   }
 }

@@ -486,6 +486,9 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tick = SPINN_T_INIT_TICK;
   ev_tick = SPINN_T_INIT_TICK;
 
+  // initialise sync flag
+  sync_rdy = FALSE;
+
   // initialise network stop flag
   net_stop_rdy = FALSE;
   net_stop = 0;
@@ -591,10 +594,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   // initialise received sync packets scoreboard
   t_sync_arrived = 0;
 
-  // initialise sync packets flag
-  t_sync_rdy = FALSE;
-
-  // initialise net packet queue
+  // initialise packet queue
   t_pkt_queue.head = 0;
   t_pkt_queue.tail = 0;
 
@@ -709,7 +709,7 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 void stage_done (uint ec, uint key)
 {
-#if !defined(DEBUG)
+#if !defined(DEBUG_EXIT)
   //NOTE: parameter 'key' is used only in DEBUG reporting
   (void) key;
 #endif
@@ -733,6 +733,7 @@ void stage_done (uint ec, uint key)
       io_printf (IO_BUF, "stage OK\n");
       break;
 
+#if defined(DEBUG_EXIT)
     case SPINN_CFG_UNAVAIL:
       io_printf (IO_BUF, "core configuration failed\n");
       io_printf (IO_BUF, "stage aborted\n");
@@ -763,13 +764,14 @@ void stage_done (uint ec, uint key)
                   tb_arrived, tcfg.num_units
                 );
       io_printf (IO_BUF, "(tsr:%u tsa:%u/%u)\n",
-                  t_sync_rdy, t_sync_arrived, tcfg.fwd_sync_expected
+                  sync_rdy, t_sync_arrived, tcfg.sync_expected
                 );
       io_printf (IO_BUF, "(tcr:%u fptd:%u bptd:%u)\n",
                   tf_crit_rdy, tf_thrds_pend, tb_thrds_pend
                 );
       io_printf (IO_BUF, "stage aborted\n");
       break;
+#endif
   }
 #endif
 
@@ -799,6 +801,7 @@ void stage_done (uint ec, uint key)
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   }
+  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);

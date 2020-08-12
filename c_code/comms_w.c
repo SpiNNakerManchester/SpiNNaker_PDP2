@@ -51,9 +51,8 @@ void w_receivePacket (uint key, uint payload)
     w_pkt_queue.queue[w_pkt_queue.tail].payload = payload;
     w_pkt_queue.tail = new_tail;
 
-    // and schedule processing thread -- if not active already
-    //TODO: need to check phase?
-    if (!wb_active)
+    // and schedule BACKPROP processing thread
+    if (!wb_active && (phase == SPINN_BACKPROP))
     {
       wb_active = TRUE;
       spin1_schedule_callback (w_processBKPQueue, 0, 0, SPINN_WB_PROCESS_P);
@@ -101,7 +100,7 @@ void w_handleFWDPacket (uint key, uint payload)
   }
 
 #ifdef DEBUG
-  // report unknown packet type
+  // or report unexpected packet type
   stage_done (SPINN_UNXPD_PKT, key);
 #endif
 }
@@ -117,7 +116,7 @@ void w_processBKPQueue (uint unused0, uint unused1)
   (void) unused1;
 
 #ifdef TRACE
-  io_printf (IO_BUF, "wb_process\n");
+  io_printf (IO_BUF, "w_processBKPQueue\n");
 #endif
 
   // access queue with interrupts disabled,
@@ -150,7 +149,7 @@ void w_processBKPQueue (uint unused0, uint unused1)
     }
 
 #ifdef DEBUG
-    // report unknown packet type,
+    // or report unexpected packet type,
     else
     {
       stage_done (SPINN_UNXPD_PKT, key);
@@ -178,7 +177,7 @@ void w_forward_packet (uint key, uint payload)
 #ifdef DEBUG
   recv_fwd++;
   if (phase == SPINN_BACKPROP)
-    wrng_phs++;
+    wrng_fph++;
 
   uint blk = (key & SPINN_BLOCK_MASK) >> SPINN_BLOCK_SHIFT;
   if (blk != wcfg.row_blk)
@@ -241,7 +240,7 @@ void w_stop_packet (uint key)
 #ifdef DEBUG
   stp_recv++;
   if (phase == SPINN_BACKPROP)
-    wrng_phs++;
+    wrng_fph++;
 #endif
 
   // tick stop decision arrived,
@@ -289,6 +288,9 @@ void w_net_stop_packet (uint key)
     sync_rdy = FALSE;
     epoch_rdy = FALSE;
 
+    // move on to FORWARD phase,
+    w_switch_to_fw ();
+
     // and decide what to do
     if (net_stop)
     {
@@ -318,6 +320,8 @@ void w_sync_packet (void)
 {
 #ifdef DEBUG
   spk_recv++;
+  if (xcfg.training && phase == SPINN_FORWARD)
+    wrng_sph++;
 #endif
 
   // update count of sync packets,
@@ -335,6 +339,9 @@ void w_sync_packet (void)
       // clear flags for next tick,
       net_stop_rdy = FALSE;
       epoch_rdy = FALSE;
+
+      // move on to FORWARD phase,
+      w_switch_to_fw ();
 
       // and decide what to do
       if (net_stop)

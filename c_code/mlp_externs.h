@@ -10,18 +10,19 @@
 // ------------------------------------------------------------------------
 extern uint coreID;               // 5-bit virtual core ID
 
-extern uint fwdKey;               // packet ID for FORWARD phase
-extern uint bkpKey;               // packet ID for BACKPROP phase
+extern uint fwdKey;               // packet ID for FORWARD-phase data
+extern uint bkpKey;               // packet ID for BACKPROP-phase data
 extern uint ldsaKey;              // packet ID for link delta summation accumulators
 extern uint ldstKey;              // packet ID for link delta summation totals
 extern uint ldsrKey;              // packet ID for link delta summation reports
-extern uint syncKey;              // packet ID for synchronisation (state-dependent meaning)
+extern uint fdsKey;               // packet ID for FORWARD synchronisation
+extern uint bpsKey;               // packet ID for BACKPROP synchronisation
 
 extern uint32_t stage_step;       // current stage step
 extern uint32_t stage_num_steps;  // current stage number of steps
 extern uint32_t stage_rec_flags;  // current stage recording flags
 
-extern uchar        sync_rdy;     // have expected sync packets arrived?
+extern uchar        sync_rdy;     // ready to synchronise?
 extern uchar        epoch_rdy;    // this tick completed an epoch?
 extern uchar        net_stop_rdy; // ready to deal with network stop decision
 extern uchar        net_stop;     // network stop decision
@@ -33,7 +34,6 @@ extern uint         evt;          // current event in example
 extern uint         max_evt;      // the last event reached in the current example
 extern uint         num_events;   // number of events in current example
 extern uint         event_idx;    // index into current event
-extern uint         num_ticks;    // number of ticks in current event
 extern uint         max_ticks;    // maximum number of ticks in current event
 extern uint         min_ticks;    // minimum number of ticks in current event
 extern uint         tick;         // current tick in phase
@@ -158,7 +158,6 @@ extern activation_t   * t_instant_outputs; // output stored BACKPROP
 extern uint             t_it_idx;      // index into current inputs/targets
 extern pkt_queue_t      t_pkt_queue;   // queue to hold received packets
 extern scoreboard_t     t_sync_arrived; // keep count of expected sync packets
-extern uchar            t_sync_rdy;    // have expected sync packets arrived?
 extern uchar            tf_active;     // processing FWD-phase packet queue?
 extern scoreboard_t     tf_arrived;    // keep count of expected nets
 extern uint             tf_thrds_pend; // thread semaphore
@@ -222,6 +221,9 @@ extern long_deriv_t   * t_output_deriv_history;
   extern uint tot_tick;  // total number of ticks executed
   extern uint wght_ups;  // number of weight updates done
   extern uint wrng_phs;  // packets received in wrong phase
+  extern uint wrng_fph;  // FORWARD packets received in wrong phase
+  extern uint wrng_bph;  // BACKPROP received in wrong phase
+  extern uint wrng_sph;  // sync packets received in wrong phase
   extern uint wrng_tck;  // FORWARD packets received in wrong tick
   extern uint wrng_btk;  // BACKPROP packets received in wrong tick
   extern uint wrng_pth;  // unexpected processing thread

@@ -309,14 +309,19 @@ void sf_advance_event (void)
   // check if done with example's FORWARD phase
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
-    // and check if in training mode
+    // check if in training mode
     if (xcfg.training)
     {
-      // if training save number of ticks,
-      num_ticks = tick;
-
-      // and do BACKPROP phase
+      // move on to BACKPROP phase,
       phase = SPINN_BACKPROP;
+
+      // and send sync packet to allow BACKPROP phase to start
+      while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+
+    #ifdef DEBUG
+      pkt_sent++;
+      spk_sent++;
+    #endif
     }
     else
     {
@@ -403,7 +408,7 @@ void s_advance_example (void)
   num_events = ex[example_inx].num_events;
 
   // and send sync packet to allow next example to start
-  while (!spin1_send_mc_packet (syncKey, 0, NO_PAYLOAD));
+  while (!spin1_send_mc_packet (fdsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
   pkt_sent++;

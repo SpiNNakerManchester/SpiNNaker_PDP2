@@ -79,15 +79,16 @@ out_error_t const
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 
-uint fwdKey;               // packet ID for FORWARD phase
-uint bkpKey;               // packet ID for BACKPROP phase
+uint fwdKey;               // packet ID for FORWARD-phase data
+uint bkpKey;               // packet ID for BACKPROP-phase data
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 uint32_t stage_rec_flags;  // current stage recording flags
 
-uchar        net_stop;     // network stop decision
+uchar        sync_rdy;     // ready to synchronise?
 uchar        net_stop_rdy; // ready to deal with network stop decision
+uchar        net_stop;     // network stop decision
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
@@ -97,7 +98,6 @@ uint         max_evt;      // the last event reached in the current example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
-uint         num_ticks;    // number of ticks in current event
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
@@ -148,7 +148,6 @@ short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
 uint             t_it_idx;          // index into current inputs/targets
 pkt_queue_t      t_pkt_queue;       // queue to hold received nets
 scoreboard_t     t_sync_arrived;    // keep count of expected sync packets
-uchar            t_sync_rdy;        // have expected sync packets arrived?
 
 // FORWARD phase specific
 // (output computation)

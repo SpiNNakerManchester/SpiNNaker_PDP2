@@ -23,7 +23,7 @@
 void tf_process (uint key, uint payload)
 {
 #ifdef TRACE
-  io_printf (IO_BUF, "tb_process\n");
+  io_printf (IO_BUF, "tf_process\n");
 #endif
 
 #ifdef DEBUG
@@ -348,13 +348,10 @@ void tf_advance_event (void)
       record_outputs ();
     }
 
-    // check if in training mode
+    // and check if in training mode
     if (xcfg.training)
     {
-      // if training, save the number of ticks
-      num_ticks = tick;
-
-      // then do BACKPROP phase
+      // move on to BACKPROP phase
       t_switch_to_bp ();
     }
     else
@@ -599,8 +596,29 @@ void t_switch_to_bp (void)
     t_errors[tb_procs][i] = 0;
   }
 
-  // and start processing the BACKPROP phase
-  spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
+  // access sync flag with interrupts disabled,
+  uint cpsr = spin1_int_disable ();
+
+  // and check if can start processing the BACKPROP phase
+  if (sync_rdy)
+  {
+    // clear flag for next synchronisation,
+    sync_rdy = FALSE;
+
+    // restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+
+    // and trigger BACKPROP computation
+    spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
+  }
+  else
+  {
+    // flag as ready,
+    sync_rdy = TRUE;
+
+    // and restore interrupts after flag access
+    spin1_mode_restore (cpsr);
+  }
 }
 // ------------------------------------------------------------------------
 

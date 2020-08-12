@@ -103,7 +103,7 @@ void wb_process (uint key, uint payload)
 #ifdef DEBUG
   recv_bkp++;
   if (phase == SPINN_FORWARD)
-    wrng_phs++;
+    wrng_bph++;
 
   uint blk = (key & SPINN_BLOCK_MASK) >> SPINN_BLOCK_SHIFT;
   if (blk != wcfg.col_blk)
@@ -670,9 +670,6 @@ void wb_advance_tick (void)
     // initialise tick for next example
     tick = SPINN_W_INIT_TICK;
 
-    // go to FORWARD phase,
-    w_switch_to_fw ();
-
     // and move to next example
     w_advance_example ();
   }
@@ -712,10 +709,7 @@ void wf_advance_event (void)
     // and check if in training mode
     if (xcfg.training)
     {
-      // if training, save number of ticks
-      num_ticks = tick;
-
-      // then do BACKPROP phase
+      // move on to BACKPROP phase
       w_switch_to_bp ();
     }
     else
@@ -808,6 +802,9 @@ void w_advance_example (void)
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
 
+    // move on to FORWARD phase,
+    w_switch_to_fw ();
+
     // and decide what to do
     if (net_stop)
     {
@@ -859,7 +856,26 @@ void w_switch_to_bp (void)
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 
-  // and restore previous tick outputs
+  // restore previous tick outputs,
   restore_outputs (tick - 1);
+
+  // access queue and flag with interrupts disabled,
+  uint cpsr = spin1_int_disable ();
+
+  // check if need to schedule BACKPROP processing thread,
+  if (!wb_active && (w_pkt_queue.tail != w_pkt_queue.head))
+  {
+    // flag as active,
+    wb_active = TRUE;
+
+    // restore interrupts after semaphore access,
+    spin1_mode_restore (cpsr);
+
+    // and schedule BACKPROP processing thread
+    spin1_schedule_callback (w_processBKPQueue, 0, 0, SPINN_WB_PROCESS_P);
+  }
+
+  // and restore interrupts after queue and flag access
+  spin1_mode_restore (cpsr);
 }
 // ------------------------------------------------------------------------

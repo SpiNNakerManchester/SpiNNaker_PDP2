@@ -248,11 +248,12 @@ void var_init (uint reset_examples)
 
   // initialise packet keys
   //NOTE: colour is initialised to 0.
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  syncKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+  fwdKey  = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
+  bkpKey  = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldstKey = rt[LDS] | SPINN_LDST_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldsrKey = rt[LDS] | SPINN_LDSR_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  fdsKey  = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+  bpsKey  = rt[BPS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
 #ifdef DEBUG
 // ------------------------------------------------------------------------

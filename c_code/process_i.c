@@ -246,10 +246,7 @@ void if_advance_event (void)
     // and check if in training mode
     if (xcfg.training)
     {
-      // if training, save number of ticks
-      num_ticks = tick;
-
-      // then do BACKPROP phase
+       // move on to BACKPROP phase
       phase = SPINN_BACKPROP;
     }
     else

@@ -316,6 +316,10 @@ void var_init (uint init_weights, uint reset_examples)
   wf_arrived = 0;
   wb_arrived = 0;
 
+  // initialise packet queue
+  w_pkt_queue.head = 0;
+  w_pkt_queue.tail = 0;
+
   // set weight update function
   wb_update_func = w_update_procs[xcfg.update_function];
 
@@ -346,7 +350,9 @@ stp_recv = 0;  // stop packets received
 stn_recv = 0;  // network_stop packets received
 lda_sent = 0;  // partial link_delta packets sent
 ldr_recv = 0;  // link_delta packets received
-wrng_phs = 0;  // packets received in wrong phase
+wrng_fph = 0;  // FORWARD packets received in wrong phase
+wrng_bph = 0;  // BACKPROP received in wrong phase
+wrng_sph = 0;  // sync packets received in wrong phase
 wrng_tck = 0;  // FORWARD packets received in wrong tick
 wrng_btk = 0;  // BACKPROP packets received in wrong tick
 wght_ups = 0;  // number of weight updates done
@@ -475,7 +481,9 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
-  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  if (wrng_fph) io_printf (IO_BUF, "fwd wrong phase:%d\n", wrng_fph);
+  if (wrng_bph) io_printf (IO_BUF, "bkp wrong phase:%d\n", wrng_bph);
+  if (wrng_sph) io_printf (IO_BUF, "sync wrong phase:%d\n", wrng_sph);
   if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
   if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);

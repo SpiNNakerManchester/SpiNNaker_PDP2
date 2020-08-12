@@ -32,8 +32,9 @@ enum MLPKeys {
   FDS  = 2,
   STP  = 3,
   LDS  = 4,
-  FWDT = 5,
-  BKPI = 5
+  BPS  = 5,
+  FWDT = 6,
+  BKPI = 6
 };
 
 
@@ -247,7 +248,7 @@ typedef struct w_conf             // weight core configuration
   uint         num_cols;          // columns in this core's block
   uint         row_blk;           // this core's row block number
   uint         col_blk;           // this core's column block number
-  scoreboard_t sync_expected;     // all expected sync packets
+  scoreboard_t sync_expected;     // num of expected sync packets
   activation_t initOutput;        // initial value for unit outputs
   short_fpreal learningRate;      // network learning rate
   short_fpreal weightDecay;       // network weight decay
@@ -312,8 +313,7 @@ typedef struct t_conf                  // threshold core configuration
   uchar         input_grp;             // is this an INPUT group?
   uint          num_units;             // this core's number of units
   uint          partitions;            // this group's number of partitions
-  scoreboard_t  fwd_sync_expected;     // all expected FORWARD sync packets
-  scoreboard_t  bkp_sync_expected;     // all expected BACKPROP sync packets
+  scoreboard_t  sync_expected;         // num of expected sync packets
   uchar         write_results;         // record test results?
   uchar         write_out;             // record outputs?
   uchar         last_tick_only;        // record only last tick of examples?

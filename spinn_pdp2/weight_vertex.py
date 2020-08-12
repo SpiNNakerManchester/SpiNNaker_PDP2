@@ -362,17 +362,21 @@ class WeightVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds (padding), stp (padding), and lds
+        # write link keys: fwd
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
+        # write link keys: bkp
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
+        # write link keys: fds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: stp (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
 

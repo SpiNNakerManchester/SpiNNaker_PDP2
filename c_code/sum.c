@@ -24,11 +24,12 @@
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 
-uint fwdKey;               // packet ID for FORWARD phase
-uint bkpKey;               // packet ID for BACKPROP phase
+uint fwdKey;               // packet ID for FORWARD-phase data
+uint bkpKey;               // packet ID for BACKPROP-phase data
 uint ldstKey;              // packet ID for link delta summation totals
 uint ldsrKey;              // packet ID for link delta summation reports
-uint syncKey;              // packet ID for synchronisation (state-dependent meaning)
+uint fdsKey;               // packet ID for FORWARD synchronisation
+uint bpsKey;               // packet ID for BACKPROP synchronisation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
@@ -43,7 +44,6 @@ uint         evt;          // current event in example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
-uint         num_ticks;    // number of ticks in current event
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase

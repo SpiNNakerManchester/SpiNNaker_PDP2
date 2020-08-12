@@ -38,14 +38,14 @@ weight_update_t const
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 
-uint fwdKey;               // packet ID for FORWARD phase
-uint bkpKey;               // packet ID for BACKPROP phase
+uint fwdKey;               // packet ID for FORWARD-phase data
+uint bkpKey;               // packet ID for BACKPROP-phase data
 uint ldsaKey;              // packet ID for link delta summation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 
-uchar        sync_rdy;     // have expected sync packets arrived?
+uchar        sync_rdy;     // ready to synchronise?
 uchar        epoch_rdy;    // this tick completed an epoch?
 uchar        net_stop_rdy; // ready to deal with network stop decision
 uchar        net_stop;     // network stop decision
@@ -57,7 +57,6 @@ uint         evt;          // current event in example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
-uint         num_ticks;    // number of ticks in current event
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
@@ -147,7 +146,9 @@ uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
 uint lda_sent;  // partial link_delta packets sent
 uint ldr_recv;  // link_delta packets received
-uint wrng_phs;  // packets received in wrong phase
+uint wrng_fph;  // FORWARD packets received in wrong phase
+uint wrng_bph;  // BACKPROP received in wrong phase
+uint wrng_sph;  // sync packets received in wrong phase
 uint wrng_tck;  // FORWARD packets received in wrong tick
 uint wrng_btk;  // BACKPROP packets received in wrong tick
 uint wght_ups;  // number of weight updates done

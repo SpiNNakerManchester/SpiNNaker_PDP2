@@ -103,10 +103,7 @@ class ThresholdVertex(
 
         # threshold core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
-        self._fwd_sync_expect = len (self.network.groups)
-
-        # NOTE: not used any more, may need reviewing if re-introduced
-        self._bkp_sync_expect = 0
+        self._sync_expect = len (self.network.groups)
 
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -266,8 +263,7 @@ class ThresholdVertex(
               uchar         input_grp;
               uint          num_units;
               uint          partitions;
-              scoreboard_t  fwd_sync_expect;
-              scoreboard_t  bkp_sync_expect;
+              scoreboard_t  sync_expect;
               uchar         write_results;
               uchar         write_out;
               uchar         last_tick_only;
@@ -317,13 +313,12 @@ class ThresholdVertex(
         trn_group_criterion = int (self._trn_group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2x4I3BxI2B2xi6I4i4B",
+        return struct.pack ("<2B2x3I3BxI2B2xi6I4i4B",
                             self.group.output_grp,
                             self.group.input_grp,
                             self.group.units,
                             self.group.partitions,
-                            self._fwd_sync_expect,
-                            self._bkp_sync_expect,
+                            self._sync_expect,
                             self.network.rec_test_results,
                             write_out,
                             last_tick_only,
@@ -486,14 +481,17 @@ class ThresholdVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd (padding), bkp, fds (padding), stp, lds (padding), and fwdt
+        # write link keys: fwd (padding - keys written below)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: bkp
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
+        # write link keys: fds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: stp
         # stop key for OUTPUT groups only
         if self.group.output_grp:
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
@@ -501,8 +499,13 @@ class ThresholdVertex(
         else:
             spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: lds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: bps (padding)
+        spec.write_value (0, data_type = DataType.UINT32)
+
+        # write link keys: fwdt
         for p in range (self.group.partitions):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.fwd_link[p]), data_type = DataType.UINT32)

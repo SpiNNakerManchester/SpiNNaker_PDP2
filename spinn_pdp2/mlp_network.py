@@ -858,6 +858,12 @@ class MLPNetwork():
                                                           first.s_vertex),
                                              grp.s_vertex.lds_link)
 
+            # create fwd-to-bkp synchronisation s to t (multicast) links
+            for tgrp in self.groups:
+                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
+                                                            tgrp.t_vertex),
+                                                grp.s_vertex.bps_link)
+
             # create stop links, if OUTPUT group
             if grp in self.output_chain:
                 # if last OUTPUT group broadcast stop decision
