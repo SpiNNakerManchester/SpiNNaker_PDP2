@@ -91,7 +91,7 @@ uint cfg_init (void)
   io_printf (IO_BUF, "mt: %f\n", es->max_time);
   io_printf (IO_BUF, "nt: %f\n", es->min_time);
   io_printf (IO_BUF, "gt: %f\n", es->grace_time);
-  io_printf (IO_BUF, "NaN: 0x%08x%\n", SPINN_FP_NaN);
+  io_printf (IO_BUF, "NaN: 0x%08x\n", SPINN_FP_NaN);
 #endif
 
   // examples

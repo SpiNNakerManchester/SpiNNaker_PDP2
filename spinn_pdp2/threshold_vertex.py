@@ -102,7 +102,7 @@ class ThresholdVertex(
         self._stp_link = "stp_t{}".format (self.group.id)
 
         # threshold core-specific parameters
-        # NOTE: if all-zero w cores are optimised out these need reviewing
+        #TODO: if all-zero w cores are optimised out these need reviewing
         self._sync_expect = len (self.network.groups)
 
         # reserve key space for every link
