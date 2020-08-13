@@ -335,7 +335,7 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 void stage_done (uint ec, uint key)
 {
-#if !defined(DEBUG)
+#if !defined(DEBUG) && !defined(DEBUG_EXIT)
   //NOTE: parameter 'key' is used only in DEBUG reporting
   (void) key;
 #endif
