@@ -29,7 +29,6 @@ uint bkpKey;               // packet ID for BACKPROP-phase data
 uint ldstKey;              // packet ID for link delta summation totals
 uint ldsrKey;              // packet ID for link delta summation reports
 uint fdsKey;               // packet ID for FORWARD synchronisation
-uint bpsKey;               // packet ID for BACKPROP synchronisation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
@@ -112,7 +111,6 @@ uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
 uint spk_sent;  // sync packets sent
-uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
@@ -121,8 +119,6 @@ uint ldt_sent;  // total link_delta packets sent
 uint ldt_recv;  // total link_delta packets received
 uint ldr_sent;  // link_delta packets sent
 uint wrng_phs;  // packets received in wrong phase
-uint wrng_tck;  // FORWARD packets received in wrong tick
-uint wrng_btk;  // BACKPROP packets received in wrong tick
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread

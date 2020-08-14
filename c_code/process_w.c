@@ -670,6 +670,9 @@ void wb_advance_tick (void)
     // initialise tick for next example
     tick = SPINN_W_INIT_TICK;
 
+    // move on to FORWARD phase,
+    w_switch_to_fw ();
+
     // and move to next example
     w_advance_example ();
   }
@@ -801,9 +804,6 @@ void w_advance_example (void)
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
-
-    // move on to FORWARD phase,
-    w_switch_to_fw ();
 
     // and decide what to do
     if (net_stop)

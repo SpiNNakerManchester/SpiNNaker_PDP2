@@ -101,10 +101,6 @@ class ThresholdVertex(
         self._bkp_link = "bkp_t{}".format (self.group.id)
         self._stp_link = "stp_t{}".format (self.group.id)
 
-        # threshold core-specific parameters
-        #TODO: if all-zero w cores are optimised out these need reviewing
-        self._sync_expect = len (self.network.groups)
-
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
@@ -263,7 +259,6 @@ class ThresholdVertex(
               uchar         input_grp;
               uint          num_units;
               uint          partitions;
-              scoreboard_t  sync_expect;
               uchar         write_results;
               uchar         write_out;
               uchar         last_tick_only;
@@ -313,12 +308,11 @@ class ThresholdVertex(
         trn_group_criterion = int (self._trn_group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2x3I3BxI2B2xi6I4i4B",
+        return struct.pack ("<2B2x2I3BxI2B2xi6I4i4B",
                             self.group.output_grp,
                             self.group.input_grp,
                             self.group.units,
                             self.group.partitions,
-                            self._sync_expect,
                             self.network.rec_test_results,
                             write_out,
                             last_tick_only,
@@ -500,9 +494,6 @@ class ThresholdVertex(
             spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: lds (padding)
-        spec.write_value (0, data_type = DataType.UINT32)
-
-        # write link keys: bps (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: fwdt

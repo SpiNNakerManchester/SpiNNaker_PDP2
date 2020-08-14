@@ -64,7 +64,6 @@ class SumVertex(
         self._bkp_link = "bkp_s{}".format (self.group.id)
         self._lds_link = "lds_s{}".format (self.group.id)
         self._fds_link = "fds_s{}".format (self.group.id)
-        self._bps_link = "bps_s{}".format (self.group.id)
 
         # sum core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
@@ -134,10 +133,6 @@ class SumVertex(
     @property
     def fds_link (self):
         return self._fds_link
-
-    @property
-    def bps_link (self):
-        return self._bps_link
 
     @property
     def config (self):
@@ -254,10 +249,6 @@ class SumVertex(
         # write link keys: lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
-
-        # write link keys: bps
-        spec.write_value (routing_info.get_first_key_from_pre_vertex (
-            self, self.bps_link), data_type = DataType.UINT32)
 
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,

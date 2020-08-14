@@ -332,35 +332,31 @@ void var_init (uint init_weights, uint reset_examples)
   ldsaKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
 #ifdef DEBUG
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-pkt_sent = 0;  // total packets sent
-sent_fwd = 0;  // packets sent in FORWARD phase
-sent_bkp = 0;  // packets sent in BACKPROP phase
-pkt_recv = 0;  // total packets received
-recv_fwd = 0;  // packets received in FORWARD phase
-recv_bkp = 0;  // packets received in BACKPROP phase
-pkt_fwbk = 0;  // unused packets received in FORWARD phase
-pkt_bwbk = 0;  // unused packets received in BACKPROP phase
-spk_sent = 0;  // sync packets sent
-spk_recv = 0;  // sync packets received
-stp_sent = 0;  // stop packets sent
-stp_recv = 0;  // stop packets received
-stn_recv = 0;  // network_stop packets received
-lda_sent = 0;  // partial link_delta packets sent
-ldr_recv = 0;  // link_delta packets received
-wrng_fph = 0;  // FORWARD packets received in wrong phase
-wrng_bph = 0;  // BACKPROP received in wrong phase
-wrng_sph = 0;  // sync packets received in wrong phase
-wrng_tck = 0;  // FORWARD packets received in wrong tick
-wrng_btk = 0;  // BACKPROP packets received in wrong tick
-wght_ups = 0;  // number of weight updates done
-wrng_pth = 0;  // unexpected processing thread
-wrng_cth = 0;  // unexpected comms thread
-wrng_sth = 0;  // unexpected stop thread
-tot_tick = 0;  // total number of ticks executed
-// ------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // DEBUG variables
+  // ------------------------------------------------------------------------
+  pkt_sent = 0;  // total packets sent
+  sent_fwd = 0;  // packets sent in FORWARD phase
+  sent_bkp = 0;  // packets sent in BACKPROP phase
+  pkt_recv = 0;  // total packets received
+  recv_fwd = 0;  // packets received in FORWARD phase
+  recv_bkp = 0;  // packets received in BACKPROP phase
+  pkt_fwbk = 0;  // unused packets received in FORWARD phase
+  pkt_bwbk = 0;  // unused packets received in BACKPROP phase
+  spk_recv = 0;  // sync packets received
+  stp_sent = 0;  // stop packets sent
+  stp_recv = 0;  // stop packets received
+  stn_recv = 0;  // network_stop packets received
+  lda_sent = 0;  // partial link_delta packets sent
+  ldr_recv = 0;  // link_delta packets received
+  wrng_fph = 0;  // FORWARD packets received in wrong phase
+  wrng_bph = 0;  // BACKPROP received in wrong phase
+  wght_ups = 0;  // number of weight updates done
+  wrng_pth = 0;  // unexpected processing thread
+  wrng_cth = 0;  // unexpected comms thread
+  wrng_sth = 0;  // unexpected stop thread
+  tot_tick = 0;  // total number of ticks executed
+  // ------------------------------------------------------------------------
 #endif
 }
 // ------------------------------------------------------------------------
@@ -483,9 +479,6 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_fph) io_printf (IO_BUF, "fwd wrong phase:%d\n", wrng_fph);
   if (wrng_bph) io_printf (IO_BUF, "bkp wrong phase:%d\n", wrng_bph);
-  if (wrng_sph) io_printf (IO_BUF, "sync wrong phase:%d\n", wrng_sph);
-  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);

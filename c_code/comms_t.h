@@ -10,7 +10,6 @@ void t_stop_packet      (uint key);
 void t_net_stop_packet  (uint key);
 
 void t_backprop_packet (uint key, uint payload);
-void t_sync_packet     (void);
 
 void tf_send_stop (void);
 

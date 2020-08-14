@@ -305,7 +305,7 @@ void tb_advance_tick (uint unused0, uint unused1)
     // initialise the event tick count
     ev_tick = SPINN_T_INIT_TICK;
 
-    // switch to FORWARD phase,
+    // move on to FORWARD phase,
     t_switch_to_fw ();
 
     // update example criterion,
@@ -596,29 +596,8 @@ void t_switch_to_bp (void)
     t_errors[tb_procs][i] = 0;
   }
 
-  // access sync flag with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
-  // and check if can start processing the BACKPROP phase
-  if (sync_rdy)
-  {
-    // clear flag for next synchronisation,
-    sync_rdy = FALSE;
-
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
-
-    // and trigger BACKPROP computation
-    spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
-  }
-  else
-  {
-    // flag as ready,
-    sync_rdy = TRUE;
-
-    // and restore interrupts after flag access
-    spin1_mode_restore (cpsr);
-  }
+  // and trigger BACKPROP computation
+  spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
 }
 // ------------------------------------------------------------------------
 

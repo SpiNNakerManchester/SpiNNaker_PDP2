@@ -103,7 +103,6 @@ pkt_queue_t        w_pkt_queue;       // queue to hold received packets
 fpreal             w_delta_dt;        // scaling factor for link deltas
 lds_t              w_lds_final;       // final link delta sum
 scoreboard_t       w_sync_arrived;    // keep count of expected sync packets
-uchar              w_sync_rdy;        // have expected sync packets arrived?
 
 // FORWARD phase specific variables
 // (net b-d-p computation)
@@ -139,7 +138,6 @@ uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
 uint pkt_fwbk;  // unused packets received in FORWARD phase
 uint pkt_bwbk;  // unused packets received in BACKPROP phase
-uint spk_sent;  // sync packets sent
 uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
@@ -147,10 +145,7 @@ uint stn_recv;  // network_stop packets received
 uint lda_sent;  // partial link_delta packets sent
 uint ldr_recv;  // link_delta packets received
 uint wrng_fph;  // FORWARD packets received in wrong phase
-uint wrng_bph;  // BACKPROP received in wrong phase
-uint wrng_sph;  // sync packets received in wrong phase
-uint wrng_tck;  // FORWARD packets received in wrong tick
-uint wrng_btk;  // BACKPROP packets received in wrong tick
+uint wrng_bph;  // BACKPROP packets received in wrong phase
 uint wght_ups;  // number of weight updates done
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread

@@ -296,29 +296,25 @@ void var_init (uint reset_examples)
     i_net_history[i] = 0;
   }
 
-  #ifdef DEBUG
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-pkt_sent = 0;  // total packets sent
-sent_fwd = 0;  // packets sent in FORWARD phase
-sent_bkp = 0;  // packets sent in BACKPROP phase
-pkt_recv = 0;  // total packets received
-recv_fwd = 0;  // packets received in FORWARD phase
-recv_bkp = 0;  // packets received in BACKPROP phase
-spk_sent = 0;  // sync packets sent
-spk_recv = 0;  // sync packets received
-stp_sent = 0;  // stop packets sent
-stp_recv = 0;  // stop packets received
-stn_recv = 0;  // network_stop packets received
-wrng_phs = 0;  // packets received in wrong phase
-wrng_tck = 0;  // FORWARD packets received in wrong tick
-wrng_btk = 0;  // BACKPROP packets received in wrong tick
-wrng_pth = 0;  // unexpected processing thread
-wrng_cth = 0;  // unexpected comms thread
-wrng_sth = 0;  // unexpected stop thread
-tot_tick = 0;  // total number of ticks executed
-// ------------------------------------------------------------------------
+#ifdef DEBUG
+  // ------------------------------------------------------------------------
+  // DEBUG variables
+  // ------------------------------------------------------------------------
+  pkt_sent = 0;  // total packets sent
+  sent_fwd = 0;  // packets sent in FORWARD phase
+  sent_bkp = 0;  // packets sent in BACKPROP phase
+  pkt_recv = 0;  // total packets received
+  recv_fwd = 0;  // packets received in FORWARD phase
+  recv_bkp = 0;  // packets received in BACKPROP phase
+  stp_sent = 0;  // stop packets sent
+  stp_recv = 0;  // stop packets received
+  stn_recv = 0;  // network_stop packets received
+  wrng_phs = 0;  // packets received in wrong phase
+  wrng_pth = 0;  // unexpected processing thread
+  wrng_cth = 0;  // unexpected comms thread
+  wrng_sth = 0;  // unexpected stop thread
+  tot_tick = 0;  // total number of ticks executed
+  // ------------------------------------------------------------------------
 #endif
 }
 // ------------------------------------------------------------------------
@@ -429,8 +425,6 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);

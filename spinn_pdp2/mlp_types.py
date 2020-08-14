@@ -41,7 +41,7 @@ class MLPConstants ():
 
     # core configuration CONSTANTS
     KEY_SPACE_SIZE = 65536
-    NUM_KEYS_REQ   = 6
+    NUM_KEYS_REQ   = 5
 
     # MLP fixed-point fpreal type CONSTANTS
     FPREAL_SIZE      = 32

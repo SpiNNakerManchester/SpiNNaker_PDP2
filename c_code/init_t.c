@@ -151,8 +151,6 @@ uint cfg_init (void)
   io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
   io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
   io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
-  io_printf (IO_BUF, "fs: %d\n", tcfg.fwd_sync_expected);
-  io_printf (IO_BUF, "bs: %d\n", tcfg.bkp_sync_expected);
   io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
   io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
   io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
@@ -486,9 +484,6 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tick = SPINN_T_INIT_TICK;
   ev_tick = SPINN_T_INIT_TICK;
 
-  // initialise sync flag
-  sync_rdy = FALSE;
-
   // initialise network stop flag
   net_stop_rdy = FALSE;
   net_stop = 0;
@@ -591,9 +586,6 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   // initialise processing thread flag
   tf_active = FALSE;
 
-  // initialise received sync packets scoreboard
-  t_sync_arrived = 0;
-
   // initialise packet queue
   t_pkt_queue.head = 0;
   t_pkt_queue.tail = 0;
@@ -631,8 +623,6 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   pkt_recv = 0;  // total packets received
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
-  spk_sent = 0;  // sync packets sent
-  spk_recv = 0;  // sync packets received
   crt_sent = 0;  // criterion packets sent
   crt_recv = 0;  // criterion packets received
   stp_sent = 0;  // stop packets sent
@@ -640,8 +630,6 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   stn_sent = 0;  // network_stop packets sent
   stn_recv = 0;  // network_stop packets received
   wrng_phs = 0;  // packets received in wrong phase
-  wrng_tck = 0;  // FORWARD packets received in wrong tick
-  wrng_btk = 0;  // BACKPROP packets received in wrong tick
   tot_tick = 0;  // total number of ticks executed
 #endif
 
@@ -763,9 +751,6 @@ void stage_done (uint ec, uint key)
                   tf_active, tf_arrived, tcfg.num_units,
                   tb_arrived, tcfg.num_units
                 );
-      io_printf (IO_BUF, "(tsr:%u tsa:%u/%u)\n",
-                  sync_rdy, t_sync_arrived, tcfg.sync_expected
-                );
       io_printf (IO_BUF, "(tcr:%u fptd:%u bptd:%u)\n",
                   tf_crit_rdy, tf_thrds_pend, tb_thrds_pend
                 );
@@ -801,10 +786,7 @@ void stage_done (uint ec, uint key)
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   }
-  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
 #endif
 
 #if defined(DEBUG) && defined(DEBUG_THRDS)

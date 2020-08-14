@@ -32,9 +32,8 @@ enum MLPKeys {
   FDS  = 2,
   STP  = 3,
   LDS  = 4,
-  BPS  = 5,
-  FWDT = 6,
-  BKPI = 6
+  FWDT = 5,
+  BKPI = 5
 };
 
 
@@ -313,7 +312,6 @@ typedef struct t_conf                  // threshold core configuration
   uchar         input_grp;             // is this an INPUT group?
   uint          num_units;             // this core's number of units
   uint          partitions;            // this group's number of partitions
-  scoreboard_t  sync_expected;         // num of expected sync packets
   uchar         write_results;         // record test results?
   uchar         write_out;             // record outputs?
   uchar         last_tick_only;        // record only last tick of examples?

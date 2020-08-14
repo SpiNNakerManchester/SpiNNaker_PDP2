@@ -312,16 +312,8 @@ void sf_advance_event (void)
     // check if in training mode
     if (xcfg.training)
     {
-      // move on to BACKPROP phase,
+      // move on to BACKPROP phase
       phase = SPINN_BACKPROP;
-
-      // and send sync packet to allow BACKPROP phase to start
-      while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
-
-    #ifdef DEBUG
-      pkt_sent++;
-      spk_sent++;
-    #endif
     }
     else
     {

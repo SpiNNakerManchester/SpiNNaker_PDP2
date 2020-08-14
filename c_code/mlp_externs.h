@@ -16,7 +16,6 @@ extern uint ldsaKey;              // packet ID for link delta summation accumula
 extern uint ldstKey;              // packet ID for link delta summation totals
 extern uint ldsrKey;              // packet ID for link delta summation reports
 extern uint fdsKey;               // packet ID for FORWARD synchronisation
-extern uint bpsKey;               // packet ID for BACKPROP synchronisation
 
 extern uint32_t stage_step;       // current stage step
 extern uint32_t stage_num_steps;  // current stage number of steps
@@ -157,7 +156,6 @@ extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output der
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
 extern uint             t_it_idx;      // index into current inputs/targets
 extern pkt_queue_t      t_pkt_queue;   // queue to hold received packets
-extern scoreboard_t     t_sync_arrived; // keep count of expected sync packets
 extern uchar            tf_active;     // processing FWD-phase packet queue?
 extern scoreboard_t     tf_arrived;    // keep count of expected nets
 extern uint             tf_thrds_pend; // thread semaphore
@@ -196,39 +194,36 @@ extern long_deriv_t   * t_output_deriv_history;
 // DEBUG variables
 // ------------------------------------------------------------------------
 #ifdef DEBUG
-  extern uint pkt_sent;  // total packets sent
-  extern uint sent_fwd;  // packets sent in FORWARD phase
-  extern uint sent_bkp;  // packets sent in BACKPROP phase
-  extern uint pkt_recv;  // total packets received
-  extern uint recv_fwd;  // packets received in FORWARD phase
-  extern uint recv_bkp;  // packets received in BACKPROP phase
-  extern uint pkt_fwbk;  // unused packets received in FORWARD phase
-  extern uint pkt_bwbk;  // unused packets received in BACKPROP phase
-  extern uint spk_sent;  // sync packets sent
-  extern uint spk_recv;  // sync packets received
-  extern uint crt_sent;  // criterion packets sent
-  extern uint crt_recv;  // criterion packets received
-  extern uint stp_sent;  // stop packets sent
-  extern uint stp_recv;  // stop packets received
-  extern uint stn_sent;  // network_stop packets sent
-  extern uint stn_recv;  // network_stop packets received
-  extern uint lda_sent;  // partial link_delta packets sent
-  extern uint lda_recv;  // partial link_delta packets received
-  extern uint ldt_sent;  // total link_delta packets sent
-  extern uint ldt_recv;  // total link_delta packets received
-  extern uint ldr_sent;  // link_delta packets sent
-  extern uint ldr_recv;  // link_delta packets received
-  extern uint tot_tick;  // total number of ticks executed
-  extern uint wght_ups;  // number of weight updates done
-  extern uint wrng_phs;  // packets received in wrong phase
-  extern uint wrng_fph;  // FORWARD packets received in wrong phase
-  extern uint wrng_bph;  // BACKPROP received in wrong phase
-  extern uint wrng_sph;  // sync packets received in wrong phase
-  extern uint wrng_tck;  // FORWARD packets received in wrong tick
-  extern uint wrng_btk;  // BACKPROP packets received in wrong tick
-  extern uint wrng_pth;  // unexpected processing thread
-  extern uint wrng_cth;  // unexpected comms thread
-  extern uint wrng_sth;  // unexpected stop thread
+extern uint pkt_sent;  // total packets sent
+extern uint sent_fwd;  // packets sent in FORWARD phase
+extern uint sent_bkp;  // packets sent in BACKPROP phase
+extern uint pkt_recv;  // total packets received
+extern uint recv_fwd;  // packets received in FORWARD phase
+extern uint recv_bkp;  // packets received in BACKPROP phase
+extern uint pkt_fwbk;  // unused packets received in FORWARD phase
+extern uint pkt_bwbk;  // unused packets received in BACKPROP phase
+extern uint spk_sent;  // sync packets sent
+extern uint spk_recv;  // sync packets received
+extern uint crt_sent;  // criterion packets sent
+extern uint crt_recv;  // criterion packets received
+extern uint stp_sent;  // stop packets sent
+extern uint stp_recv;  // stop packets received
+extern uint stn_sent;  // network_stop packets sent
+extern uint stn_recv;  // network_stop packets received
+extern uint lda_sent;  // partial link_delta packets sent
+extern uint lda_recv;  // partial link_delta packets received
+extern uint ldt_sent;  // total link_delta packets sent
+extern uint ldt_recv;  // total link_delta packets received
+extern uint ldr_sent;  // link_delta packets sent
+extern uint ldr_recv;  // link_delta packets received
+extern uint tot_tick;  // total number of ticks executed
+extern uint wght_ups;  // number of weight updates done
+extern uint wrng_phs;  // packets received in wrong phase
+extern uint wrng_fph;  // FORWARD packets received in wrong phase
+extern uint wrng_bph;  // BACKPROP packets received in wrong phase
+extern uint wrng_pth;  // unexpected processing thread
+extern uint wrng_cth;  // unexpected comms thread
+extern uint wrng_sth;  // unexpected stop thread
 #endif
 // ------------------------------------------------------------------------
 

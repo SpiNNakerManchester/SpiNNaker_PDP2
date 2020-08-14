@@ -78,21 +78,21 @@ void w_handleFWDPacket (uint key, uint payload)
     return;
   }
 
-  // process tick stop packet,
+  // or process tick stop packet,
   if (pkt_type == SPINN_STOP_KEY)
   {
     w_stop_packet (key);
     return;
   }
 
-  // process network stop packet,
+  // or process network stop packet,
   if (pkt_type == SPINN_STPN_KEY)
   {
     w_net_stop_packet (key);
     return;
   }
 
-  // process synchronisation packet,
+  // or process synchronisation packet,
   if (pkt_type == SPINN_SYNC_KEY)
   {
     w_sync_packet ();
@@ -288,9 +288,6 @@ void w_net_stop_packet (uint key)
     sync_rdy = FALSE;
     epoch_rdy = FALSE;
 
-    // move on to FORWARD phase,
-    w_switch_to_fw ();
-
     // and decide what to do
     if (net_stop)
     {
@@ -320,8 +317,6 @@ void w_sync_packet (void)
 {
 #ifdef DEBUG
   spk_recv++;
-  if (xcfg.training && phase == SPINN_FORWARD)
-    wrng_sph++;
 #endif
 
   // update count of sync packets,
@@ -339,9 +334,6 @@ void w_sync_packet (void)
       // clear flags for next tick,
       net_stop_rdy = FALSE;
       epoch_rdy = FALSE;
-
-      // move on to FORWARD phase,
-      w_switch_to_fw ();
 
       // and decide what to do
       if (net_stop)

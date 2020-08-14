@@ -292,9 +292,6 @@ class InputVertex(
         # write link keys: lds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
-        # write link keys: bps (padding)
-        spec.write_value (0, data_type = DataType.UINT32)
-
         # write link keys: bkpi
         for p in range (self.group.partitions):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (

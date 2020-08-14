@@ -238,8 +238,11 @@ class WeightVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # NOTE: if all-zero w cores are optimised out these need reviewing
-        fwd_sync_expected = len (self._network.groups)
+        # expect one sync packet from 'group' and one from 'from_group'
+        if self._group == self._from_group:
+            sync_expected = 1
+        else:
+            sync_expected = 2
 
         # init output is an MLP fixed-point activation_t
         init_output = int (self._from_group.init_output *\
@@ -262,7 +265,7 @@ class WeightVertex(
                             self._num_cols,
                             self._row_blk,
                             self._col_blk,
-                            fwd_sync_expected,
+                            sync_expected,
                             init_output,
                             learning_rate,
                             weight_decay,

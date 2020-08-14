@@ -148,14 +148,10 @@ uint sent_bkp;  // packets sent in BACKPROP phase
 uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
-uint spk_sent;  // sync packets sent
-uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
 uint wrng_phs;  // packets received in wrong phase
-uint wrng_tck;  // FORWARD packets received in wrong tick
-uint wrng_btk;  // BACKPROP packets received in wrong tick
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
