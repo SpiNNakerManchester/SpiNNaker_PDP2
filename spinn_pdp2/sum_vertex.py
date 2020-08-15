@@ -59,7 +59,7 @@ class SumVertex(
         else:
             self._is_first_group = 0
 
-        # forward, backprop, and link delta summation link partition names
+        # forward, backprop, and link delta summation link names
         self._fwd_link = "fwd_s{}".format (self.group.id)
         self._bkp_link = "bkp_s{}".format (self.group.id)
         self._lds_link = "lds_s{}".format (self.group.id)
@@ -67,9 +67,9 @@ class SumVertex(
 
         # sum core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
-        self._fwd_expect  = network.partitions
-        self._bkp_expect  = network.partitions
-        self._ldsa_expect = network.partitions * self.group.units
+        self._fwd_expect  = network.subgroups
+        self._bkp_expect  = network.subgroups
+        self._ldsa_expect = network.subgroups * self.group.units
         self._ldst_expect = len (network.groups) - 1
 
         # weight update function

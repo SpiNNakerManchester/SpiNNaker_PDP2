@@ -131,7 +131,7 @@ uint             if_thrds_pend;     // thread semaphore
 long_delta_t   * ib_init_delta;     // initial delta value for every tick
 scoreboard_t     ib_done;           // current tick delta computation done
 
-uint           * i_bkpKey;          // i cores have one bkpKey per partition
+uint           * i_bkpKey;          // i cores have one bkpKey per subgroup
 
 // history arrays
 long_net_t     * i_net_history;   //sdram pointer where to store input history

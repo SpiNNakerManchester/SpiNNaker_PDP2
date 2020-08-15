@@ -94,9 +94,9 @@ class ThresholdVertex(
         else:
             self._is_last_output_group = 0
 
-        # forward, backprop and stop link partition names
+        # forward, backprop and stop link names
         self._fwd_link = []
-        for p in range (self._group.partitions):
+        for p in range (self._group.subgroups):
             self._fwd_link.append ("fwd_t{}_{}".format (self.group.id, p))
         self._bkp_link = "bkp_t{}".format (self.group.id)
         self._stp_link = "stp_t{}".format (self.group.id)
@@ -137,9 +137,9 @@ class ThresholdVertex(
             len (self._group.targets) * _data_int.size
 
         # keys are integers
-        # t cores require a different key for every group partition
+        # t cores require a different key for every subgroup
         self._N_KEYS_BYTES =  _data_int.size * \
-            (MLPConstants.NUM_KEYS_REQ + self._group.partitions)
+            (MLPConstants.NUM_KEYS_REQ + self._group.subgroups)
 
         # stage configuration structure
         self._N_STAGE_CONFIGURATION_BYTES = \
@@ -258,7 +258,7 @@ class ThresholdVertex(
               uchar         output_grp;
               uchar         input_grp;
               uint          num_units;
-              uint          partitions;
+              uint          subgroups;
               uchar         write_results;
               uchar         write_out;
               uchar         last_tick_only;
@@ -312,7 +312,7 @@ class ThresholdVertex(
                             self.group.output_grp,
                             self.group.input_grp,
                             self.group.units,
-                            self.group.partitions,
+                            self.group.subgroups,
                             self.network.rec_test_results,
                             write_out,
                             last_tick_only,
@@ -497,7 +497,7 @@ class ThresholdVertex(
         spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: fwdt
-        for p in range (self.group.partitions):
+        for p in range (self.group.subgroups):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.fwd_link[p]), data_type = DataType.UINT32)
 

@@ -240,9 +240,9 @@ uint mem_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for forward keys (one per partition)
+  // allocate memory for forward keys (one per subgroup)
   if ((t_fwdKey = ((uint *)
-         spin1_malloc (tcfg.partitions * sizeof (uint)))) == NULL
+         spin1_malloc (tcfg.subgroups * sizeof (uint)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -592,7 +592,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
 
   // initialise packet keys
   //NOTE: colour is initialised to 0
-  for (uint p = 0; p < tcfg.partitions; p++)
+  for (uint p = 0; p < tcfg.subgroups; p++)
   {
     t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
   }

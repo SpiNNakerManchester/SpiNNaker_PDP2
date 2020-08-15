@@ -60,7 +60,7 @@ class WeightVertex(
         self._ex_cfg     = network._ex_set.example_config
 
         # compute number of rows and columns
-        if self._row_blk != (self.from_group.partitions - 1):
+        if self._row_blk != (self.from_group.subgroups - 1):
             self._num_rows = MLPConstants.MAX_BLK_UNITS
         else:
             _r = self.from_group.units % MLPConstants.MAX_BLK_UNITS
@@ -69,7 +69,7 @@ class WeightVertex(
             else:
                 self._num_rows = _r
 
-        if self._col_blk != (self.group.partitions - 1):
+        if self._col_blk != (self.group.subgroups - 1):
             self._num_cols = MLPConstants.MAX_BLK_UNITS
         else:
             _r = self.group.units % MLPConstants.MAX_BLK_UNITS
@@ -78,7 +78,7 @@ class WeightVertex(
             else:
                 self._num_cols = _r
 
-        # forward, backprop and link delta summation link partition names
+        # forward, backprop and link delta summation link names
         self._fwd_link = "fwd_w{}_{}".format (self.group.id,
                                               self.from_group.id)
         self._bkp_link = "bkp_w{}_{}".format (self.group.id,

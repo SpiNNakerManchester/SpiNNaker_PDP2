@@ -25,15 +25,15 @@ class MLPGroup():
         self.is_first_out = is_first_out
         self.label        = label
 
-        # number of partitions required for this group
-        self.partitions = (self.units + MLPConstants.MAX_BLK_UNITS - 1)\
+        # number of subgroups required for this group
+        self.subgroups = (self.units + MLPConstants.MAX_BLK_UNITS - 1)\
             // MLPConstants.MAX_BLK_UNITS
 
-        if self.partitions == 1:
-            print (f"creating group {self.label} with 1 partition")
+        if self.subgroups == 1:
+            print (f"creating group {self.label} with 1 subgroup")
         else:
             print (f"creating group {self.label} with "
-                   f"{self.partitions} partitions"
+                   f"{self.subgroups} subgroups"
                    )
 
         # keep track of associated incoming links

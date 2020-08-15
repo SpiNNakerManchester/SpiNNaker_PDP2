@@ -24,8 +24,8 @@ enum MLPRecordings {
   TICK_DATA    = 2
 };
 
-// t cores can have more than one FWD key (due to partitions)
-// i cores can have more than one BKP key (due to partitions)
+// t cores can have more than one FWD key (due to subgroups)
+// i cores can have more than one BKP key (due to subgroups)
 enum MLPKeys {
   FWD  = 0,
   BKP  = 1,
@@ -285,7 +285,7 @@ typedef struct i_conf                // input core configuration
   uchar         output_grp;          // is this an OUTPUT group?
   uchar         input_grp;           // is this an INPUT group?
   uint          num_units;           // this core's number of units
-  uint          partitions;          // this groups's number of partitions
+  uint          subgroups;           // this groups's number of subgroups
   uint          num_in_procs;        // number of input (net) comp procedures
   uint          procs_list[SPINN_NUM_IN_PROCS];
   uchar         in_integr_en;        // input INTEGRATOR in use
@@ -311,7 +311,7 @@ typedef struct t_conf                  // threshold core configuration
   uchar         output_grp;            // is this an OUTPUT group?
   uchar         input_grp;             // is this an INPUT group?
   uint          num_units;             // this core's number of units
-  uint          partitions;            // this group's number of partitions
+  uint          subgroups;             // this group's number of subgroups
   uchar         write_results;         // record test results?
   uchar         write_out;             // record outputs?
   uchar         last_tick_only;        // record only last tick of examples?

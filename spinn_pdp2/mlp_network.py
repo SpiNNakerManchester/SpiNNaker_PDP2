@@ -87,8 +87,8 @@ class MLPNetwork():
         # keep track of the number of vertices in the graph
         self._num_vertices = 0
 
-        # keep track of the number of partitions
-        self.partitions = 0
+        # keep track of the number of subgroups
+        self.subgroups = 0
 
         # keep track of the current execution stage
         self._stage_id = 0
@@ -757,19 +757,19 @@ class MLPNetwork():
         # set the number of write blocks before generating vertices
         self._num_write_blks = len (self.output_chain)
 
-        # compute number of partitions
+        # compute number of subgroups
         for grp in self.groups:
-            self.partitions = self.partitions + grp.partitions
+            self.subgroups += grp.subgroups
 
         # create associated weight, sum, input and threshold
         # machine vertices for every network group
         for grp in self.groups:
-            # create one weight core per partition
+            # create one weight core per subgroup
             # of every (from_group, group) pair
             # NOTE: all-zero cores can be optimised out
             for from_grp in self.groups:
-                for _tp in range (grp.partitions):
-                    for _fp in range (from_grp.partitions):
+                for _tp in range (grp.subgroups):
+                    for _fp in range (from_grp.subgroups):
                         wv = WeightVertex (self, grp, from_grp, _tp, _fp)
                         grp.w_vertices.append (wv)
                         gfe.add_machine_vertex_instance (wv)

@@ -57,10 +57,10 @@ class InputVertex(
         # application parameters
         self._in_integr_dt = 1.0 / network.ticks_per_int
 
-        # forward and backprop link partition names
+        # forward and backprop link names
         self._fwd_link = "fwd_i{}".format (self.group.id)
         self._bkp_link = []
-        for p in range (self._group.partitions):
+        for p in range (self._group.subgroups):
             self._bkp_link.append ("bkp_i{}_{}".format (self.group.id, p))
 
         # reserve key space for every link
@@ -95,9 +95,9 @@ class InputVertex(
             len (self._group.inputs) * _data_int.size
 
         # keys are integers
-        # i cores require a different key for every group partition
+        # i cores require a different key for every subgroup
         self._N_KEYS_BYTES = _data_int.size * \
-            (MLPConstants.NUM_KEYS_REQ + self.group.partitions)
+            (MLPConstants.NUM_KEYS_REQ + self.group.subgroups)
 
         # stage configuration structure
         self._N_STAGE_CONFIGURATION_BYTES = len (self._network.stage_config)
@@ -141,7 +141,7 @@ class InputVertex(
               uchar         output_grp;
               uchar         input_grp;
               uint          num_units;
-              uint          partitions;
+              uint          subgroups;
               uint          num_in_procs;
               uint          procs_list[SPINN_NUM_IN_PROCS];
               uchar         in_integr_en;
@@ -169,7 +169,7 @@ class InputVertex(
                             self.group.output_grp,
                             self.group.input_grp,
                             self.group.units,
-                            self.group.partitions,
+                            self.group.subgroups,
                             self.group.num_in_procs,
                             self.group.in_procs_list[0].value,
                             self.group.in_procs_list[1].value,
@@ -293,7 +293,7 @@ class InputVertex(
         spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: bkpi
-        for p in range (self.group.partitions):
+        for p in range (self.group.subgroups):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.bkp_link[p]), data_type = DataType.UINT32)
 
