@@ -127,7 +127,7 @@ class WeightVertex(
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.network_config)
+            len (self.network.network_config)
 
         # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
@@ -150,11 +150,11 @@ class WeightVertex(
 
         # stage configuration structure
         self._N_STAGE_CONFIGURATION_BYTES = \
-            len (self._network.stage_config)
+            len (self.network.stage_config)
 
         # reserve SDRAM space used to store historic data
         self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -245,13 +245,13 @@ class WeightVertex(
             explicit padding
         """
         # expect one sync packet from 'group' and one from 'from_group'
-        if self._group == self._from_group:
+        if self.group == self.from_group:
             sync_expected = 1
         else:
             sync_expected = 2
 
         # init output is an MLP fixed-point activation_t
-        init_output = int (self._from_group.init_output *\
+        init_output = int (self.from_group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
 
         # learning_rate is an MLP short fixed-point fpreal
@@ -307,7 +307,7 @@ class WeightVertex(
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.network_config:
+        for c in self.network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
@@ -396,7 +396,7 @@ class WeightVertex(
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification ()
@@ -411,7 +411,7 @@ class WeightVertex(
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification()
