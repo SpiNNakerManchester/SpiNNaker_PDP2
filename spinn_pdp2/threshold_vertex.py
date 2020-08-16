@@ -47,28 +47,31 @@ class ThresholdVertex(
 
     def __init__(self,
                  network,
-                 group
+                 group,
+                 subgroup
                  ):
 
+        self._network  = network
+        self._group    = group
+        self._subgroup = subgroup
+
         # place OUTPUT groups "close" to the host
-        if group.output_grp:
+        if self.group.output_grp:
             constraints = [ChipAndCoreConstraint (x = 0, y = 0)]
         else:
             constraints = None
 
         super(ThresholdVertex, self).__init__(
-            label = "t_core{}".format (group.id),
+            label = f"t_core{self.group.id}/{self.subgroup}",
             binary_name = "threshold.aplx",
             constraints = constraints)
 
         self._stage = 0
 
         # application-level data
-        self._network = network
-        self._group   = group
-        self._set_cfg = network._ex_set.set_config
-        self._ex_cfg  = network._ex_set.example_config
-        self._ev_cfg  = network._ex_set.event_config
+        self._set_cfg = network.ex_set.set_config
+        self._ex_cfg  = network.ex_set.example_config
+        self._ev_cfg  = network.ex_set.event_config
 
         # application parameters
         self._out_integr_dt = 1.0 / network.ticks_per_int
@@ -76,15 +79,15 @@ class ThresholdVertex(
         # choose appropriate group criteria
         if self.group.test_group_crit is not None:
             self._tst_group_criterion = self.group.test_group_crit
-        elif network._test_group_crit is not None:
-            self._tst_group_criterion = network._test_group_crit
+        elif network.test_group_crit is not None:
+            self._tst_group_criterion = network.test_group_crit
         else:
             self._tst_group_criterion = MLPConstants.DEF_GRP_CRIT
 
         if self.group.train_group_crit is not None:
             self._trn_group_criterion = self.group.train_group_crit
-        elif network._train_group_crit is not None:
-            self._trn_group_criterion = network._train_group_crit
+        elif network.train_group_crit is not None:
+            self._trn_group_criterion = network.train_group_crit
         else:
             self._trn_group_criterion = MLPConstants.DEF_GRP_CRIT
 
@@ -96,7 +99,7 @@ class ThresholdVertex(
 
         # forward, backprop and stop link names
         self._fwd_link = []
-        for p in range (self._group.subgroups):
+        for p in range (self.group.subgroups):
             self._fwd_link.append ("fwd_t{}_{}".format (self.group.id, p))
         self._bkp_link = "bkp_t{}".format (self.group.id)
         self._stp_link = "stp_t{}".format (self.group.id)
@@ -130,16 +133,16 @@ class ThresholdVertex(
 
         # list of group inputs (empty if not an INPUT group)
         self._N_INPUTS_BYTES = \
-            len (self._group.inputs) * _data_int.size
+            len (self.group.inputs) * _data_int.size
 
         # list of group targets (empty if not an OUTPUT group)
         self._N_TARGETS_BYTES = \
-            len (self._group.targets) * _data_int.size
+            len (self.group.targets) * _data_int.size
 
         # keys are integers
         # t cores require a different key for every subgroup
         self._N_KEYS_BYTES =  _data_int.size * \
-            (MLPConstants.NUM_KEYS_REQ + self._group.subgroups)
+            (MLPConstants.NUM_KEYS_REQ + self.group.subgroups)
 
         # stage configuration structure
         self._N_STAGE_CONFIGURATION_BYTES = \
@@ -235,6 +238,10 @@ class ThresholdVertex(
     @property
     def group (self):
         return self._group
+
+    @property
+    def subgroup (self):
+        return self._subgroup
 
     @property
     def fwd_link (self):
@@ -445,7 +452,7 @@ class ThresholdVertex(
             spec.switch_write_focus (MLPRegions.INPUTS.value)
 
             # write inputs to spec
-            for _i in self._group.inputs:
+            for _i in self.group.inputs:
                 # inputs are MLP fixed-point activation_t
                 if (_i is None) or (_i == float ('nan')):
                     _inp = MLPConstants.ACTIV_NaN
@@ -461,7 +468,7 @@ class ThresholdVertex(
             spec.switch_write_focus (MLPRegions.TARGETS.value)
 
             # write targets to spec
-            for _t in self._group.targets:
+            for _t in self.group.targets:
                 # targets are MLP fixed-point activation_t
                 if (_t is None) or (_t == float ('nan')):
                     _tgt = MLPConstants.ACTIV_NaN

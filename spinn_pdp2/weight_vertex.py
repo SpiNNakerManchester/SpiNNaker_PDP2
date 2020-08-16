@@ -38,26 +38,28 @@ class WeightVertex(
     def __init__(self,
                  network,
                  group,
-                 from_group,
                  col_blk,
+                 from_group,
                  row_blk
                  ):
 
+        self._network    = network
+        self._group      = group
+        self._from_group = from_group
+        self._col_blk    = col_blk
+        self._row_blk    = row_blk
+
         super(WeightVertex, self).__init__(
-            label = f"w_core{group.id}_{from_group.id}_{row_blk}_{col_blk}",
+            label = f"w_core{self.group.id}/{self.col_blk}"
+                    f"_{self.from_group.id}/{self.row_blk}",
             binary_name = "weight.aplx",
             constraints = None)
 
         self._stage = 0
 
         # application-level data
-        self._network    = network
-        self._group      = group
-        self._from_group = from_group
-        self._col_blk    = col_blk
-        self._row_blk    = row_blk
-        self._set_cfg    = network._ex_set.set_config
-        self._ex_cfg     = network._ex_set.example_config
+        self._set_cfg = self.network.ex_set.set_config
+        self._ex_cfg  = self.network.ex_set.example_config
 
         # compute number of rows and columns
         if self._row_blk != (self.from_group.subgroups - 1):
@@ -93,22 +95,22 @@ class WeightVertex(
         if len (self.group.weights[self.from_group]):
             if self.group.learning_rate is not None:
                 self.learning_rate = self.group.learning_rate
-            elif network._learning_rate is not None:
-                self.learning_rate = network._learning_rate
+            elif network.learning_rate is not None:
+                self.learning_rate = network.learning_rate
             else:
                 self.learning_rate = MLPConstants.DEF_LEARNING_RATE
 
             if self.group.weight_decay is not None:
                 self.weight_decay = self.group.weight_decay
-            elif network._weight_decay is not None:
-                self.weight_decay = network._weight_decay
+            elif network.weight_decay is not None:
+                self.weight_decay = network.weight_decay
             else:
                 self.weight_decay = MLPConstants.DEF_WEIGHT_DECAY
 
             if self.group.momentum is not None:
                 self.momentum = self.group.momentum
-            elif network._momentum is not None:
-                self.momentum = network._momentum
+            elif network.momentum is not None:
+                self.momentum = network.momentum
             else:
                 self.momentum = MLPConstants.DEF_MOMENTUM
         else:
@@ -117,7 +119,7 @@ class WeightVertex(
             self.momentum = 0
 
         # weight update function
-        self.update_function = network._update_function
+        self.update_function = self.network.update_function
 
         # configuration and data files
         # find out the size of an integer!
@@ -190,8 +192,16 @@ class WeightVertex(
         return (int (wtemp * (1 << MLPConstants.WEIGHT_SHIFT)))
 
     @property
+    def network (self):
+        return self._network
+
+    @property
     def group (self):
         return self._group
+
+    @property
+    def col_blk (self):
+        return self._col_blk
 
     @property
     def from_group (self):
@@ -200,10 +210,6 @@ class WeightVertex(
     @property
     def row_blk (self):
         return self._row_blk
-
-    @property
-    def col_blk (self):
-        return self._col_blk
 
     @property
     def fwd_link (self):

@@ -37,30 +37,33 @@ class InputVertex(
 
     def __init__(self,
                  network,
-                 group
+                 group,
+                 subgroup
                  ):
 
+        self._network  = network
+        self._group    = group
+        self._subgroup = subgroup
+
         super(InputVertex, self).__init__(
-            label = "i_core{}".format (group.id),
+            label = f"i_core{self.group.id}/{self.subgroup}",
             binary_name = "input.aplx",
             constraints = None)
 
         self._stage = 0
 
         # application-level data
-        self._network = network
-        self._group   = group
-        self._set_cfg = network._ex_set.set_config
-        self._ex_cfg  = network._ex_set.example_config
-        self._ev_cfg  = network._ex_set.event_config
+        self._set_cfg = network.ex_set.set_config
+        self._ex_cfg  = network.ex_set.example_config
+        self._ev_cfg  = network.ex_set.event_config
 
         # application parameters
-        self._in_integr_dt = 1.0 / network.ticks_per_int
+        self._in_integr_dt = 1.0 / self.network.ticks_per_int
 
         # forward and backprop link names
         self._fwd_link = "fwd_i{}".format (self.group.id)
         self._bkp_link = []
-        for p in range (self._group.subgroups):
+        for p in range (self.group.subgroups):
             self._bkp_link.append ("bkp_i{}_{}".format (self.group.id, p))
 
         # reserve key space for every link
@@ -72,7 +75,7 @@ class InputVertex(
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.network_config)
+            len (self.network.network_config)
 
         # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
@@ -92,7 +95,7 @@ class InputVertex(
 
         # list of group inputs (empty if not an INPUT group)
         self._N_INPUTS_BYTES = \
-            len (self._group.inputs) * _data_int.size
+            len (self.group.inputs) * _data_int.size
 
         # keys are integers
         # i cores require a different key for every subgroup
@@ -100,11 +103,11 @@ class InputVertex(
             (MLPConstants.NUM_KEYS_REQ + self.group.subgroups)
 
         # stage configuration structure
-        self._N_STAGE_CONFIGURATION_BYTES = len (self._network.stage_config)
+        self._N_STAGE_CONFIGURATION_BYTES = len (self.network.stage_config)
 
         # reserve SDRAM space used to store historic data
         self._NET_HISTORY_BYTES = (MLPConstants.LONG_NET_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
 
         self._sdram_usage = (
@@ -120,8 +123,16 @@ class InputVertex(
         )
 
     @property
+    def network (self):
+        return self._network
+
+    @property
     def group (self):
         return self._group
+
+    @property
+    def subgroup (self):
+        return self._subgroup
 
     @property
     def fwd_link (self):
@@ -209,7 +220,7 @@ class InputVertex(
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.network_config:
+        for c in self.network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
@@ -262,7 +273,7 @@ class InputVertex(
             spec.switch_write_focus (MLPRegions.INPUTS.value)
 
             # write inputs to spec
-            for _i in self._group.inputs:
+            for _i in self.group.inputs:
                 # inputs are MLP fixed-point activation_t
                 if (_i is None) or (_i == float ('nan')):
                     _inp = MLPConstants.ACTIV_NaN
@@ -304,7 +315,7 @@ class InputVertex(
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification ()
@@ -319,7 +330,7 @@ class InputVertex(
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification()

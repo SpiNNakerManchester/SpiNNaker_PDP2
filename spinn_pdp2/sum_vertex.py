@@ -37,21 +37,25 @@ class SumVertex(
 
     def __init__(self,
                  network,
-                 group
+                 group,
+                 subgroup
                  ):
 
+        self._network  = network
+        self._group    = group
+        self._subgroup = subgroup
+
         super(SumVertex, self).__init__(
-            label = "s_core{}".format (group.id),
+            label = f"s_core{self.group.id}/{self.subgroup}",
             binary_name = "sum.aplx",
             constraints = None)
 
         self._stage = 0
 
         # application-level data
-        self._network = network
-        self._group   = group
-        self._set_cfg = network._ex_set.set_config
-        self._ex_cfg  = network._ex_set.example_config
+        self.units    = self.group.units
+        self._set_cfg = self.network.ex_set.set_config
+        self._ex_cfg  = self.network.ex_set.example_config
 
         # check if first group in the network
         if self.group.id == network.groups[0].id:
@@ -69,11 +73,11 @@ class SumVertex(
         # NOTE: if all-zero w cores are optimised out these need reviewing
         self._fwd_expect  = network.subgroups
         self._bkp_expect  = network.subgroups
-        self._ldsa_expect = network.subgroups * self.group.units
+        self._ldsa_expect = network.subgroups * self.units
         self._ldst_expect = len (network.groups) - 1
 
         # weight update function
-        self.update_function = network._update_function
+        self.update_function = network.update_function
 
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
@@ -84,7 +88,7 @@ class SumVertex(
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.network_config)
+            len (self.network.network_config)
 
         # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
@@ -103,7 +107,7 @@ class SumVertex(
 
         # stage configuration structure
         self._N_STAGE_CONFIGURATION_BYTES = \
-            len (self._network.stage_config)
+            len (self.network.stage_config)
 
         self._sdram_usage = (
             self._N_NETWORK_CONFIGURATION_BYTES + \
@@ -115,8 +119,16 @@ class SumVertex(
         )
 
     @property
+    def network (self):
+        return self._network
+
+    @property
     def group (self):
         return self._group
+
+    @property
+    def subgroup (self):
+        return self._subgroup
 
     @property
     def fwd_link (self):
@@ -154,7 +166,7 @@ class SumVertex(
         """
 
         return struct.pack ("<5IB3x",
-                            self.group.units,
+                            self.units,
                             self._fwd_expect,
                             self._bkp_expect,
                             self._ldsa_expect,
@@ -191,7 +203,7 @@ class SumVertex(
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.network_config:
+        for c in self.network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
@@ -257,7 +269,7 @@ class SumVertex(
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification ()
@@ -272,7 +284,7 @@ class SumVertex(
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification()

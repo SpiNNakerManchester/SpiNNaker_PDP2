@@ -36,6 +36,10 @@ class MLPGroup():
                    f"{self.subgroups} subgroups"
                    )
 
+        # number of units per subgroup
+        self.subunits = [MLPConstants.MAX_BLK_UNITS] * (self.subgroups - 1)
+        self.subunits.append (self.units - sum (self.subunits))
+
         # keep track of associated incoming links
         self.links_from = []
 

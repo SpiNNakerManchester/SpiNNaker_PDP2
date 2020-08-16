@@ -83,9 +83,6 @@ class MLPNetwork():
 
         # initialise machine graph parameters
         self._graph_rdy = False
-        
-        # keep track of the number of vertices in the graph
-        self._num_vertices = 0
 
         # keep track of the number of subgroups
         self.subgroups = 0
@@ -106,6 +103,10 @@ class MLPNetwork():
         return self._training
 
     @property
+    def ex_set (self):
+        return self._ex_set
+
+    @property
     def num_epochs (self):
         return self._num_epochs
 
@@ -120,6 +121,30 @@ class MLPNetwork():
     @property
     def global_max_ticks (self):
         return self._global_max_ticks
+
+    @property
+    def train_group_crit (self):
+        return self._train_group_crit
+
+    @property
+    def test_group_crit (self):
+        return self._test_group_crit
+
+    @property
+    def learning_rate (self):
+        return self._learning_rate
+
+    @property
+    def weight_decay (self):
+        return self._weight_decay
+
+    @property
+    def momentum (self):
+        return self._momentum
+
+    @property
+    def update_function (self):
+        return self._update_function
 
     @property
     def rec_test_results (self):
@@ -763,35 +788,32 @@ class MLPNetwork():
 
         # create associated weight, sum, input and threshold
         # machine vertices for every network group
+        sgrp = 0
         for grp in self.groups:
-            # create one weight core per subgroup
+            # create one weight core per each subgroup
             # of every (from_group, group) pair
             # NOTE: all-zero cores can be optimised out
             for from_grp in self.groups:
-                for _tp in range (grp.subgroups):
-                    for _fp in range (from_grp.subgroups):
-                        wv = WeightVertex (self, grp, from_grp, _tp, _fp)
+                for tsg in range (grp.subgroups):
+                    for fsg in range (from_grp.subgroups):
+                        wv = WeightVertex (self, grp, tsg, from_grp, fsg)
                         grp.w_vertices.append (wv)
                         gfe.add_machine_vertex_instance (wv)
-                        self._num_vertices += 1
 
-            # create one sum core per group
-            sv = SumVertex (self, grp)
+            # create one sum core per subgroup
+            sv = SumVertex (self, grp, sgrp)
             grp.s_vertex = sv
             gfe.add_machine_vertex_instance (sv)
-            self._num_vertices += 1
 
-            # create one input core per group
-            iv = InputVertex (self, grp)
+            # create one input core per subgroup
+            iv = InputVertex (self, grp, sgrp)
             grp.i_vertex = iv
             gfe.add_machine_vertex_instance (iv)
-            self._num_vertices += 1
 
-            # create one threshold core per group
-            tv = ThresholdVertex (self, grp)
+            # create one threshold core per subgroup
+            tv = ThresholdVertex (self, grp, sgrp)
             grp.t_vertex = tv
             gfe.add_machine_vertex_instance (tv)
-            self._num_vertices += 1
 
         # create associated forward, backprop, link delta summation,
         # synchronisation and stop machine edges for every network group
