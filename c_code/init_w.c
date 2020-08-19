@@ -323,9 +323,9 @@ void var_init (uint init_weights, uint reset_examples)
 
   // initialise packet keys
   //NOTE: colour is implicitly initialised to 0
-  fwdKey  = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
-  bkpKey  = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
-  ldsaKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
@@ -343,8 +343,8 @@ void var_init (uint init_weights, uint reset_examples)
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
-  lda_sent = 0;  // partial link_delta packets sent
-  ldr_recv = 0;  // link_delta packets received
+  lds_sent = 0;  // link_delta packets sent
+  lds_recv = 0;  // link_delta packets received
   wrng_fph = 0;  // FORWARD packets received in wrong phase
   wrng_bph = 0;  // BACKPROP received in wrong phase
   wght_ups = 0;  // number of weight updates done
@@ -468,8 +468,8 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);
-  io_printf (IO_BUF, "ldsa sent:%d\n", lda_sent);
-  io_printf (IO_BUF, "ldsr recv:%d\n", ldr_recv);
+  io_printf (IO_BUF, "lds sent:%d\n", lds_sent);
+  io_printf (IO_BUF, "lds recv:%d\n", lds_recv);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   io_printf (IO_BUF, "sync recv:%d\n", spk_recv);

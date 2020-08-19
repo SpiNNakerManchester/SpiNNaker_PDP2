@@ -10,7 +10,7 @@ void w_stop_packet     (uint key);
 void w_net_stop_packet (uint key);
 void w_sync_packet     (void);
 
-void w_ldsr_packet (uint payload);
+void w_lds_packet (uint payload);
 
 void store_output    (uint index);
 void restore_outputs (uint tick);

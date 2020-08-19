@@ -201,11 +201,11 @@ void wb_process (uint key, uint payload)
       lds_to_send = (lds_t) link_delta_sum;
 
     // and send partial link delta sum
-    while (!spin1_send_mc_packet (ldsaKey, (uint) lds_to_send, WITH_PAYLOAD));
+    while (!spin1_send_mc_packet (ldsKey, (uint) lds_to_send, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;
-    lda_sent++;
+    lds_sent++;
 #endif
   }
 
@@ -235,7 +235,7 @@ void wb_process (uint key, uint payload)
           && example_cnt == (xcfg.num_examples - 1)
           && tick == SPINN_WB_END_TICK + 1)
       {
-        wb_thrds_pend = SPINN_WB_THRDS | SPINN_THRD_LDSR;
+        wb_thrds_pend = SPINN_WB_THRDS | SPINN_THRD_LDSA;
       }
 
       // restore interrupts after semaphore access,

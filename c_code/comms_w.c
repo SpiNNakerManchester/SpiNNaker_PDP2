@@ -17,7 +17,7 @@
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // initial handling of received packets
-// (FORWARD, BACKPROP, ldsr, stop, net_stop and sync types)
+// (FORWARD, BACKPROP, lds, stop, net_stop and sync types)
 // ------------------------------------------------------------------------
 void w_receivePacket (uint key, uint payload)
 {
@@ -143,9 +143,9 @@ void w_processBKPQueue (uint unused0, uint unused1)
     }
 
     // process LDS result packet,
-    else if (pkt_type == SPINN_LDSR_KEY)
+    else if (pkt_type == SPINN_LDSA_KEY)
     {
-      w_ldsr_packet (payload);
+      w_lds_packet (payload);
     }
 
 #ifdef DEBUG
@@ -354,10 +354,10 @@ void w_sync_packet (void)
 // ------------------------------------------------------------------------
 // process an LDS result packet
 // ------------------------------------------------------------------------
-void w_ldsr_packet (uint payload)
+void w_lds_packet (uint payload)
 {
 #ifdef DEBUG
-  ldr_recv++;
+  lds_recv++;
 #endif
 
   // the final link delta sum for the epoch arrived
@@ -367,12 +367,12 @@ void w_ldsr_packet (uint payload)
   uint cpsr = spin1_int_disable ();
 
 #if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(wb_thrds_pend & SPINN_THRD_LDSR))
+  if (!(wb_thrds_pend & SPINN_THRD_LDSA))
     wrng_cth++;
 #endif
 
   // check if all other threads done
-  if (wb_thrds_pend == SPINN_THRD_LDSR)
+  if (wb_thrds_pend == SPINN_THRD_LDSA)
   {
     // initialise semaphore (no link delta summation in next tick),
     wb_thrds_pend = SPINN_WB_THRDS;
@@ -386,7 +386,7 @@ void w_ldsr_packet (uint payload)
   else
   {
     // if not done report processing thread done,
-    wb_thrds_pend &= ~SPINN_THRD_LDSR;
+    wb_thrds_pend &= ~SPINN_THRD_LDSA;
 
     // and restore interrupts after semaphore access
     spin1_mode_restore (cpsr);

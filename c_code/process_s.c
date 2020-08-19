@@ -376,13 +376,6 @@ void s_advance_example (void)
 
     // reset example count for next epoch,
     example_cnt = 0;
-
-    // and reset the partial link delta sum
-    if (xcfg.training)
-    {
-      s_lds_part = 0;
-      s_ldsa_arrived = 0;
-    }
   }
 
   // start from first event for next example,

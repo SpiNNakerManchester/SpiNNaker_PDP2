@@ -16,7 +16,7 @@
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // enqueue received packet
-// (FORWARD, BACKPROP, ldsa, stop and net_stop types)
+// (FORWARD, BACKPROP, lds, stop and net_stop types)
 // ------------------------------------------------------------------------
 void s_receivePacket (uint key, uint payload)
 {
@@ -99,7 +99,7 @@ void s_processQueue (uint unused0, uint unused1)
     else if (pkt_type == SPINN_LDSA_KEY)
     {
       // process LDS "accumulation" packet
-      s_ldsa_packet (payload);
+      s_lds_packet (payload);
     }
 
     // check if stop packet,
@@ -226,43 +226,34 @@ void s_net_stop_packet (uint key)
 
 
 // ------------------------------------------------------------------------
-// process LDSA packet: accumulate the received partial link delta sums
+// process LDS packet: accumulate the received partial link delta sums
 // ------------------------------------------------------------------------
-void s_ldsa_packet (uint payload)
+void s_lds_packet (uint payload)
 {
 #ifdef DEBUG
-  lda_recv++;
+  lds_recv++;
 #endif
 
   // add the received value to the total so far,
   s_lds_part += (lds_t) payload;
 
   // increment the count of partial link delta sums arrived,
-  s_ldsa_arrived++;
+  s_lds_arrived++;
 
   // check whether all the partial sums have arrived
-  if (s_ldsa_arrived == scfg.ldsa_expected)
+  if (s_lds_arrived == scfg.lds_expected)
   {
-    if (scfg.is_first_group)
-    {
-      // broadcast the result to the first subgroup
-      while (!spin1_send_mc_packet (ldsrKey, s_lds_part, WITH_PAYLOAD));
+    // broadcast (first subgroup) or relay (all others) lds value
+    while (!spin1_send_mc_packet (ldsKey, s_lds_part, WITH_PAYLOAD));
 
 #ifdef DEBUG
-      pkt_sent++;
-      ldr_sent++;
+    pkt_sent++;
+    lds_sent++;
 #endif
-    }
-    else
-    {
-      // or forward partial result to the first subgroup
-      while (!spin1_send_mc_packet (ldsaKey, s_lds_part, WITH_PAYLOAD));
 
-#ifdef DEBUG
-      pkt_sent++;
-      lda_sent++;
-#endif
-    }
+    // prepare for next epoch
+    s_lds_part = 0;
+    s_lds_arrived = 0;
 
     // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();

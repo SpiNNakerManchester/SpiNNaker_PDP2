@@ -12,8 +12,7 @@ extern uint coreID;               // 5-bit virtual core ID
 
 extern uint fwdKey;               // packet ID for FORWARD-phase data
 extern uint bkpKey;               // packet ID for BACKPROP-phase data
-extern uint ldsaKey;              // packet ID for link delta summation accumulators
-extern uint ldsrKey;              // packet ID for link delta summation reports
+extern uint ldsKey;               // packet ID for link delta summation
 extern uint fdsKey;               // packet ID for FORWARD synchronisation
 
 extern uint32_t stage_step;       // current stage step
@@ -91,18 +90,18 @@ extern activation_t     * w_output_history;
 // ------------------------------------------------------------------------
 // sum core variables
 // ------------------------------------------------------------------------
-extern long_net_t     * s_nets[2];     // unit nets computed in current tick
-extern long_error_t   * s_errors[2];   // errors computed in current tick
-extern pkt_queue_t      s_pkt_queue;   // queue to hold received packets
-extern uchar            s_active;      // processing packets from queue?
-extern lds_t            s_lds_part;    // partial link delta sum
-extern scoreboard_t   * sf_arrived[2]; // keep count of expected net b-d-p
-extern scoreboard_t     sf_done;       // current tick net computation done
-extern uint             sf_thrds_pend; // thread semaphore
-extern scoreboard_t   * sb_arrived[2]; // keep count of expected error b-d-p
-extern scoreboard_t     sb_done;       // current tick error computation done
-extern uint             sb_thrds_pend; // thread semaphore
-extern scoreboard_t     s_ldsa_arrived; // keep count of the number of partial link delta sums
+extern long_net_t     * s_nets[2];      // unit nets computed in current tick
+extern long_error_t   * s_errors[2];    // errors computed in current tick
+extern pkt_queue_t      s_pkt_queue;    // queue to hold received packets
+extern uchar            s_active;       // processing packets from queue?
+extern lds_t            s_lds_part;     // partial link delta sum
+extern scoreboard_t   * sf_arrived[2];  // keep count of expected net b-d-p
+extern scoreboard_t     sf_done;        // current tick net computation done
+extern uint             sf_thrds_pend;  // thread semaphore
+extern scoreboard_t   * sb_arrived[2];  // keep count of expected error b-d-p
+extern scoreboard_t     sb_done;        // current tick error computation done
+extern uint             sb_thrds_pend;  // thread semaphore
+extern scoreboard_t     s_lds_arrived;  // keep count of received link delta sums
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -204,10 +203,8 @@ extern uint stp_sent;  // stop packets sent
 extern uint stp_recv;  // stop packets received
 extern uint stn_sent;  // network_stop packets sent
 extern uint stn_recv;  // network_stop packets received
-extern uint lda_sent;  // partial link_delta packets sent
-extern uint lda_recv;  // partial link_delta packets received
-extern uint ldr_sent;  // link_delta packets sent
-extern uint ldr_recv;  // link_delta packets received
+extern uint lds_sent;  // link_delta packets sent
+extern uint lds_recv;  // link_delta packets received
 extern uint tot_tick;  // total number of ticks executed
 extern uint wght_ups;  // number of weight updates done
 extern uint wrng_phs;  // packets received in wrong phase
