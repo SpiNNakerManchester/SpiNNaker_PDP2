@@ -135,16 +135,38 @@ class MLPErrorFuncs (Enum):
 
 
 class MLPRegions (Enum):
-    """ regions used by MLP cores
+    """ SDRAM regions used by MLP cores
     """
-    SYSTEM      =  0
-    NETWORK     =  1
-    CORE        =  2
-    INPUTS      =  3
-    TARGETS     =  4
-    EXAMPLE_SET =  5
-    EXAMPLES    =  6
-    EVENTS      =  7
-    WEIGHTS     =  8
-    ROUTING     =  9
-    STAGE       = 10
+    SYSTEM        =  0
+    NETWORK       =  1
+    CORE          =  2
+    INPUTS        =  3
+    TARGETS       =  4
+    EXAMPLE_SET   =  5
+    EXAMPLES      =  6
+    EVENTS        =  7
+    WEIGHTS       =  8
+    ROUTING       =  9
+    STAGE         = 10
+    REC_INFO      = 11
+
+
+class MLPVarSizeRecordings (Enum):
+    """ t core recording channels
+        with variable per-stage data size
+    """
+    OUTPUTS = 0
+
+
+class MLPConstSizeRecordings (Enum):
+    """ t core recording channels
+        with constant per-stage data size
+    """
+    TEST_RESULTS = len (MLPVarSizeRecordings)
+
+
+class MLPExtraRecordings (Enum):
+    """ additional recording channels
+        for first output t core
+    """
+    TICK_DATA = len (MLPVarSizeRecordings) + len (MLPConstSizeRecordings)

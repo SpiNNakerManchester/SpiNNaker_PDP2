@@ -1,17 +1,26 @@
 #ifndef __COMMS_T_H__
 #define __COMMS_T_H__
 
-void t_receivePacket  (uint, uint);
-void t_forwardPacket  (uint, uint);
-void t_backpropPacket (uint, uint);
-void t_stopPacket     (uint);
-void t_chainPacket    (uint);
-void t_syncPacket     (uint);
-void t_networkStopPacket (void);
+void t_receivePacket   (uint key,     uint payload);
+void w_handleBKPPacket (uint key,     uint payload);
+void t_processFWDQueue (uint unused0, uint unused1);
 
-void send_info_to_host    (uint, uint);
-void send_outputs_to_host (uint, uint);
-//#void send_weights_to_host (void);
+void t_criterion_packet (uint key);
+void t_stop_packet      (uint key);
+void t_net_stop_packet  (uint key);
+
+void t_backprop_packet (uint key, uint payload);
+
+void tf_send_stop (void);
+
+void store_net            (uint inx);
+void restore_net          (uint inx, uint tick);
+void store_output         (uint inx);
+void restore_output       (uint inx, uint tick);
+void store_output_deriv   (uint inx);
+void restore_output_deriv (uint inx, uint tick);
+
+void record_outputs (void);
 
 #endif
 

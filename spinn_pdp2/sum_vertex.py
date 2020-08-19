@@ -62,8 +62,8 @@ class SumVertex(
         # forward, backprop, and link delta summation link partition names
         self._fwd_link = "fwd_s{}".format (self.group.id)
         self._bkp_link = "bkp_s{}".format (self.group.id)
-        self._fds_link = "fds_s{}".format (self.group.id)
         self._lds_link = "lds_s{}".format (self.group.id)
+        self._fds_link = "fds_s{}".format (self.group.id)
 
         # sum core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
@@ -127,12 +127,12 @@ class SumVertex(
         return self._bkp_link
 
     @property
-    def fds_link (self):
-        return self._fds_link
-
-    @property
     def lds_link (self):
         return self._lds_link
+
+    @property
+    def fds_link (self):
+        return self._fds_link
 
     @property
     def config (self):
@@ -159,7 +159,7 @@ class SumVertex(
                             self._bkp_expect,
                             self._ldsa_expect,
                             self._ldst_expect,
-                            self._is_first_group & 0xff
+                            self._is_first_group
                             )
 
     @property
@@ -231,19 +231,22 @@ class SumVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds, stp (padding),
-        # and lds
+        # write link keys: fwd
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
+        # write link keys: bkp
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
+        # write link keys: fds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fds_link), data_type = DataType.UINT32)
 
+        # write link keys: stp (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
 
@@ -257,7 +260,6 @@ class SumVertex(
         for c in self._network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # End the specification
         spec.end_specification ()
 
 
@@ -272,7 +274,6 @@ class SumVertex(
         # write the stage configuration into spec
         for c in self._network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
-
 
         spec.end_specification()
 

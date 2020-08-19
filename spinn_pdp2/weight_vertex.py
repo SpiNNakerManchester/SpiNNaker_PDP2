@@ -228,6 +228,8 @@ class WeightVertex(
               uint           num_cols;
               uint           row_blk;
               uint           col_blk;
+              scoreboard_t   sync_expected;
+              activation_t   initOutput;
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
               short_fpreal_t momentum;
@@ -236,6 +238,16 @@ class WeightVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # expect one sync packet from 'group' and one from 'from_group'
+        if self._group == self._from_group:
+            sync_expected = 1
+        else:
+            sync_expected = 2
+
+        # init output is an MLP fixed-point activation_t
+        init_output = int (self._from_group.init_output *\
+                           (1 << MLPConstants.ACTIV_SHIFT))
+
         # learning_rate is an MLP short fixed-point fpreal
         learning_rate = int (self.learning_rate *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
@@ -248,14 +260,16 @@ class WeightVertex(
         momentum = int (self.momentum *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<4I3h2x",
+        return struct.pack ("<5Ii3h2x",
                             self._num_rows,
                             self._num_cols,
                             self._row_blk,
                             self._col_blk,
-                            learning_rate & 0xffff,
-                            weight_decay & 0xffff,
-                            momentum & 0xffff
+                            sync_expected,
+                            init_output,
+                            learning_rate,
+                            weight_decay,
+                            momentum
                             )
 
     @property
@@ -351,17 +365,21 @@ class WeightVertex(
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd, bkp, fds (padding), stp (padding), and lds
+        # write link keys: fwd
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
+        # write link keys: bkp
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
+        # write link keys: fds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: stp (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
 
@@ -375,7 +393,6 @@ class WeightVertex(
         for c in self._network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # End the specification
         spec.end_specification ()
 
 
@@ -390,7 +407,6 @@ class WeightVertex(
         # write the stage configuration into spec
         for c in self._network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
-
 
         spec.end_specification()
 

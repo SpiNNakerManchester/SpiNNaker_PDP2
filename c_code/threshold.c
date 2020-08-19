@@ -10,7 +10,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
-#include "mlp_externs.h"  // allows compiler to check extern types!
+#include "mlp_externs.h"
 
 #include "init_t.h"
 #include "comms_t.h"
@@ -79,11 +79,15 @@ out_error_t const
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 
-uint fwdKey;               // 32-bit packet ID for FORWARD phase
-uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+uint fwdKey;               // packet ID for FORWARD-phase data
+uint bkpKey;               // packet ID for BACKPROP-phase data
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
+uint32_t stage_rec_flags;  // current stage recording flags
+
+uchar        net_stop_rdy; // ready to deal with network stop decision
+uchar        net_stop;     // network stop decision
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
@@ -93,7 +97,6 @@ uint         max_evt;      // the last event reached in the current example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
-uint         num_ticks;    // number of ticks in current event
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
@@ -142,25 +145,22 @@ activation_t   * t_instant_outputs; // current output value stored for the backw
 short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
 uint             t_it_idx;          // index into current inputs/targets
-uint             t_tot_ticks;       // total ticks on current example
-pkt_queue_t      t_net_pkt_q;       // queue to hold received nets
-uchar            t_active;          // processing nets/errors from queue?
-scoreboard_t     t_sync_arrived;    // keep track of expected sync packets
-uchar            t_sync_rdy;        // have expected sync packets arrived?
-sdp_msg_t        t_sdp_msg;         // SDP message buffer for host comms.
+pkt_queue_t      t_pkt_queue;       // queue to hold received nets
 
 // FORWARD phase specific
 // (output computation)
-scoreboard_t     tf_arrived;        // keep track of expected nets
-uint             tf_thrds_pend;     // sync. semaphore: proc & stop
-uchar            tf_chain_prev;     // previous daisy chain (DC) value
-uchar            tf_initChain;      // previous DC received init value
-uchar            tf_chain_rdy;      // local DC value can be forwarded
+uchar            tf_active;         // processing FWD-phase packet queue?
+scoreboard_t     tf_arrived;        // keep count of expected nets
+uint             tf_thrds_pend;     // thread semaphore
+uchar            tf_crit_prev;      // criterion value received
+uchar            tf_init_crit;      // criterion init value
+uchar            tf_crit_rdy;       // criterion can be forwarded
 uchar            tf_stop_crit;      // stop criterion met?
 uchar            tf_group_crit;     // stop criterion met for all groups?
 uchar            tf_event_crit;     // stop criterion met for all events?
 uchar            tf_example_crit;   // stop criterion met for all examples?
 error_t          t_group_criterion; // convergence criterion value
+test_results_t   t_test_results;    // test results to report to host
 stop_crit_t      tf_stop_func;      // stop evaluation function
 uint             tf_stop_key;       // stop criterion packet key
 uint             tf_stpn_key;       // stop network packet key
@@ -169,8 +169,8 @@ uint             tf_stpn_key;       // stop network packet key
 // (error delta computation)
 uint             tb_procs;          // pointer to processing errors
 uint             tb_comms;          // pointer to receiving errors
-scoreboard_t     tb_arrived;        // keep track of expected errors
-uint             tb_thrds_pend;     // sync. semaphore: proc & stop
+scoreboard_t     tb_arrived;        // keep count of expected errors
+uint             tb_thrds_pend;     // thread semaphore
 
 int              t_max_output_unit; // unit with highest output
 int              t_max_target_unit; // unit with highest target
@@ -185,7 +185,6 @@ uint           * t_fwdKey;          // t cores have one fwdKey per partition
 // history arrays
 net_t          * t_net_history;
 activation_t   * t_output_history;
-activation_t   * t_target_history;
 long_deriv_t   * t_output_deriv_history;
 // ------------------------------------------------------------------------
 
@@ -200,17 +199,16 @@ uint sent_bkp;  // packets sent in BACKPROP phase
 uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
-uint spk_sent;  // sync packets sent
-uint spk_recv;  // sync packets received
-uint chn_sent;  // chain packets sent
-uint chn_recv;  // chain packets received
+uint crt_sent;  // criterion packets sent
+uint crt_recv;  // criterion packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_sent;  // network_stop packets sent
 uint stn_recv;  // network_stop packets received
 uint wrng_phs;  // packets received in wrong phase
-uint wrng_tck;  // FORWARD packets received in wrong tick
-uint wrng_btk;  // BACKPROP packets received in wrong tick
+uint wrng_pth;  // unexpected processing thread
+uint wrng_cth;  // unexpected comms thread
+uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -229,7 +227,7 @@ void timeout (uint ticks, uint unused)
   if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
     // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT);
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
   }
   else
   {
@@ -266,9 +264,6 @@ void get_started (void)
 // ------------------------------------------------------------------------
 void c_main ()
 {
-  // say hello,
-  io_printf (IO_BUF, ">> mlp\n");
-
   // get core IDs,
   chipID = spin1_get_chip_id ();
   coreID = spin1_get_core_id ();
@@ -278,7 +273,7 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // allocate memory in DTCM and SDRAM,
@@ -286,13 +281,13 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // initialise variables,
-  var_init ();
+  var_init (TRUE, TRUE);
 
-  // set up timer1 (used for background deadlock check),
+  // set up timer (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
@@ -303,10 +298,7 @@ void c_main ()
   // setup simulation,
   simulation_set_start_function (get_started);
 
-  // start execution,
+  // and start execution
   simulation_run ();
-
-  // and say goodbye
-  io_printf (IO_BUF, "<< mlp\n");
 }
 // ------------------------------------------------------------------------

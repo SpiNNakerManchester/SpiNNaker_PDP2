@@ -9,7 +9,8 @@ from spinn_pdp2.input_vertex     import InputVertex
 from spinn_pdp2.sum_vertex       import SumVertex
 from spinn_pdp2.threshold_vertex import ThresholdVertex
 from spinn_pdp2.weight_vertex    import WeightVertex
-from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants
+from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants, \
+    MLPVarSizeRecordings, MLPConstSizeRecordings, MLPExtraRecordings
 from spinn_pdp2.mlp_group        import MLPGroup
 from spinn_pdp2.mlp_link         import MLPLink
 from spinn_pdp2.mlp_examples     import MLPExampleSet
@@ -49,6 +50,11 @@ class MLPNetwork():
         self._stg_epochs          = MLPConstants.DEF_NUM_UPDATES
         self._stg_examples        = None
         self._stg_reset           = True
+
+        # default data recording options
+        self._rec_test_results           = True
+        self._rec_outputs                = True
+        self._rec_example_last_tick_only = False
 
         # initialise lists of groups and links
         self.groups = []
@@ -114,6 +120,18 @@ class MLPNetwork():
     @property
     def global_max_ticks (self):
         return self._global_max_ticks
+
+    @property
+    def rec_test_results (self):
+        return self._rec_test_results
+
+    @property
+    def rec_outputs (self):
+        return self._rec_outputs
+
+    @property
+    def rec_example_last_tick_only (self):
+        return self._rec_example_last_tick_only
 
     @property
     def num_write_blocks (self):
@@ -189,7 +207,7 @@ class MLPNetwork():
 
         return struct.pack("<4B2I",
                            self._stage_id,
-                           self._training,
+                           self.training,
                            _update_function.value,
                            self._stg_reset,
                            _num_examples,
@@ -396,13 +414,55 @@ class MLPNetwork():
             self._momentum = momentum
 
 
+    def recording_options (self,
+             rec_test_results           = None,
+             rec_outputs                = None,
+             rec_example_last_tick_only = None
+             ):
+        """ set data recording options
+
+        :param rec_test_results: record test results
+        :param rec_outputs: record unit outputs
+        :param rec_example_last_tick_only: record unit outputs only for
+                                            last tick of examples
+
+        :type rec_test_results: boolean
+        :type rec_outputs: boolean
+        :type rec_example_last_tick_only: boolean
+        """
+        #TODO: changing recording options between stages not currently supported
+        if self._stage_id:
+            print ("\n--------------------------------------------------")
+            print ("warning: new recording options ignored - cannot change between stages")
+            print ("--------------------------------------------------\n")
+            return
+
+        if rec_test_results is not None:
+            print (f"setting rec_test_results to {rec_test_results}")
+            self._rec_test_results = rec_test_results
+        else:
+            print (f"rec_test_results pre-set to {self._rec_test_results}")
+
+        if rec_outputs is not None:
+            print (f"setting rec_outputs to {rec_outputs}")
+            self._rec_outputs = rec_outputs
+        else:
+            print (f"rec_outputs pre-set to {self._rec_outputs}")
+
+        if rec_example_last_tick_only is not None:
+            print (f"setting rec_example_last_tick_only to {rec_example_last_tick_only}")
+            self._rec_example_last_tick_only = rec_example_last_tick_only
+        else:
+            print (f"rec_example_last_tick_only pre-set to {self._rec_example_last_tick_only}")
+
+
     def read_Lens_weights_file (self,
                                 weights_file
                                 ):
         """ reads a Lens-style weights file
 
-        Lens online manual:
-            http://web.stanford.edu/group/mbc/LENSManual/
+        Lens online manual @ CMU:
+            https://ni.cmu.edu/~plaut/Lens/Manual/
 
         File format:
 
@@ -484,6 +544,205 @@ class MLPNetwork():
         return True
 
 
+    def write_Lens_output_file (self,
+                                output_file
+                                ):
+        """ writes a Lens-style output file
+
+            Lens online manual @ CMU:
+                https://ni.cmu.edu/~plaut/Lens/Manual/
+
+            File format:
+
+            for each example:
+              <I total-updates> <I example-number>
+              <I ticks-on-example> <I num-groups>
+              for each tick on the example:
+                <I tick-number> <I event-number>
+            for each WRITE_OUTPUTS group:
+                  <I num-units> <B targets?>
+              for each unit:
+                    <R output-value> <R target-value>
+
+            collects recorded tick data corresponding to
+            (C struct) tick_record in mlp_types.h:
+
+            typedef struct tick_record {
+              uint epoch;    // current epoch
+              uint example;  // current example
+              uint event;    // current event
+              uint tick;     // current tick
+            } tick_record_t;
+
+            collects recorded output data corresponding to
+            (C type) short_activ_t in mlp_types.h:
+
+            typedef short short_activ_t;
+
+            pack: standard sizes, little-endian byte order,
+            explicit padding
+        """
+        if not self._rec_outputs:
+            print ("\n--------------------------------------------------")
+            print ("warning: file write aborted - outputs not recorded")
+            print ("--------------------------------------------------\n")
+            return
+
+        if not self._aborted:
+            with open(output_file, 'w') as f:
+                # prepare to retrieve recorded data
+                TICK_DATA_FORMAT = "<4I"
+                TICK_DATA_SIZE = struct.calcsize(TICK_DATA_FORMAT)
+
+                OUT_DATA_FORMATS = []
+                OUT_DATA_SIZES = []       
+                for g in self.output_chain:
+                    OUT_DATA_FORMATS.append ("<{}H".format (g.units))
+                    OUT_DATA_SIZES.append (struct.calcsize("<{}H".format (g.units)))
+
+                # retrieve recorded tick_data from first output group
+                g = self.out_grps[0]
+                rec_tick_data = g.t_vertex.read (
+                    gfe.placements().get_placement_of_vertex (g.t_vertex),
+                    gfe.buffer_manager(), MLPExtraRecordings.TICK_DATA.value
+                    )
+
+                TOTAL_TICKS = len (rec_tick_data) // TICK_DATA_SIZE
+
+                # retrieve recorded outputs from every output group
+                rec_outputs = [None] * len (self.out_grps)
+                for g in self.out_grps:
+                    rec_outputs[g.write_blk] = g.t_vertex.read (
+                        gfe.placements().get_placement_of_vertex (g.t_vertex),
+                        gfe.buffer_manager(), MLPVarSizeRecordings.OUTPUTS.value
+                        )
+
+                # compute total ticks in first example
+                #TODO: need to get actual value from simulation, not max value
+                ticks_per_example = 0
+                for ev in self._ex_set.examples[0].events:
+                    # use event max_time if available or default to set max_time,
+                    if (ev.max_time is None) or (self.max_time == float ('nan')):
+                        max_time = int (self._ex_set.max_time)
+                    else:
+                        max_time = int (ev.max_time)
+
+                    # compute number of ticks for max time,
+                    ticks_per_example += (max_time + 1) * self._ticks_per_interval
+
+                    # and limit to the global maximum if required
+                    if ticks_per_example > self.global_max_ticks:
+                        ticks_per_example = self.global_max_ticks
+
+                # print recorded data in correct order
+                current_epoch = -1
+                for tk in range (TOTAL_TICKS):
+                    (epoch, example, event, tick) = struct.unpack_from(
+                        TICK_DATA_FORMAT,
+                        rec_tick_data,
+                        tk * TICK_DATA_SIZE
+                        )
+
+                    # check if starting new epoch
+                    if (epoch != current_epoch):
+                        current_epoch = epoch
+                        current_example = -1
+
+                    # check if starting new example
+                    if (example != current_example):
+                        # print first (implicit) tick data
+                        f.write (f"{epoch} {example}\n")
+                        f.write (f"{ticks_per_example} {len (self.out_grps)}\n")
+                        f.write ("0 -1\n")
+                        for g in self.output_chain:
+                            f.write (f"{g.units} 1\n")
+                            for _ in range (g.units):
+                                f.write ("{:8.6f} {}\n".format (0, 0))
+
+                        # compute event index
+                        evt_inx = 0
+                        for ex in range (example):
+                            evt_inx += len (self._ex_set.examples[ex].events)
+
+                        # and prepare for next 
+                        current_example = example
+
+                    # compute index into target array
+                    tgt_inx = evt_inx + event
+
+                    # print current tick data
+                    f.write (f"{tick} {event}\n")
+
+                    for g in self.output_chain:
+                        # get group tick outputs
+                        outputs = struct.unpack_from(
+                            OUT_DATA_FORMATS[self.output_chain.index(g)],
+                            rec_outputs[g.write_blk],
+                            tk * OUT_DATA_SIZES[self.output_chain.index(g)]
+                            )
+
+                        # print outputs
+                        if len (rec_outputs[g.write_blk]):
+                            f.write (f"{g.units} 1\n")
+                            tinx = tgt_inx * g.units
+                            for u in range (g.units):
+                                # outputs are s16.15 fixed-point numbers
+                                out = (1.0 * outputs[u]) / (1.0 * (1 << 15))
+                                t = g.targets[tinx + u]
+                                if (t is None) or (t == float ('nan')):
+                                    tgt = "-"
+                                else:
+                                    tgt = int(t)
+                                f.write ("{:8.6f} {}\n".format (out, tgt))
+
+            # prepare buffers for next stage
+            gfe.buffer_manager().reset()
+
+
+    def show_test_results (self):
+        """ show stage test results corresponding to
+            (C struct) test_results in mlp_types.h:
+
+            typedef struct test_results {
+            uint epochs_trained;
+            uint examples_tested;
+            uint ticks_tested;
+            uint examples_correct;
+            } test_results_t;
+
+            pack: standard sizes, little-endian byte order,
+            explicit padding
+        """
+        if not self._rec_test_results:
+            print ("\n--------------------------------------------------")
+            print ("warning: test results not recorded")
+            print ("--------------------------------------------------\n")
+            return
+
+        if not self._aborted:
+            # prepare to retrieve recorded test results data
+            TEST_RESULTS_FORMAT = "<4I"
+            TEST_RESULTS_SIZE = struct.calcsize(TEST_RESULTS_FORMAT)
+
+            # retrieve recorded tick_data from last output group
+            g = self.out_grps[-1]
+            rec_test_results = g.t_vertex.read (
+                gfe.placements().get_placement_of_vertex (g.t_vertex),
+                gfe.buffer_manager(), MLPConstSizeRecordings.TEST_RESULTS.value
+                )
+
+            if len (rec_test_results) >= TEST_RESULTS_SIZE:
+                (epochs_trained, examples_tested, ticks_tested, examples_correct) = \
+                    struct.unpack_from(TEST_RESULTS_FORMAT, rec_test_results, 0)
+    
+                print ("\n--------------------------------------------------")
+                print ("stage {} Test results: {}, {}, {}, {}".format(
+                    self._stage_id, epochs_trained, examples_tested,
+                    ticks_tested, examples_correct
+                    ))
+                print ("--------------------------------------------------\n")
+
+
     def generate_machine_graph (self):
         """ generates a machine graph for the application graph
         """
@@ -534,8 +793,8 @@ class MLPNetwork():
             gfe.add_machine_vertex_instance (tv)
             self._num_vertices += 1
 
-        # create associated forward, backprop, synchronisation and
-        # stop machine edges for every network group
+        # create associated forward, backprop, link delta summation,
+        # synchronisation and stop machine edges for every network group
         first = self.groups[0]
         for grp in self.groups:
             for w in grp.w_vertices:
@@ -565,10 +824,13 @@ class MLPNetwork():
                 gfe.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
                                              first.s_vertex.lds_link)
 
-            # create forward synchronisation s to t (multicast) links
-            for sgrp in self.groups:
-                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex, sgrp.t_vertex),
-                                             grp.s_vertex.fds_link)
+                # create example synchronisation s to w (multicast) links
+                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex, w),
+                                               grp.s_vertex.fds_link)
+
+                if grp != _frmg:
+                    gfe.add_machine_edge_instance (MachineEdge (_frmg.s_vertex, w),
+                                                 _frmg.s_vertex.fds_link)
 
             # create forward s to i link
             gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
@@ -686,6 +948,8 @@ class MLPNetwork():
     def stage_run (self):
         """ run a stage on application graph
         """
+        self._aborted = False
+
         # check that no group is too big
         for grp in self.groups:
             if grp.units > MLPConstants.MAX_GRP_UNITS:
@@ -734,11 +998,20 @@ class MLPNetwork():
         # run stage
         gfe.run_until_complete (self._stage_id)
 
-        # pause to allow debugging
-        input (f"stage {self._stage_id} paused: press enter to exit")
+        # show TEST RESULTS if available
+        if self.rec_test_results and not self.training:
+            self.show_test_results ()
 
         # prepare for next stage
         self._stage_id += 1
+
+
+    def pause (self):
+        """ pause execution to allow debugging
+        """
+        # pause until a key is pressed
+        input ("network paused: press enter to continue")
+
 
     def end (self):
         """ clean up before exiting

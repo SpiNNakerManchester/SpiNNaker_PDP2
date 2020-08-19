@@ -4,17 +4,24 @@
 #include "mlp_params.h"
 
 enum MLPRegions {
-  SYSTEM      =  0,
-  NETWORK     =  1,
-  CORE        =  2,
-  INPUTS      =  3,
-  TARGETS     =  4,
-  EXAMPLE_SET =  5,
-  EXAMPLES    =  6,
-  EVENTS      =  7,
-  WEIGHTS     =  8,
-  ROUTING     =  9,
-  STAGE       = 10
+  SYSTEM        =  0,
+  NETWORK       =  1,
+  CORE          =  2,
+  INPUTS        =  3,
+  TARGETS       =  4,
+  EXAMPLE_SET   =  5,
+  EXAMPLES      =  6,
+  EVENTS        =  7,
+  WEIGHTS       =  8,
+  ROUTING       =  9,
+  STAGE         = 10,
+  REC_INFO      = 11
+};
+
+enum MLPRecordings {
+  OUTPUTS      = 0,
+  TEST_RESULTS = 1,
+  TICK_DATA    = 2
 };
 
 // t cores can have more than one FWD key (due to partitions)
@@ -29,117 +36,19 @@ enum MLPKeys {
   BKPI = 5
 };
 
-typedef short     short_activ_t;
-typedef int       activation_t;     // unit output or activation
-typedef long long long_activ_t;     // intermediate unit output or activation
 
-// short activations are s0.15 (note difference with activation!)
-#define SPINN_SHORT_ACTIV_SIZE   16
-#define SPINN_SHORT_ACTIV_SHIFT  15
-#define SPINN_SHORT_ACTIV_MAX    ((1 << SPINN_SHORT_ACTIV_SHIFT) - 1)
-#define SPINN_SHORT_ACTIV_MIN    0
-// minimum negative value for an activation variable
-#define SPINN_SHORT_ACTIV_MIN_NEG      (-1 * SPINN_SHORT_ACTIV_MAX)
-
-// activations are s4.27
-#define SPINN_ACTIV_SIZE         32
-#define SPINN_ACTIV_SHIFT        27
-#define SPINN_ACTIV_MAX          INT_MAX
-#define SPINN_ACTIV_MIN          0
-#define SPINN_ACTIV_NaN          (1 << (SPINN_ACTIV_SIZE - 1))
-// minimum negative value for a long activation variable
-//~#define SPINN_ACTIV_MIN_NEG   INT_MIN
-// these values are set to compute the cross entropy error function
-#define SPINN_ACTIV_ONE          (1 << SPINN_ACTIV_SHIFT)
-//~#define SPINN_ACTIV_NEG_ONE   (-1 << SPINN_ACTIV_SHIFT)
-
-// long activations are s36.27
-#define SPINN_LONG_ACTIV_SHIFT   27
-
-typedef short     short_deriv_t;  // input or output derivative
-typedef int       derivative_t;   // intermediate unit input or output derivative
-typedef long long long_deriv_t;   // intermediate unit input or output derivative
-
-// short derivatives are s0.15
-#define SPINN_DERIV_SHIFT        15
-#define SPINN_SHORT_DERIV_MAX         ((1 << SPINN_DERIV_SHIFT) - 1)
-//~#define SPINN_SHORT_DERIV_MIN          0
-// minimum negative value for an derivative variable
-#define SPINN_SHORT_DERIV_MIN_NEG     (-1 * SPINN_SHORT_DERIV_MAX)
-
-// derivatives are s16.15
-#define SPINN_DERIV_MAX          INT_MAX
-#define SPINN_DERIV_MIN          0
-// minimum negative value for a long derivative variable
-#define SPINN_DERIV_MIN_NEG      INT_MIN
-// these values are set to compute the cross entropy error function
-#define SPINN_DERIV_ONE          (1 << SPINN_DERIV_SHIFT)
-#define SPINN_DERIV_NEG_ONE      (-1 << SPINN_DERIV_SHIFT)
-
-// long derivatives are s36.27
-#define SPINN_LONG_DERIV_SHIFT  27
-//~#define SPINN_LONG_DERIV_MAX     SPINN_LONG_ACTIV_MAX
-//~#define SPINN_LONG_DERIV_MIN     SPINN_LONG_ACTIV_MIN
-// minimum negative value for a long long derivative variable
-//~#define SPINN_LONG_DERIV_MIN_NEG   LONG_MIN
-
-typedef int       net_t;            // unit internal net (inputs dot-product)
-typedef long long long_net_t;       // used for net intermediate calc
-
-//TODO: set these values correctly!
-// nets are s8.23
-#define SPINN_NET_SHIFT          23
-#define SPINN_NET_MAX            ( 255.0 * (1 << SPINN_NET_SHIFT))
-#define SPINN_NET_MIN            (-255.0 * (1 << SPINN_NET_SHIFT))
-
-// long nets are s40.23
-
-typedef int       error_t;          // unit output error
-typedef long long long_error_t;     // used for error intermediate calc
-
-//TODO: set these values correctly!
-// errors are s16.15
-#define SPINN_ERROR_SHIFT        15
-#define SPINN_ERROR_MAX          (  0xffff * (1 << SPINN_ERROR_SHIFT))
-#define SPINN_ERROR_MIN          (-(0xffff * (1 << SPINN_ERROR_SHIFT)))
-
-// long errors are s36.27
-#define SPINN_LONG_ERR_SHIFT     27
-//~#define SPINN_LONG_ERR_MAX       (  0xffff * (1 << SPINN_LONG_ERR_SHIFT))
-//~#define SPINN_LONG_ERR_MIN       (-(0xffff * (1 << SPINN_LONG_ERR_SHIFT)))
-
-typedef int       delta_t;          // input derivative
-typedef long long long_delta_t;     // used for delta intermediate calc
-
-// deltas are s16.15
-//!#define SPINN_DELTA_SHIFT        15
-//!#define SPINN_DELTA_MAX          (  0xffff * (1 << SPINN_DELTA_SHIFT))
-//!#define SPINN_DELTA_MIN          (-(0xffff * (1 << SPINN_DELTA_SHIFT)))
-// deltas are s8.23
-#define SPINN_DELTA_SHIFT        23
-#define SPINN_DELTA_MAX          (  0xff * (1 << SPINN_DELTA_SHIFT))
-#define SPINN_DELTA_MIN          (-(0xff * (1 << SPINN_DELTA_SHIFT)))
-
-// long_deltas are s36.27
-#define SPINN_LONG_DELTA_SHIFT   27
-//~#define SPINN_LONG_DELTA_MAX     SPINN_LONG_ERR_MAX
-//~#define SPINN_LONG_DELTA_MIN     SPINN_LONG_ERR_MIN
-
-typedef uint               lds_t;       // link delta sum
-typedef unsigned long long long_lds_t;  // long link delta sum for intermediate calculations
-
-// lds values are 28.4
-#define SPINN_LDS_SHIFT          4
-// long lds values are 60.4
-#define SPINN_LONG_LDS_SHIFT     4
-#define SPINN_LDS_ONE            (1 << SPINN_LDS_SHIFT)
-
+// ------------------------------------------------------------------------
+// weights and weight changes
+// --------------------------
 // weights are s16.15
 // long weights are s48.15
+//
 // weight changes are s16.15
 // long weight changes are s48.15
+// ------------------------------------------------------------------------
 typedef int       weight_t;         // connection weight
-typedef long long long_weight_t;    // intermediate conntection weight
+typedef long long long_weight_t;    // intermediate connection weight
+
 typedef int       wchange_t;        // connection weight change
 typedef long long long_wchange_t;   // intermediate connection weight change
 
@@ -149,27 +58,161 @@ typedef long long long_wchange_t;   // intermediate connection weight change
 #define SPINN_WEIGHT_POS_EPSILON ((weight_t)  1)
 #define SPINN_WEIGHT_NEG_EPSILON ((weight_t) -1)
 #define SPINN_WEIGHT_ONE         (1 << SPINN_WEIGHT_SHIFT)
+// ------------------------------------------------------------------------
 
-typedef short     short_fpreal_t;
-typedef int       fpreal;           // 32-bit fixed-point number
-typedef long long long_fpreal;      // 64-bit fixed-point number
 
-// short fixed-point reals are s0.15 (note difference with fpreal!)
-#define SPINN_SHORT_FPREAL_SHIFT 15
+// ------------------------------------------------------------------------
+// activations
+// --------------------------
+// short activations are s0.15
+// activations are s4.27
+// long activations are s36.27
+//NOTE: activation functions assume SPINN_ACTIV_SHIFT == SPINN_LONG_ACTIV_SHIFT
+// ------------------------------------------------------------------------
+typedef short     short_activ_t;
+typedef int       activation_t;     // unit output or activation
+typedef long long long_activ_t;     // intermediate unit output or activation
 
-//NOTE: may be a good idea to change to s16.15 for compatibility!
+#define SPINN_SHORT_ACTIV_SIZE      16
+#define SPINN_SHORT_ACTIV_SHIFT     15
+#define SPINN_SHORT_ACTIV_MAX       SHRT_MAX
+#define SPINN_SHORT_ACTIV_MIN       SHRT_MIN
+// minimum positive value
+#define SPINN_SHORT_ACTIV_MIN_POS   0
+
+#define SPINN_ACTIV_SIZE            32
+#define SPINN_ACTIV_SHIFT           27
+// Not-a-Number used to represent undefined
+#define SPINN_ACTIV_NaN             (1 << (SPINN_ACTIV_SIZE - 1))
+// these values are set to compute the cross entropy error function
+#define SPINN_ACTIV_ONE             (1 << SPINN_ACTIV_SHIFT)
+
+#define SPINN_LONG_ACTIV_SHIFT      27
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// input/output derivatives
+// --------------------------
+// short derivatives are s0.15
+// derivatives are s16.15
+// long derivatives are s36.27
+// ------------------------------------------------------------------------
+typedef short     short_deriv_t;    // input or output derivative
+typedef int       derivative_t;     // intermediate input/output derivative
+typedef long long long_deriv_t;     // intermediate input/output derivative
+
+#define SPINN_SHORT_DERIV_SHIFT     15
+#define SPINN_SHORT_DERIV_MAX       SHRT_MAX
+#define SPINN_SHORT_DERIV_MIN       SHRT_MIN
+
+#define SPINN_DERIV_SHIFT           15
+#define SPINN_DERIV_MAX             INT_MAX
+#define SPINN_DERIV_MIN             INT_MIN
+// these values are used to compute the cross entropy error
+#define SPINN_DERIV_ONE             (1 << SPINN_DERIV_SHIFT)
+#define SPINN_DERIV_NEG_ONE         (-1 << SPINN_DERIV_SHIFT)
+
+#define SPINN_LONG_DERIV_SHIFT      27
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// nets
+// --------------------------
+// nets are s8.23
+// long nets are s40.23
+//NOTE: activation functions assume SPINN_NET_SHIFT == SPINN_LONG_NET_SHIFT
+// ------------------------------------------------------------------------
+typedef int       net_t;            // internal net (inputs dot-product)
+typedef long long long_net_t;       // intermediate internal net
+
+#define SPINN_NET_SHIFT             23
+#define SPINN_NET_MAX               INT_MAX
+#define SPINN_NET_MIN               INT_MIN
+
+#define SPINN_LONG_NET_SHIFT        SPINN_NET_SHIFT
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// errors
+// --------------------------
+// errors are s16.15
+// long errors are s36.27
+// ------------------------------------------------------------------------
+typedef int       error_t;          // output error
+typedef long long long_error_t;     // intermediate output error
+
+#define SPINN_ERROR_SHIFT           15
+#define SPINN_ERROR_MAX             INT_MAX
+#define SPINN_ERROR_MIN             INT_MIN
+
+#define SPINN_LONG_ERR_SHIFT        27
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// deltas
+// --------------------------
+// deltas are s8.23
+// long_deltas are s36.27
+// ------------------------------------------------------------------------
+typedef int       delta_t;          // error delta
+typedef long long long_delta_t;     // intermediate error delta
+
+#define SPINN_DELTA_SHIFT           23
+#define SPINN_DELTA_MAX             INT_MAX
+#define SPINN_DELTA_MIN             INT_MIN
+
+#define SPINN_LONG_DELTA_SHIFT      27
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// link_delta sums
+// --------------------------
+// link delta sums are u28.4
+// long link delta sums are u60.4
+// ------------------------------------------------------------------------
+typedef uint               lds_t;       // link delta sum
+typedef unsigned long long long_lds_t;  // intermediate link delta sum
+
+#define SPINN_LDS_SHIFT             4
+#define SPINN_LDS_MAX               UINT_MAX
+#define SPINN_LDS_MIN               0
+#define SPINN_LDS_ONE               (1 << SPINN_LDS_SHIFT)
+
+#define SPINN_LONG_LDS_SHIFT        4
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// fixed-point reals
+// --------------------------
+// short fixed-point reals are s0.15
 // fixed-point reals are s15.16
-#define SPINN_FPREAL_SIZE        32
-#define SPINN_FPREAL_SHIFT       16
-#define SPINN_FP_NaN             (1 << (SPINN_FPREAL_SIZE - 1))
-#define SPINN_SMALL_VAL          1
-
 // long fixed-point reals are s47.16
-#define SPINN_LONG_FPREAL_SHIFT  16
+//NOTE: may be a good idea to change fpreal to s16.15 for compatibility!
+// ------------------------------------------------------------------------
+typedef short     short_fpreal;
+typedef int       fpreal;
+typedef long long long_fpreal;
 
-typedef uint      scoreboard_t;     // keep track of received items
+#define SPINN_SHORT_FPREAL_SHIFT    15
 
-typedef uchar     proc_phase_t;     // phase (FORWARD or BACKPROP)
+#define SPINN_FPREAL_SIZE           32
+#define SPINN_FPREAL_SHIFT          16
+#define SPINN_FP_NaN                (1 << (SPINN_FPREAL_SIZE - 1))
+#define SPINN_SMALL_VAL             1
+
+#define SPINN_LONG_FPREAL_SHIFT     16
+// ------------------------------------------------------------------------
+
+
+typedef uint scoreboard_t;      // keep track of received items
+
+typedef uchar proc_phase_t;     // phase (FORWARD or BACKPROP)
 
 
 // ------------------------------------------------------------------------
@@ -198,15 +241,17 @@ typedef struct network_conf     // MLP network configuration
 // weight cores compute unit net (FORWARD phase) and error (BACKPROP phase)
 // block dot-products (b-d-p) and weight updates.
 // ------------------------------------------------------------------------
-typedef struct w_conf               // weight core configuration
+typedef struct w_conf             // weight core configuration
 {
-  uint           num_rows;          // rows in this core's block
-  uint           num_cols;          // columns in this core's block
-  uint           row_blk;           // this core's row block number
-  uint           col_blk;           // this core's column block number
-  short_fpreal_t learningRate;      // network learning rate
-  short_fpreal_t weightDecay;       // network weight decay
-  short_fpreal_t momentum;          // network momentum
+  uint         num_rows;          // rows in this core's block
+  uint         num_cols;          // columns in this core's block
+  uint         row_blk;           // this core's row block number
+  uint         col_blk;           // this core's column block number
+  scoreboard_t sync_expected;     // num of expected sync packets
+  activation_t initOutput;        // initial value for unit outputs
+  short_fpreal learningRate;      // network learning rate
+  short_fpreal weightDecay;       // network weight decay
+  short_fpreal momentum;          // network momentum
 } w_conf_t;
 // ------------------------------------------------------------------------
 
@@ -267,9 +312,9 @@ typedef struct t_conf                  // threshold core configuration
   uchar         input_grp;             // is this an INPUT group?
   uint          num_units;             // this core's number of units
   uint          partitions;            // this group's number of partitions
-  scoreboard_t  fwd_sync_expected;     // all expected FORWARD sync packets
-  scoreboard_t  bkp_sync_expected;     // all expected BACKPROP sync packets
-  uchar         write_out;             // write outputs (send to host)?
+  uchar         write_results;         // record test results?
+  uchar         write_out;             // record outputs?
+  uchar         last_tick_only;        // record only last tick of examples?
   uint          write_blk;             // this core's write block
   uchar         hard_clamp_en;         // HARD CLAMP in use
   uchar         out_integr_en;         // output INTEGRATOR in use
@@ -350,6 +395,30 @@ typedef struct stage_conf       // execution stage configuration
   uint  num_examples;           // number of examples to run in this stage
   uint  num_epochs;             // number of training epochs in this stage
 } stage_conf_t;
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// tick record
+// ------------------------------------------------------------------------
+typedef struct tick_record {
+  uint epoch;    // current epoch
+  uint example;  // current example
+  uint event;    // current event
+  uint tick;     // current tick
+} tick_record_t;
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// test results record
+// ------------------------------------------------------------------------
+typedef struct test_results {
+  uint epochs_trained;    // epochs of training that have occurred
+  uint examples_tested;   // total number of examples tested
+  uint ticks_tested;      // total number of ticks in those examples
+  uint examples_correct;  // number of examples that met the testing criterion
+} test_results_t;
 // ------------------------------------------------------------------------
 
 

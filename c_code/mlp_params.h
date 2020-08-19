@@ -6,24 +6,11 @@
 // ------------------------------------------------------------------------
 // MLP parameters
 // ------------------------------------------------------------------------
-// software configuration
-// ------------------------------------------------------------------------
-#define SPINN_WEIGHT_HISTORY     FALSE
-#define SPINN_OUTPUT_HISTORY     FALSE
-
-
 // ------------------------------------------------------------------------
 // setup constants
 // ------------------------------------------------------------------------
 #define SPINN_TIMER_TICK_PERIOD  1000000
-//#define SPINN_TIMER_TICK_PERIOD  100000
-#define SPINN_PRINT_DLY          200
 #define SPINN_PRINT_SHIFT        16
-#define SPINN_SKEW_DELAY         (chipID << 18) | (coreID << 16)
-#define SPINN_TIMER2_DIV         10
-#define SPINN_TIMER2_CONF        0x83
-#define SPINN_TIMER2_LOAD        0
-
 
 // ------------------------------------------------------------------------
 // neural net constants
@@ -82,9 +69,9 @@
 // phase or direction
 // ------------------------------------------------------------------------
 #define SPINN_FORWARD       0
-#define SPINN_BACKPROP      (!SPINN_FORWARD)
+#define SPINN_BACKPROP      1
 
-#define SPINN_W_INIT_TICK   0
+#define SPINN_W_INIT_TICK   1
 #define SPINN_S_INIT_TICK   1
 #define SPINN_I_INIT_TICK   1
 #define SPINN_T_INIT_TICK   1
@@ -105,7 +92,7 @@
 #define SPINN_LDST_KEY       0x00002000
 #define SPINN_LDSA_KEY       0x00003000
 #define SPINN_LDSR_KEY       0x00004000
-#define SPINN_STPC_KEY       0x00005000
+#define SPINN_CRIT_KEY       0x00005000
 #define SPINN_STPN_KEY       0x00006000
 #define SPINN_STOP_KEY       0x00007000
 
@@ -150,9 +137,9 @@
 
 
 // ------------------------------------------------------------------------
-// implementation params
+// implementation parameters
 // ------------------------------------------------------------------------
-//TODO: check if size is appropriate
+//TODO: check if sizes are appropriate
 #define SPINN_THLD_PQ_LEN    256
 #define SPINN_WEIGHT_PQ_LEN  512
 #define SPINN_SUM_PQ_LEN     2048
@@ -161,33 +148,51 @@
 
 
 // ------------------------------------------------------------------------
+// thread parameters
+// ------------------------------------------------------------------------
+#define SPINN_THRD_PROC      1
+#define SPINN_THRD_COMS      ((SPINN_THRD_PROC) << 1)
+#define SPINN_THRD_STOP      ((SPINN_THRD_COMS) << 1)
+#define SPINN_THRD_LDSA      ((SPINN_THRD_STOP) << 1)
+#define SPINN_THRD_LDST      ((SPINN_THRD_LDSA) << 1)
+#define SPINN_THRD_LDSR      (SPINN_THRD_LDSA)
+
+#define SPINN_WF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_COMS | SPINN_THRD_STOP)
+#define SPINN_WB_THRDS       (SPINN_THRD_PROC)
+#define SPINN_SF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
+#define SPINN_SB_THRDS       (SPINN_THRD_PROC)
+#define SPINN_IF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
+#define SPINN_TF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
+#define SPINN_TB_THRDS       (SPINN_THRD_PROC | SPINN_THRD_COMS)
+
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // callback priorities
 // ------------------------------------------------------------------------
-// non-queueable callbacks
-#define SPINN_PACKET_P       -1
+// common non-queueable callbacks
+#define SPINN_PACKET_P      -1
 #define SPINN_TIMER_P        0
 
-// queueable callbacks
+// weight core priorities
 #define SPINN_WF_TICK_P      1
-#define SPINN_WB_TICK_P      1
 #define SPINN_WF_PROCESS_P   2
-#define SPINN_WB_PROCESS_P   2
+#define SPINN_WB_PROCESS_P   3
 
-#define SPINN_S_TICK_P       1
-#define SPINN_S_PROCESS_P    2
+// sum core priorities
+#define SPINN_S_PROCESS_P    1
 
-#define SPINN_I_TICK_P       1
-#define SPINN_I_PROCESS_P    2
+// input core priorities
+#define SPINN_I_PROCESS_P    1
 
-//TODO: review priorities
-#define SPINN_T_SEND_OUTS_P  1
-#define SPINN_T_SEND_STOP_P  2
-#define SPINN_T_INIT_OUT_P   2
-#define SPINN_T_INIT_DLT_P   2
-#define SPINN_TF_TICK_P      2
-#define SPINN_TB_TICK_P      2
+// threshold core priorities
+#define SPINN_TB_TICK_P      1
+#define SPINN_TB_PROCESS_P   2
 #define SPINN_TF_PROCESS_P   3
-#define SPINN_TB_PROCESS_P   3
+
+// stage exit function
+#define SPINN_DONE_P         4
 // ------------------------------------------------------------------------
 
 

@@ -4,9 +4,8 @@ from data_specification.enums.data_type import DataType
 
 from pacman.model.constraints.placer_constraints import ChipAndCoreConstraint
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
-from pacman.model.resources.resource_container \
-    import ResourceContainer, ConstantSDRAM
-from pacman.model.resources.iptag_resource import IPtagResource
+from pacman.model.resources import ResourceContainer, VariableSDRAM, ConstantSDRAM
+from pacman.executor.injection_decorator import inject_items
 
 from spinn_utilities.overrides import overrides
 
@@ -17,20 +16,29 @@ from spinn_front_end_common.abstract_models import \
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
 from spinn_front_end_common.utilities.constants \
-    import SYSTEM_BYTES_REQUIREMENT
+    import SYSTEM_BYTES_REQUIREMENT, BYTES_PER_WORD
+from spinn_front_end_common.interface.buffer_management.buffer_models import (
+    AbstractReceiveBuffersToHost)
+from spinn_front_end_common.interface.buffer_management import (
+    recording_utilities)
+from spinn_front_end_common.utilities.helpful_functions import (
+    locate_memory_region_for_placement)
 
 from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
     import generate_steps_system_data_region
 
-from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
+from spinn_pdp2.mlp_types import MLPConstants, MLPRegions, \
+    MLPVarSizeRecordings, MLPConstSizeRecordings, MLPExtraRecordings
+
 
 
 class ThresholdVertex(
         SimulatorVertex,
         MachineDataSpecableVertex,
         AbstractProvidesNKeysForPartition,
-        AbstractRewritesDataSpecification
+        AbstractRewritesDataSpecification,
+        AbstractReceiveBuffersToHost
         ):
 
     """ A vertex to implement a PDP2 threshold core
@@ -42,7 +50,7 @@ class ThresholdVertex(
                  group
                  ):
 
-        # add placement constraint if OUTPUT group
+        # place OUTPUT groups "close" to the host
         if group.output_grp:
             constraints = [ChipAndCoreConstraint (x = 0, y = 0)]
         else:
@@ -81,7 +89,7 @@ class ThresholdVertex(
             self._trn_group_criterion = MLPConstants.DEF_GRP_CRIT
 
         # check if last output group in daisy chain
-        if group == network.output_chain[-1]:
+        if self.group == network.output_chain[-1]:
             self._is_last_output_group = 1
         else:
             self._is_last_output_group = 0
@@ -93,13 +101,6 @@ class ThresholdVertex(
         self._bkp_link = "bkp_t{}".format (self.group.id)
         self._stp_link = "stp_t{}".format (self.group.id)
 
-        # threshold core-specific parameters
-        # NOTE: if all-zero w cores are optimised out these need reviewing
-        self._fwd_sync_expect = len (self._network.groups)
-
-        # NOTE: not used any more, may need reviewing if re-introduced
-        self._bkp_sync_expect = 0
-
         # reserve key space for every link
         self._n_keys = MLPConstants.KEY_SPACE_SIZE
 
@@ -109,7 +110,7 @@ class ThresholdVertex(
 
         # network configuration structure
         self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.network_config)
+            len (self.network.network_config)
 
         # core configuration structure
         self._N_CORE_CONFIGURATION_BYTES = \
@@ -142,36 +143,94 @@ class ThresholdVertex(
 
         # stage configuration structure
         self._N_STAGE_CONFIGURATION_BYTES = \
-            len (self._network.stage_config)
+            len (self.network.stage_config)
 
         # reserve SDRAM space used to store historic data
         self._TARGET_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
         self._OUT_DERIV_HISTORY_BYTES = (MLPConstants.LONG_DERIV_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
         self._NET_HISTORY_BYTES = (MLPConstants.NET_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
         self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+            self.group.units * self.network.global_max_ticks
 
-        self._sdram_usage = (
-            self._N_NETWORK_CONFIGURATION_BYTES + \
-            self._N_CORE_CONFIGURATION_BYTES + \
-            self._N_EXAMPLE_SET_BYTES + \
-            self._N_EXAMPLES_BYTES + \
-            self._N_EVENTS_BYTES + \
-            self._N_INPUTS_BYTES + \
-            self._N_TARGETS_BYTES + \
-            self._N_KEYS_BYTES + \
-            self._N_STAGE_CONFIGURATION_BYTES + \
-            self._TARGET_HISTORY_BYTES + \
-            self._OUT_DERIV_HISTORY_BYTES + \
-            self._NET_HISTORY_BYTES + \
-            self._OUTPUT_HISTORY_BYTES
+        # recording info region size
+        if self.group.output_grp:
+            # number of recording channels
+            NUM_REC_CHANNS = len(MLPVarSizeRecordings) + \
+                len(MLPConstSizeRecordings)
+
+            # first output group has extra recording channels
+            if self.group.is_first_out:
+                # number of extra recording channels
+                NUM_REC_CHANNS += len(MLPExtraRecordings)
+
+            self._REC_INFO_BYTES = \
+                recording_utilities.get_recording_header_size(NUM_REC_CHANNS)
+        else:
+            self._REC_INFO_BYTES = 0
+
+        # recording channel sizes
+        if self.group.output_grp:
+            # list of variable-size recording channel sizes
+            self.VAR_CHANNEL_SIZES = [
+                self.group.units * (BYTES_PER_WORD // 2)  # OUTPUTS
+                ]
+
+            # list of constant-size recording channel sizes
+            self.CONST_CHANNEL_SIZES = [
+                4 * BYTES_PER_WORD  # TEST_RESULTS
+                ]
+
+            # list of extra recording channel sizes
+            if self.group.is_first_out:
+                # list of extra recording channel sizes
+                self.EXTRA_CHANNEL_SIZES = [
+                    4 * BYTES_PER_WORD  # TICK_DATA
+                    ]
+            else:
+                self.EXTRA_CHANNEL_SIZES = [0]
+
+            self._VAR_CHANNEL_BYTES = sum(self.VAR_CHANNEL_SIZES) + \
+                sum(self.EXTRA_CHANNEL_SIZES)
+
+            self._CONST_CHANNEL_BYTES = sum(self.CONST_CHANNEL_SIZES)
+        else:
+            self._VAR_CHANNEL_BYTES = 0
+            self._CONST_CHANNEL_BYTES = 0
+
+        # configuration data plus application core SDRAM usage
+        self._sdram_fixed = (
+            SYSTEM_BYTES_REQUIREMENT +
+            self._N_NETWORK_CONFIGURATION_BYTES +
+            self._N_CORE_CONFIGURATION_BYTES +
+            self._N_EXAMPLE_SET_BYTES +
+            self._N_EXAMPLES_BYTES +
+            self._N_EVENTS_BYTES +
+            self._N_INPUTS_BYTES +
+            self._N_TARGETS_BYTES +
+            self._N_KEYS_BYTES +
+            self._N_STAGE_CONFIGURATION_BYTES +
+            self._TARGET_HISTORY_BYTES +
+            self._OUT_DERIV_HISTORY_BYTES +
+            self._NET_HISTORY_BYTES +
+            self._OUTPUT_HISTORY_BYTES +
+            self._REC_INFO_BYTES +
+            self._CONST_CHANNEL_BYTES
         )
+
+        # recording channels SDRAM usage
+        self._sdram_variable = (
+            self._VAR_CHANNEL_BYTES
+        )
+
+    @property
+    def network (self):
+        return self._network
 
     @property
     def group (self):
@@ -200,9 +259,9 @@ class ThresholdVertex(
               uchar         input_grp;
               uint          num_units;
               uint          partitions;
-              scoreboard_t  fwd_sync_expect;
-              scoreboard_t  bkp_sync_expect;
+              uchar         write_results;
               uchar         write_out;
+              uchar         last_tick_only;
               uint          write_blk;
               uchar         hard_clamp_en;
               uchar         out_integr_en;
@@ -222,6 +281,15 @@ class ThresholdVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # recording options
+        #TODO: Cannot get no recording to work - for now minimise recorded data!
+        if self.network.rec_outputs:
+            write_out = self.group.write_out
+            last_tick_only = self.network.rec_example_last_tick_only
+        else:
+            write_out = self.group.write_out
+            last_tick_only = True
+
         # integration dt is an MLP fixed-point fpreal
         out_integr_dt = int (self._out_integr_dt *\
                               (1 << MLPConstants.FPREAL_SHIFT))
@@ -240,17 +308,17 @@ class ThresholdVertex(
         trn_group_criterion = int (self._trn_group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2x4IB3xI2B2xi6I4i4B",
-                            self.group.output_grp & 0xff,
-                            self.group.input_grp & 0xff,
+        return struct.pack ("<2B2x2I3BxI2B2xi6I4i4B",
+                            self.group.output_grp,
+                            self.group.input_grp,
                             self.group.units,
                             self.group.partitions,
-                            self._fwd_sync_expect,
-                            self._bkp_sync_expect,
-                            self.group.write_out & 0xff,
+                            self.network.rec_test_results,
+                            write_out,
+                            last_tick_only,
                             self.group.write_blk,
-                            self.group.hard_clamp_en & 0xff,
-                            self.group.out_integr_en & 0xff,
+                            self.group.hard_clamp_en,
+                            self.group.out_integr_en,
                             out_integr_dt,
                             self.group.num_out_procs,
                             self.group.out_procs_list[0].value,
@@ -262,22 +330,23 @@ class ThresholdVertex(
                             init_output,
                             tst_group_criterion,
                             trn_group_criterion,
-                            self.group.criterion_function.value & 0xff,
-                            self.group.is_first_out & 0xff,
-                            self._is_last_output_group & 0xff,
-                            self.group.error_function.value & 0xff
+                            self.group.criterion_function.value,
+                            self.group.is_first_out,
+                            self._is_last_output_group,
+                            self.group.error_function.value
                             )
 
     @property
     @overrides (MachineVertex.resources_required)
     def resources_required (self):
-        resources = ResourceContainer (
-            sdram = ConstantSDRAM(SYSTEM_BYTES_REQUIREMENT + self._sdram_usage),
-            iptags = [IPtagResource (ip_address = "localhost",
-                                    tag         = 2,
-                                    port        = 17896,
-                                    strip_sdp   = False)]
-            )
+        if self.group.output_grp:
+            resources = ResourceContainer (
+                sdram = VariableSDRAM(self._sdram_fixed, self._sdram_variable)
+                )
+        else:
+            resources = ResourceContainer (
+                sdram = ConstantSDRAM(self._sdram_fixed)
+                )
         return resources
 
 
@@ -286,25 +355,47 @@ class ThresholdVertex(
         return self._n_keys
 
 
-    @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
+    def read(self, placement, buffer_manager, channel):
+        """ get recorded data from SDRAM
+
+        :param placement: the location of this vertex
+        :param buffer_manager: the buffer manager
+        :param channel: recording channel to be read
+        :return: recorded data as packed bytes
+        """
+        raw_data, missing_data = buffer_manager.get_data_by_placement(
+            placement, channel
+            )
+        if missing_data:
+            raise Exception("missing data!")
+        
+        # return data as "packed" bytes
+        return raw_data
+
+
+    @inject_items({
+        "data_n_steps": "DataNSteps"
+    })
+    @overrides(MachineDataSpecableVertex.generate_machine_data_specification,
+               additional_arguments=["data_n_steps"])
     def generate_machine_data_specification(
             self, spec, placement, machine_graph, routing_info, iptags,
-            reverse_iptags, machine_time_step, time_scale_factor):
+            reverse_iptags, machine_time_step, time_scale_factor, data_n_steps):
 
         # Generate the system data region for simulation.c requirements
         generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)
 
-        # Reserve and write the network configuration region
+        # reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,
                                     self._N_NETWORK_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.network_config:
+        for c in self.network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the core configuration region
+        # reserve and write the core configuration region
         spec.reserve_memory_region (MLPRegions.CORE.value,
                                     self._N_CORE_CONFIGURATION_BYTES)
 
@@ -314,7 +405,7 @@ class ThresholdVertex(
         for c in self.config:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the example set region
+        # reserve and write the example set region
         spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
                                     self._N_EXAMPLE_SET_BYTES)
 
@@ -324,7 +415,7 @@ class ThresholdVertex(
         for c in self._set_cfg:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the examples region
+        # reserve and write the examples region
         spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
                                     self._N_EXAMPLES_BYTES)
 
@@ -335,7 +426,7 @@ class ThresholdVertex(
             for c in ex:
                 spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the events region
+        # reserve and write the events region
         spec.reserve_memory_region (MLPRegions.EVENTS.value,
                                     self._N_EVENTS_BYTES)
 
@@ -346,7 +437,7 @@ class ThresholdVertex(
             for c in ev:
                 spec.write_value (c, data_type = DataType.UINT8)
 
-        # Reserve and write the input data region (if INPUT group)
+        # reserve and write the input data region (if INPUT group)
         if self._N_INPUTS_BYTES != 0:
             spec.reserve_memory_region (MLPRegions.INPUTS.value,
                                         self._N_INPUTS_BYTES)
@@ -362,7 +453,7 @@ class ThresholdVertex(
                     _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_inp, data_type = DataType.UINT32)
 
-        # Reserve and write the target data region
+        # reserve and write the target data region
         if self._N_TARGETS_BYTES != 0:
             spec.reserve_memory_region (MLPRegions.TARGETS.value,
                                         self._N_TARGETS_BYTES)
@@ -378,20 +469,23 @@ class ThresholdVertex(
                     _tgt = int (_t * (1 << MLPConstants.ACTIV_SHIFT))
                 spec.write_value (_tgt, data_type = DataType.UINT32)
 
-        # Reserve and write the routing region
+        # reserve and write the routing region
         spec.reserve_memory_region (MLPRegions.ROUTING.value,
                                     self._N_KEYS_BYTES)
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
-        # write link keys: fwd (padding), bkp, fds (padding), stp, lds (padding), and fwdt
+        # write link keys: fwd (padding - keys written below)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: bkp
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
+        # write link keys: fds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: stp
         # stop key for OUTPUT groups only
         if self.group.output_grp:
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
@@ -399,38 +493,58 @@ class ThresholdVertex(
         else:
             spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: lds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: fwdt
         for p in range (self.group.partitions):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.fwd_link[p]), data_type = DataType.UINT32)
 
-        # Reserve and write the stage configuration region
+        # reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
                                     self._N_STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
-        # End the specification
+        # reserve and write the recording info region
+        if self.group.output_grp:
+            spec.reserve_memory_region(
+                region = MLPRegions.REC_INFO.value,
+                size = self._REC_INFO_BYTES
+                )
+    
+            # write the actual recording channel sizes for a stage
+            _sizes = [data_n_steps * sz for sz in self.VAR_CHANNEL_SIZES]
+            _sizes.extend([sz for sz in self.CONST_CHANNEL_SIZES])
+            if self.group.is_first_out:
+                _sizes.extend(
+                    [data_n_steps * sz for sz in self.EXTRA_CHANNEL_SIZES]
+                    )
+
+            spec.switch_write_focus(MLPRegions.REC_INFO.value)
+            spec.write_array(
+                recording_utilities.get_recording_header_array(_sizes)
+            )
+
         spec.end_specification ()
 
 
     @overrides(AbstractRewritesDataSpecification.regenerate_data_specification)
     def regenerate_data_specification(self, spec, placement):
-        # Reserve and write the stage configuration region
+        # reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
                                     self._N_STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
-
 
         spec.end_specification()
 
@@ -447,3 +561,24 @@ class ThresholdVertex(
         """
         # prepare for next stage
         self._stage += 1
+
+
+    @overrides(AbstractReceiveBuffersToHost.get_recorded_region_ids)
+    def get_recorded_region_ids(self):
+        if self.group.output_grp:
+            ids = [ch.value for ch in MLPVarSizeRecordings]
+            ids.extend([ch.value for ch in MLPConstSizeRecordings])
+
+            # first output group has additional recording channels
+            if self.group.is_first_out:
+                ids.extend([ch.value for ch in MLPExtraRecordings])
+
+            return ids
+        else:
+            return []
+
+    
+    @overrides(AbstractReceiveBuffersToHost.get_recording_region_base_address)
+    def get_recording_region_base_address(self, txrx, placement):
+        return locate_memory_region_for_placement(
+            placement, MLPRegions.REC_INFO.value, txrx)

@@ -17,7 +17,8 @@
 // weight core computation routines
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// process FORWARD phase: compute partial dot products (output * weight)
+// process a FORWARD-phase tick
+// compute partial dot products (output * weight)
 // ------------------------------------------------------------------------
 void wf_process (uint unused0, uint unused1)
 {
@@ -31,14 +32,12 @@ void wf_process (uint unused0, uint unused1)
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
-    // s40.23
     long_net_t net_part_tmp = 0;
 
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-      // s40.23 = s40.23 + ((s4.27 * s3.12) >> 16)
       net_part_tmp += (((long_net_t) w_outputs[wf_procs][i] * (long_net_t) w_weights[i][j])
-                  >> (SPINN_ACTIV_SHIFT + SPINN_WEIGHT_SHIFT - SPINN_NET_SHIFT));
+                  >> (SPINN_ACTIV_SHIFT + SPINN_WEIGHT_SHIFT - SPINN_LONG_NET_SHIFT));
     }
 
     net_t net_part = 0;
@@ -49,14 +48,10 @@ void wf_process (uint unused0, uint unused1)
       net_part = (net_t) SPINN_NET_MAX;
     else if (net_part_tmp < (long_net_t) SPINN_NET_MIN)
       // negative saturation
-      net_part = (net_t) SPINN_NET_MAX;
+      net_part = (net_t) SPINN_NET_MIN;
     else
-      // representation in 40.23 within the range (-255; 255) can be reduced to 8.23
+      // no saturation needed
       net_part = (net_t) net_part_tmp;
-
-#ifdef DEBUG_CFG3
-    io_printf (IO_BUF, "wn[%u]: 0x%08x\n", j, net_part);
-#endif
 
     // incorporate net index to the packet key and send
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));
@@ -67,32 +62,32 @@ void wf_process (uint unused0, uint unused1)
 #endif
   }
 
-  // access synchronisation semaphore with interrupts disabled
+  // access thread semaphore with interrupts disabled
   uint cpsr = spin1_int_disable ();
 
-  // and check if all other threads done
-  if (wf_thrds_pend == 0)
-  {
-    // if done initialise synchronisation semaphore,
-    wf_thrds_pend = 2;
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+  if (!(wf_thrds_pend & SPINN_THRD_PROC))
+    wrng_pth++;
+#endif
 
-    // restore interrupts after flag access,
+  // and check if all other threads done
+  if (wf_thrds_pend == SPINN_THRD_PROC)
+  {
+    // if done initialise thread semaphore,
+    wf_thrds_pend = SPINN_WF_THRDS;
+
+    // restore interrupts after semaphore access,
     spin1_mode_restore (cpsr);
 
     // and advance tick
-    //TODO: check if need to schedule or can simply call
-#ifdef TRACE_VRB
-    io_printf (IO_BUF, "wfp calling wf_advance_tick\n");
-#endif
-
     wf_advance_tick (0, 0);
   }
   else
   {
     // if not done report processing thread done,
-    wf_thrds_pend -= 1;
+    wf_thrds_pend &= ~SPINN_THRD_PROC;
 
-    // and restore interrupts after flag access
+    // and restore interrupts after semaphore access
     spin1_mode_restore (cpsr);
   }
 }
@@ -100,199 +95,180 @@ void wf_process (uint unused0, uint unused1)
 
 
 // ------------------------------------------------------------------------
-// process BACKPROP phase: compute partial products (weight * delta)
+// process BACKPROP data packet
+// compute partial products (weight * delta)
 // ------------------------------------------------------------------------
-void wb_process (uint unused0, uint unused1)
+void wb_process (uint key, uint payload)
 {
-  (void) unused0;
-  (void) unused1;
+#ifdef DEBUG
+  recv_bkp++;
+  if (phase == SPINN_FORWARD)
+    wrng_bph++;
 
-#ifdef TRACE
-  io_printf (IO_BUF, "wb_process\n");
-#endif
-
-  // process delta packet queue
-  // access queue with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-  // process until queue empty
-  while (w_delta_pkt_q.head != w_delta_pkt_q.tail)
+  uint blk = (key & SPINN_BLOCK_MASK) >> SPINN_BLOCK_SHIFT;
+  if (blk != wcfg.col_blk)
   {
-    // if not empty dequeue packet,
-    uint inx = w_delta_pkt_q.queue[w_delta_pkt_q.head].key;
-    delta_t delta = (delta_t) w_delta_pkt_q.queue[w_delta_pkt_q.head].payload;
-    w_delta_pkt_q.head = (w_delta_pkt_q.head + 1) % SPINN_WEIGHT_PQ_LEN;
-
-    // restore interrupts after queue access,
-    spin1_mode_restore (cpsr);
-
-    // get delta index: mask out phase and block data,
-    inx &= SPINN_BLKDLT_MASK;
-
-    // update scoreboard,
-    wb_arrived++;
-
-    // partial value used to compute Doug's Momentum
-    long_lds_t link_delta_sum = 0;
-
-    // compute link derivatives and partial error dot products,
-    for (uint i = 0; i < wcfg.num_rows; i++)
-    {
-      // compute link derivatives,
-      // s36.27 = (s4.27 * s8.23) >> 23
-      w_link_deltas[i][inx] += ((long_delta_t) w_outputs[0][i]
-                                 * (long_delta_t) delta)
-                                 >> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
-                                 - SPINN_LONG_DELTA_SHIFT);
-
-      // if using Doug's Momentum and reached the end of an epoch
-      // accumulate partial link delta sum (to send to s core),
-      if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example_cnt == (xcfg.num_examples - 1)
-            && tick == SPINN_WB_END_TICK)
-      {
-        // only use link derivatives for links whose weights are non-zero
-        // as zero weights indicate no connection
-        if (w_weights[i][inx] != 0)
-        {
-          long_lds_t link_delta_tmp;
-
-          // scale the link derivatives
-          if (ncfg.net_type == SPINN_NET_CONT)
-          {
-            // 60.4 = (s36.27 * s15.16) >> 39
-            link_delta_tmp = (w_link_deltas[i][inx] * (long_delta_t) w_delta_dt)
-                                 >> (SPINN_LONG_DELTA_SHIFT + SPINN_FPREAL_SHIFT
-                                     - SPINN_LONG_LDS_SHIFT);
-          }
-          else
-          {
-            link_delta_tmp = w_link_deltas[i][inx];
-          }
-
-          // square the link derivatives
-          // 60.4 = (60.4 * 60.4) >> 4
-          link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT);
-          link_delta_sum = link_delta_sum + link_delta_tmp;
-        }
-      }
-
-      // partially compute error dot products,
-      // s16.15 = s16.15 + (s3.12 * s8.23) >> 20
-      //NOTE: may need to make w_errors a long_error_t type and saturate!
-      w_errors[i] += (error_t) (((long_error_t) w_weights[i][inx]
-                       * (long_error_t) delta)
-                       >> (SPINN_WEIGHT_SHIFT + SPINN_DELTA_SHIFT
-                       - SPINN_ERROR_SHIFT)
-                     );
-
-      // check if done with all deltas
-      if (wb_arrived == wcfg.num_cols)
-      {
-        // send computed error dot product,
-        while (!spin1_send_mc_packet ((bkpKey | i),
-                (uint) w_errors[i], WITH_PAYLOAD)
-              );
-
-#ifdef DEBUG
-        pkt_sent++;
-        sent_bkp++;
+    pkt_bwbk++;
+    return;
+  }
 #endif
 
-#ifdef DEBUG_CFG4
-        io_printf (IO_BUF, "we[%u]: 0x%08x\n", i, w_errors[i]);
-#endif
+  // get delta index: mask out phase and block data,
+  uint inx = key & SPINN_BLKDLT_MASK;
 
-        // and initialise error for next tick
-        w_errors[i] = 0;
-      }
-    }
+  // packet carries a delta as payload
+  delta_t delta = (delta_t) payload;
 
-    // if using Doug's Momentum and reached the end of an epoch,
-    // forward the accumulated partial link delta sums to the s core
+  // update scoreboard,
+  wb_arrived++;
+
+  // partial value used to compute Doug's Momentum
+  long_lds_t link_delta_sum = 0;
+
+  // compute link derivatives and partial error dot products,
+  for (uint i = 0; i < wcfg.num_rows; i++)
+  {
+    // compute link derivatives,
+    w_link_deltas[i][inx] += ((long_delta_t) w_outputs[0][i]
+                               * (long_delta_t) delta)
+                               >> (SPINN_ACTIV_SHIFT + SPINN_DELTA_SHIFT
+                               - SPINN_LONG_DELTA_SHIFT);
+
+    // if using Doug's Momentum and reached the end of an epoch
+    // accumulate partial link delta sum (to send to s core),
     if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example_cnt == (xcfg.num_examples - 1)
-            && tick == SPINN_WB_END_TICK)
+          && example_cnt == (xcfg.num_examples - 1)
+          && tick == SPINN_WB_END_TICK)
     {
-      // cast to a 32-bit value,
-      lds_t link_delta_sum_short = (lds_t) link_delta_sum;
-
-      // and send partial link delta sum
-      while (!spin1_send_mc_packet (ldsaKey,
-                (uint) link_delta_sum_short, WITH_PAYLOAD)
-            );
-#ifdef DEBUG
-      pkt_sent++;
-      lda_sent++;
-#endif
-    }
-
-    // if done with all deltas advance tick
-    if (wb_arrived == wcfg.num_cols)
-    {
-      // initialise arrival scoreboard for next tick,
-      wb_arrived = 0;
-
-      // access synchronisation semaphore with interrupts disabled
-      uint cpsr = spin1_int_disable ();
-
-      // and check if all other threads done
-      if (wb_thrds_pend == 0)
+      // only use link derivatives for links whose weights are non-zero
+      // as zero weights indicate no connection
+      if (w_weights[i][inx] != 0)
       {
-        // if done initialise synchronisation semaphore,
-        // if we are using Doug's Momentum, and we have reached the end of the
-        // epoch (i.e. we are on the last example, and are about to move on to
-        // the last tick, we have to wait for the total link delta sum to
-        // arrive
-        if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example_cnt == (xcfg.num_examples - 1)
-            && tick == SPINN_WB_END_TICK + 1)
+        long_lds_t link_delta_tmp;
+
+        // scale the link derivatives
+        if (ncfg.net_type == SPINN_NET_CONT)
         {
-          wb_thrds_pend = 1;
+          link_delta_tmp = (w_link_deltas[i][inx] * (long_delta_t) w_delta_dt)
+                               >> (SPINN_LONG_DELTA_SHIFT + SPINN_FPREAL_SHIFT
+                                   - SPINN_LONG_LDS_SHIFT);
         }
         else
         {
-          wb_thrds_pend = 0;
+          link_delta_tmp = w_link_deltas[i][inx];
         }
 
-        // restore interrupts after flag access,
-        spin1_mode_restore (cpsr);
-
-#ifdef TRACE_VRB
-        io_printf (IO_BUF, "wbp calling wb_advance_tick\n");
-#endif
-
-        //TODO: check if need to schedule or can simply call
-        wb_advance_tick (0, 0);
-      }
-      else
-      {
-        // if not done report processing thread done,
-        wb_thrds_pend -= 1;
-
-        // and restore interrupts after flag access
-        spin1_mode_restore (cpsr);
+        // square the link derivatives
+        link_delta_tmp = ((link_delta_tmp * link_delta_tmp) >> SPINN_LONG_LDS_SHIFT);
+        link_delta_sum = link_delta_sum + link_delta_tmp;
       }
     }
 
-    // access queue with interrupts disabled
-    cpsr = spin1_int_disable ();
+    // partially compute error dot products,
+    //NOTE: may need to make w_errors a long_error_t type and saturate!
+    w_errors[i] += (error_t) (((long_error_t) w_weights[i][inx]
+                     * (long_error_t) delta)
+                     >> (SPINN_WEIGHT_SHIFT + SPINN_DELTA_SHIFT
+                     - SPINN_ERROR_SHIFT)
+                   );
+
+    // check if done with all deltas
+    if (wb_arrived == wcfg.num_cols)
+    {
+      // send computed error dot product,
+      while (!spin1_send_mc_packet ((bkpKey | i),
+              (uint) w_errors[i], WITH_PAYLOAD)
+            );
+
+#ifdef DEBUG
+      pkt_sent++;
+      sent_bkp++;
+#endif
+
+      // and initialise error for next tick
+      w_errors[i] = 0;
+    }
   }
 
-  // when done, flag that going to sleep,
-  wb_active = FALSE;
+  // if using Doug's Momentum and reached the end of an epoch,
+  // forward the accumulated partial link delta sums to the s core
+  if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+          && example_cnt == (xcfg.num_examples - 1)
+          && tick == SPINN_WB_END_TICK)
+  {
+    // cast link_delta_sum to send as payload,
+    //NOTE: link deltas are unsigned!
+    lds_t lds_to_send;
 
-  // restore interrupts and leave
-  spin1_mode_restore (cpsr);
+    if (link_delta_sum > (long_lds_t) SPINN_LDS_MAX)
+      // positive saturation
+      lds_to_send = (lds_t) SPINN_LDS_MAX;
+    else
+      // no saturation needed
+      lds_to_send = (lds_t) link_delta_sum;
+
+    // and send partial link delta sum
+    while (!spin1_send_mc_packet (ldsaKey, (uint) lds_to_send, WITH_PAYLOAD));
+
+#ifdef DEBUG
+    pkt_sent++;
+    lda_sent++;
+#endif
+  }
+
+  // if done with all deltas advance tick
+  if (wb_arrived == wcfg.num_cols)
+  {
+    // initialise arrival scoreboard for next tick,
+    wb_arrived = 0;
+
+    // access thread semaphore with interrupts disabled
+    uint cpsr = spin1_int_disable ();
+
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+    if (!(wb_thrds_pend & SPINN_THRD_PROC))
+      wrng_pth++;
+#endif
+
+    // and check if all other threads done
+    if (wb_thrds_pend == SPINN_THRD_PROC)
+    {
+      // if done initialise thread semaphore,
+      // if we are using Doug's Momentum, and we have reached the end of the
+      // epoch (i.e. we are on the last example, and are about to move on to
+      // the last tick, we have to wait for the total link delta sum to
+      // arrive
+      if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+          && example_cnt == (xcfg.num_examples - 1)
+          && tick == SPINN_WB_END_TICK + 1)
+      {
+        wb_thrds_pend = SPINN_WB_THRDS | SPINN_THRD_LDSR;
+      }
+
+      // restore interrupts after semaphore access,
+      spin1_mode_restore (cpsr);
+
+      // and advance tick
+      wb_advance_tick ();
+    }
+    else
+    {
+      // report processing thread done,
+      wb_thrds_pend &= ~SPINN_THRD_PROC;
+
+      // and restore interrupts after semaphore access
+      spin1_mode_restore (cpsr);
+    }
+  }
 }
-// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------+
 
 
 // ------------------------------------------------------------------------
 // perform a weight update using steepest descent
 // a weight of 0 means that there is no connection between the two units.
 // the zero value is represented by the lowest possible (positive or negative)
-// weight. A weight value is a s16.15 variable in fixed point
+// weight.
 // ------------------------------------------------------------------------
 void steepest_update_weights (void)
 {
@@ -309,24 +285,18 @@ void steepest_update_weights (void)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-#ifdef DEBUG_VRB
-      weight_t old_weight = w_weights[i][j];
-#endif
-
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
       {
         // scale the link derivatives
         if (ncfg.net_type == SPINN_NET_CONT)
         {
-          // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
                                  * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
         // compute weight change,
-        // s48.15 = (s0.15 * s36.27) >> 27
         long_wchange_t change_tmp = ((long_wchange_t) -wcfg.learningRate *
                              (long_wchange_t) w_link_deltas[i][j]);
 
@@ -388,31 +358,17 @@ void steepest_update_weights (void)
           w_weights[i][j] = (weight_t) temp;
         }
       }
-
-#ifdef DEBUG_VRB
-      io_printf (IO_BUF,
-                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                 i, j,
-                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-                 old_weight,
-                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-                 w_weights[i][j]
-        );
-#endif
     }
   }
-
-#if SPINN_WEIGHT_HISTORY == TRUE
-  //TODO: dump weights to SDRAM for record keeping
-#endif
 }
 // ------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------
 // perform a weight update using momentum descent
 // a weight of 0 means that there is no connection between the two units.
 // the zero value is represented by the lowest possible (positive or negative)
-// weight. A weight value is a s16.15 variable in fixed point
+// weight.
 // ------------------------------------------------------------------------
 void momentum_update_weights (void)
 {
@@ -429,24 +385,18 @@ void momentum_update_weights (void)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-#ifdef DEBUG_VRB
-      weight_t old_weight = w_weights[i][j];
-#endif
-
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
       {
         // scale the link derivatives
         if (ncfg.net_type == SPINN_NET_CONT)
         {
-          // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
                                  * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
         // compute weight change,
-        // s48.15 = (s0.15 * s36.27) >> 27
         long_wchange_t change_tmp = ((long_wchange_t) -wcfg.learningRate *
                              (long_wchange_t) w_link_deltas[i][j]);
 
@@ -457,7 +407,6 @@ void momentum_update_weights (void)
                                         - SPINN_WEIGHT_SHIFT - 1));
 
         // compute momentum factor
-        // s48.15 = (s0.15 * s48.15) >> 15
         long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
 
         // round off
@@ -520,23 +469,8 @@ void momentum_update_weights (void)
           w_weights[i][j] = (weight_t) temp;
         }
       }
-
-#ifdef DEBUG_VRB
-      io_printf (IO_BUF,
-                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                 i, j,
-                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-                 old_weight,
-                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-                 w_weights[i][j]
-        );
-#endif
     }
   }
-
-#if SPINN_WEIGHT_HISTORY == TRUE
-  //TODO: dump weights to SDRAM for record keeping
-#endif
 }
 // ------------------------------------------------------------------------
 
@@ -545,7 +479,7 @@ void momentum_update_weights (void)
 // perform a weight update using doug's momentum
 // a weight of 0 means that there is no connection between the two units.
 // the zero value is represented by the lowest possible (positive or negative)
-// weight. A weight value is a s16.15 variable in fixed point
+// weight.
 // ------------------------------------------------------------------------
 void dougsmomentum_update_weights (void)
 {
@@ -572,7 +506,6 @@ void dougsmomentum_update_weights (void)
   }
 
   // multiply learning scale by learning rate
-  // s16.15 = (s16.15 * s0.15) >> 15
   scale = (scale * wcfg.learningRate) >> SPINN_SHORT_FPREAL_SHIFT;
 
   // update weights
@@ -580,24 +513,18 @@ void dougsmomentum_update_weights (void)
   {
     for (uint i = 0; i < wcfg.num_rows; i++)
     {
-#ifdef DEBUG_VRB
-      weight_t old_weight = w_weights[i][j];
-#endif
-
       // do not update weights that are 0 -- indicates no connection!
       if (w_weights[i][j] != 0)
       {
         // scale the link derivatives
         if (ncfg.net_type == SPINN_NET_CONT)
         {
-          // s36.27 = (s36.27 * s15.16) >> 16
           w_link_deltas[i][j] = (w_link_deltas[i][j]
                                  * (long_delta_t) w_delta_dt)
                                  >> SPINN_FPREAL_SHIFT;
         }
 
         // compute weight change,
-        // s48.15 = (s16.15 * s36.27) >> 27
         long_wchange_t change_tmp = ((long_wchange_t) -scale *
                              (long_wchange_t) w_link_deltas[i][j]);
 
@@ -608,7 +535,6 @@ void dougsmomentum_update_weights (void)
                                         - SPINN_WEIGHT_SHIFT - 1));
 
         // compute momentum factor
-        // s48.15 = (s0.15 * s48.15) >> 15
         long_wchange_t momentum_tmp = ((long_wchange_t) wcfg.momentum * w_wchanges[i][j]);
 
         // round off
@@ -671,23 +597,8 @@ void dougsmomentum_update_weights (void)
           w_weights[i][j] = (weight_t) temp;
         }
       }
-
-#ifdef DEBUG_VRB
-      io_printf (IO_BUF,
-                 "[%2d][%2d] wo = %10.7f (0x%08x) wn = %10.7f (0x%08x)\n",
-                 i, j,
-                 SPINN_CONV_TO_PRINT(old_weight, SPINN_WEIGHT_SHIFT),
-                 old_weight,
-                 SPINN_CONV_TO_PRINT(w_weights[i][j], SPINN_WEIGHT_SHIFT),
-                 w_weights[i][j]
-        );
-#endif
     }
   }
-
-#if SPINN_WEIGHT_HISTORY == TRUE
-  //TODO: dump weights to SDRAM for record keeping
-#endif
 }
 // ------------------------------------------------------------------------
 
@@ -710,14 +621,6 @@ void wf_advance_tick (uint unused0, uint unused1)
   if (tick)
   {
     tot_tick++;
-  }
-#endif
-
-#ifdef DEBUG_TICK
-  //NOTE: tick 0 is not a computation tick
-  if (tick)
-  {
-    io_printf (IO_BUF, "wf_tick: %d/%d\n", tick, tot_tick);
   }
 #endif
 
@@ -748,25 +651,14 @@ void wf_advance_tick (uint unused0, uint unused1)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void wb_advance_tick (uint unused0, uint unused1)
+void wb_advance_tick (void)
 {
-  (void) unused0;
-  (void) unused1;
-
 #ifdef TRACE
   io_printf (IO_BUF, "wb_advance_tick\n");
 #endif
 
 #ifdef DEBUG
   tot_tick++;
-#endif
-
-#ifdef DEBUG_TICK
-  io_printf (IO_BUF, "wb_tick: %d/%d\n", tick, tot_tick);
-#endif
-
-#ifdef DEBUG_VRB
-  io_printf (IO_BUF, "wb: num_ticks: %d, tick: %d\n", num_ticks, tick);
 #endif
 
   // change packet key colour,
@@ -778,11 +670,10 @@ void wb_advance_tick (uint unused0, uint unused1)
     // initialise tick for next example
     tick = SPINN_W_INIT_TICK;
 
-    // go to FORWARD phase,
+    // move on to FORWARD phase,
     w_switch_to_fw ();
 
     // and move to next example
-    //TODO: should be called or scheduled?
     w_advance_example ();
   }
   else
@@ -809,26 +700,19 @@ void wf_advance_event (void)
   // check if done with example's FORWARD phase
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
-    // access synchronisation semaphore with interrupts disabled
+    // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
-    // initialise synchronisation semaphore,
-    wf_thrds_pend = 0;  // no processing and no stop in tick 0
+    // initialise thread semaphore,
+    wf_thrds_pend = SPINN_WF_THRDS;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
 
-    // initialise stop criterion for next example,
-    // first tick does not get a stop packet!
-    tick_stop = FALSE;
-
     // and check if in training mode
     if (xcfg.training)
     {
-      // if training, save number of ticks
-      num_ticks = tick;
-
-      // then do BACKPROP phase
+      // move on to BACKPROP phase
       w_switch_to_bp ();
     }
     else
@@ -853,7 +737,7 @@ void wf_advance_event (void)
 
 
 // ------------------------------------------------------------------------
-// update the example at the end of a simulation tick
+// update example at the end of a (FORWARD or BACKPROP) tick
 // ------------------------------------------------------------------------
 void w_advance_example (void)
 {
@@ -861,58 +745,86 @@ void w_advance_example (void)
   io_printf (IO_BUF, "w_advance_example\n");
 #endif
 
-  // point to next example in the set - wrap around if at the end
+  // point to next example in the set - wrap around if at the end,
   if (++example_inx >= es->num_examples)
   {
     example_inx = 0;
   }
 
-  // check if done with examples
+  // check if done with examples,
   if (++example_cnt >= xcfg.num_examples)
   {
-    // if training update weights at end of epoch
+    // prepare for next epoch,
+    epoch++;
+
+    // reset example count for next epoch,
+    example_cnt = 0;
+
+    // and, if training, update weights and initialise weight changes
+    //TODO: find a better place for this operation
     if (xcfg.training)
     {
-      //TODO: should be called or scheduled?
       wb_update_func ();
 
-#if WEIGHT_HISTORY == TRUE
-      // send weight history to host
-      //TODO: write this function!
-      //send_weights_to_host ();
-#endif
-    }
-
-    // check if done with epochs
-    if (!xcfg.training || (++epoch >= xcfg.num_epochs))
-    {
-      // report no error
-      stage_done (SPINN_NO_ERROR);
-      return;
-    }
-    else
-    {
-      // reset example count for next epoch
-      example_cnt = 0;
-
-      // and, if training, initialise weight changes
-      //TODO: find a better place for this operation
-      if (xcfg.training)
+      for (uint i = 0; i < wcfg.num_rows; i++)
       {
-        for (uint i = 0; i < wcfg.num_rows; i++)
+        for (uint j = 0; j < wcfg.num_cols; j++)
         {
-          for (uint j = 0; j < wcfg.num_cols; j++)
-          {
-            w_link_deltas[i][j] = 0;
-          }
+          w_link_deltas[i][j] = 0;
         }
       }
     }
+  }
+  else
+  {
+    // fake network stop packet (expected only at end of epoch)
+    //NOTE: safe to do it without disabling interrupts.
+    net_stop_rdy = TRUE;
   }
 
   // start from first event for next example,
   evt = 0;
   num_events = ex[example_inx].num_events;
+
+  // initialise unit outputs,
+  for (uint i = 0; i < wcfg.num_rows; i++)
+  {
+    w_outputs[wf_procs][i] = wcfg.initOutput;
+  }
+
+  // access sync and net_stop flags with interrupts disabled,
+  uint cpsr = spin1_int_disable ();
+
+  // and check if can trigger next example computation
+  if (sync_rdy && net_stop_rdy)
+  {
+    // clear flags for next tick,
+    sync_rdy = FALSE;
+    net_stop_rdy = FALSE;
+
+    // restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+
+    // and decide what to do
+    if (net_stop)
+    {
+      // finish stage and report no error
+      spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+    }
+    else
+    {
+      // or trigger computation
+      spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+    }
+  }
+  else
+  {
+    // flag as ready
+    epoch_rdy = TRUE;
+
+    // restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+  }
 }
 // ------------------------------------------------------------------------
 
@@ -944,24 +856,26 @@ void w_switch_to_bp (void)
   // move to new BACKPROP phase,
   phase = SPINN_BACKPROP;
 
-  // and restore previous tick outputs
+  // restore previous tick outputs,
   restore_outputs (tick - 1);
-}
-// ------------------------------------------------------------------------
 
+  // access queue and flag with interrupts disabled,
+  uint cpsr = spin1_int_disable ();
 
-// ------------------------------------------------------------------------
-// restores the output of the specified unit for requested tick
-// ------------------------------------------------------------------------
-void restore_outputs (uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_outputs\n");
-#endif
-
-  for (uint inx = 0; inx < wcfg.num_rows; inx++)
+  // check if need to schedule BACKPROP processing thread,
+  if (!wb_active && (w_pkt_queue.tail != w_pkt_queue.head))
   {
-    w_outputs[0][inx] = w_output_history[(tick * wcfg.num_rows) + inx];
+    // flag as active,
+    wb_active = TRUE;
+
+    // restore interrupts after semaphore access,
+    spin1_mode_restore (cpsr);
+
+    // and schedule BACKPROP processing thread
+    spin1_schedule_callback (w_processBKPQueue, 0, 0, SPINN_WB_PROCESS_P);
   }
+
+  // and restore interrupts after queue and flag access
+  spin1_mode_restore (cpsr);
 }
 // ------------------------------------------------------------------------

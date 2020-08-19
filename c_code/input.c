@@ -10,7 +10,7 @@
 #include "mlp_params.h"
 #include "mlp_types.h"
 #include "mlp_macros.h"
-#include "mlp_externs.h"  // allows compiler to check extern types!
+#include "mlp_externs.h"
 
 #include "init_i.h"
 #include "comms_i.h"
@@ -58,11 +58,14 @@ in_proc_init_t const
 uint chipID;               // 16-bit (x, y) chip ID
 uint coreID;               // 5-bit virtual core ID
 
-uint fwdKey;               // 32-bit packet ID for FORWARD phase
-uint bkpKey;               // 32-bit packet ID for BACKPROP phase
+uint fwdKey;               // packet ID for FORWARD-phase data
+uint bkpKey;               // packet ID for BACKPROP-phase data
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
+
+uchar        net_stop;     // network stop decision
+uchar        net_stop_rdy; // ready to deal with network stop decision
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
@@ -71,7 +74,6 @@ uint         evt;          // current event in example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
-uint         num_ticks;    // number of ticks in current event
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
@@ -111,9 +113,8 @@ address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 long_net_t     * i_nets;            // unit nets computed in current tick
 long_delta_t   * i_deltas;          // deltas computed in current tick
-long_delta_t   * i_init_delta;      // deltas computed in initial tick
-pkt_queue_t      i_pkt_queue;       // queue to hold received nets/deltas
-uchar            i_active;          // processing b-d-ps from queue?
+pkt_queue_t      i_pkt_queue;       // queue to hold received packets
+uchar            i_active;          // processing packets from queue?
 
 long_net_t     * i_last_integr_net; //last INTEGRATOR output value
 long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
@@ -123,7 +124,7 @@ uint             i_it_idx;          // index into current inputs/targets
 // FORWARD phase specific
 // (net processing)
 scoreboard_t     if_done;           // current tick net computation done
-uint             if_thrds_pend;     // sync. semaphore: proc & stop
+uint             if_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific
 // (delta processing)
@@ -147,14 +148,13 @@ uint sent_bkp;  // packets sent in BACKPROP phase
 uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
-uint spk_sent;  // sync packets sent
-uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
 uint wrng_phs;  // packets received in wrong phase
-uint wrng_tck;  // FORWARD packets received in wrong tick
-uint wrng_btk;  // BACKPROP packets received in wrong tick
+uint wrng_pth;  // unexpected processing thread
+uint wrng_cth;  // unexpected comms thread
+uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -173,7 +173,7 @@ void timeout (uint ticks, uint unused)
   if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
     // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT);
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
   }
   else
   {
@@ -210,9 +210,6 @@ void get_started (void)
 // ------------------------------------------------------------------------
 void c_main ()
 {
-  // say hello,
-  io_printf (IO_BUF, ">> mlp\n");
-
   // get core IDs,
   chipID = spin1_get_chip_id ();
   coreID = spin1_get_core_id ();
@@ -222,7 +219,7 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // allocate memory in DTCM and SDRAM,
@@ -230,13 +227,13 @@ void c_main ()
   if (exit_code != SPINN_NO_ERROR)
   {
     // report results and abort
-    stage_done (exit_code);
+    stage_done (exit_code, 0);
   }
 
   // initialise variables,
-  var_init ();
+  var_init (TRUE);
 
-  // set up timer1 (used for background deadlock check),
+  // set up timer (used for background deadlock check),
   spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
   spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
@@ -247,10 +244,7 @@ void c_main ()
   // setup simulation,
   simulation_set_start_function (get_started);
 
-  // start execution,
+  // and start execution
   simulation_run ();
-
-  // and say goodbye
-  io_printf (IO_BUF, "<< mlp\n");
 }
 // ------------------------------------------------------------------------

@@ -43,14 +43,20 @@ set1.read_Lens_examples_file ("rand10x40.ex")
 
 # set example set parameters
 set1.set (grace_time = 1.0,
-          min_time   = 1.0,
-          max_time   = 4.0
+          min_time = 1.0,
+          max_time = 4.0
           )
 
 # set network parameters
 rand10x40.set (num_updates = 300,
                train_group_crit = 0.2
                )
+
+# set recording option
+rand10x40.recording_options (rec_test_results = True,
+                             rec_outputs = True,
+                             rec_example_last_tick_only = False
+                             )
 
 # read initial weights from Lens-generated file
 rand10x40.read_Lens_weights_file (
@@ -59,11 +65,23 @@ rand10x40.read_Lens_weights_file (
 # test the network for 20 examples
 rand10x40.test (num_examples = 20)
 
+# generate Lens-style output file
+rand10x40.write_Lens_output_file ("rand10x40_test_20e.out")
+
 # train the network for the default number of updates
 rand10x40.train (update_function = MLPUpdateFuncs.UPD_STEEPEST)
 
+# generate Lens-style output file
+rand10x40.write_Lens_output_file ("rand10x40_train.out")
+
+# pause execution between stages for debugging
+rand10x40.pause ()
+
 # test the network again for 20 example
 rand10x40.test (num_examples = 20)
+
+# generate Lens-style output file
+rand10x40.write_Lens_output_file ("rand10x40_train_test_20e.out")
 
 # close the application
 rand10x40.end ()

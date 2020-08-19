@@ -21,7 +21,9 @@
 // ------------------------------------------------------------------------
 uint cfg_init (void)
 {
+#ifdef DEBUG
   io_printf (IO_BUF, "sum\n");
+#endif
 
   // read the data specification header
   data_specification_metadata_t * data =
@@ -70,16 +72,18 @@ uint cfg_init (void)
   // initialise stage configuration from SDRAM
   xadr = data_specification_get_region (STAGE, data);
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+
+#ifdef DEBUG
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ");
+    io_printf (IO_BUF, "train (updates:%u)\n", xcfg.num_epochs);
   }
   else
   {
-    io_printf (IO_BUF, "test ");
+    io_printf (IO_BUF, "test (examples:%u)\n", xcfg.num_examples);
   }
-  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
+#endif
 
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "nu: %d\n", scfg.num_units);
@@ -180,112 +184,23 @@ uint mem_init (void)
 // ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
-void var_init (void)
+void var_init (uint reset_examples)
 {
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch       = 0;
-  example_cnt = 0;
-  example_inx = 0;
-  evt         = 0;
-
-  // initialise number of events and event index
-  num_events = ex[example_inx].num_events;
-  event_idx  = ex[example_inx].ev_idx;
-
-  // initialise phase
-  phase = SPINN_FORWARD;
-
-  // initialise tick
-  //NOTE: SUM cores do not have a tick 0
-  tick = SPINN_S_INIT_TICK;
-
-  // initialise nets, errors and scoreboards
-  for (uint i = 0; i < scfg.num_units; i++)
-  {
-    s_nets[0][i] = 0;
-    s_nets[1][i] = 0;
-    s_errors[0][i] = 0;
-    s_errors[1][i] = 0;
-    sf_arrived[0][i] = 0;
-    sf_arrived[1][i] = 0;
-    sb_arrived[0][i] = 0;
-    sb_arrived[1][i] = 0;
-  }
-  sf_done = 0;
-  sb_done = 0;
-  s_ldsa_arrived = 0;
-  s_ldst_arrived = 0;
-
-  // initialise synchronisation semaphores
-  sf_thrds_pend = 1;
-  sb_thrds_pend = 0;
-
-  // initialise processing thread flag
-  s_active = FALSE;
-
-  // initialise partial lds
-  s_lds_part = 0;
-
-  // initialise packet queue
-  s_pkt_queue.head = 0;
-  s_pkt_queue.tail = 0;
-
-  // initialise packet keys
-  //NOTE: colour is initialised to 0.
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  syncKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
-  ldstKey = rt[LDS] | SPINN_LDST_KEY;
-  ldsrKey = rt[LDS] | SPINN_LDSR_KEY;
-
-#ifdef DEBUG
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-pkt_sent = 0;  // total packets sent
-sent_fwd = 0;  // packets sent in FORWARD phase
-sent_bkp = 0;  // packets sent in BACKPROP phase
-pkt_recv = 0;  // total packets received
-recv_fwd = 0;  // packets received in FORWARD phase
-recv_bkp = 0;  // packets received in BACKPROP phase
-spk_sent = 0;  // sync packets sent
-spk_recv = 0;  // sync packets received
-stp_sent = 0;  // stop packets sent
-stp_recv = 0;  // stop packets received
-stn_recv = 0;  // network_stop packets received
-lda_recv = 0;  // partial link_delta packets received
-ldt_sent = 0;  // total link_delta packets sent
-ldt_recv = 0;  // total link_delta packets received
-ldr_sent = 0;  // link_delta packets sent
-wrng_phs = 0;  // packets received in wrong phase
-wrng_tck = 0;  // FORWARD packets received in wrong tick
-wrng_btk = 0;  // BACKPROP packets received in wrong tick
-tot_tick = 0;  // total number of ticks executed
-// ------------------------------------------------------------------------
-#endif
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// initialise variables for next stage
-// ------------------------------------------------------------------------
-void stage_var_init (void)
-{
-  // initialise epoch, example and event counters
-  //TODO: alternative algorithms for choosing example order!
-  epoch       = 0;
-  example_cnt = 0;
-  evt         = 0;
-
   // reset example index if requested
-  if (xcfg.reset)
+  //TODO: alternative algorithms for choosing example order!
+  if (reset_examples)
   {
     example_inx = 0;
   }
 
-  // initialise number of events and event index
+  // initialise example counter
+  example_cnt = 0;
+
+  // initialise epoch
+  epoch = 0;
+
+  // initialise event id, number of events and event index
+  evt        = 0;
   num_events = ex[example_inx].num_events;
   event_idx  = ex[example_inx].ev_idx;
 
@@ -295,6 +210,10 @@ void stage_var_init (void)
   // initialise tick
   //NOTE: SUM cores do not have a tick 0
   tick = SPINN_S_INIT_TICK;
+
+  // initialise network stop flag
+  net_stop_rdy = FALSE;
+  net_stop = 0;
 
   // initialise nets, errors and scoreboards
   for (uint i = 0; i < scfg.num_units; i++)
@@ -313,9 +232,9 @@ void stage_var_init (void)
   s_ldsa_arrived = 0;
   s_ldst_arrived = 0;
 
-  // initialise synchronisation semaphores
-  sf_thrds_pend = 1;
-  sb_thrds_pend = 0;
+  // initialise thread semaphores
+  sf_thrds_pend = SPINN_SF_THRDS;
+  sb_thrds_pend = SPINN_SB_THRDS;
 
   // initialise processing thread flag
   s_active = FALSE;
@@ -329,36 +248,36 @@ void stage_var_init (void)
 
   // initialise packet keys
   //NOTE: colour is initialised to 0.
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  syncKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
-  ldstKey = rt[LDS] | SPINN_LDST_KEY;
-  ldsrKey = rt[LDS] | SPINN_LDSR_KEY;
+  fwdKey  = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
+  bkpKey  = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  ldstKey = rt[LDS] | SPINN_LDST_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  ldsrKey = rt[LDS] | SPINN_LDSR_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  fdsKey  = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
 
 #ifdef DEBUG
-// ------------------------------------------------------------------------
-// DEBUG variables
-// ------------------------------------------------------------------------
-pkt_sent = 0;  // total packets sent
-sent_fwd = 0;  // packets sent in FORWARD phase
-sent_bkp = 0;  // packets sent in BACKPROP phase
-pkt_recv = 0;  // total packets received
-recv_fwd = 0;  // packets received in FORWARD phase
-recv_bkp = 0;  // packets received in BACKPROP phase
-spk_sent = 0;  // sync packets sent
-spk_recv = 0;  // sync packets received
-stp_sent = 0;  // stop packets sent
-stp_recv = 0;  // stop packets received
-stn_recv = 0;  // network_stop packets received
-lda_recv = 0;  // partial link_delta packets received
-ldt_sent = 0;  // total link_delta packets sent
-ldt_recv = 0;  // total link_delta packets received
-ldr_sent = 0;  // link_delta packets sent
-wrng_phs = 0;  // packets received in wrong phase
-wrng_tck = 0;  // FORWARD packets received in wrong tick
-wrng_btk = 0;  // BACKPROP packets received in wrong tick
-tot_tick = 0;  // total number of ticks executed
-// ------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // DEBUG variables
+  // ------------------------------------------------------------------------
+  pkt_sent = 0;  // total packets sent
+  sent_fwd = 0;  // packets sent in FORWARD phase
+  sent_bkp = 0;  // packets sent in BACKPROP phase
+  pkt_recv = 0;  // total packets received
+  recv_fwd = 0;  // packets received in FORWARD phase
+  recv_bkp = 0;  // packets received in BACKPROP phase
+  spk_sent = 0;  // sync packets sent
+  stp_sent = 0;  // stop packets sent
+  stp_recv = 0;  // stop packets received
+  stn_recv = 0;  // network_stop packets received
+  lda_recv = 0;  // partial link_delta packets received
+  ldt_sent = 0;  // total link_delta packets sent
+  ldt_recv = 0;  // total link_delta packets received
+  ldr_sent = 0;  // link_delta packets sent
+  wrng_phs = 0;  // packets received in wrong phase
+  wrng_pth = 0;  // unexpected processing thread
+  wrng_cth = 0;  // unexpected comms thread
+  wrng_sth = 0;  // unexpected stop thread
+  tot_tick = 0;  // total number of ticks executed
+  // ------------------------------------------------------------------------
 #endif
 }
 // ------------------------------------------------------------------------
@@ -374,19 +293,21 @@ void stage_init (void)
 
   // initialise stage configuration from SDRAM
   spin1_memcpy (&xcfg, xadr, sizeof (stage_conf_t));
+
+#ifdef DEBUG
   io_printf (IO_BUF, "stage %u configured\n", xcfg.stage_id);
   if (xcfg.training)
   {
-    io_printf (IO_BUF, "train ");
+    io_printf (IO_BUF, "train (updates:%u)\n", xcfg.num_epochs);
   }
   else
   {
-    io_printf (IO_BUF, "test ");
+    io_printf (IO_BUF, "test (examples:%u)\n", xcfg.num_examples);
   }
-  io_printf (IO_BUF, "for examples: %u\n", xcfg.num_examples);
+#endif
 
-  // re-initialise variables for this stage
-  stage_var_init ();
+  // initialise variables for this stage
+  var_init (xcfg.reset);
 }
 // ------------------------------------------------------------------------
 
@@ -396,9 +317,11 @@ void stage_init (void)
 // ------------------------------------------------------------------------
 void stage_start (void)
 {
+#ifdef DEBUG
   // start log
   io_printf (IO_BUF, "----------------\n");
   io_printf (IO_BUF, "starting stage %u\n", xcfg.stage_id);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -406,11 +329,17 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 // check exit code and print details of the state
 // ------------------------------------------------------------------------
-void stage_done (uint ec)
+void stage_done (uint ec, uint key)
 {
+#if !defined(DEBUG) && !defined(DEBUG_EXIT)
+  //NOTE: parameter 'key' is used only in DEBUG reporting
+  (void) key;
+#endif
+
   // pause timer and setup next stage,
   simulation_handle_pause_resume (stage_init);
 
+#if defined(DEBUG) || defined(DEBUG_EXIT)
   // report problems -- if any
   switch (ec)
   {
@@ -435,6 +364,7 @@ void stage_done (uint ec)
 
     case SPINN_UNXPD_PKT:
       io_printf (IO_BUF, "unexpected packet received - abort!\n");
+      io_printf (IO_BUF, "k:0x%0x\n", key);
       io_printf (IO_BUF, "stage aborted\n");
       break;
 
@@ -442,8 +372,6 @@ void stage_done (uint ec)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                   epoch, example_cnt, phase, tick
                 );
-      io_printf (IO_BUF, "stage aborted\n");
-#ifdef DEBUG_TO
       io_printf (IO_BUF, "(fd:%u bd:%u)\n", sf_done, sb_done);
       for (uint i = 0; i < scfg.num_units; i++)
       {
@@ -452,9 +380,10 @@ void stage_done (uint ec)
                     sf_arrived[1][i], sb_arrived[1][i]
                   );
       }
-#endif
+      io_printf (IO_BUF, "stage aborted\n");
       break;
   }
+#endif
 
 #ifdef DEBUG
   // report diagnostics
@@ -463,7 +392,6 @@ void stage_done (uint ec)
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
   if (scfg.is_first_group)
   {
@@ -476,14 +404,18 @@ void stage_done (uint ec)
   }
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-  if (wrng_tck) io_printf (IO_BUF, "wrong tick:%d\n", wrng_tck);
-  if (wrng_btk) io_printf (IO_BUF, "wrong btick:%d\n", wrng_btk);
+  if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
+  if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
+  if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
 #endif
 
+#ifdef DEBUG
   // close log,
   io_printf (IO_BUF, "stopping stage %u\n", xcfg.stage_id);
   io_printf (IO_BUF, "----------------\n");
+#endif
 
   // and let host know that we're done
   if (ec == SPINN_NO_ERROR) {
