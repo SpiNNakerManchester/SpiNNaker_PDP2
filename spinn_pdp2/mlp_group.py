@@ -26,8 +26,8 @@ class MLPGroup():
         self.label        = label
 
         # number of subgroups required for this group
-        self.subgroups = (self.units + MLPConstants.MAX_BLK_UNITS - 1)\
-            // MLPConstants.MAX_BLK_UNITS
+        self.subgroups = (self.units + MLPConstants.MAX_SUBGROUP_UNITS - 1)\
+            // MLPConstants.MAX_SUBGROUP_UNITS
 
         if self.subgroups == 1:
             print (f"creating group {self.label} with 1 subgroup")
@@ -37,7 +37,7 @@ class MLPGroup():
                    )
 
         # number of units per subgroup
-        self.subunits = [MLPConstants.MAX_BLK_UNITS] * (self.subgroups - 1)
+        self.subunits = [MLPConstants.MAX_SUBGROUP_UNITS] * (self.subgroups - 1)
         self.subunits.append (self.units - sum (self.subunits))
 
         # keep track of associated incoming links

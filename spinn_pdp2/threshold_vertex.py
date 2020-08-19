@@ -133,7 +133,7 @@ class ThresholdVertex(
             self._TARGETS_BYTES = ((len (self.group.targets) // self.group.units) *
                                   self._units * DataType.INT32.size)
         else:
-            self._TARGETS_BYTES = 0 
+            self._TARGETS_BYTES = 0
 
         # list of routing keys
         self._KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * DataType.INT32.size

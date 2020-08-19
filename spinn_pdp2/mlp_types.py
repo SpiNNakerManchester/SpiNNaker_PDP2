@@ -27,6 +27,7 @@ class MLPConstants ():
     MAX_IN_PROCS  = 2
     DEF_IN_PROCS  = 0
 
+    MAX_SUBGROUP_UNITS = 32
     MAX_BLK_UNITS = 32
 
     MAX_OUT_PROCS = 5
