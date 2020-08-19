@@ -250,9 +250,9 @@ void s_ldsa_packet (uint payload)
   // check whether all the partial sums have arrived
   if (s_ldsa_arrived == scfg.ldsa_expected)
   {
-    // send the result to the first s core
+    // send the result to the first subgroup
     // to give a total across the whole network
-    if (scfg.is_first_group == 0)
+    if (!scfg.is_first_group)
     {
       while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
 
@@ -313,8 +313,16 @@ void s_ldst_packet (uint payload)
   // check whether all the partial sums have arrived
   if (s_ldst_arrived == scfg.ldst_expected)
   {
-    // send the final value of s_lds_part back to the w cores
-    while (!spin1_send_mc_packet (ldsrKey, s_lds_part, WITH_PAYLOAD));
+    if (scfg.is_first_group)
+    {
+      // send the final value of s_lds_part back to the w cores
+      while (!spin1_send_mc_packet (ldsrKey, s_lds_part, WITH_PAYLOAD));
+    }
+    else
+    {
+      // send the s_lds_part to first subgroup
+      while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
+    }
 
 #ifdef DEBUG
     pkt_sent++;

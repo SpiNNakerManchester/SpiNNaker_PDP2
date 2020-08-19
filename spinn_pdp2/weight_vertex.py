@@ -38,20 +38,20 @@ class WeightVertex(
     def __init__(self,
                  network,
                  group,
-                 col_blk,
+                 subgroup,
                  from_group,
-                 row_blk
+                 from_subgroup
                  ):
 
-        self._network    = network
-        self._group      = group
-        self._from_group = from_group
-        self._col_blk    = col_blk
-        self._row_blk    = row_blk
+        self._network       = network
+        self._group         = group
+        self._from_group    = from_group
+        self._subgroup      = subgroup
+        self._from_subgroup = from_subgroup
 
         super(WeightVertex, self).__init__(
-            label = f"w_core{self.group.id}/{self.col_blk}"
-                    f"_{self.from_group.id}/{self.row_blk}",
+            label = (f"w_core{self.group.id}/{self.subgroup}"
+                     f"_{self.from_group.id}/{self.from_subgroup}"),
             binary_name = "weight.aplx",
             constraints = None)
 
@@ -61,109 +61,83 @@ class WeightVertex(
         self._set_cfg = self.network.ex_set.set_config
         self._ex_cfg  = self.network.ex_set.example_config
 
-        # compute number of rows and columns
-        if self._row_blk != (self.from_group.subgroups - 1):
-            self._num_rows = MLPConstants.MAX_BLK_UNITS
-        else:
-            _r = self.from_group.units % MLPConstants.MAX_BLK_UNITS
-            if _r == 0:
-                self._num_rows = MLPConstants.MAX_BLK_UNITS
-            else:
-                self._num_rows = _r
-
-        if self._col_blk != (self.group.subgroups - 1):
-            self._num_cols = MLPConstants.MAX_BLK_UNITS
-        else:
-            _r = self.group.units % MLPConstants.MAX_BLK_UNITS
-            if _r == 0:
-                self._num_cols = MLPConstants.MAX_BLK_UNITS
-            else:
-                self._num_cols = _r
-
-        # forward, backprop and link delta summation link names
-        self._fwd_link = "fwd_w{}_{}".format (self.group.id,
-                                              self.from_group.id)
-        self._bkp_link = "bkp_w{}_{}".format (self.group.id,
-                                              self.from_group.id)
-        self._lds_link = "lds_w{}_{}".format (self.group.id,
-                                              self.from_group.id)
-
-        # reserve key space for every link
-        self._n_keys = MLPConstants.KEY_SPACE_SIZE
-
-        # choose weight core-specific parameters
+        # application parameters
         if len (self.group.weights[self.from_group]):
             if self.group.learning_rate is not None:
-                self.learning_rate = self.group.learning_rate
+                self._learning_rate = self.group.learning_rate
             elif network.learning_rate is not None:
-                self.learning_rate = network.learning_rate
+                self._learning_rate = network.learning_rate
             else:
-                self.learning_rate = MLPConstants.DEF_LEARNING_RATE
+                self._learning_rate = MLPConstants.DEF_LEARNING_RATE
 
             if self.group.weight_decay is not None:
-                self.weight_decay = self.group.weight_decay
+                self._weight_decay = self.group.weight_decay
             elif network.weight_decay is not None:
-                self.weight_decay = network.weight_decay
+                self._weight_decay = network.weight_decay
             else:
-                self.weight_decay = MLPConstants.DEF_WEIGHT_DECAY
+                self._weight_decay = MLPConstants.DEF_WEIGHT_DECAY
 
             if self.group.momentum is not None:
-                self.momentum = self.group.momentum
+                self._momentum = self.group.momentum
             elif network.momentum is not None:
-                self.momentum = network.momentum
+                self._momentum = network.momentum
             else:
-                self.momentum = MLPConstants.DEF_MOMENTUM
+                self._momentum = MLPConstants.DEF_MOMENTUM
         else:
-            self.learning_rate = 0
-            self.weight_decay = 0
-            self.momentum = 0
+            self._learning_rate = 0
+            self._weight_decay = 0
+            self._momentum = 0
 
-        # weight update function
-        self.update_function = self.network.update_function
+        # forward, backprop and link delta summation link names
+        self._fwd_link = (f"fwd_w{self.group.id}/{self.subgroup}"
+                          f"_{self.from_group.id}/{self.from_subgroup}")
 
-        # configuration and data files
-        # find out the size of an integer!
-        _data_int = DataType.INT32
+        self._bkp_link = (f"bkp_w{self.group.id}/{self.subgroup}"
+                          f"_{self.from_group.id}/{self.from_subgroup}")
 
+        self._lds_link = (f"lds_w{self.group.id}/{self.subgroup}"
+                          f"_{self.from_group.id}/{self.from_subgroup}")
+
+        # weight core-specific parameters
+        # weight matrix parameters
+        self._num_rows = self.from_group.subunits[self.from_subgroup]
+        self._num_cols = self.group.subunits[self.subgroup]
+
+        # configuration and data sizes
         # network configuration structure
-        self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self.network.network_config)
+        self._NETWORK_CONFIGURATION_BYTES = len (self.network.network_config)
 
         # core configuration structure
-        self._N_CORE_CONFIGURATION_BYTES = \
-            len (self.config)
+        self._CORE_CONFIGURATION_BYTES = len (self.config)
 
         # set configuration structure
-        self._N_EXAMPLE_SET_BYTES = \
-            len (self._set_cfg)
+        self._EXAMPLE_SET_BYTES = len (self._set_cfg)
 
         # list of example configurations
-        self._N_EXAMPLES_BYTES = \
-            len (self._ex_cfg) * len (self._ex_cfg[0])
+        self._EXAMPLES_BYTES = len (self._ex_cfg) * len (self._ex_cfg[0])
 
         # each weight is an integer
-        self._N_WEIGHTS_BYTES = \
-            self.group.units * self.from_group.units * _data_int.size
+        self._WEIGHTS_BYTES = (self._num_rows *
+                               self._num_cols * DataType.INT32.size)
 
-        # keys are integers
-        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * _data_int.size
+        # list of routing keys
+        self._KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * DataType.INT32.size
 
         # stage configuration structure
-        self._N_STAGE_CONFIGURATION_BYTES = \
-            len (self.network.stage_config)
+        self._STAGE_CONFIGURATION_BYTES = len (self.network.stage_config)
 
         # reserve SDRAM space used to store historic data
-        self._OUTPUT_HISTORY_BYTES = (MLPConstants.ACTIV_SIZE // 8) * \
-            self.group.units * self.network.global_max_ticks
+        self._OUTPUT_HISTORY_BYTES = ((MLPConstants.ACTIV_SIZE // 8) *
+            self.group.units * self.network.global_max_ticks)
 
         self._sdram_usage = (
-            self._N_NETWORK_CONFIGURATION_BYTES + \
-            self._N_CORE_CONFIGURATION_BYTES + \
-            self._N_EXAMPLE_SET_BYTES + \
-            self._N_EXAMPLES_BYTES + \
-            self._N_WEIGHTS_BYTES + \
-            self._N_KEYS_BYTES + \
-            self._N_STAGE_CONFIGURATION_BYTES + \
+            self._NETWORK_CONFIGURATION_BYTES +
+            self._CORE_CONFIGURATION_BYTES +
+            self._EXAMPLE_SET_BYTES +
+            self._EXAMPLES_BYTES +
+            self._WEIGHTS_BYTES +
+            self._KEYS_BYTES +
+            self._STAGE_CONFIGURATION_BYTES +
             self._OUTPUT_HISTORY_BYTES
         )
 
@@ -200,16 +174,16 @@ class WeightVertex(
         return self._group
 
     @property
-    def col_blk (self):
-        return self._col_blk
+    def subgroup (self):
+        return self._subgroup
 
     @property
     def from_group (self):
         return self._from_group
 
     @property
-    def row_blk (self):
-        return self._row_blk
+    def from_subgroup (self):
+        return self._from_subgroup
 
     @property
     def fwd_link (self):
@@ -232,8 +206,6 @@ class WeightVertex(
             {
               uint           num_rows;
               uint           num_cols;
-              uint           row_blk;
-              uint           col_blk;
               scoreboard_t   sync_expected;
               activation_t   initOutput;
               short_fpreal_t learningRate;
@@ -245,7 +217,7 @@ class WeightVertex(
             explicit padding
         """
         # expect one sync packet from 'group' and one from 'from_group'
-        if self.group == self.from_group:
+        if self.group == self.from_group and self.subgroup == self.from_subgroup:
             sync_expected = 1
         else:
             sync_expected = 2
@@ -255,22 +227,20 @@ class WeightVertex(
                            (1 << MLPConstants.ACTIV_SHIFT))
 
         # learning_rate is an MLP short fixed-point fpreal
-        learning_rate = int (self.learning_rate *\
+        learning_rate = int (self._learning_rate *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
         # weight_decay is an MLP short fixed-point fpreal
-        weight_decay = int (self.weight_decay *\
+        weight_decay = int (self._weight_decay *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
         # momentum is an MLP short fixed-point fpreal
-        momentum = int (self.momentum *\
+        momentum = int (self._momentum *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<5Ii3h2x",
+        return struct.pack ("<3Ii3h2x",
                             self._num_rows,
                             self._num_cols,
-                            self._row_blk,
-                            self._col_blk,
                             sync_expected,
                             init_output,
                             learning_rate,
@@ -289,7 +259,7 @@ class WeightVertex(
 
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
-        return self._n_keys
+        return MLPConstants.KEY_SPACE_SIZE
 
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
@@ -302,7 +272,7 @@ class WeightVertex(
 
         # Reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,
-                                    self._N_NETWORK_CONFIGURATION_BYTES)
+                                    self._NETWORK_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
@@ -312,7 +282,7 @@ class WeightVertex(
 
         # Reserve and write the core configuration region
         spec.reserve_memory_region (MLPRegions.CORE.value,
-                                    self._N_CORE_CONFIGURATION_BYTES)
+                                    self._CORE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.CORE.value)
 
@@ -322,7 +292,7 @@ class WeightVertex(
 
         # Reserve and write the example set region
         spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
-                                    self._N_EXAMPLE_SET_BYTES)
+                                    self._EXAMPLE_SET_BYTES)
 
         spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
 
@@ -332,7 +302,7 @@ class WeightVertex(
 
         # Reserve and write the examples region
         spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
-                                    self._N_EXAMPLES_BYTES)
+                                    self._EXAMPLES_BYTES)
 
         spec.switch_write_focus (MLPRegions.EXAMPLES.value)
 
@@ -343,31 +313,29 @@ class WeightVertex(
 
         # Reserve and write the weights region
         spec.reserve_memory_region (MLPRegions.WEIGHTS.value,
-                                    self._N_WEIGHTS_BYTES)
+                                    self._WEIGHTS_BYTES)
 
         spec.switch_write_focus (MLPRegions.WEIGHTS.value)
 
         # weight matrix is kept in column-major order
         # and has to be written out in row-major order
-        _wts = self.group.weights[self.from_group]
-        _nrows = self.from_group.units
-        _nr = self._num_rows
-        _nc = self._num_cols
-        _rb = self._row_blk * MLPConstants.MAX_BLK_UNITS
-        _cb = self._col_blk * MLPConstants.MAX_BLK_UNITS
-        if len (_wts):
-            for _r in range (_nr):
-                for _c in range (_nc):
-                    _wt = self.cast_float_to_weight (
-                        _wts[(_cb + _c) * _nrows + (_rb + _r)])
-                    spec.write_value (_wt, data_type = DataType.INT32)
+        wts = self.group.weights[self.from_group]
+        rows_per_col = self.from_group.units
+        rb = self.from_subgroup * MLPConstants.MAX_BLK_UNITS
+        cb = self.subgroup * MLPConstants.MAX_BLK_UNITS
+        if len (wts):
+            for r in range (self._num_rows):
+                for c in range (self._num_cols):
+                    wt = self.cast_float_to_weight (
+                        wts[(cb + c) * rows_per_col + (rb + r)])
+                    spec.write_value (wt, data_type = DataType.INT32)
         else:
-            for _ in range (_nr * _nc):
+            for _ in range (self._num_rows * self._num_cols):
                 spec.write_value (0, data_type = DataType.INT32)
 
         # Reserve and write the routing region
         spec.reserve_memory_region (MLPRegions.ROUTING.value,
-                                    self._N_KEYS_BYTES)
+                                    self._KEYS_BYTES)
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
@@ -391,7 +359,7 @@ class WeightVertex(
 
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
-                                    self._N_STAGE_CONFIGURATION_BYTES)
+                                    self._STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
@@ -406,7 +374,7 @@ class WeightVertex(
     def regenerate_data_specification(self, spec, placement):
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
-                                    self._N_STAGE_CONFIGURATION_BYTES)
+                                    self._STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 

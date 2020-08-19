@@ -104,13 +104,6 @@ void wb_process (uint key, uint payload)
   recv_bkp++;
   if (phase == SPINN_FORWARD)
     wrng_bph++;
-
-  uint blk = (key & SPINN_BLOCK_MASK) >> SPINN_BLOCK_SHIFT;
-  if (blk != wcfg.col_blk)
-  {
-    pkt_bwbk++;
-    return;
-  }
 #endif
 
   // get delta index: mask out phase and block data,

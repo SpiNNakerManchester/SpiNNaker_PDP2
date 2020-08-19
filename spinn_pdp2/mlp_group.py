@@ -54,9 +54,9 @@ class MLPGroup():
 
         # keep track of associated vertices
         self.w_vertices = []
-        self.s_vertex   = None
-        self.i_vertex   = None
-        self.t_vertex   = None
+        self.s_vertex   = []
+        self.i_vertex   = []
+        self.t_vertex   = []
 
         # group function parameters
         self.output_grp = (MLPGroupTypes.OUTPUT in self.type)

@@ -178,13 +178,6 @@ void w_forward_packet (uint key, uint payload)
   recv_fwd++;
   if (phase == SPINN_BACKPROP)
     wrng_fph++;
-
-  uint blk = (key & SPINN_BLOCK_MASK) >> SPINN_BLOCK_SHIFT;
-  if (blk != wcfg.row_blk)
-  {
-    pkt_fwbk++;
-    return;
-  }
 #endif
 
   // get output index: mask out phase, core and block data,

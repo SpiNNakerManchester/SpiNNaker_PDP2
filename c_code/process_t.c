@@ -55,9 +55,8 @@ void tf_process (uint key, uint payload)
   }
 
   // send newly computed output to w cores,
-  while (!spin1_send_mc_packet ((t_fwdKey[inx >> SPINN_BLOCK_SHIFT] | inx),
-                                 (uint) t_outputs[inx],
-                                 WITH_PAYLOAD
+  while (!spin1_send_mc_packet ((fwdKey | inx), (uint) t_outputs[inx],
+                                WITH_PAYLOAD
                                )
         );
 
@@ -109,7 +108,7 @@ void tf_process (uint key, uint payload)
 
         // and advance tick if last group
         //NOTE: last group does not get a stop decision
-        if (tcfg.is_last_output_group)
+        if (tcfg.is_last_output)
         {
           //TODO: check if need to schedule or can simply call
           tf_advance_tick ();
@@ -257,7 +256,7 @@ void tf_advance_tick (void)
   if (tick_stop)
   {
     // update event criterion
-    if (tcfg.is_last_output_group)
+    if (tcfg.is_last_output)
     {
       tf_event_crit = tf_event_crit && tf_group_crit && (ev_tick >= min_ticks);
       max_evt = evt;
@@ -309,7 +308,7 @@ void tb_advance_tick (uint unused0, uint unused1)
     t_switch_to_fw ();
 
     // update example criterion,
-    if (tcfg.is_last_output_group)
+    if (tcfg.is_last_output)
     {
       tf_example_crit = tf_example_crit && tf_event_crit && (max_evt >= num_events - 1);
     }
@@ -382,7 +381,7 @@ void tf_advance_event (void)
       t_it_idx += tcfg.num_units;
 
       // and update number of ticks for new event
-      if (tcfg.is_last_output_group)
+      if (tcfg.is_last_output)
       {
         // maximum
         if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
@@ -442,7 +441,7 @@ void t_advance_example (void)
     epoch++;
 
     // check if stage done,
-    if (tcfg.is_last_output_group)
+    if (tcfg.is_last_output)
     {
       // report network stop decision,
       nsd = (!xcfg.training || (epoch >= xcfg.num_epochs)) ? 1 : tf_example_crit;
@@ -534,7 +533,7 @@ void t_advance_example (void)
   t_init_outputs ();
 
   // and update next event data
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     // update number of ticks for new event,
     // maximum

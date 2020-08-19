@@ -190,7 +190,7 @@ void t_criterion_packet (uint key)
     // and advance tick if last_output_group
     //NOTE: last output group does not get a tick stop packet
     // so it's ready to advance tick
-    if (tcfg.is_last_output_group)
+    if (tcfg.is_last_output)
     {
       tf_advance_tick ();
     }
@@ -362,7 +362,7 @@ void tf_send_stop (void)
   // "aggregate" criteria,
   tf_stop_crit = tf_stop_crit && tf_crit_prev;
 
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     tf_group_crit = tf_stop_crit;
 
@@ -386,7 +386,7 @@ void tf_send_stop (void)
 
 #ifdef DEBUG
   pkt_sent++;
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     stp_sent++;
   }
@@ -495,8 +495,8 @@ void record_outputs (void)
   // record tick data and outputs
   if (stage_rec_flags)
   {
-    // record tick data if first output group,
-    if (tcfg.is_first_output_group)
+    // record tick data if first output subgroup,
+    if (tcfg.is_first_output)
     {
       tick_record_t tick_data;
 

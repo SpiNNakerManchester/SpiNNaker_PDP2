@@ -167,8 +167,8 @@ uint cfg_init (void)
   io_printf (IO_BUF, "gs: %k\n", tcfg.tst_group_criterion);
   io_printf (IO_BUF, "gt: %k\n", tcfg.trn_group_criterion);
   io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
-  io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output_group);
-  io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output_group);
+  io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output);
+  io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output);
   io_printf (IO_BUF, "ef: %d\n", tcfg.error_function);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
@@ -235,14 +235,6 @@ uint mem_init (void)
   // allocate memory for net packet queue
   if ((t_pkt_queue.queue = ((packet_t *)
          spin1_malloc (SPINN_THLD_PQ_LEN * sizeof (packet_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  // allocate memory for forward keys (one per subgroup)
-  if ((t_fwdKey = ((uint *)
-         spin1_malloc (tcfg.subgroups * sizeof (uint)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -489,7 +481,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   net_stop = 0;
 
   // initialise max and min ticks
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     // get max number of ticks for first event
     if (ev[event_idx].max_time != SPINN_FP_NaN)
@@ -570,8 +562,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
     t_max_target = SPINN_SHORT_ACTIV_MIN_POS << (SPINN_ACTIV_SHIFT
                - SPINN_SHORT_ACTIV_SHIFT);
 
-    // no need to wait for previous value if first group
-    if (tcfg.is_first_output_group)
+    // no need to wait for previous value if first output subgroup
+    if (tcfg.is_first_output)
     {
       tf_init_crit = 1;
       tf_crit_prev = TRUE;
@@ -591,15 +583,11 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   t_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is initialised to 0
-  for (uint p = 0; p < tcfg.subgroups; p++)
-  {
-    t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
-  }
-
+  //NOTE: colour is implicitly initialised to 0
+  fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     // tick stop key
     tf_stop_key = rt[STP] | SPINN_STOP_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
@@ -706,7 +694,7 @@ void stage_done (uint ec, uint key)
   simulation_handle_pause_resume (stage_init);
 
   // report test results, if enabled,
-  if (tcfg.write_results && tcfg.is_last_output_group &&
+  if (tcfg.write_results && tcfg.is_last_output &&
       !xcfg.training && stage_rec_flags
       )
   {
@@ -767,22 +755,22 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  if (tcfg.is_first_output_group)
+  if (tcfg.is_first_output)
   {
-    io_printf (IO_BUF, "criterion recv: first\n");
+    io_printf (IO_BUF, "crit recv: first\n");
   }
   else
   {
-  io_printf (IO_BUF, "criterion recv:%d\n", crt_recv);
+  io_printf (IO_BUF, "crit recv:%d\n", crt_recv);
   }
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
     io_printf (IO_BUF, "stpn sent:%d\n", stn_sent);
   }
   else
   {
-    io_printf (IO_BUF, "criterion sent:%d\n", crt_sent);
+    io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   }

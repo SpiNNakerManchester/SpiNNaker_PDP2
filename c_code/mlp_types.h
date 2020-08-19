@@ -24,16 +24,12 @@ enum MLPRecordings {
   TICK_DATA    = 2
 };
 
-// t cores can have more than one FWD key (due to subgroups)
-// i cores can have more than one BKP key (due to subgroups)
 enum MLPKeys {
   FWD  = 0,
   BKP  = 1,
   FDS  = 2,
   STP  = 3,
-  LDS  = 4,
-  FWDT = 5,
-  BKPI = 5
+  LDS  = 4
 };
 
 
@@ -245,8 +241,6 @@ typedef struct w_conf             // weight core configuration
 {
   uint         num_rows;          // rows in this core's block
   uint         num_cols;          // columns in this core's block
-  uint         row_blk;           // this core's row block number
-  uint         col_blk;           // this core's column block number
   scoreboard_t sync_expected;     // num of expected sync packets
   activation_t initOutput;        // initial value for unit outputs
   short_fpreal learningRate;      // network learning rate
@@ -285,7 +279,6 @@ typedef struct i_conf                // input core configuration
   uchar         output_grp;          // is this an OUTPUT group?
   uchar         input_grp;           // is this an INPUT group?
   uint          num_units;           // this core's number of units
-  uint          subgroups;           // this groups's number of subgroups
   uint          num_in_procs;        // number of input (net) comp procedures
   uint          procs_list[SPINN_NUM_IN_PROCS];
   uchar         in_integr_en;        // input INTEGRATOR in use
@@ -311,7 +304,6 @@ typedef struct t_conf                  // threshold core configuration
   uchar         output_grp;            // is this an OUTPUT group?
   uchar         input_grp;             // is this an INPUT group?
   uint          num_units;             // this core's number of units
-  uint          subgroups;             // this group's number of subgroups
   uchar         write_results;         // record test results?
   uchar         write_out;             // record outputs?
   uchar         last_tick_only;        // record only last tick of examples?
@@ -326,8 +318,8 @@ typedef struct t_conf                  // threshold core configuration
   error_t       tst_group_criterion;   // test-mode convergence criterion value
   error_t       trn_group_criterion;   // train-mode convergence criterion value
   uchar         criterion_function;    // function to eval convergence criterion
-  uchar         is_first_output_group; // is this the first of the output groups
-  uchar         is_last_output_group;  // is this the last of the output groups
+  uchar         is_first_output;       // is this the first output subgroup
+  uchar         is_last_output;        // is this the last output subgroup
   uchar         error_function;        // error function used for BACKPROP
 } t_conf_t;
 // ------------------------------------------------------------------------

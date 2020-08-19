@@ -53,69 +53,45 @@ class SumVertex(
         self._stage = 0
 
         # application-level data
-        self.units    = self.group.units
         self._set_cfg = self.network.ex_set.set_config
         self._ex_cfg  = self.network.ex_set.example_config
 
-        # check if first group in the network
-        if self.group.id == network.groups[0].id:
-            self._is_first_group = 1
-        else:
-            self._is_first_group = 0
-
-        # forward, backprop, and link delta summation link names
-        self._fwd_link = "fwd_s{}".format (self.group.id)
-        self._bkp_link = "bkp_s{}".format (self.group.id)
-        self._lds_link = "lds_s{}".format (self.group.id)
-        self._fds_link = "fds_s{}".format (self.group.id)
+        # forward, backprop, link delta summation and sync link names
+        self._fwd_link = f"fwd_s{self.group.id}/{self.subgroup}"
+        self._bkp_link = f"bkp_s{self.group.id}/{self.subgroup}"
+        self._lds_link = f"lds_s{self.group.id}/{self.subgroup}"
+        self._fds_link = f"fds_s{self.group.id}/{self.subgroup}"
 
         # sum core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
-        self._fwd_expect  = network.subgroups
-        self._bkp_expect  = network.subgroups
-        self._ldsa_expect = network.subgroups * self.units
-        self._ldst_expect = len (network.groups) - 1
+        self._units = self.group.subunits[self.subgroup]
 
-        # weight update function
-        self.update_function = network.update_function
-
-        # reserve key space for every link
-        self._n_keys = MLPConstants.KEY_SPACE_SIZE
-
-        # configuration and data files
-        # find out the size of an integer!
-        _data_int = DataType.INT32
-
+        # configuration and data sizes
         # network configuration structure
-        self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self.network.network_config)
+        self._NETWORK_CONFIGURATION_BYTES = len (self.network.network_config)
 
         # core configuration structure
-        self._N_CORE_CONFIGURATION_BYTES = \
-            len (self.config)
+        self._CORE_CONFIGURATION_BYTES = len (self.config)
 
         # set configuration structure
-        self._N_EXAMPLE_SET_BYTES = \
-            len (self._set_cfg)
+        self._EXAMPLE_SET_BYTES = len (self._set_cfg)
 
         # list of example configurations
-        self._N_EXAMPLES_BYTES = \
-            len (self._ex_cfg) * len (self._ex_cfg[0])
+        self._EXAMPLES_BYTES = len (self._ex_cfg) * len (self._ex_cfg[0])
 
-        # keys are integers
-        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * _data_int.size
+        # list of routing keys
+        self._KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * (DataType.INT32).size
 
         # stage configuration structure
-        self._N_STAGE_CONFIGURATION_BYTES = \
-            len (self.network.stage_config)
+        self._STAGE_CONFIGURATION_BYTES = len (self.network.stage_config)
 
         self._sdram_usage = (
-            self._N_NETWORK_CONFIGURATION_BYTES + \
-            self._N_CORE_CONFIGURATION_BYTES + \
-            self._N_EXAMPLE_SET_BYTES + \
-            self._N_EXAMPLES_BYTES + \
-            self._N_KEYS_BYTES + \
-            self._N_STAGE_CONFIGURATION_BYTES
+            self._NETWORK_CONFIGURATION_BYTES +
+            self._CORE_CONFIGURATION_BYTES +
+            self._EXAMPLE_SET_BYTES +
+            self._EXAMPLES_BYTES +
+            self._KEYS_BYTES +
+            self._STAGE_CONFIGURATION_BYTES
         )
 
     @property
@@ -164,14 +140,28 @@ class SumVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # check if first group in the network
+        if self.group == self.network.groups[0]:
+            is_first_group = 1
+        else:
+            is_first_group = 0
+
+        fwd_expect  = self.network.subgroups
+        bkp_expect  = self.network.subgroups
+        ldsa_expect = self.network.subgroups * self._units
+
+        if is_first_group:
+            ldst_expect = len (self.network.groups) - 1
+        else:
+            ldst_expect = self.group.subgroups - 1
 
         return struct.pack ("<5IB3x",
-                            self.units,
-                            self._fwd_expect,
-                            self._bkp_expect,
-                            self._ldsa_expect,
-                            self._ldst_expect,
-                            self._is_first_group
+                            self._units,
+                            fwd_expect,
+                            bkp_expect,
+                            ldsa_expect,
+                            ldst_expect,
+                            is_first_group
                             )
 
     @property
@@ -185,7 +175,7 @@ class SumVertex(
 
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
-        return self._n_keys
+        return MLPConstants.KEY_SPACE_SIZE
 
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
@@ -198,7 +188,7 @@ class SumVertex(
 
         # Reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,
-                                    self._N_NETWORK_CONFIGURATION_BYTES)
+                                    self._NETWORK_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
@@ -208,7 +198,7 @@ class SumVertex(
 
         # Reserve and write the core configuration region
         spec.reserve_memory_region (MLPRegions.CORE.value,
-                                    self._N_CORE_CONFIGURATION_BYTES)
+                                    self._CORE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.CORE.value)
 
@@ -218,7 +208,7 @@ class SumVertex(
 
         # Reserve and write the example set region
         spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
-                                    self._N_EXAMPLE_SET_BYTES)
+                                    self._EXAMPLE_SET_BYTES)
 
         spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
 
@@ -228,7 +218,7 @@ class SumVertex(
 
         # Reserve and write the examples region
         spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
-                                    self._N_EXAMPLES_BYTES)
+                                    self._EXAMPLES_BYTES)
 
         spec.switch_write_focus (MLPRegions.EXAMPLES.value)
 
@@ -239,7 +229,7 @@ class SumVertex(
 
         # Reserve and write the routing region
         spec.reserve_memory_region (MLPRegions.ROUTING.value,
-                                    self._N_KEYS_BYTES)
+                                    self._KEYS_BYTES)
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
@@ -264,7 +254,7 @@ class SumVertex(
 
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
-                                    self._N_STAGE_CONFIGURATION_BYTES)
+                                    self._STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
@@ -279,7 +269,7 @@ class SumVertex(
     def regenerate_data_specification(self, spec, placement):
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
-                                    self._N_STAGE_CONFIGURATION_BYTES)
+                                    self._STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 

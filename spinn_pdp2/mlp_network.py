@@ -214,29 +214,29 @@ class MLPNetwork():
         """
         # set the update function to use in this stage
         if self._stg_update_function is not None:
-            _update_function = self._stg_update_function
+            update_function = self._stg_update_function
         else:
-            _update_function = self._update_function
+            update_function = self._update_function
 
         # set the number of examples to use in this stage
         if self._stg_examples is not None:
-            _num_examples = self._stg_examples
+            num_examples = self._stg_examples
         else:
-            _num_examples = self._ex_set.num_examples
+            num_examples = self._ex_set.num_examples
 
         # set the number of epochs to run in this stage
         if self._stg_epochs is not None:
-            _num_epochs = self._stg_epochs
+            num_epochs = self._stg_epochs
         else:
-            _num_epochs = self._num_updates
+            num_epochs = self._num_updates
 
         return struct.pack("<4B2I",
                            self._stage_id,
                            self.training,
-                           _update_function.value,
+                           update_function.value,
                            self._stg_reset,
-                           _num_examples,
-                           _num_epochs
+                           num_examples,
+                           num_epochs
                            )
 
 
@@ -265,7 +265,7 @@ class MLPNetwork():
         """
         # machine graph needs rebuilding
         self._graph_rdy = False
-        
+
         _id = len (self.groups)
 
         # set properties for OUTPUT group
@@ -334,10 +334,10 @@ class MLPNetwork():
         """
         # machine graph needs rebuilding
         self._graph_rdy = False
-        
+
         # check that enough data is provided
         if (pre_link_group is None) or (post_link_group is None):
-            print ("error: pre- and post-link groups required")
+            print ("error: pre-link and post-link groups required")
             return None
 
         if label is None:
@@ -620,15 +620,16 @@ class MLPNetwork():
                 TICK_DATA_SIZE = struct.calcsize(TICK_DATA_FORMAT)
 
                 OUT_DATA_FORMATS = []
-                OUT_DATA_SIZES = []       
+                OUT_DATA_SIZES = []
                 for g in self.output_chain:
                     OUT_DATA_FORMATS.append ("<{}H".format (g.units))
                     OUT_DATA_SIZES.append (struct.calcsize("<{}H".format (g.units)))
 
-                # retrieve recorded tick_data from first output group
+                # retrieve recorded tick_data from first output subgroup
                 g = self.out_grps[0]
-                rec_tick_data = g.t_vertex.read (
-                    gfe.placements().get_placement_of_vertex (g.t_vertex),
+                ftv = g.t_vertex[0]
+                rec_tick_data = ftv.read (
+                    gfe.placements().get_placement_of_vertex (ftv),
                     gfe.buffer_manager(), MLPExtraRecordings.TICK_DATA.value
                     )
 
@@ -637,10 +638,15 @@ class MLPNetwork():
                 # retrieve recorded outputs from every output group
                 rec_outputs = [None] * len (self.out_grps)
                 for g in self.out_grps:
-                    rec_outputs[g.write_blk] = g.t_vertex.read (
-                        gfe.placements().get_placement_of_vertex (g.t_vertex),
-                        gfe.buffer_manager(), MLPVarSizeRecordings.OUTPUTS.value
-                        )
+                    rec_outputs[g.write_blk] = []
+                    # append all subgroups together
+                    for s in range (g.subgroups):
+                        gtv = g.t_vertex[s]
+                        rec_outputs[g.write_blk].append (gtv.read (
+                            gfe.placements().get_placement_of_vertex (gtv),
+                            gfe.buffer_manager(),
+                            MLPVarSizeRecordings.OUTPUTS.value)
+                            )
 
                 # compute total ticks in first example
                 #TODO: need to get actual value from simulation, not max value
@@ -699,26 +705,27 @@ class MLPNetwork():
                     f.write (f"{tick} {event}\n")
 
                     for g in self.output_chain:
-                        # get group tick outputs
-                        outputs = struct.unpack_from(
-                            OUT_DATA_FORMATS[self.output_chain.index(g)],
-                            rec_outputs[g.write_blk],
-                            tk * OUT_DATA_SIZES[self.output_chain.index(g)]
-                            )
+                        # get tick outputs for each subgroup
+                        for rec_outs in rec_outputs[g.write_blk]:
+                            if len (rec_outs):
+                                outputs = struct.unpack_from (
+                                    OUT_DATA_FORMATS[self.output_chain.index (g)],
+                                    rec_outs,
+                                    tk * OUT_DATA_SIZES[self.output_chain.index (g)]
+                                    )
 
-                        # print outputs
-                        if len (rec_outputs[g.write_blk]):
-                            f.write (f"{g.units} 1\n")
-                            tinx = tgt_inx * g.units
-                            for u in range (g.units):
-                                # outputs are s16.15 fixed-point numbers
-                                out = (1.0 * outputs[u]) / (1.0 * (1 << 15))
-                                t = g.targets[tinx + u]
-                                if (t is None) or (t == float ('nan')):
-                                    tgt = "-"
-                                else:
-                                    tgt = int(t)
-                                f.write ("{:8.6f} {}\n".format (out, tgt))
+                                # print outputs
+                                f.write (f"{g.units} 1\n")
+                                tinx = tgt_inx * g.units
+                                for u in range (g.units):
+                                    # outputs are s16.15 fixed-point numbers
+                                    out = (1.0 * outputs[u]) / (1.0 * (1 << 15))
+                                    t = g.targets[tinx + u]
+                                    if (t is None) or (t == float ('nan')):
+                                        tgt = "-"
+                                    else:
+                                        tgt = int (t)
+                                    f.write ("{:8.6f} {}\n".format (out, tgt))
 
             # prepare buffers for next stage
             gfe.buffer_manager().reset()
@@ -749,10 +756,11 @@ class MLPNetwork():
             TEST_RESULTS_FORMAT = "<4I"
             TEST_RESULTS_SIZE = struct.calcsize(TEST_RESULTS_FORMAT)
 
-            # retrieve recorded tick_data from last output group
+            # retrieve recorded test results from last output subgroup
             g = self.out_grps[-1]
-            rec_test_results = g.t_vertex.read (
-                gfe.placements().get_placement_of_vertex (g.t_vertex),
+            ltv = g.t_vertex[g.subgroups - 1]
+            rec_test_results = ltv.read (
+                gfe.placements().get_placement_of_vertex (ltv),
                 gfe.buffer_manager(), MLPConstSizeRecordings.TEST_RESULTS.value
                 )
 
@@ -786,136 +794,190 @@ class MLPNetwork():
         for grp in self.groups:
             self.subgroups += grp.subgroups
 
-        # create associated weight, sum, input and threshold
-        # machine vertices for every network group
-        sgrp = 0
+        # create weight, sum, input and threshold
+        # machine vertices associated with every subgroup
         for grp in self.groups:
-            # create one weight core per each subgroup
-            # of every (from_group, group) pair
-            # NOTE: all-zero cores can be optimised out
-            for from_grp in self.groups:
-                for tsg in range (grp.subgroups):
-                    for fsg in range (from_grp.subgroups):
-                        wv = WeightVertex (self, grp, tsg, from_grp, fsg)
-                        grp.w_vertices.append (wv)
+            for sgrp in range (grp.subgroups):
+                # create one weight core for every
+                # (from_group/from_subgroup, group/subgroup) pair
+                #TODO: all-zero cores can be optimised out
+                wvs = []
+                for from_grp in self.groups:
+                    for from_sgrp in range (from_grp.subgroups):
+                        wv = WeightVertex (self, grp, sgrp,
+                                           from_grp, from_sgrp)
                         gfe.add_machine_vertex_instance (wv)
+                        wvs.append (wv)
+                grp.w_vertices.append (wvs)
 
-            # create one sum core per subgroup
-            sv = SumVertex (self, grp, sgrp)
-            grp.s_vertex = sv
-            gfe.add_machine_vertex_instance (sv)
+                # create one sum core per subgroup
+                sv = SumVertex (self, grp, sgrp)
+                grp.s_vertex.append (sv)
+                gfe.add_machine_vertex_instance (sv)
 
-            # create one input core per subgroup
-            iv = InputVertex (self, grp, sgrp)
-            grp.i_vertex = iv
-            gfe.add_machine_vertex_instance (iv)
+                # create one input core per subgroup
+                iv = InputVertex (self, grp, sgrp)
+                grp.i_vertex.append (iv)
+                gfe.add_machine_vertex_instance (iv)
 
-            # create one threshold core per subgroup
-            tv = ThresholdVertex (self, grp, sgrp)
-            grp.t_vertex = tv
-            gfe.add_machine_vertex_instance (tv)
+                # create one threshold core per subgroup
+                tv = ThresholdVertex (self, grp, sgrp)
+                grp.t_vertex.append (tv)
+                gfe.add_machine_vertex_instance (tv)
+
+        # groups and subgroups with special functions
+        first_lds_grp = self.groups[0]
+        first_subgroup_s_vertex = first_lds_grp.s_vertex[0]
+
+        last_out_grp = self.output_chain[-1]
+        last_out_subgroup_t_vertex = (
+            last_out_grp.t_vertex[last_out_grp.subgroups - 1]
+            )
 
         # create associated forward, backprop, link delta summation,
-        # synchronisation and stop machine edges for every network group
-        first = self.groups[0]
+        # criterion, stop and sync machine edges for every subgroup
         for grp in self.groups:
-            for w in grp.w_vertices:
-                _frmg = w.from_group
+            for sgrp in range (grp.subgroups):
+                sv = grp.s_vertex[sgrp]
+                iv = grp.i_vertex[sgrp]
+                tv = grp.t_vertex[sgrp]
 
-                # create forward w to s links
-                gfe.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
-                                             w.fwd_link)
+                for wv in grp.w_vertices[sgrp]:
+                    from_grp  = wv.from_group
+                    from_sgrp = wv.from_subgroup
 
-                # create forward t to w (multicast) links
-                gfe.add_machine_edge_instance (MachineEdge (_frmg.t_vertex, w),
-                                             _frmg.t_vertex.fwd_link[w.row_blk])
+                    from_sv = from_grp.s_vertex[from_sgrp]
+                    from_tv = from_grp.t_vertex[from_sgrp]
 
-                # create backprop w to s links
-                gfe.add_machine_edge_instance (MachineEdge (w, _frmg.s_vertex),
-                                             w.bkp_link)
+                    # forward w to s link
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (wv, sv),
+                        wv.fwd_link
+                        )
 
-                # create backprop i to w (multicast) links
-                gfe.add_machine_edge_instance (MachineEdge (grp.i_vertex, w),
-                                             grp.i_vertex.bkp_link[w.col_blk])
+                    # forward t to w (multicast) link
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (from_tv, wv),
+                        from_tv.fwd_link
+                        )
 
-                # create link delta summation w to s links
-                gfe.add_machine_edge_instance (MachineEdge (w, grp.s_vertex),
-                                             w.lds_link)
+                    # backprop w to s link
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (wv, from_sv),
+                        wv.bkp_link
+                        )
 
-                # create link delta summation result s (first) to w links
-                gfe.add_machine_edge_instance (MachineEdge (first.s_vertex, w),
-                                             first.s_vertex.lds_link)
+                    # backprop i to w (multicast) link
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (iv, wv),
+                        iv.bkp_link
+                        )
 
-                # create example synchronisation s to w (multicast) links
-                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex, w),
-                                               grp.s_vertex.fds_link)
+                    # link delta summation w to s link
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (wv, sv),
+                        wv.lds_link
+                        )
 
-                if grp != _frmg:
-                    gfe.add_machine_edge_instance (MachineEdge (_frmg.s_vertex, w),
-                                                 _frmg.s_vertex.fds_link)
+                    # link delta result (first group) s to w (multicast) link
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (first_subgroup_s_vertex, wv),
+                        first_subgroup_s_vertex.lds_link
+                        )
 
-            # create forward s to i link
-            gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
-                                                      grp.i_vertex),
-                                         grp.s_vertex.fwd_link)
+                    # stop (last output group/subgroup) t to w (multicast) link
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (last_out_subgroup_t_vertex, wv),
+                        last_out_subgroup_t_vertex.stp_link
+                        )
 
-            # create backprop s to t link
-            gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
-                                                      grp.t_vertex),
-                                         grp.s_vertex.bkp_link)
+                    # intra-subgroup sync s to w (multicast) link
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (sv, wv),
+                        sv.fds_link
+                        )
 
-            # create forward i to t link
-            gfe.add_machine_edge_instance (MachineEdge (grp.i_vertex,
-                                                      grp.t_vertex),
-                                         grp.i_vertex.fwd_link)
+                    # inter-subgroup sync s to w (multicast) link
+                    #NOTE: avoid duplicates
+                    if grp != from_grp or sgrp != from_sgrp:
+                        gfe.add_machine_edge_instance (
+                            MachineEdge (from_sv, wv),
+                            from_sv.fds_link
+                            )
 
-            # create backprop t to i link
-            gfe.add_machine_edge_instance (MachineEdge (grp.t_vertex,
-                                                      grp.i_vertex),
-                                         grp.t_vertex.bkp_link)
+                # forward s to i link
+                gfe.add_machine_edge_instance (
+                    MachineEdge (sv, iv),
+                    sv.fwd_link
+                    )
 
-            # create link delta summation s to s links - all s cores
-            # (except the first) send to the first s core
-            if grp != first:
-                print (f"Creating lds s-s edge from group {grp.label} "
-                       f"to group {first.label}")
-                gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
-                                                          first.s_vertex),
-                                             grp.s_vertex.lds_link)
+                # forward i to t link
+                gfe.add_machine_edge_instance (
+                    MachineEdge (iv, tv),
+                    iv.fwd_link
+                    )
 
-            # create stop links, if OUTPUT group
-            if grp in self.output_chain:
-                # if last OUTPUT group broadcast stop decision
-                if grp == self.output_chain[-1]:
-                    for stpg in self.groups:
-                        # create stop links to all w cores
-                        for w in stpg.w_vertices:
-                            gfe.add_machine_edge_instance\
-                              (MachineEdge (grp.t_vertex, w),
-                               grp.t_vertex.stp_link)
+                # backprop t to i link
+                gfe.add_machine_edge_instance (
+                    MachineEdge (tv, iv),
+                    tv.bkp_link
+                    )
 
-                        # create stop links to all s cores
-                        gfe.add_machine_edge_instance\
-                         (MachineEdge (grp.t_vertex, stpg.s_vertex),\
-                          grp.t_vertex.stp_link)
+                # backprop s to t link
+                gfe.add_machine_edge_instance (
+                    MachineEdge (sv, tv),
+                    sv.bkp_link
+                    )
 
-                        # create stop links to all i cores
-                        gfe.add_machine_edge_instance\
-                         (MachineEdge (grp.t_vertex, stpg.i_vertex),\
-                          grp.t_vertex.stp_link)
+                # link delta summation s to s link
+                if sgrp != 0:
+                    # first subgroup collects from all other subgroups
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (sv, grp.s_vertex[0]),
+                        sv.lds_link
+                        )
+                elif grp != first_lds_grp:
+                    # first group collects from all other groups
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (sv, first_subgroup_s_vertex),
+                        sv.lds_link
+                        )
 
-                        # create stop links to t cores (no link to itself!)
-                        if stpg != grp:
-                            gfe.add_machine_edge_instance\
-                             (MachineEdge (grp.t_vertex, stpg.t_vertex),\
-                              grp.t_vertex.stp_link)
-                else:
-                    # create stop link to next OUTPUT group in chain
-                    _inx  = self.output_chain.index (grp)
-                    _stpg = self.output_chain[_inx + 1]
-                    gfe.add_machine_edge_instance (MachineEdge (grp.t_vertex,
-                                                              _stpg.t_vertex),
-                                                 grp.t_vertex.stp_link)
+                # (output groups) t to t criterion link 
+                if grp in self.output_chain:
+                    # intra-group criterion link
+                    if sgrp < (grp.subgroups - 1):
+                        gfe.add_machine_edge_instance (
+                            MachineEdge (tv, grp.t_vertex[sgrp + 1]),
+                            tv.stp_link
+                            )
+                    elif grp != last_out_grp:
+                        # inter-group criterion link
+                        ngi = self.output_chain.index(grp) + 1
+                        next_grp = self.output_chain[ngi]
+                        gfe.add_machine_edge_instance (
+                            MachineEdge (tv, next_grp.t_vertex[0]),
+                            tv.stp_link
+                            )
+
+                # stop (last output group/subgroup) t to s (multicast) link
+                gfe.add_machine_edge_instance (
+                    MachineEdge (last_out_subgroup_t_vertex, sv),
+                    last_out_subgroup_t_vertex.stp_link
+                    )
+
+                # stop (last output group/subgroup) t to i (multicast) link
+                gfe.add_machine_edge_instance (
+                    MachineEdge (last_out_subgroup_t_vertex, iv),
+                    last_out_subgroup_t_vertex.stp_link
+                    )
+
+                # stop (last output group/subgroup) t to t (multicast) link
+                if tv != last_out_subgroup_t_vertex:
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (last_out_subgroup_t_vertex, tv),
+                        last_out_subgroup_t_vertex.stp_link
+                        )
 
         self._graph_rdy = True
 
@@ -971,14 +1033,6 @@ class MLPNetwork():
         """ run a stage on application graph
         """
         self._aborted = False
-
-        # check that no group is too big
-        for grp in self.groups:
-            if grp.units > MLPConstants.MAX_GRP_UNITS:
-                print (f"run aborted: group {grp.label} has more than "
-                       f"{MLPConstants.MAX_GRP_UNITS} units.")
-                self._aborted = True
-                return
 
         # cannot run unless weights file exists
         if self._weights_file is None:

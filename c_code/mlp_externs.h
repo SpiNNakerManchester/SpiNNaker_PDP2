@@ -129,10 +129,8 @@ extern scoreboard_t     ib_done;       // current tick delta computation done
 extern long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
 extern long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
 
-extern uint           * i_bkpKey;      // i cores have one bkpKey per subgroup
-
 // history arrays
-extern long_net_t      * i_net_history; //sdram pointer where to store input history
+extern long_net_t     * i_net_history; //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -181,8 +179,6 @@ extern activation_t     t_max_output;      // highest output value
 extern activation_t     t_max_target;      // highest target value
 extern long_deriv_t   * t_output_deriv;
 extern delta_t        * t_deltas;
-
-extern uint           * t_fwdKey;      // t cores have one fwdKey per subgroup
 
 // history arrays
 extern net_t          * t_net_history;

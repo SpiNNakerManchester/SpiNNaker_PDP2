@@ -148,14 +148,6 @@ uint mem_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for BACKPROP keys (one per subgroup)
-  if ((i_bkpKey = ((uint *)
-         spin1_malloc (icfg.subgroups * sizeof (uint)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
   // allocate memory for INPUT functions
   for (uint i = 0; i < icfg.num_in_procs; i++)
   {
@@ -271,13 +263,9 @@ void var_init (uint reset_examples)
   i_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is initialised to 0.
+  //NOTE: colour is implicitly initialised to 0
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
-
-  for (uint p = 0; p < icfg.subgroups; p++)
-  {
-    i_bkpKey[p] = rt[BKPI + p] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  }
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
   // if the INPUT INTEGRATOR is used
   // reset the memory of the INTEGRATOR state variables

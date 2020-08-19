@@ -145,7 +145,7 @@ void ib_process (uint key, uint payload)
   }
 
   // incorporate delta index to the packet key and send,
-  while (!spin1_send_mc_packet ((i_bkpKey[inx >> SPINN_BLOCK_SHIFT] | inx), delta, WITH_PAYLOAD));
+  while (!spin1_send_mc_packet ((bkpKey | inx), delta, WITH_PAYLOAD));
 
 #ifdef DEBUG
   pkt_sent++;

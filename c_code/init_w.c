@@ -93,8 +93,6 @@ uint cfg_init (void)
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
   io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
-  io_printf (IO_BUF, "rb: %d\n", wcfg.row_blk);
-  io_printf (IO_BUF, "cb: %d\n", wcfg.col_blk);
   io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
   io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
   io_printf (IO_BUF, "mm: %k\n", wcfg.momentum);
@@ -324,11 +322,9 @@ void var_init (uint init_weights, uint reset_examples)
   wb_update_func = w_update_procs[xcfg.update_function];
 
   // initialise packet keys
-  //NOTE: colour is initialised to 0.
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD)
-      | SPINN_BLOCK_KEY(wcfg.col_blk);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP)
-      | SPINN_BLOCK_KEY(wcfg.row_blk);
+  //NOTE: colour is implicitly initialised to 0
+  fwdKey  = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
+  bkpKey  = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
   ldsaKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
 #ifdef DEBUG

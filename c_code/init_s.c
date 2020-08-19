@@ -247,7 +247,7 @@ void var_init (uint reset_examples)
   s_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is initialised to 0.
+  //NOTE: colour is implicitly initialised to 0
   fwdKey  = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey  = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldstKey = rt[LDS] | SPINN_LDST_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
