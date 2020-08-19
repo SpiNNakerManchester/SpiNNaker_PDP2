@@ -159,10 +159,6 @@ class MLPNetwork():
         return self._rec_example_last_tick_only
 
     @property
-    def num_write_blocks (self):
-        return self._num_write_blks
-
-    @property
     def output_chain (self):
         return self._output_chain
 
@@ -180,17 +176,15 @@ class MLPNetwork():
               uchar net_type;
               uint  ticks_per_int;
               uint  global_max_ticks;
-              uint  num_write_blks;
             } network_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        return struct.pack("<B3x3I",
+        return struct.pack("<B3x2I",
                            self._net_type,
                            self._ticks_per_interval,
                            self._global_max_ticks,
-                           self._num_write_blks
                            )
 
 
@@ -786,9 +780,6 @@ class MLPNetwork():
 
         # setup the machine graph
         gfe.setup (model_binary_folder = binaries_path)
-
-        # set the number of write blocks before generating vertices
-        self._num_write_blks = len (self.output_chain)
 
         # compute number of subgroups
         for grp in self.groups:

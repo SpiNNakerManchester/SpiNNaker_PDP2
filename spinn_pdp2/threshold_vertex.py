@@ -262,7 +262,6 @@ class ThresholdVertex(
               uchar         write_results;
               uchar         write_out;
               uchar         last_tick_only;
-              uint          write_blk;
               uchar         hard_clamp_en;
               uchar         out_integr_en;
               fpreal        out_integr_dt;
@@ -308,14 +307,13 @@ class ThresholdVertex(
         trn_group_criterion = int (self._trn_group_criterion *
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2xI3BxI2B2xi6I4i4B",
+        return struct.pack ("<2B2xI5B3xi6I4i4B",
                             self.group.output_grp,
                             self.group.input_grp,
                             self._units,
                             self.network.rec_test_results,
                             write_out,
                             last_tick_only,
-                            self.group.write_blk,
                             self.group.hard_clamp_en,
                             self.group.out_integr_en,
                             out_integr_dt,

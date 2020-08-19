@@ -152,7 +152,6 @@ uint cfg_init (void)
   io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
   io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
   io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
-  io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
   io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
   io_printf (IO_BUF, "dt: %f\n", tcfg.out_integr_dt);
   io_printf (IO_BUF, "np: %d\n", tcfg.num_out_procs);

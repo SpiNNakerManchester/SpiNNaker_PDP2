@@ -219,7 +219,6 @@ typedef struct network_conf     // MLP network configuration
   uchar net_type;               // type of neural net
   uint  ticks_per_int;          // number of ticks per interval
   uint  global_max_ticks;       // max number of ticks across all the examples
-  uint  num_write_blks;         // number of groups that write outputs
 } network_conf_t;
 // ------------------------------------------------------------------------
 
@@ -228,8 +227,8 @@ typedef struct network_conf     // MLP network configuration
 // weight core configuration
 // ------------------------------------------------------------------------
 // The neural net is represented by a weight matrix.
-// The matrix is divided into num_rblks x num_cblk weight blocks
-// and every weight core computes for one of these blocks.
+// The matrix is divided into a number of weight blocks and each
+// weight core gets assigned one of these blocks for computation.
 // Each block is associated with a single projection, i.e., it contains
 // connection weights associated with a single origin group and a single
 // destination group (which can be the same in recurrent networks).
@@ -307,7 +306,6 @@ typedef struct t_conf                  // threshold core configuration
   uchar         write_results;         // record test results?
   uchar         write_out;             // record outputs?
   uchar         last_tick_only;        // record only last tick of examples?
-  uint          write_blk;             // this core's write block
   uchar         hard_clamp_en;         // HARD CLAMP in use
   uchar         out_integr_en;         // output INTEGRATOR in use
   fpreal        out_integr_dt;         // integration time const for input integr
