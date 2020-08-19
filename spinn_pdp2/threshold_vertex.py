@@ -123,13 +123,15 @@ class ThresholdVertex(
 
         # list of subgroup inputs (empty if not an INPUT group)
         if self.group.input_grp:
-            self._INPUTS_BYTES = self._units * DataType.INT32.size
+            self._INPUTS_BYTES = ((len (self.group.inputs) // self.group.units) *
+                                  self._units * DataType.INT32.size)
         else:
             self._INPUTS_BYTES = 0
 
         # list of subgroup targets (empty if not an OUTPUT group)
         if self.group.output_grp:
-            self._TARGETS_BYTES = self._units * DataType.INT32.size
+            self._TARGETS_BYTES = ((len (self.group.targets) // self.group.units) *
+                                  self._units * DataType.INT32.size)
         else:
             self._TARGETS_BYTES = 0 
 
@@ -443,14 +445,15 @@ class ThresholdVertex(
 
             # write inputs to spec
             us = self.subgroup * MLPConstants.MAX_BLK_UNITS
-            ue = us + self._units
-            for i in self.group.inputs[us : ue]:
-                # inputs are fixed-point activation_t
-                if (i is None) or (i == float ('nan')):
-                    inp = MLPConstants.ACTIV_NaN
-                else:
-                    inp = int (i * (1 << MLPConstants.ACTIV_SHIFT))
-                spec.write_value (inp, data_type = DataType.UINT32)
+            for _ in range (len (self.group.inputs) // self.group.units):
+                for i in self.group.inputs[us : us + self._units]:
+                    # inputs are fixed-point activation_t
+                    if (i is None) or (i == float ('nan')):
+                        inp = MLPConstants.ACTIV_NaN
+                    else:
+                        inp = int (i * (1 << MLPConstants.ACTIV_SHIFT))
+                    spec.write_value (inp, data_type = DataType.UINT32)
+                us += self.group.units
 
         # reserve and write the target data region
         if self.group.output_grp:
@@ -461,14 +464,15 @@ class ThresholdVertex(
 
             # write targets to spec
             us = self.subgroup * MLPConstants.MAX_BLK_UNITS
-            ue = us + self._units
-            for t in self.group.targets[us : ue]:
-                # targets are fixed-point activation_t
-                if (t is None) or (t == float ('nan')):
-                    tgt = MLPConstants.ACTIV_NaN
-                else:
-                    tgt = int (t * (1 << MLPConstants.ACTIV_SHIFT))
-                spec.write_value (tgt, data_type = DataType.UINT32)
+            for _ in range (len (self.group.targets) // self.group.units):
+                for t in self.group.targets[us : us + self._units]:
+                    # inputs are fixed-point activation_t
+                    if (t is None) or (t == float ('nan')):
+                        tgt = MLPConstants.ACTIV_NaN
+                    else:
+                        tgt = int (t * (1 << MLPConstants.ACTIV_SHIFT))
+                    spec.write_value (tgt, data_type = DataType.UINT32)
+                us += self.group.units
 
         # reserve and write the routing region
         spec.reserve_memory_region (MLPRegions.ROUTING.value,
