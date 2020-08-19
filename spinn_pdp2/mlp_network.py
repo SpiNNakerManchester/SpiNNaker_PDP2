@@ -609,15 +609,6 @@ class MLPNetwork():
 
         if not self._aborted:
             with open(output_file, 'w') as f:
-                # prepare to retrieve recorded data
-                TICK_DATA_FORMAT = "<4I"
-                TICK_DATA_SIZE = struct.calcsize(TICK_DATA_FORMAT)
-
-                OUT_DATA_FORMATS = []
-                OUT_DATA_SIZES = []
-                for g in self.output_chain:
-                    OUT_DATA_FORMATS.append ("<{}H".format (g.units))
-                    OUT_DATA_SIZES.append (struct.calcsize("<{}H".format (g.units)))
 
                 # retrieve recorded tick_data from first output subgroup
                 g = self.out_grps[0]
@@ -626,8 +617,6 @@ class MLPNetwork():
                     gfe.placements().get_placement_of_vertex (ftv),
                     gfe.buffer_manager(), MLPExtraRecordings.TICK_DATA.value
                     )
-
-                TOTAL_TICKS = len (rec_tick_data) // TICK_DATA_SIZE
 
                 # retrieve recorded outputs from every output group
                 rec_outputs = [None] * len (self.out_grps)
@@ -658,6 +647,12 @@ class MLPNetwork():
                     # and limit to the global maximum if required
                     if ticks_per_example > self.global_max_ticks:
                         ticks_per_example = self.global_max_ticks
+
+                # prepare to retrieve recorded data
+                TICK_DATA_FORMAT = "<4I"
+                TICK_DATA_SIZE = struct.calcsize(TICK_DATA_FORMAT)
+
+                TOTAL_TICKS = len (rec_tick_data) // TICK_DATA_SIZE
 
                 # print recorded data in correct order
                 current_epoch = -1
@@ -699,27 +694,27 @@ class MLPNetwork():
                     f.write (f"{tick} {event}\n")
 
                     for g in self.output_chain:
+                        outputs = []
                         # get tick outputs for each subgroup
-                        for rec_outs in rec_outputs[g.write_blk]:
-                            if len (rec_outs):
-                                outputs = struct.unpack_from (
-                                    OUT_DATA_FORMATS[self.output_chain.index (g)],
-                                    rec_outs,
-                                    tk * OUT_DATA_SIZES[self.output_chain.index (g)]
-                                    )
+                        for sg, rec_outs in enumerate (rec_outputs[g.write_blk]):
+                            outputs += struct.unpack_from (
+                                f"<{g.subunits[sg]}H",
+                                rec_outs,
+                                tk * struct.calcsize(f"<{g.subunits[sg]}H")
+                                )
 
-                                # print outputs
-                                f.write (f"{g.units} 1\n")
-                                tinx = tgt_inx * g.units
-                                for u in range (g.units):
-                                    # outputs are s16.15 fixed-point numbers
-                                    out = (1.0 * outputs[u]) / (1.0 * (1 << 15))
-                                    t = g.targets[tinx + u]
-                                    if (t is None) or (t == float ('nan')):
-                                        tgt = "-"
-                                    else:
-                                        tgt = int (t)
-                                    f.write ("{:8.6f} {}\n".format (out, tgt))
+                        # print outputs
+                        f.write (f"{g.units} 1\n")
+                        tinx = tgt_inx * g.units
+                        for u in range (g.units):
+                            # outputs are s16.15 fixed-point numbers
+                            out = (1.0 * outputs[u]) / (1.0 * (1 << 15))
+                            t = g.targets[tinx + u]
+                            if (t is None) or (t == float ('nan')):
+                                tgt = "-"
+                            else:
+                                tgt = int (t)
+                            f.write ("{:8.6f} {}\n".format (out, tgt))
 
             # prepare buffers for next stage
             gfe.buffer_manager().reset()

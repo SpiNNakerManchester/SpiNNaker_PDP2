@@ -13,7 +13,6 @@ extern uint coreID;               // 5-bit virtual core ID
 extern uint fwdKey;               // packet ID for FORWARD-phase data
 extern uint bkpKey;               // packet ID for BACKPROP-phase data
 extern uint ldsaKey;              // packet ID for link delta summation accumulators
-extern uint ldstKey;              // packet ID for link delta summation totals
 extern uint ldsrKey;              // packet ID for link delta summation reports
 extern uint fdsKey;               // packet ID for FORWARD synchronisation
 
@@ -104,7 +103,6 @@ extern scoreboard_t   * sb_arrived[2]; // keep count of expected error b-d-p
 extern scoreboard_t     sb_done;       // current tick error computation done
 extern uint             sb_thrds_pend; // thread semaphore
 extern scoreboard_t     s_ldsa_arrived; // keep count of the number of partial link delta sums
-extern scoreboard_t     s_ldst_arrived; // keep count of the number of link delta sum totals
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -208,8 +206,6 @@ extern uint stn_sent;  // network_stop packets sent
 extern uint stn_recv;  // network_stop packets received
 extern uint lda_sent;  // partial link_delta packets sent
 extern uint lda_recv;  // partial link_delta packets received
-extern uint ldt_sent;  // total link_delta packets sent
-extern uint ldt_recv;  // total link_delta packets received
 extern uint ldr_sent;  // link_delta packets sent
 extern uint ldr_recv;  // link_delta packets received
 extern uint tot_tick;  // total number of ticks executed

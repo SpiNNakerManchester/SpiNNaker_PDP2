@@ -90,7 +90,6 @@ uint cfg_init (void)
   io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
   io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
   io_printf (IO_BUF, "ae: %d\n", scfg.ldsa_expected);
-  io_printf (IO_BUF, "te: %d\n", scfg.ldst_expected);
   io_printf (IO_BUF, "uf: %d\n", xcfg.update_function);
   io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
@@ -230,7 +229,6 @@ void var_init (uint reset_examples)
   sf_done = 0;
   sb_done = 0;
   s_ldsa_arrived = 0;
-  s_ldst_arrived = 0;
 
   // initialise thread semaphores
   sf_thrds_pend = SPINN_SF_THRDS;
@@ -250,7 +248,7 @@ void var_init (uint reset_examples)
   //NOTE: colour is implicitly initialised to 0
   fwdKey  = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey  = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  ldstKey = rt[LDS] | SPINN_LDST_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  ldsaKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldsrKey = rt[LDS] | SPINN_LDSR_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
   fdsKey  = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
 
@@ -269,8 +267,7 @@ void var_init (uint reset_examples)
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
   lda_recv = 0;  // partial link_delta packets received
-  ldt_sent = 0;  // total link_delta packets sent
-  ldt_recv = 0;  // total link_delta packets received
+  lda_sent = 0;  // partial link_delta packets sent
   ldr_sent = 0;  // link_delta packets sent
   wrng_phs = 0;  // packets received in wrong phase
   wrng_pth = 0;  // unexpected processing thread
@@ -395,12 +392,7 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "ldsa recv:%d\n", lda_recv);
   if (scfg.is_first_group)
   {
-    io_printf (IO_BUF, "ldst recv:%d\n", ldt_recv);
     io_printf (IO_BUF, "ldsr sent:%d\n", ldr_sent);
-  }
-  else
-  {
-    io_printf (IO_BUF, "ldst sent:%d\n", ldt_sent);
   }
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);

@@ -202,16 +202,7 @@ void sb_process (uint key, uint payload)
             && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_SB_END_TICK + 1)
         {
-          // if this s core relates to the first group in the network, then we
-          // also need to wait for the link delta sum totals
-          if (scfg.is_first_group)
-          {
-            sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA | SPINN_THRD_LDST;
-          }
-          else
-          {
-            sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA;
-          }
+          sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA;
         }
 
         // restore interrupts after flag access,
@@ -391,7 +382,6 @@ void s_advance_example (void)
     {
       s_lds_part = 0;
       s_ldsa_arrived = 0;
-      s_ldst_arrived = 0;
     }
   }
 

@@ -89,7 +89,6 @@
 // packet type keys
 #define SPINN_DATA_KEY       0x00000000
 #define SPINN_SYNC_KEY       0x00001000
-#define SPINN_LDST_KEY       0x00002000
 #define SPINN_LDSA_KEY       0x00003000
 #define SPINN_LDSR_KEY       0x00004000
 #define SPINN_CRIT_KEY       0x00005000
@@ -154,7 +153,6 @@
 #define SPINN_THRD_COMS      ((SPINN_THRD_PROC) << 1)
 #define SPINN_THRD_STOP      ((SPINN_THRD_COMS) << 1)
 #define SPINN_THRD_LDSA      ((SPINN_THRD_STOP) << 1)
-#define SPINN_THRD_LDST      ((SPINN_THRD_LDSA) << 1)
 #define SPINN_THRD_LDSR      (SPINN_THRD_LDSA)
 
 #define SPINN_WF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_COMS | SPINN_THRD_STOP)

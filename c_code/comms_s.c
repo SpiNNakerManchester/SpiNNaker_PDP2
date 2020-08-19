@@ -16,7 +16,7 @@
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // enqueue received packet
-// (FORWARD, BACKPROP, ldsa, ldst, stop and net_stop types)
+// (FORWARD, BACKPROP, ldsa, stop and net_stop types)
 // ------------------------------------------------------------------------
 void s_receivePacket (uint key, uint payload)
 {
@@ -100,13 +100,6 @@ void s_processQueue (uint unused0, uint unused1)
     {
       // process LDS "accumulation" packet
       s_ldsa_packet (payload);
-    }
-
-    // check for LDS "total" packet,
-    else if (pkt_type == SPINN_LDST_KEY)
-    {
-      // process LDS "total" packet
-      s_ldst_packet (payload);
     }
 
     // check if stop packet,
@@ -250,15 +243,24 @@ void s_ldsa_packet (uint payload)
   // check whether all the partial sums have arrived
   if (s_ldsa_arrived == scfg.ldsa_expected)
   {
-    // send the result to the first subgroup
-    // to give a total across the whole network
-    if (!scfg.is_first_group)
+    if (scfg.is_first_group)
     {
-      while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
+      // broadcast the result to the first subgroup
+      while (!spin1_send_mc_packet (ldsrKey, s_lds_part, WITH_PAYLOAD));
 
 #ifdef DEBUG
       pkt_sent++;
-      ldt_sent++;
+      ldr_sent++;
+#endif
+    }
+    else
+    {
+      // or forward partial result to the first subgroup
+      while (!spin1_send_mc_packet (ldsaKey, s_lds_part, WITH_PAYLOAD));
+
+#ifdef DEBUG
+      pkt_sent++;
+      lda_sent++;
 #endif
     }
 
@@ -288,73 +290,6 @@ void s_ldsa_packet (uint payload)
       sb_thrds_pend &= ~SPINN_THRD_LDSA;
 
       // and restore interrupts after flag access
-      spin1_mode_restore (cpsr);
-    }
-  }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process LDST packet: accumulate the received link delta sum totals
-// ------------------------------------------------------------------------
-void s_ldst_packet (uint payload)
-{
-#ifdef DEBUG
-  ldt_recv++;
-#endif
-
-  // add the received value to the total so far,
-  s_lds_part += (lds_t) payload;
-
-  // increment the count of link delta sums arrived,
-  s_ldst_arrived++;
-
-  // check whether all the partial sums have arrived
-  if (s_ldst_arrived == scfg.ldst_expected)
-  {
-    if (scfg.is_first_group)
-    {
-      // send the final value of s_lds_part back to the w cores
-      while (!spin1_send_mc_packet (ldsrKey, s_lds_part, WITH_PAYLOAD));
-    }
-    else
-    {
-      // send the s_lds_part to first subgroup
-      while (!spin1_send_mc_packet (ldstKey, s_lds_part, WITH_PAYLOAD));
-    }
-
-#ifdef DEBUG
-    pkt_sent++;
-    ldr_sent++;
-#endif
-
-    // access thread semaphore with interrupts disabled
-    uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(sb_thrds_pend & SPINN_THRD_LDST))
-      wrng_cth++;
-#endif
-
-    // check if all other threads done
-    if (sb_thrds_pend == SPINN_THRD_LDST)
-    {
-      // if done initialise semaphore
-      sb_thrds_pend = SPINN_SB_THRDS;
-
-      // restore interrupts after semaphore access,
-      spin1_mode_restore (cpsr);
-
-      // and advance tick
-      sb_advance_tick ();
-    }
-    else
-    {
-      // if not done report processing thread done,
-      sb_thrds_pend &= ~SPINN_THRD_LDST;
-
-      // and restore interrupts after semaphore access
       spin1_mode_restore (cpsr);
     }
   }

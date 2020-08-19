@@ -133,7 +133,6 @@ class SumVertex(
               scoreboard_t fwd_expect;
               scoreboard_t bkp_expect;
               scoreboard_t ldsa_expect;
-              scoreboard_t ldst_expect;
               uchar        is_first_group;
             } s_conf_t;
 
@@ -148,19 +147,23 @@ class SumVertex(
 
         fwd_expect  = self.network.subgroups
         bkp_expect  = self.network.subgroups
+
+        # every s core expects partial lds from every w core in subgroup
         ldsa_expect = self.network.subgroups * self._units
 
-        if is_first_group:
-            ldst_expect = len (self.network.groups) - 1
-        else:
-            ldst_expect = self.group.subgroups - 1
+        # first subgroup expects a partial lds from every other subgroup
+        if self.subgroup == 0:
+            ldsa_expect += self.group.subgroups - 1
 
-        return struct.pack ("<5IB3x",
+            # first group expects a partial lds from every other group
+            if is_first_group:
+                ldsa_expect += len (self.network.groups) - 1
+
+        return struct.pack ("<4IB3x",
                             self._units,
                             fwd_expect,
                             bkp_expect,
                             ldsa_expect,
-                            ldst_expect,
                             is_first_group
                             )
 
