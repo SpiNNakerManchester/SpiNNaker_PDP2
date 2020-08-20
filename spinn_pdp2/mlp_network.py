@@ -695,9 +695,6 @@ class MLPNetwork():
                                     tgt = int(t)
                                 f.write ("{:8.6f} {}\n".format (out, tgt))
 
-            # prepare buffers for next stage
-            gfe.buffer_manager().reset()
-
 
     def show_test_results (self):
         """ show stage test results corresponding to
@@ -994,6 +991,10 @@ class MLPNetwork():
         # generate machine graph - if needed
         if not self._graph_rdy:
             self.generate_machine_graph ()
+
+        # initialise recording buffers for new stage run
+        if self._stage_id != 0:
+            gfe.buffer_manager().reset()
 
         # run stage
         gfe.run_until_complete (self._stage_id)
