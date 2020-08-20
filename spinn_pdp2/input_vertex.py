@@ -267,7 +267,8 @@ class InputVertex(
             for _ in range (len (self.group.inputs) // self.group.units):
                 for i in self.group.inputs[us : us + self._units]:
                     # inputs are fixed-point activation_t
-                    if (i is None) or (i == float ('nan')):
+                    #NOTE: check for absent or NaN
+                    if (i is None) or (i != i):
                         inp = MLPConstants.ACTIV_NaN
                     else:
                         inp = int (i * (1 << MLPConstants.ACTIV_SHIFT))

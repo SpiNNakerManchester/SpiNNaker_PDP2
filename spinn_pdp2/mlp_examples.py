@@ -83,21 +83,24 @@ class MLPExampleSet ():
             explicit padding
         """
         # max_time is an MLP fixed-point fpreal
-        if (self.max_time is None) or (self.max_time == float ('nan')):
+        #NOTE: check for absent or NaN
+        if (self.max_time is None) or (self.max_time != self.max_time):
             max_time = MLPConstants.FPREAL_NaN
         else:
             max_time = int (self.max_time *\
                             (1 << MLPConstants.FPREAL_SHIFT))
 
         # min_time is an MLP fixed-point fpreal
-        if (self.min_time is None) or (self.min_time == float ('nan')):
+        #NOTE: check for absent or NaN
+        if (self.min_time is None) or (self.min_time != self.min_time):
             min_time = MLPConstants.FPREAL_NaN
         else:
             min_time = int (self.min_time *\
                             (1 << MLPConstants.FPREAL_SHIFT))
 
         # grace_time is an MLP fixed-point fpreal
-        if (self.grace_time is None) or (self.grace_time == float ('nan')):
+        #NOTE: check for absent or NaN
+        if (self.grace_time is None) or (self.grace_time != self.grace_time):
             grace_time = MLPConstants.FPREAL_NaN
         else:
             grace_time = int (self.grace_time *\
@@ -754,21 +757,24 @@ class MLPEvent ():
             explicit padding
         """
         # max_time is an MLP fixed-point fpreal
-        if (self.max_time is None) or (self.max_time == float ('nan')):
+        #NOTE: check for absent or NaN
+        if (self.max_time is None) or (self.max_time != self.max_time):
             max_time = MLPConstants.FPREAL_NaN
         else:
             max_time = int (self.max_time *\
                             (1 << MLPConstants.FPREAL_SHIFT))
 
         # min_time is an MLP fixed-point fpreal
-        if (self.min_time is None) or (self.min_time == float ('nan')):
+        #NOTE: check for absent or NaN
+        if (self.min_time is None) or (self.min_time != self.min_time):
             min_time = MLPConstants.FPREAL_NaN
         else:
             min_time = int (self.min_time *\
                             (1 << MLPConstants.FPREAL_SHIFT))
 
         # grace_time is an MLP fixed-point fpreal
-        if (self.grace_time is None) or (self.grace_time == float ('nan')):
+        #NOTE: check for absent or NaN
+        if (self.grace_time is None) or (self.grace_time != self.grace_time):
             grace_time = MLPConstants.FPREAL_NaN
         else:
             grace_time = int (self.grace_time *\
