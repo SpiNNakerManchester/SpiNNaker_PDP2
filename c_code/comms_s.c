@@ -77,7 +77,7 @@ void s_processQueue (uint unused0, uint unused1)
 
     uint pkt_type = key & SPINN_TYPE_MASK;
 
-    // check if data packet,
+    // process data packet,
     if (pkt_type == SPINN_DATA_KEY)
     {
       // check packet phase and process accordingly
@@ -95,29 +95,26 @@ void s_processQueue (uint unused0, uint unused1)
       }
     }
 
-    // check for an LDS "accumulation" packet,
+    // or process LDS packet,
     else if (pkt_type == SPINN_LDSA_KEY)
     {
-      // process LDS "accumulation" packet
       s_lds_packet (payload);
     }
 
-    // check if stop packet,
+    // or process stop packet,
     else if (pkt_type == SPINN_STOP_KEY)
     {
-      // stop packet received
       s_stop_packet (key);
     }
 
-    // check if network stop packet,
+    // or process network stop packet,
     else if (pkt_type == SPINN_STPN_KEY)
     {
-      // network stop packet received
       s_net_stop_packet (key);
     }
 
 #ifdef DEBUG
-    // report unknown packet type,
+    // or report unknown packet type,
     else
     {
       stage_done (SPINN_UNXPD_PKT, key);

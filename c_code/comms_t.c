@@ -121,19 +121,19 @@ void t_processFWDQueue (uint unused0, uint unused1)
       tf_process (key, payload);
     }
 
-    // process criterion packet,
+    // or process criterion packet,
     else if (pkt_type == SPINN_CRIT_KEY)
     {
       t_criterion_packet (key);
     }
 
-    // process tick stop packet,
+    // or process tick stop packet,
     else if (pkt_type == SPINN_STOP_KEY)
     {
       t_stop_packet (key);
     }
 
-    // process network stop packet,
+    // or process network stop packet,
     else if (pkt_type == SPINN_STPN_KEY)
     {
       t_net_stop_packet (key);

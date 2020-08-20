@@ -142,7 +142,7 @@ void w_processBKPQueue (uint unused0, uint unused1)
       wb_process (key, payload);
     }
 
-    // process LDS result packet,
+    // or process LDS result packet,
     else if (pkt_type == SPINN_LDSA_KEY)
     {
       w_lds_packet (payload);
