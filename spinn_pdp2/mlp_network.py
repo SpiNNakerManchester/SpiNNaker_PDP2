@@ -199,14 +199,6 @@ class MLPNetwork():
         else:
             update_function = self._update_function
 
-        # recording options
-        #TODO: Cannot get no recording to work - for now minimise recorded data!
-        if self.rec_outputs:
-            last_tick_only = self.rec_example_last_tick_only
-        else:
-            last_tick_only = True
-        rec_outputs = True
-
         # set the number of examples to use in this stage
         if self._stg_examples is not None:
             num_examples = self._stg_examples
@@ -225,8 +217,8 @@ class MLPNetwork():
                            update_function.value,
                            self._stg_reset,
                            self.rec_test_results,
-                           rec_outputs,
-                           last_tick_only,
+                           self.rec_outputs,
+                           self.rec_example_last_tick_only,
                            num_examples,
                            num_epochs
                            )
