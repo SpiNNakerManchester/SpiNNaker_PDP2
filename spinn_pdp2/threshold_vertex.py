@@ -447,7 +447,8 @@ class ThresholdVertex(
             # write inputs to spec
             for _i in self._group.inputs:
                 # inputs are MLP fixed-point activation_t
-                if (_i is None) or (_i == float ('nan')):
+                #NOTE: check for absent or NaN
+                if (_i is None) or (_i != _i):
                     _inp = MLPConstants.ACTIV_NaN
                 else:
                     _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
@@ -463,7 +464,8 @@ class ThresholdVertex(
             # write targets to spec
             for _t in self._group.targets:
                 # targets are MLP fixed-point activation_t
-                if (_t is None) or (_t == float ('nan')):
+                #NOTE: check for absent or NaN
+                if (_t is None) or (_t != _t):
                     _tgt = MLPConstants.ACTIV_NaN
                 else:
                     _tgt = int (_t * (1 << MLPConstants.ACTIV_SHIFT))

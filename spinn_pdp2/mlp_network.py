@@ -622,7 +622,8 @@ class MLPNetwork():
                 ticks_per_example = 0
                 for ev in self._ex_set.examples[0].events:
                     # use event max_time if available or default to set max_time,
-                    if (ev.max_time is None) or (self.max_time == float ('nan')):
+                    #NOTE: check for absent or NaN
+                    if (ev.max_time is None) or (ev.max_time != ev.max_time):
                         max_time = int (self._ex_set.max_time)
                     else:
                         max_time = int (ev.max_time)
@@ -689,7 +690,8 @@ class MLPNetwork():
                                 # outputs are s16.15 fixed-point numbers
                                 out = (1.0 * outputs[u]) / (1.0 * (1 << 15))
                                 t = g.targets[tinx + u]
-                                if (t is None) or (t == float ('nan')):
+                                #NOTE: check for absent or NaN
+                                if (t is None) or (t != t):
                                     tgt = "-"
                                 else:
                                     tgt = int(t)
