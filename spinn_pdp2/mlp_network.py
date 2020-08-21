@@ -180,6 +180,9 @@ class MLPNetwork():
               uchar training;         // stage mode: train (1) or test (0)
               uchar update_function;  // weight update function in this stage
               uchar reset;            // reset example index at stage start?
+              uchar rec_results;      // record test results?
+              uchar rec_outputs;      // record outputs?
+              uchar last_tick_only;   // record only last tick of examples?
               uint  num_examples;     // examples to run in this stage
               uint  num_epochs;       // training epochs in this stage
             } stage_conf_t;
@@ -189,29 +192,40 @@ class MLPNetwork():
         """
         # set the update function to use in this stage
         if self._stg_update_function is not None:
-            _update_function = self._stg_update_function
+            update_function = self._stg_update_function
         else:
-            _update_function = self._update_function
+            update_function = self._update_function
+
+        # recording options
+        #TODO: Cannot get no recording to work - for now minimise recorded data!
+        if self.rec_outputs:
+            last_tick_only = self.rec_example_last_tick_only
+        else:
+            last_tick_only = True
+        rec_outputs = True
 
         # set the number of examples to use in this stage
         if self._stg_examples is not None:
-            _num_examples = self._stg_examples
+            num_examples = self._stg_examples
         else:
-            _num_examples = self._ex_set.num_examples
+            num_examples = self._ex_set.num_examples
 
         # set the number of epochs to run in this stage
         if self._stg_epochs is not None:
-            _num_epochs = self._stg_epochs
+            num_epochs = self._stg_epochs
         else:
-            _num_epochs = self._num_updates
+            num_epochs = self._num_updates
 
-        return struct.pack("<4B2I",
+        return struct.pack("<7Bx2I",
                            self._stage_id,
                            self.training,
-                           _update_function.value,
+                           update_function.value,
                            self._stg_reset,
-                           _num_examples,
-                           _num_epochs
+                           self.rec_test_results,
+                           rec_outputs,
+                           last_tick_only,
+                           num_examples,
+                           num_epochs
                            )
 
 
@@ -430,13 +444,6 @@ class MLPNetwork():
         :type rec_outputs: boolean
         :type rec_example_last_tick_only: boolean
         """
-        #TODO: changing recording options between stages not currently supported
-        if self._stage_id:
-            print ("\n--------------------------------------------------")
-            print ("warning: new recording options ignored - cannot change between stages")
-            print ("--------------------------------------------------\n")
-            return
-
         if rec_test_results is not None:
             print (f"setting rec_test_results to {rec_test_results}")
             self._rec_test_results = rec_test_results
@@ -651,14 +658,18 @@ class MLPNetwork():
 
                     # check if starting new example
                     if (example != current_example):
-                        # print first (implicit) tick data
+                        # print example header
                         f.write (f"{epoch} {example}\n")
                         f.write (f"{ticks_per_example} {len (self.out_grps)}\n")
-                        f.write ("0 -1\n")
-                        for g in self.output_chain:
-                            f.write (f"{g.units} 1\n")
-                            for _ in range (g.units):
-                                f.write ("{:8.6f} {}\n".format (0, 0))
+
+                        # include initial outputs if recording all ticks
+                        if (not self.rec_example_last_tick_only):
+                            # print first (implicit) tick data
+                            f.write ("0 -1\n")
+                            for g in self.output_chain:
+                                f.write (f"{g.units} 1\n")
+                                for _ in range (g.units):
+                                    f.write ("{:8.6f} {}\n".format (0, 0))
 
                         # compute event index
                         evt_inx = 0

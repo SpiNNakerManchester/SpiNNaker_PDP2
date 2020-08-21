@@ -180,6 +180,12 @@ activation_t     t_max_target;      // highest target value
 long_deriv_t   * t_output_deriv;    // derivative of the output value
 delta_t        * t_deltas;
 
+// recording controls
+uchar            t_rec_outputs;     // record outputs to SDRAM
+uchar            t_rec_results;     // record outputs to SDRAM
+uchar            t_rec_tick_data;   // record outputs to SDRAM
+uchar            t_rec_step_updt;   // update recording step
+
 uint           * t_fwdKey;          // t cores have one fwdKey per partition
 
 // history arrays

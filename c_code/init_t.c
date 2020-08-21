@@ -60,7 +60,7 @@ uint cfg_init (void)
   spin1_memcpy (&tcfg, dt, sizeof (t_conf_t));
 
   // set up the recording infrastructure
-  if (tcfg.write_out)
+  if (tcfg.output_grp)
   {
     void * rec_info = data_specification_get_region(REC_INFO, data);
     if (!recording_initialize(&rec_info, &stage_rec_flags)){
@@ -151,7 +151,6 @@ uint cfg_init (void)
   io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
   io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
   io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
-  io_printf (IO_BUF, "wo: %d\n", tcfg.write_out);
   io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
   io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
   io_printf (IO_BUF, "dt: %f\n", tcfg.out_integr_dt);
@@ -544,6 +543,18 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tf_thrds_pend = SPINN_TF_THRDS;
   tb_thrds_pend = SPINN_TB_THRDS;
 
+  // initialise recording options
+  t_rec_results = xcfg.rec_results && tcfg.is_last_output_group &&
+      !xcfg.training && (stage_rec_flags & (1 << SPINN_REC_RESULTS));
+
+  t_rec_tick_data = xcfg.rec_outputs && tcfg.is_first_output_group &&
+      (stage_rec_flags & (1 << SPINN_REC_TICK_DATA));
+
+  t_rec_outputs = xcfg.rec_outputs && tcfg.output_grp &&
+      (stage_rec_flags & (1 << SPINN_REC_OUTPUTS));
+
+  t_rec_step_updt = xcfg.rec_outputs && tcfg.output_grp && (stage_rec_flags);
+
   // initialise stop function and related flags
   if (tcfg.output_grp)
   {
@@ -652,7 +663,7 @@ void stage_init (void)
   sark_io_buf_reset();
 
   // reset recording infrastructure
-  if (tcfg.write_out)
+  if (tcfg.output_grp)
   {
     recording_reset();
   }
@@ -706,11 +717,10 @@ void stage_done (uint ec, uint key)
   simulation_handle_pause_resume (stage_init);
 
   // report test results, if enabled,
-  if (tcfg.write_results && tcfg.is_last_output_group &&
-      !xcfg.training && stage_rec_flags
-      )
+  if (t_rec_results)
   {
-    recording_record(TEST_RESULTS, (void *) &t_test_results, sizeof (test_results_t));
+    recording_record(TEST_RESULTS,
+        (void *) &t_test_results, sizeof (test_results_t));
   }
 
 #if defined(DEBUG) || defined(DEBUG_EXIT)
@@ -802,10 +812,10 @@ void stage_done (uint ec, uint key)
 #endif
 
   // close recording channels,
-  if (tcfg.write_out)
+  if (tcfg.output_grp)
   {
     if (stage_rec_flags) {
-        recording_finalise();
+      recording_finalise();
     }
   }
 
