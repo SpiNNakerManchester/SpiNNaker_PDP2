@@ -249,7 +249,7 @@ class MLPNetwork():
         """
         # machine graph needs rebuilding
         self._graph_rdy = False
-        
+
         _id = len (self.groups)
 
         # set properties for OUTPUT group
@@ -488,10 +488,10 @@ class MLPNetwork():
             self._weights_file = "data/{}".format (weights_file)
         else:
             self._weights_file = None
-            print (f"error: cannot open weights file: {weights_file}")
+            print (f"error: cannot open weights file {weights_file}")
             return False
 
-        print ("reading Lens-style weights file")
+        print (f"reading Lens-style weights file {weights_file}")
 
         # compute the number of expected weights in the file
         _num_wts = 0
@@ -881,8 +881,6 @@ class MLPNetwork():
             # create link delta summation s to s links - all s cores
             # (except the first) send to the first s core
             if grp != first:
-                print (f"Creating lds s-s edge from group {grp.label} "
-                       f"to group {first.label}")
                 gfe.add_machine_edge_instance (MachineEdge (grp.s_vertex,
                                                           first.s_vertex),
                                              grp.s_vertex.lds_link)
