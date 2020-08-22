@@ -182,10 +182,10 @@ extern activation_t     t_max_target;      // highest target value
 extern long_deriv_t   * t_output_deriv;
 extern delta_t        * t_deltas;
 
-// recording controls
+// recording control
 extern uchar            t_rec_outputs;    // record outputs to SDRAM
-extern uchar            t_rec_results;    // record outputs to SDRAM
-extern uchar            t_rec_tick_data;  // record outputs to SDRAM
+extern uchar            t_rec_results;    // record test results to SDRAM
+extern uchar            t_rec_tick_data;  // record tick data to SDRAM
 extern uchar            t_rec_step_updt;  // update recording step
 
 extern uint           * t_fwdKey;      // t cores have one fwdKey per partition

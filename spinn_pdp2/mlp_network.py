@@ -670,7 +670,7 @@ class MLPNetwork():
                         f.write (f"{ticks_per_example} {len (self.out_grps)}\n")
 
                         # include initial outputs if recording all ticks
-                        if (not self.rec_example_last_tick_only):
+                        if not self.rec_example_last_tick_only:
                             # print first (implicit) tick data
                             f.write ("0 -1\n")
                             for g in self.output_chain:
@@ -715,7 +715,7 @@ class MLPNetwork():
                                     tgt = int(t)
                                 f.write ("{:8.6f} {}\n".format (out, tgt))
 
-        # initialise recorded data flag
+        # recorded data no longer available
         self._rec_data_rdy = False
 
 

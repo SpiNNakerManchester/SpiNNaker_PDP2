@@ -197,7 +197,7 @@
 
 
 // ------------------------------------------------------------------------
-// recording channels (HOST communication)
+// recording channels
 // ------------------------------------------------------------------------
 #define SPINN_REC_OUTPUTS    0
 #define SPINN_REC_RESULTS    1
