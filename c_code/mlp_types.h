@@ -302,9 +302,6 @@ typedef struct t_conf                  // threshold core configuration
   uchar         output_grp;            // is this an OUTPUT group?
   uchar         input_grp;             // is this an INPUT group?
   uint          num_units;             // this core's number of units
-  uchar         write_results;         // record test results?
-  uchar         write_out;             // record outputs?
-  uchar         last_tick_only;        // record only last tick of examples?
   uchar         hard_clamp_en;         // HARD CLAMP in use
   uchar         out_integr_en;         // output INTEGRATOR in use
   fpreal        out_integr_dt;         // integration time const for input integr
@@ -381,6 +378,9 @@ typedef struct stage_conf       // execution stage configuration
   uchar training;               // stage mode: train (1) or test (0)
   uchar update_function;        // weight update function in this stage
   uchar reset;                  // reset example index at stage start?
+  uchar rec_results;            // record test results?
+  uchar rec_outputs;            // record outputs?
+  uchar rec_last_tick_only;     // record only last tick of examples?
   uint  num_examples;           // number of examples to run in this stage
   uint  num_epochs;             // number of training epochs in this stage
 } stage_conf_t;

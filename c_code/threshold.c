@@ -180,6 +180,12 @@ activation_t     t_max_target;      // highest target value
 long_deriv_t   * t_output_deriv;    // derivative of the output value
 delta_t        * t_deltas;
 
+// recording control
+uchar            t_rec_outputs;     // record outputs to SDRAM
+uchar            t_rec_results;     // record test results to SDRAM
+uchar            t_rec_tick_data;   // record tick data to SDRAM
+uchar            t_rec_step_updt;   // update recording step
+
 // history arrays
 net_t          * t_net_history;
 activation_t   * t_output_history;

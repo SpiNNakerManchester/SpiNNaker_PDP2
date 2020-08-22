@@ -81,6 +81,9 @@ class MLPNetwork():
                                        label        = "Bias"
                                        )
 
+        # initialise recorded data flag
+        self._rec_data_rdy = False
+
         # initialise machine graph parameters
         self._graph_rdy = False
 
@@ -199,6 +202,9 @@ class MLPNetwork():
               uchar training;         // stage mode: train (1) or test (0)
               uchar update_function;  // weight update function in this stage
               uchar reset;            // reset example index at stage start?
+              uchar rec_results;      // record test results?
+              uchar rec_outputs;      // record outputs?
+              uchar last_tick_only;   // record only last tick of examples?
               uint  num_examples;     // examples to run in this stage
               uint  num_epochs;       // training epochs in this stage
             } stage_conf_t;
@@ -224,11 +230,14 @@ class MLPNetwork():
         else:
             num_epochs = self._num_updates
 
-        return struct.pack("<4B2I",
+        return struct.pack("<7Bx2I",
                            self._stage_id,
                            self.training,
                            update_function.value,
                            self._stg_reset,
+                           self.rec_test_results,
+                           self.rec_outputs,
+                           self.rec_example_last_tick_only,
                            num_examples,
                            num_epochs
                            )
@@ -449,13 +458,6 @@ class MLPNetwork():
         :type rec_outputs: boolean
         :type rec_example_last_tick_only: boolean
         """
-        #TODO: changing recording options between stages not currently supported
-        if self._stage_id:
-            print ("\n--------------------------------------------------")
-            print ("warning: new recording options ignored - cannot change between stages")
-            print ("--------------------------------------------------\n")
-            return
-
         if rec_test_results is not None:
             print (f"setting rec_test_results to {rec_test_results}")
             self._rec_test_results = rec_test_results
@@ -505,10 +507,10 @@ class MLPNetwork():
             self._weights_file = "data/{}".format (weights_file)
         else:
             self._weights_file = None
-            print (f"error: cannot open weights file: {weights_file}")
+            print (f"error: cannot open weights file {weights_file}")
             return False
 
-        print ("reading Lens-style weights file")
+        print (f"reading Lens-style weights file {weights_file}")
 
         # compute the number of expected weights in the file
         _num_wts = 0
@@ -601,9 +603,9 @@ class MLPNetwork():
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        if not self._rec_outputs:
+        if not self._rec_data_rdy:
             print ("\n--------------------------------------------------")
-            print ("warning: file write aborted - outputs not recorded")
+            print ("warning: file write aborted - outputs not available")
             print ("--------------------------------------------------\n")
             return
 
@@ -613,10 +615,16 @@ class MLPNetwork():
                 # retrieve recorded tick_data from first output subgroup
                 g = self.out_grps[0]
                 ftv = g.t_vertex[0]
-                rec_tick_data = ftv.read (
-                    gfe.placements().get_placement_of_vertex (ftv),
-                    gfe.buffer_manager(), MLPExtraRecordings.TICK_DATA.value
-                    )
+                try:
+                    rec_tick_data = ftv.read (
+                        gfe.placements().get_placement_of_vertex (ftv),
+                        gfe.buffer_manager(), MLPExtraRecordings.TICK_DATA.value
+                        )
+                except Exception as err:
+                    print ("\n--------------------------------------------------")
+                    print (f"error: write output file aborted - {err}")
+                    print ("--------------------------------------------------\n")
+                    return
 
                 # retrieve recorded outputs from every output group
                 rec_outputs = [None] * len (self.out_grps)
@@ -625,11 +633,17 @@ class MLPNetwork():
                     # append all subgroups together
                     for s in range (g.subgroups):
                         gtv = g.t_vertex[s]
-                        rec_outputs[g.write_blk].append (gtv.read (
-                            gfe.placements().get_placement_of_vertex (gtv),
-                            gfe.buffer_manager(),
-                            MLPVarSizeRecordings.OUTPUTS.value)
-                            )
+                        try:
+                            rec_outputs[g.write_blk].append (gtv.read (
+                                gfe.placements().get_placement_of_vertex (gtv),
+                                gfe.buffer_manager(),
+                                MLPVarSizeRecordings.OUTPUTS.value)
+                                )
+                        except Exception as err:
+                            print ("\n--------------------------------------------------")
+                            print (f"error: write output file aborted - {err}")
+                            print ("--------------------------------------------------\n")
+                            return
 
                 # compute total ticks in first example
                 #TODO: need to get actual value from simulation, not max value
@@ -671,14 +685,18 @@ class MLPNetwork():
 
                     # check if starting new example
                     if (example != current_example):
-                        # print first (implicit) tick data
+                        # print example header
                         f.write (f"{epoch} {example}\n")
                         f.write (f"{ticks_per_example} {len (self.out_grps)}\n")
-                        f.write ("0 -1\n")
-                        for g in self.output_chain:
-                            f.write (f"{g.units} 1\n")
-                            for _ in range (g.units):
-                                f.write ("{:8.6f} {}\n".format (0, 0))
+
+                        # include initial outputs if recording all ticks
+                        if not self.rec_example_last_tick_only:
+                            # print first (implicit) tick data
+                            f.write ("0 -1\n")
+                            for g in self.output_chain:
+                                f.write (f"{g.units} 1\n")
+                                for _ in range (g.units):
+                                    f.write ("{:8.6f} {}\n".format (0, 0))
 
                         # compute event index
                         evt_inx = 0
@@ -718,8 +736,8 @@ class MLPNetwork():
                                 tgt = int (t)
                             f.write ("{:8.6f} {}\n".format (out, tgt))
 
-            # prepare buffers for next stage
-            gfe.buffer_manager().reset()
+        # recorded data no longer available
+        self._rec_data_rdy = False
 
 
     def show_test_results (self):
@@ -736,7 +754,7 @@ class MLPNetwork():
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        if not self._rec_test_results:
+        if not self.rec_test_results:
             print ("\n--------------------------------------------------")
             print ("warning: test results not recorded")
             print ("--------------------------------------------------\n")
@@ -750,15 +768,21 @@ class MLPNetwork():
             # retrieve recorded test results from last output subgroup
             g = self.out_grps[-1]
             ltv = g.t_vertex[g.subgroups - 1]
-            rec_test_results = ltv.read (
-                gfe.placements().get_placement_of_vertex (ltv),
-                gfe.buffer_manager(), MLPConstSizeRecordings.TEST_RESULTS.value
-                )
+            try:
+                rec_test_results = ltv.read (
+                    gfe.placements().get_placement_of_vertex (ltv),
+                    gfe.buffer_manager(), MLPConstSizeRecordings.TEST_RESULTS.value
+                    )
+            except Exception as err:
+                print ("\n--------------------------------------------------")
+                print (f"error: test results aborted - {err}")
+                print ("--------------------------------------------------\n")
+                return
 
             if len (rec_test_results) >= TEST_RESULTS_SIZE:
                 (epochs_trained, examples_tested, ticks_tested, examples_correct) = \
                     struct.unpack_from(TEST_RESULTS_FORMAT, rec_test_results, 0)
-    
+
                 print ("\n--------------------------------------------------")
                 print ("stage {} Test results: {}, {}, {}, {}".format(
                     self._stage_id, epochs_trained, examples_tested,
@@ -991,6 +1015,16 @@ class MLPNetwork():
         self._stg_reset = True
 
         self._training = 1
+
+        if self._stg_epochs == None:
+            updates = "default"
+        else:
+            updates = self._stg_epochs
+
+        print ("\n--------------------------------------------------")
+        print (f"stage {self._stage_id} train (updates: {updates})")
+        print ("--------------------------------------------------\n")
+
         self.stage_run ()
 
 
@@ -1014,6 +1048,16 @@ class MLPNetwork():
         self._stg_reset = reset_examples
 
         self._training = 0
+
+        if self._stg_examples == None:
+            examples = "default"
+        else:
+            examples = self._stg_examples
+
+        print ("\n--------------------------------------------------")
+        print (f"stage {self._stage_id} test (examples: {examples})")
+        print ("--------------------------------------------------\n")
+
         self.stage_run ()
 
 
@@ -1059,8 +1103,18 @@ class MLPNetwork():
         if not self._graph_rdy:
             self.generate_machine_graph ()
 
+        # initialise recorded data flag
+        self._rec_data_rdy = False
+
+        # initialise recording buffers for new stage run
+        if self._stage_id != 0:
+            gfe.buffer_manager().reset()
+
         # run stage
         gfe.run_until_complete (self._stage_id)
+
+        if (self.rec_outputs):
+            self._rec_data_rdy = True
 
         # show TEST RESULTS if available
         if self.rec_test_results and not self.training:
@@ -1074,7 +1128,9 @@ class MLPNetwork():
         """ pause execution to allow debugging
         """
         # pause until a key is pressed
+        print ("\n--------------------------------------------------")
         input ("network paused: press enter to continue")
+        print ("--------------------------------------------------\n")
 
 
     def end (self):

@@ -14,7 +14,8 @@ class MLPGroup():
                  output_funcs = None,
                  write_blk    = None,
                  is_first_out = None,
-                 label        = None
+                 label        = None,
+                 VERBOSE      = False
                  ):
         """
         """
@@ -24,17 +25,19 @@ class MLPGroup():
         self.write_blk    = write_blk
         self.is_first_out = is_first_out
         self.label        = label
+        self.VERBOSE      = VERBOSE
 
         # number of subgroups required for this group
         self.subgroups = (self.units + MLPConstants.MAX_SUBGROUP_UNITS - 1)\
             // MLPConstants.MAX_SUBGROUP_UNITS
 
-        if self.subgroups == 1:
-            print (f"creating group {self.label} with 1 subgroup")
-        else:
-            print (f"creating group {self.label} with "
-                   f"{self.subgroups} subgroups"
-                   )
+        if VERBOSE:
+            if self.subgroups == 1:
+                print (f"creating group {self.label} with 1 subgroup")
+            else:
+                print (f"creating group {self.label} with "
+                       f"{self.subgroups} subgroups"
+                       )
 
         # number of units per subgroup
         self.subunits = [MLPConstants.MAX_SUBGROUP_UNITS] * (self.subgroups - 1)

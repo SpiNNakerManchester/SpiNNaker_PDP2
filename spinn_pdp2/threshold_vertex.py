@@ -259,9 +259,6 @@ class ThresholdVertex(
               uchar         output_grp;
               uchar         input_grp;
               uint          num_units;
-              uchar         write_results;
-              uchar         write_out;
-              uchar         last_tick_only;
               uchar         hard_clamp_en;
               uchar         out_integr_en;
               fpreal        out_integr_dt;
@@ -280,15 +277,6 @@ class ThresholdVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # recording options
-        #TODO: Cannot get no recording to work - for now minimise recorded data!
-        if self.network.rec_outputs:
-            write_out = self.group.write_out
-            last_tick_only = self.network.rec_example_last_tick_only
-        else:
-            write_out = self.group.write_out
-            last_tick_only = True
-
         # integration dt is an MLP fixed-point fpreal
         out_integr_dt = int (self._out_integr_dt *
                               (1 << MLPConstants.FPREAL_SHIFT))
@@ -307,13 +295,10 @@ class ThresholdVertex(
         trn_group_criterion = int (self._trn_group_criterion *
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2xI5B3xi6I4i4B",
+        return struct.pack ("<2B2xI2B2xi6I4i4B",
                             self.group.output_grp,
                             self.group.input_grp,
                             self._units,
-                            self.network.rec_test_results,
-                            write_out,
-                            last_tick_only,
                             self.group.hard_clamp_en,
                             self.group.out_integr_en,
                             out_integr_dt,

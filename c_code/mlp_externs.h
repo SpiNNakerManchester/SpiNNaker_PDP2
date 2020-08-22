@@ -177,6 +177,12 @@ extern activation_t     t_max_target;      // highest target value
 extern long_deriv_t   * t_output_deriv;
 extern delta_t        * t_deltas;
 
+// recording control
+extern uchar            t_rec_outputs;    // record outputs to SDRAM
+extern uchar            t_rec_results;    // record test results to SDRAM
+extern uchar            t_rec_tick_data;  // record tick data to SDRAM
+extern uchar            t_rec_step_updt;  // update recording step
+
 // history arrays
 extern net_t          * t_net_history;
 extern activation_t   * t_output_history;

@@ -20,7 +20,8 @@ void restore_output       (uint inx, uint tick);
 void store_output_deriv   (uint inx);
 void restore_output_deriv (uint inx, uint tick);
 
-void record_outputs (void);
+void record_outputs   (void);
+void record_tick_data (void);
 
 #endif
 

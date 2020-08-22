@@ -1,6 +1,9 @@
 // SpiNNaker API
 #include "spin1_api.h"
 
+// front-end-common
+#include <recording.h>
+
 // mlp
 #include "mlp_params.h"
 #include "mlp_types.h"
@@ -78,10 +81,22 @@ void tf_process (uint key, uint payload)
     // initialise scoreboard for next tick,
     tf_arrived = 0;
 
-    // record outputs if recording all ticks,
-    if (tcfg.write_out && !tcfg.last_tick_only)
+    // if recording all ticks,
+    if (!xcfg.rec_last_tick_only)
     {
-      record_outputs ();
+      if (t_rec_tick_data)
+      {
+        record_tick_data ();
+      }
+
+      if (t_rec_outputs)
+      {
+        record_outputs ();
+      }
+
+      if (t_rec_step_updt) {
+        recording_do_step_update(stage_step++);
+      }
     }
 
     // access thread semaphore and flags with interrupts disabled,
@@ -340,11 +355,23 @@ void tf_advance_event (void)
   // check if done with example's FORWARD phase
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
-    // record outputs if only recording last tick,
-    if (tcfg.write_out && tcfg.last_tick_only)
+    // if only recording last tick,
+    if (xcfg.rec_last_tick_only)
     {
       evt--;  // correct event number before recording outputs
-      record_outputs ();
+      if (t_rec_tick_data)
+      {
+        record_tick_data ();
+      }
+
+      if (t_rec_outputs)
+      {
+        record_outputs ();
+      }
+
+      if (t_rec_step_updt) {
+        recording_do_step_update(stage_step++);
+      }
     }
 
     // and check if in training mode
