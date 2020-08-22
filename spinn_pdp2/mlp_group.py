@@ -14,7 +14,8 @@ class MLPGroup():
                  output_funcs = None,
                  write_blk    = None,
                  is_first_out = None,
-                 label        = None
+                 label        = None,
+                 VERBOSE      = False
                  ):
         """
         """
@@ -24,17 +25,19 @@ class MLPGroup():
         self.write_blk    = write_blk
         self.is_first_out = is_first_out
         self.label        = label
+        self.VERBOSE      = VERBOSE
 
         # number of partitions required for this group
         self.partitions = (self.units + MLPConstants.MAX_BLK_UNITS - 1)\
             // MLPConstants.MAX_BLK_UNITS
 
-        if self.partitions == 1:
-            print (f"creating group {self.label} with 1 partition")
-        else:
-            print (f"creating group {self.label} with "
-                   f"{self.partitions} partitions"
-                   )
+        if VERBOSE:
+            if self.partitions == 1:
+                print (f"creating group {self.label} with 1 partition")
+            else:
+                print (f"creating group {self.label} with "
+                       f"{self.partitions} partitions"
+                       )
 
         # keep track of associated incoming links
         self.links_from = []

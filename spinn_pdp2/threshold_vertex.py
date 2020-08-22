@@ -259,9 +259,6 @@ class ThresholdVertex(
               uchar         input_grp;
               uint          num_units;
               uint          partitions;
-              uchar         write_results;
-              uchar         write_out;
-              uchar         last_tick_only;
               uint          write_blk;
               uchar         hard_clamp_en;
               uchar         out_integr_en;
@@ -281,15 +278,6 @@ class ThresholdVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # recording options
-        #TODO: Cannot get no recording to work - for now minimise recorded data!
-        if self.network.rec_outputs:
-            write_out = self.group.write_out
-            last_tick_only = self.network.rec_example_last_tick_only
-        else:
-            write_out = self.group.write_out
-            last_tick_only = True
-
         # integration dt is an MLP fixed-point fpreal
         out_integr_dt = int (self._out_integr_dt *\
                               (1 << MLPConstants.FPREAL_SHIFT))
@@ -308,14 +296,11 @@ class ThresholdVertex(
         trn_group_criterion = int (self._trn_group_criterion *\
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2x2I3BxI2B2xi6I4i4B",
+        return struct.pack ("<2B2x3I2B2xi6I4i4B",
                             self.group.output_grp,
                             self.group.input_grp,
                             self.group.units,
                             self.group.partitions,
-                            self.network.rec_test_results,
-                            write_out,
-                            last_tick_only,
                             self.group.write_blk,
                             self.group.hard_clamp_en,
                             self.group.out_integr_en,
@@ -368,7 +353,7 @@ class ThresholdVertex(
             )
         if missing_data:
             raise Exception("missing data!")
-        
+
         # return data as "packed" bytes
         return raw_data
 
@@ -447,7 +432,8 @@ class ThresholdVertex(
             # write inputs to spec
             for _i in self._group.inputs:
                 # inputs are MLP fixed-point activation_t
-                if (_i is None) or (_i == float ('nan')):
+                #NOTE: check for absent or NaN
+                if (_i is None) or (_i != _i):
                     _inp = MLPConstants.ACTIV_NaN
                 else:
                     _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
@@ -463,7 +449,8 @@ class ThresholdVertex(
             # write targets to spec
             for _t in self._group.targets:
                 # targets are MLP fixed-point activation_t
-                if (_t is None) or (_t == float ('nan')):
+                #NOTE: check for absent or NaN
+                if (_t is None) or (_t != _t):
                     _tgt = MLPConstants.ACTIV_NaN
                 else:
                     _tgt = int (_t * (1 << MLPConstants.ACTIV_SHIFT))
@@ -577,7 +564,7 @@ class ThresholdVertex(
         else:
             return []
 
-    
+
     @overrides(AbstractReceiveBuffersToHost.get_recording_region_base_address)
     def get_recording_region_base_address(self, txrx, placement):
         return locate_memory_region_for_placement(

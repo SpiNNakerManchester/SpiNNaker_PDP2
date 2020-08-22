@@ -488,44 +488,41 @@ void restore_output_deriv (uint inx, uint tick)
 
 
 // ------------------------------------------------------------------------
-// record outputs to be picked up by the host
+// record outputs - to be picked up by the host
 // ------------------------------------------------------------------------
 void record_outputs (void)
 {
-  // record tick data and outputs
-  if (stage_rec_flags)
+  // cast outputs to the right size,
+  short_activ_t outputs[tcfg.num_units];
+
+  for (uint i = 0; i < tcfg.num_units; i++)
   {
-    // record tick data if first output group,
-    if (tcfg.is_first_output_group)
-    {
-      tick_record_t tick_data;
-
-      // prepare tick data,
-      tick_data.epoch   = epoch;
-      tick_data.example = example_cnt;
-      tick_data.event   = evt;
-      tick_data.tick    = tick;
-
-      // and record it
-      recording_record(TICK_DATA, (void *) &tick_data, sizeof (tick_record_t));
-    }
-
-    // cast outputs to the right size,
-    short_activ_t outputs[tcfg.num_units];
-
-    for (uint i = 0; i < tcfg.num_units; i++)
-    {
-      outputs[i] = (short_activ_t) (t_outputs[i]
-              >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
-    }
-
-    // record outputs,
-    recording_record(OUTPUTS,
-        (void *) outputs, tcfg.num_units * sizeof (short_activ_t)
-    );
-
-    // and prepare for next tick
-    recording_do_step_update(stage_step++);
+    outputs[i] = (short_activ_t) (t_outputs[i]
+            >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
   }
+
+  // record outputs,
+  recording_record(OUTPUTS,
+      (void *) outputs, tcfg.num_units * sizeof (short_activ_t)
+  );
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// record tick data - to be picked up by the host
+// ------------------------------------------------------------------------
+void record_tick_data (void)
+{
+  tick_record_t tick_data;
+
+  // prepare tick data,
+  tick_data.epoch   = epoch;
+  tick_data.example = example_cnt;
+  tick_data.event   = evt;
+  tick_data.tick    = tick;
+
+  // and record it
+  recording_record(TICK_DATA, (void *) &tick_data, sizeof (tick_record_t));
 }
 // ------------------------------------------------------------------------

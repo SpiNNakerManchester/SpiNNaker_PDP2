@@ -312,9 +312,6 @@ typedef struct t_conf                  // threshold core configuration
   uchar         input_grp;             // is this an INPUT group?
   uint          num_units;             // this core's number of units
   uint          partitions;            // this group's number of partitions
-  uchar         write_results;         // record test results?
-  uchar         write_out;             // record outputs?
-  uchar         last_tick_only;        // record only last tick of examples?
   uint          write_blk;             // this core's write block
   uchar         hard_clamp_en;         // HARD CLAMP in use
   uchar         out_integr_en;         // output INTEGRATOR in use
@@ -392,6 +389,9 @@ typedef struct stage_conf       // execution stage configuration
   uchar training;               // stage mode: train (1) or test (0)
   uchar update_function;        // weight update function in this stage
   uchar reset;                  // reset example index at stage start?
+  uchar rec_results;            // record test results?
+  uchar rec_outputs;            // record outputs?
+  uchar rec_last_tick_only;     // record only last tick of examples?
   uint  num_examples;           // number of examples to run in this stage
   uint  num_epochs;             // number of training epochs in this stage
 } stage_conf_t;
