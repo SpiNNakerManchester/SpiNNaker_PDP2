@@ -189,10 +189,10 @@ extern activation_t   * t_output_history;
 extern long_deriv_t   * t_output_deriv_history;
 // ------------------------------------------------------------------------
 
+#ifdef DEBUG
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-#ifdef DEBUG
 extern uint pkt_sent;  // total packets sent
 extern uint sent_fwd;  // packets sent in FORWARD phase
 extern uint sent_bkp;  // packets sent in BACKPROP phase
@@ -219,7 +219,20 @@ extern uint wrng_bph;  // BACKPROP packets received in wrong phase
 extern uint wrng_pth;  // unexpected processing thread
 extern uint wrng_cth;  // unexpected comms thread
 extern uint wrng_sth;  // unexpected stop thread
-#endif
 // ------------------------------------------------------------------------
+#endif
+
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+extern uint prf_fwd_min;  // minimum FORWARD processing time
+extern uint prf_fwd_max;  // maximum FORWARD processing time
+extern uint prf_bkp_min;  // minimum BACKPROP processing time
+extern uint prf_bkp_max;  // maximum BACKPROP processing time
+// ------------------------------------------------------------------------
+#endif
+
 
 #endif

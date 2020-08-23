@@ -32,6 +32,11 @@ void wf_process (uint unused0, uint unused1)
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
+#ifdef PROFILE
+    // start profiler
+    tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
     long_net_t net_part_tmp = 0;
 
     for (uint i = 0; i < wcfg.num_rows; i++)
@@ -59,6 +64,13 @@ void wf_process (uint unused0, uint unused1)
 #ifdef DEBUG
     pkt_sent++;
     sent_fwd++;
+#endif
+
+#ifdef PROFILE
+    // update profiler values
+    uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+    if (cnt < prf_fwd_min) prf_fwd_min = cnt;
+    if (cnt > prf_fwd_max) prf_fwd_max = cnt;
 #endif
   }
 
@@ -104,6 +116,11 @@ void wb_process (uint key, uint payload)
   recv_bkp++;
   if (phase == SPINN_FORWARD)
     wrng_bph++;
+#endif
+
+#ifdef PROFILE
+  // start profiler
+  tc[T2_LOAD] = SPINN_PROFILER_START;
 #endif
 
   // get delta index: mask out phase and block data,
@@ -208,6 +225,13 @@ void wb_process (uint key, uint payload)
     lds_sent++;
 #endif
   }
+
+#ifdef PROFILE
+  // update profiler values
+  uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+  if (cnt < prf_bkp_min) prf_bkp_min = cnt;
+  if (cnt > prf_bkp_max) prf_bkp_max = cnt;
+#endif
 
   // if done with all deltas advance tick
   if (wb_arrived == wcfg.num_cols)

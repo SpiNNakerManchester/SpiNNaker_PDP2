@@ -12,6 +12,16 @@
 #define SPINN_TIMER_TICK_PERIOD  1000000
 #define SPINN_PRINT_SHIFT        16
 
+
+// ------------------------------------------------------------------------
+// profiler constants
+// ------------------------------------------------------------------------
+// configure timer2 for profiling: enabled, free running,
+// interrupt disabled, no pre-scale and 32-bit one-shot mode
+#define SPINN_PROFILER_CFG       0x83
+#define SPINN_PROFILER_START     0xffffffff
+
+
 // ------------------------------------------------------------------------
 // neural net constants
 // ------------------------------------------------------------------------
@@ -124,17 +134,6 @@
 
 
 // ------------------------------------------------------------------------
-// core function types
-// ------------------------------------------------------------------------
-#define SPINN_WEIGHT_PROC    0x0
-#define SPINN_SUM_PROC       0x1
-#define SPINN_THRESHOLD_PROC 0x2
-#define SPINN_INPUT_PROC     0x3
-#define SPINN_UNUSED_PROC    0x4
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
 // implementation parameters
 // ------------------------------------------------------------------------
 //TODO: check if sizes are appropriate
@@ -203,12 +202,12 @@
 // ------------------------------------------------------------------------
 // EXIT codes -- error
 // ------------------------------------------------------------------------
-#define SPINN_NO_ERROR         0
-#define SPINN_MEM_UNAVAIL      1
-#define SPINN_QUEUE_FULL       2
-#define SPINN_TIMEOUT_EXIT     3
-#define SPINN_UNXPD_PKT        4
-#define SPINN_CFG_UNAVAIL      5
+#define SPINN_NO_ERROR       0
+#define SPINN_MEM_UNAVAIL    1
+#define SPINN_QUEUE_FULL     2
+#define SPINN_TIMEOUT_EXIT   3
+#define SPINN_UNXPD_PKT      4
+#define SPINN_CFG_UNAVAIL    5
 // ------------------------------------------------------------------------
 
 #endif

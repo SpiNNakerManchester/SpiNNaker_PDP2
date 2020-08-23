@@ -26,6 +26,11 @@ uint cfg_init (void)
   io_printf (IO_BUF, "weight\n");
 #endif
 
+#ifdef PROFILE
+  // configure timer 2 for profiling
+  tc[T2_CONTROL] = SPINN_PROFILER_CFG;
+#endif
+
   // read the data specification header
   data_specification_metadata_t * data =
           data_specification_get_data_address();
@@ -354,6 +359,17 @@ void var_init (uint init_weights, uint reset_examples)
   tot_tick = 0;  // total number of ticks executed
   // ------------------------------------------------------------------------
 #endif
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+prf_fwd_min = SPINN_PROFILER_START;  // minimum FORWARD processing time
+prf_fwd_max = 0;                     // maximum FORWARD processing time
+prf_bkp_min = SPINN_PROFILER_START;  // minimum BACKPROP processing time
+prf_bkp_max = 0;                     // maximum BACKPROP processing time
+// ------------------------------------------------------------------------
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -480,6 +496,17 @@ void stage_done (uint ec, uint key)
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
   io_printf (IO_BUF, "------\n");
   io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
+#endif
+
+#ifdef PROFILE
+  // report PROFILER values
+  io_printf (IO_BUF, "min fwd proc:%u\n", prf_fwd_min);
+  io_printf (IO_BUF, "max fwd proc:%u\n", prf_fwd_max);
+  if (xcfg.training)
+  {
+    io_printf (IO_BUF, "min bkp proc:%u\n", prf_bkp_min);
+    io_printf (IO_BUF, "max bkp proc:%u\n", prf_bkp_max);
+  }
 #endif
 
 #ifdef DEBUG

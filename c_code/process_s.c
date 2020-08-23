@@ -27,6 +27,11 @@ void sf_process (uint key, uint payload)
     wrng_phs++;
 #endif
 
+#ifdef PROFILE
+  // start profiler,
+  tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
   // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
 
@@ -38,6 +43,13 @@ void sf_process (uint key, uint payload)
 
   // mark net b-d-p as arrived,
   sf_arrived[clr][inx]++;
+
+#ifdef PROFILE
+  // update profiler values,
+  uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+  if (cnt < prf_fwd_min) prf_fwd_min = cnt;
+  if (cnt > prf_fwd_max) prf_fwd_max = cnt;
+#endif
 
   // and check if dot product complete to compute net
   if (sf_arrived[clr][inx] == scfg.fwd_expected)
@@ -124,6 +136,11 @@ void sb_process (uint key, uint payload)
     wrng_phs++;
 #endif
 
+#ifdef PROFILE
+  // start profiler,
+  tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
   // get error index: mask out block, phase and colour data,
   uint inx = key & SPINN_ERROR_MASK;
 
@@ -135,6 +152,13 @@ void sb_process (uint key, uint payload)
 
   // mark error b-d-p as arrived,
   sb_arrived[clr][inx]++;
+
+#ifdef PROFILE
+  // update profiler values,
+  uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+  if (cnt < prf_bkp_min) prf_bkp_min = cnt;
+  if (cnt > prf_bkp_max) prf_bkp_max = cnt;
+#endif
 
   // and check if error complete to send to next stage
   if (sb_arrived[clr][inx] == scfg.bkp_expected)

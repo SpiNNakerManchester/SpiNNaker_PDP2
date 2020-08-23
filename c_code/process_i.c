@@ -27,6 +27,11 @@ void if_process (uint key, uint payload)
     wrng_phs++;
 #endif
 
+#ifdef PROFILE
+  // start profiler,
+  tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
   // get net index: mask out block, phase and colour data,
   uint inx = key & SPINN_NET_MASK;
 
@@ -63,6 +68,13 @@ void if_process (uint key, uint payload)
 
   // mark net as done,
   if_done++;
+
+#ifdef PROFILE
+  // update profiler values,
+  uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+  if (cnt < prf_fwd_min) prf_fwd_min = cnt;
+  if (cnt > prf_fwd_max) prf_fwd_max = cnt;
+#endif
 
   // and check if all nets done
   if (if_done == icfg.num_units)
@@ -114,6 +126,11 @@ void ib_process (uint key, uint payload)
     wrng_phs++;
 #endif
 
+#ifdef PROFILE
+  // start profiler,
+  tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
   // get delta index: mask out block, phase and colour data,
   uint inx = key & SPINN_DELTA_MASK;
 
@@ -150,6 +167,13 @@ void ib_process (uint key, uint payload)
 #ifdef DEBUG
   pkt_sent++;
   sent_bkp++;
+#endif
+
+#ifdef PROFILE
+  // update profiler values,
+  uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+  if (cnt < prf_bkp_min) prf_bkp_min = cnt;
+  if (cnt > prf_bkp_max) prf_bkp_max = cnt;
 #endif
 
   // mark delta as done,

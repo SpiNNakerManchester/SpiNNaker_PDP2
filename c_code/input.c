@@ -158,6 +158,18 @@ uint tot_tick;  // total number of ticks executed
 #endif
 
 
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+uint prf_fwd_min;  // minimum FORWARD processing time
+uint prf_fwd_max;  // maximum FORWARD processing time
+uint prf_bkp_min;  // minimum BACKPROP processing time
+uint prf_bkp_max;  // maximum BACKPROP processing time
+// ------------------------------------------------------------------------
+#endif
+
+
 // ------------------------------------------------------------------------
 // timer callback: check that there has been progress in execution.
 // If no progress has been made terminate with SPINN_TIMEOUT_EXIT code.
