@@ -427,7 +427,7 @@ class ThresholdVertex(
             spec.switch_write_focus (MLPRegions.INPUTS.value)
 
             # write inputs to spec
-            us = self.subgroup * MLPConstants.MAX_BLK_UNITS
+            us = self.subgroup * MLPConstants.MAX_SUBGROUP_UNITS
             for _ in range (len (self.group.inputs) // self.group.units):
                 for i in self.group.inputs[us : us + self._units]:
                     # inputs are fixed-point activation_t
@@ -447,7 +447,7 @@ class ThresholdVertex(
             spec.switch_write_focus (MLPRegions.TARGETS.value)
 
             # write targets to spec
-            us = self.subgroup * MLPConstants.MAX_BLK_UNITS
+            us = self.subgroup * MLPConstants.MAX_SUBGROUP_UNITS
             for _ in range (len (self.group.targets) // self.group.units):
                 for t in self.group.targets[us : us + self._units]:
                     # inputs are fixed-point activation_t

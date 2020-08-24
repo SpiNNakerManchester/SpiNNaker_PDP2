@@ -263,7 +263,7 @@ class InputVertex(
             spec.switch_write_focus (MLPRegions.INPUTS.value)
 
             # write inputs to spec
-            us = self.subgroup * MLPConstants.MAX_BLK_UNITS
+            us = self.subgroup * MLPConstants.MAX_SUBGROUP_UNITS
             for _ in range (len (self.group.inputs) // self.group.units):
                 for i in self.group.inputs[us : us + self._units]:
                     # inputs are fixed-point activation_t

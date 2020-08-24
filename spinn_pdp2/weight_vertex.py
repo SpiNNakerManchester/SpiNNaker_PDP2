@@ -321,8 +321,8 @@ class WeightVertex(
         # and has to be written out in row-major order
         wts = self.group.weights[self.from_group]
         rows_per_col = self.from_group.units
-        rb = self.from_subgroup * MLPConstants.MAX_BLK_UNITS
-        cb = self.subgroup * MLPConstants.MAX_BLK_UNITS
+        rb = self.from_subgroup * MLPConstants.MAX_SUBGROUP_UNITS
+        cb = self.subgroup * MLPConstants.MAX_SUBGROUP_UNITS
         if len (wts):
             for r in range (self._num_rows):
                 for c in range (self._num_cols):
