@@ -1,7 +1,10 @@
 import struct
 
+import spinnaker_graph_front_end as gfe
+
 from data_specification.enums.data_type import DataType
 
+from pacman.model.graphs.machine import MachineEdge
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.resources.resource_container \
     import ResourceContainer, ConstantSDRAM
@@ -38,15 +41,17 @@ class SumVertex(
     def __init__(self,
                  network,
                  group,
-                 subgroup
+                 subgroup,
+                 index = 0
                  ):
 
         self._network  = network
         self._group    = group
         self._subgroup = subgroup
+        self._index    = index
 
         super(SumVertex, self).__init__(
-            label = f"s_core{self.group.id}/{self.subgroup}",
+            label = f"s_core{self.group.id}/{self.subgroup}/{self.index}",
             binary_name = "sum.aplx",
             constraints = None)
 
@@ -107,6 +112,10 @@ class SumVertex(
         return self._subgroup
 
     @property
+    def index (self):
+        return self._index
+
+    @property
     def fwd_link (self):
         return self._fwd_link
 
@@ -134,6 +143,7 @@ class SumVertex(
               scoreboard_t bkp_expect;
               scoreboard_t lds_expect;
               uchar        is_first_group;
+              uchar        is_tree_root;
             } s_conf_t;
 
             pack: standard sizes, little-endian byte order,
@@ -145,11 +155,22 @@ class SumVertex(
         else:
             is_first_group = 0
 
-        fwd_expect  = self.network.subgroups
-        bkp_expect  = self.network.subgroups
+        # number of vertices in this SumVertex tree
+        num_vrt = ((self.network.subgroups - 2) //
+                   (MLPConstants.MAX_S_CORE_LINKS - 1)) + 1
 
-        # every s core expects partial lds from every w core in subgroup
-        lds_expect = self.network.subgroups * self._units
+        # number of expected packets
+        if self.index == (num_vrt - 1):
+            # the last vertex in the tree may expect fewer packets
+            #NOTE: this could be the root in a single-vertex tree
+            expected = (self.network.subgroups -
+                         ((MLPConstants.MAX_S_CORE_LINKS - 1) * self.index))
+        else:
+            expected = MLPConstants.MAX_S_CORE_LINKS
+
+        fwd_expect = expected
+        bkp_expect = expected
+        lds_expect = expected * self._units
 
         # first subgroup expects a partial lds from every other subgroup
         if self.subgroup == 0:
@@ -159,12 +180,16 @@ class SumVertex(
             if is_first_group:
                 lds_expect += len (self.network.groups) - 1
 
-        return struct.pack ("<4IB3x",
+        # is this the root of a SumVertex tree?
+        is_tree_root = self.index == 0
+
+        return struct.pack ("<4I2B2x",
                             self._units,
                             fwd_expect,
                             bkp_expect,
                             lds_expect,
-                            is_first_group
+                            is_first_group,
+                            is_tree_root
                             )
 
     @property
@@ -244,9 +269,12 @@ class SumVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
-        # write link keys: fds
-        spec.write_value (routing_info.get_first_key_from_pre_vertex (
-            self, self.fds_link), data_type = DataType.UINT32)
+        # write link keys: fds (padding if not SumVertex tree root)
+        if (self.index == 0):
+            spec.write_value (routing_info.get_first_key_from_pre_vertex (
+                self, self.fds_link), data_type = DataType.UINT32)
+        else:
+            spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: stp (padding)
         spec.write_value (0, data_type = DataType.UINT32)
@@ -295,3 +323,104 @@ class SumVertex(
         """
         # prepare for next stage
         self._stage += 1
+
+
+#---------------------------------------------------------------------
+class SumVertexTree(
+        ):
+
+    """ implements a tree of sum vertices
+    """
+
+    def __init__(self,
+                 network,
+                 group,
+                 subgroup
+                 ):
+
+        max_links = MLPConstants.MAX_S_CORE_LINKS
+
+        # total number of Sum Vertices needed to build the tree
+        num_vrt = ((network.subgroups - 2) // (max_links - 1)) + 1
+
+        # the root vertex is used as pre-vertex for outgoing links
+        self._root = SumVertex (network, group, subgroup, 0)
+
+        # add the root to the graph
+        gfe.add_machine_vertex_instance (self.root)
+
+        # and to the list of all tree vertices
+        self._vertices = [self.root]
+
+        # create the SumVertex tree
+        free_links = max_links
+        to_vrt = 0
+        for vrt in range (1, num_vrt):
+            # create a SumVertex
+            vt = SumVertex (network, group, subgroup, vrt)
+
+            # add it to the list of vertices
+            self._vertices.append (vt)
+
+            # add it to the graph
+            gfe.add_machine_vertex_instance (vt)
+
+            # add all SumVertex links towards the tree root
+            gfe.add_machine_edge_instance (
+                MachineEdge (vt, self.vertices[to_vrt]), vt.fwd_link
+                )
+
+            gfe.add_machine_edge_instance (
+                MachineEdge (vt, self.vertices[to_vrt]), vt.bkp_link
+                )
+
+            gfe.add_machine_edge_instance (
+                MachineEdge (vt, self.vertices[to_vrt]), vt.lds_link
+                )
+
+            # take away one free link from to_vrt
+            free_links -= 1
+
+            # if out of free links use next available vertex
+            if free_links == 0:
+                free_links = max_links
+                to_vrt += 1
+
+        # finally, map every pre-vertex to an available tree vertex
+        self._leaf_map = {}
+        for grp in network.groups:
+            for sgrp in range (grp.subgroups):
+                # assign available leaf vertex
+                self._leaf_map[(grp.id, sgrp)] = self.vertices[to_vrt]
+
+                # take away one free link from to_vrt
+                free_links -= 1
+    
+                # if out of free links use next available vertex
+                if free_links == 0:
+                    free_links = max_links
+                    to_vrt += 1
+
+
+    def leaf (self, group, subgroup):
+        """ returns the leaf SumVertex to link to
+            from a pre-vertex in group/subgroup
+
+        :param group:    pre-vertex group
+        :param subgroup: pre-vertex subgroup number
+
+        :type group:    MLPGroup
+        :type subgroup: integer
+
+        :return: a SumVertex
+        """
+        return self._leaf_map[(group.id, subgroup)]
+
+
+    @property
+    def root (self):
+        return self._root
+
+    @property
+    def vertices (self):
+        return self._vertices

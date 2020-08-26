@@ -36,7 +36,8 @@ void sf_process (uint key, uint payload)
   uint inx = key & SPINN_NET_MASK;
 
   // get error colour: mask out block, phase and net index data,
-  uint clr = (key & SPINN_COLOUR_MASK) >> SPINN_COLOUR_SHIFT;
+  uint pkt_clr = key & SPINN_COLOUR_MASK;
+  uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
 
   // accumulate new net b-d-p,
   s_nets[clr][inx] += (long_net_t) ((net_t) payload);
@@ -70,8 +71,9 @@ void sf_process (uint key, uint payload)
       net_tmp = (net_t) s_nets[clr][inx];
     }
 
-    // incorporate net index to the packet key and send,
-    while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
+    // incorporate colour and net index to the packet key and send,
+    while (!spin1_send_mc_packet ((fwdKey | pkt_clr | inx),
+        net_tmp, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;
@@ -145,7 +147,8 @@ void sb_process (uint key, uint payload)
   uint inx = key & SPINN_ERROR_MASK;
 
   // get error colour: mask out block, phase and net index data,
-  uint clr = (key & SPINN_COLOUR_MASK) >> SPINN_COLOUR_SHIFT;
+  uint pkt_clr = key & SPINN_COLOUR_MASK;
+  uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
 
   // accumulate new error b-d-p,
   s_errors[clr][inx] += (error_t) payload;
@@ -184,8 +187,9 @@ void sb_process (uint key, uint payload)
     }
 */
 
-    // incorporate error index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
+    // incorporate colour and error index to the packet key and send,
+    while (!spin1_send_mc_packet ((bkpKey | pkt_clr | inx),
+        error, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;
@@ -407,11 +411,14 @@ void s_advance_example (void)
   num_events = ex[example_inx].num_events;
 
   // and send sync packet to allow next example to start
-  while (!spin1_send_mc_packet (fdsKey, 0, NO_PAYLOAD));
+  if (scfg.is_tree_root)
+  {
+    while (!spin1_send_mc_packet (fdsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
-  pkt_sent++;
-  spk_sent++;
+    pkt_sent++;
+    spk_sent++;
 #endif
+  }
 }
 // ------------------------------------------------------------------------

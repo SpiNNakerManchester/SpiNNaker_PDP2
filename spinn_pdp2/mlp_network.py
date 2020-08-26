@@ -6,7 +6,7 @@ import spinnaker_graph_front_end as gfe
 from pacman.model.graphs.machine import MachineEdge
 
 from spinn_pdp2.input_vertex     import InputVertex
-from spinn_pdp2.sum_vertex       import SumVertex
+from spinn_pdp2.sum_vertex       import SumVertexTree
 from spinn_pdp2.threshold_vertex import ThresholdVertex
 from spinn_pdp2.weight_vertex    import WeightVertex
 from spinn_pdp2.mlp_types        import MLPGroupTypes, MLPConstants, \
@@ -822,10 +822,10 @@ class MLPNetwork():
                         wvs.append (wv)
                 grp.w_vertices.append (wvs)
 
-                # create one sum core per subgroup
-                sv = SumVertex (self, grp, sgrp)
-                grp.s_vertex.append (sv)
-                gfe.add_machine_vertex_instance (sv)
+                # create a sum core tree per subgroup
+                #NOTE: sum vertices are added during tree building
+                svt = SumVertexTree (self, grp, sgrp)
+                grp.s_vertex.append (svt)
 
                 # create one input core per subgroup
                 iv = InputVertex (self, grp, sgrp)
@@ -839,7 +839,7 @@ class MLPNetwork():
 
         # groups and subgroups with special functions
         first_lds_grp = self.groups[0]
-        first_subgroup_s_vertex = first_lds_grp.s_vertex[0]
+        first_subgroup_svt = first_lds_grp.s_vertex[0]
 
         last_out_grp = self.output_chain[-1]
         last_out_subgroup_t_vertex = (
@@ -850,20 +850,24 @@ class MLPNetwork():
         # criterion, stop and sync machine edges for every subgroup
         for grp in self.groups:
             for sgrp in range (grp.subgroups):
-                sv = grp.s_vertex[sgrp]
-                iv = grp.i_vertex[sgrp]
-                tv = grp.t_vertex[sgrp]
+                svt = grp.s_vertex[sgrp]
+                iv  = grp.i_vertex[sgrp]
+                tv  = grp.t_vertex[sgrp]
 
                 for wv in grp.w_vertices[sgrp]:
                     from_grp  = wv.from_group
                     from_sgrp = wv.from_subgroup
 
-                    from_sv = from_grp.s_vertex[from_sgrp]
-                    from_tv = from_grp.t_vertex[from_sgrp]
+                    from_svt = from_grp.s_vertex[from_sgrp]
+                    from_tv  = from_grp.t_vertex[from_sgrp]
+
+                    # sum tree leaf to connect to depends on group/subgroup 
+                    svt_leaf      = svt.leaf (from_grp, from_sgrp)
+                    from_svt_leaf = from_svt.leaf (grp, sgrp)
 
                     # forward w to s link
                     gfe.add_machine_edge_instance (
-                        MachineEdge (wv, sv),
+                        MachineEdge (wv, svt_leaf),
                         wv.fwd_link
                         )
 
@@ -875,7 +879,7 @@ class MLPNetwork():
 
                     # backprop w to s link
                     gfe.add_machine_edge_instance (
-                        MachineEdge (wv, from_sv),
+                        MachineEdge (wv, from_svt_leaf),
                         wv.bkp_link
                         )
 
@@ -887,14 +891,14 @@ class MLPNetwork():
 
                     # link delta summation w to s link
                     gfe.add_machine_edge_instance (
-                        MachineEdge (wv, sv),
+                        MachineEdge (wv, svt_leaf),
                         wv.lds_link
                         )
 
                     # link delta result (first group) s to w (multicast) link
                     gfe.add_machine_edge_instance (
-                        MachineEdge (first_subgroup_s_vertex, wv),
-                        first_subgroup_s_vertex.lds_link
+                        MachineEdge (first_subgroup_svt.root, wv),
+                        first_subgroup_svt.root.lds_link
                         )
 
                     # stop (last output group/subgroup) t to w (multicast) link
@@ -905,22 +909,22 @@ class MLPNetwork():
 
                     # intra-subgroup sync s to w (multicast) link
                     gfe.add_machine_edge_instance (
-                        MachineEdge (sv, wv),
-                        sv.fds_link
+                        MachineEdge (svt.root, wv),
+                        svt.root.fds_link
                         )
 
                     # inter-subgroup sync s to w (multicast) link
                     #NOTE: avoid duplicates
                     if grp != from_grp or sgrp != from_sgrp:
                         gfe.add_machine_edge_instance (
-                            MachineEdge (from_sv, wv),
-                            from_sv.fds_link
+                            MachineEdge (from_svt.root, wv),
+                            from_svt.root.fds_link
                             )
 
                 # forward s to i link
                 gfe.add_machine_edge_instance (
-                    MachineEdge (sv, iv),
-                    sv.fwd_link
+                    MachineEdge (svt.root, iv),
+                    svt.root.fwd_link
                     )
 
                 # forward i to t link
@@ -937,22 +941,28 @@ class MLPNetwork():
 
                 # backprop s to t link
                 gfe.add_machine_edge_instance (
-                    MachineEdge (sv, tv),
-                    sv.bkp_link
+                    MachineEdge (svt.root, tv),
+                    svt.root.bkp_link
                     )
 
                 # link delta summation s to s link
                 if sgrp != 0:
                     # first subgroup collects from all other subgroups
                     gfe.add_machine_edge_instance (
-                        MachineEdge (sv, grp.s_vertex[0]),
-                        sv.lds_link
+                        MachineEdge (
+                            svt.root,
+                            grp.s_vertex[0].leaf (from_grp, from_sgrp)
+                            ),
+                        svt.root.lds_link
                         )
                 elif grp != first_lds_grp:
                     # first group collects from all other groups
                     gfe.add_machine_edge_instance (
-                        MachineEdge (sv, first_subgroup_s_vertex),
-                        sv.lds_link
+                        MachineEdge (
+                            svt.root,
+                            first_subgroup_svt.leaf (from_grp, from_sgrp)
+                            ),
+                        svt.root.lds_link
                         )
 
                 # (output groups) t to t criterion link 
@@ -973,10 +983,11 @@ class MLPNetwork():
                             )
 
                 # stop (last output group/subgroup) t to s (multicast) link
-                gfe.add_machine_edge_instance (
-                    MachineEdge (last_out_subgroup_t_vertex, sv),
-                    last_out_subgroup_t_vertex.stp_link
-                    )
+                for s in svt.vertices:
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (last_out_subgroup_t_vertex, s),
+                        last_out_subgroup_t_vertex.stp_link
+                        )
 
                 # stop (last output group/subgroup) t to i (multicast) link
                 gfe.add_machine_edge_instance (
