@@ -55,16 +55,10 @@ class ThresholdVertex(
         self._group    = group
         self._subgroup = subgroup
 
-        # place OUTPUT groups "close" to the host
-        if self.group.output_grp:
-            self._constraints = [ChipAndCoreConstraint (x = 0, y = 0)]
-        else:
-            self._constraints = None
-
         super(ThresholdVertex, self).__init__(
             label = f"t_core{self.group.id}/{self.subgroup}",
             binary_name = "threshold.aplx",
-            constraints = self._constraints)
+            constraints = None)
 
         self._stage = 0
 
