@@ -796,15 +796,40 @@ class MLPNetwork():
         """
         print ("generating machine graph")
 
+        # number of subgroups
+        for grp in self.groups:
+            self.subgroups += grp.subgroups
+
+        # number of required cores
+        w_cores = self.subgroups * self.subgroups
+        s_cores = self.subgroups * (((self.subgroups - 2) //
+                                    (MLPConstants.MAX_S_CORE_LINKS - 1)) + 1)
+        i_cores = self.subgroups
+        t_cores = self.subgroups
+        cores = w_cores + s_cores + i_cores + t_cores
+        # number of required chips
+        chips = ((cores + MLPConstants.DEF_SPINN_CORES_PER_CHIP - 1) //
+                 MLPConstants.DEF_SPINN_CORES_PER_CHIP)
+        # number of required boards
+        boards = ((chips + MLPConstants.DEF_SPINN_CHIPS_PER_BOARD - 1) //
+                  MLPConstants.DEF_SPINN_CHIPS_PER_BOARD)
+
+        s = '' if cores == 1 else 's'
+        print (f"need {cores} SpiNNaker core{s}")
+
+        s = '' if chips == 1 else 's'
+        print (f"predicting {chips} SpiNNaker chip{s}")
+
+        s = '' if boards == 1 else 's'
+        print (f"requesting {boards} SpiNNaker board{s}")
+
         # path to binary files
         binaries_path = os.path.join(os.path.dirname(__file__), "..", "binaries")
 
         # setup the machine graph
-        gfe.setup (model_binary_folder = binaries_path)
-
-        # compute number of subgroups
-        for grp in self.groups:
-            self.subgroups += grp.subgroups
+        gfe.setup (model_binary_folder = binaries_path,
+                   n_boards_required = boards
+                   )
 
         # create weight, sum, input and threshold
         # machine vertices associated with every subgroup

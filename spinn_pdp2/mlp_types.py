@@ -12,6 +12,12 @@ class MLPUpdateFuncs (Enum):
 class MLPConstants ():
     """ MLP network constants
     """
+    # SpiNNaker machine DEFAULT values
+    #NOTE: leave room for monitor, 2 system-level and 1 blacklisted cores
+    DEF_SPINN_CORES_PER_CHIP = 14
+    #NOTE: leave room for 1 blacklisted chip
+    DEF_SPINN_CHIPS_PER_BOARD = 47
+
     # network parameter CONSTANTS or DEFAULT values
     DEF_LEARNING_RATE = 0.1
     DEF_WEIGHT_DECAY = 0
