@@ -818,7 +818,7 @@ class MLPNetwork():
         print (f"need {cores} SpiNNaker core{s}")
 
         s = '' if chips == 1 else 's'
-        print (f"predicting {chips} SpiNNaker chip{s}")
+        print (f"estimating {chips} SpiNNaker chip{s}")
 
         s = '' if boards == 1 else 's'
         print (f"requesting {boards} SpiNNaker board{s}")
