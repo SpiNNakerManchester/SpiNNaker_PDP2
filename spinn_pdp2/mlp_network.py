@@ -807,12 +807,12 @@ class MLPNetwork():
         i_cores = self.subgroups
         t_cores = self.subgroups
         cores = w_cores + s_cores + i_cores + t_cores
+
         # number of required chips
-        chips = ((cores + MLPConstants.DEF_SPINN_CORES_PER_CHIP - 1) //
-                 MLPConstants.DEF_SPINN_CORES_PER_CHIP)
+        chips = ((cores - 1) // MLPConstants.DEF_SPINN_CORES_PER_CHIP) + 1
+
         # number of required boards
-        boards = ((chips + MLPConstants.DEF_SPINN_CHIPS_PER_BOARD - 1) //
-                  MLPConstants.DEF_SPINN_CHIPS_PER_BOARD)
+        boards = ((chips - 1) // MLPConstants.DEF_SPINN_CHIPS_PER_BOARD) + 1
 
         s = '' if cores == 1 else 's'
         print (f"need {cores} SpiNNaker core{s}")
