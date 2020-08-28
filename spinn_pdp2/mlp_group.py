@@ -25,19 +25,16 @@ class MLPGroup():
         self.write_blk    = write_blk
         self.is_first_out = is_first_out
         self.label        = label
-        self.VERBOSE      = VERBOSE
 
         # number of subgroups required for this group
         self.subgroups = (self.units + MLPConstants.MAX_SUBGROUP_UNITS - 1)\
             // MLPConstants.MAX_SUBGROUP_UNITS
 
         if VERBOSE:
-            if self.subgroups == 1:
-                print (f"creating group {self.label} with 1 subgroup")
-            else:
-                print (f"creating group {self.label} with "
-                       f"{self.subgroups} subgroups"
-                       )
+            s = '' if self.subgroups == 1 else 's'
+            print (f"creating group {self.label} with "
+                   f"{self.subgroups} subgroup{s}"
+                   )
 
         # number of units per subgroup
         self.subunits = [MLPConstants.MAX_SUBGROUP_UNITS] * (self.subgroups - 1)
