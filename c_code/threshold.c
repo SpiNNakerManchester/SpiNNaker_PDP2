@@ -153,7 +153,8 @@ uchar            tf_active;         // processing FWD-phase packet queue?
 scoreboard_t     tf_arrived;        // keep count of expected nets
 uint             tf_thrds_pend;     // thread semaphore
 uchar            tf_crit_prev;      // criterion value received
-uchar            tf_init_crit;      // criterion init value
+scoreboard_t     tf_crit_arrived;   // keep count of expected crit pkts
+uchar            tf_crit_init;      // criterion init value
 uchar            tf_crit_rdy;       // criterion can be forwarded
 uchar            tf_stop_crit;      // stop criterion met?
 uchar            tf_group_crit;     // stop criterion met for all groups?

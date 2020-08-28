@@ -992,18 +992,16 @@ class MLPNetwork():
 
                 # (output groups) t to t criterion link 
                 if grp in self.output_chain:
-                    # intra-group criterion link
+                    # intra-group criterion link to last subgroup t
                     if sgrp < (grp.subgroups - 1):
                         gfe.add_machine_edge_instance (
-                            MachineEdge (tv, grp.t_vertex[sgrp + 1]),
+                            MachineEdge (tv, grp.t_vertex[grp.subgroups - 1]),
                             tv.stp_link
                             )
                     elif grp != last_out_grp:
-                        # inter-group criterion link
-                        ngi = self.output_chain.index(grp) + 1
-                        next_grp = self.output_chain[ngi]
+                        # inter-group criterion link to last output subgroup
                         gfe.add_machine_edge_instance (
-                            MachineEdge (tv, next_grp.t_vertex[0]),
+                            MachineEdge (tv, last_out_subgroup_t_vertex),
                             tv.stp_link
                             )
 

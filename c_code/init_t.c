@@ -155,6 +155,7 @@ uint cfg_init (void)
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
   io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
+  io_printf (IO_BUF, "ls: %d\n", tcfg.is_last_sgrp);
   io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
   io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
   io_printf (IO_BUF, "dt: %f\n", tcfg.out_integr_dt);
@@ -169,9 +170,10 @@ uint cfg_init (void)
         tcfg.initOutput, SPINN_ACTIV_SHIFT));
   io_printf (IO_BUF, "gs: %k\n", tcfg.tst_group_criterion);
   io_printf (IO_BUF, "gt: %k\n", tcfg.trn_group_criterion);
+  io_printf (IO_BUF, "ce: %d\n", tcfg.crit_expected);
   io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
-  io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output);
-  io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output);
+  io_printf (IO_BUF, "fo: %d\n", tcfg.is_first_output);
+  io_printf (IO_BUF, "lo: %d\n", tcfg.is_last_output);
   io_printf (IO_BUF, "ef: %d\n", tcfg.error_function);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
@@ -531,9 +533,10 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tb_procs = 0;
   tb_comms = 1;
 
-  // initialise received net and error scoreboards
+  // initialise received net, error and criterion scoreboards
   tf_arrived = 0;
   tb_arrived = 0;
+  tf_crit_arrived = 0;
 
   // initialise thread semaphores
   tf_thrds_pend = SPINN_TF_THRDS;
@@ -577,17 +580,19 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
     t_max_target = SPINN_SHORT_ACTIV_MIN_POS << (SPINN_ACTIV_SHIFT
                - SPINN_SHORT_ACTIV_SHIFT);
 
-    // no need to wait for previous value if first output subgroup
-    if (tcfg.is_first_output)
+    // check if expecting a previous criterion value
+    if (tcfg.crit_expected)
     {
-      tf_init_crit = 1;
-      tf_crit_prev = TRUE;
+      tf_crit_init = 0;
     }
     else
     {
-      tf_init_crit = 0;
+      tf_crit_init = 1;
     }
-    tf_crit_rdy = tf_init_crit;
+
+    // initialise flag and previous value
+    tf_crit_rdy = tf_crit_init;
+    tf_crit_prev = TRUE;
   }
 
   // initialise processing thread flag
@@ -784,13 +789,10 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  if (tcfg.is_first_output)
+  io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
+  if (tcfg.is_last_sgrp)
   {
-    io_printf (IO_BUF, "crit recv: first\n");
-  }
-  else
-  {
-  io_printf (IO_BUF, "crit recv:%d\n", crt_recv);
+    io_printf (IO_BUF, "crit recv:%d\n", crt_recv);
   }
   if (tcfg.is_last_output)
   {
@@ -799,7 +801,6 @@ void stage_done (uint ec, uint key)
   }
   else
   {
-    io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   }

@@ -302,6 +302,7 @@ typedef struct t_conf                  // threshold core configuration
 {
   uchar         output_grp;            // is this an OUTPUT group?
   uchar         input_grp;             // is this an INPUT group?
+  uchar         is_last_sgrp;          // is last subgroup of the group?
   uint          num_units;             // this core's number of units
   uchar         hard_clamp_en;         // HARD CLAMP in use
   uchar         out_integr_en;         // output INTEGRATOR in use
@@ -312,6 +313,7 @@ typedef struct t_conf                  // threshold core configuration
   activation_t  initOutput;            // initial value for unit outputs
   error_t       tst_group_criterion;   // test-mode convergence criterion value
   error_t       trn_group_criterion;   // train-mode convergence criterion value
+  uint          crit_expected;         // num of expected partial crit pkts
   uchar         criterion_function;    // function to eval convergence criterion
   uchar         is_first_output;       // is this the first output subgroup
   uchar         is_last_output;        // is this the last output subgroup

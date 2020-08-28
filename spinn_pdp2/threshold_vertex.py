@@ -252,6 +252,7 @@ class ThresholdVertex(
             {
               uchar         output_grp;
               uchar         input_grp;
+              uchar         is_last_sgrp;
               uint          num_units;
               uchar         hard_clamp_en;
               uchar         out_integr_en;
@@ -262,6 +263,7 @@ class ThresholdVertex(
               activation_t  initOutput;
               error_t       tst_group_criterion;
               error_t       trn_group_criterion;
+              uint          crit_expected;
               uchar         criterion_function;
               uchar         is_first_output;
               uchar         is_last_output;
@@ -271,6 +273,9 @@ class ThresholdVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # is this the last subgroup in its group
+        last_sgrp = (self.subgroup == (self.group.subgroups - 1))
+
         # integration dt is an MLP fixed-point fpreal
         out_integr_dt = int (self._out_integr_dt *
                               (1 << MLPConstants.FPREAL_SHIFT))
@@ -289,9 +294,21 @@ class ThresholdVertex(
         trn_group_criterion = int (self._trn_group_criterion *
                                 (1 << MLPConstants.ERROR_SHIFT))
 
-        return struct.pack ("<2B2xI2B2xi6I4i4B",
+        # criterion packets to be expected
+        if self.group.output_grp and last_sgrp:
+            # expect from every other subgroup
+            crit_expected = self.group.subgroups - 1
+
+            # last group also expects from every other group
+            if self._is_last_out:
+                crit_expected += len (self.network.output_chain) - 1
+        else:
+            crit_expected = 0
+
+        return struct.pack ("<3BxI2B2xi6I4iI4B",
                             self.group.output_grp,
                             self.group.input_grp,
+                            last_sgrp,
                             self._units,
                             self.group.hard_clamp_en,
                             self.group.out_integr_en,
@@ -306,6 +323,7 @@ class ThresholdVertex(
                             init_output,
                             tst_group_criterion,
                             trn_group_criterion,
+                            crit_expected,
                             self.group.criterion_function.value,
                             self._is_first_out,
                             self._is_last_out,

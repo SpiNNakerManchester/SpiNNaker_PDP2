@@ -124,8 +124,8 @@ void tf_process (uint key, uint payload)
       // check if criterion value can be forwarded
       if (tf_crit_rdy)
       {
-        // initialise semaphore,
-        tf_crit_rdy = tf_init_crit;
+        // initialise flag,
+        tf_crit_rdy = tf_crit_init;
 
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
