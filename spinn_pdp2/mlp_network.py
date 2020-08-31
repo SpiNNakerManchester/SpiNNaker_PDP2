@@ -976,7 +976,7 @@ class MLPNetwork():
                     gfe.add_machine_edge_instance (
                         MachineEdge (
                             svt.root,
-                            grp.s_vertex[0].leaf (from_grp, from_sgrp)
+                            grp.s_vertex[0].root
                             ),
                         svt.root.lds_link
                         )
@@ -985,25 +985,24 @@ class MLPNetwork():
                     gfe.add_machine_edge_instance (
                         MachineEdge (
                             svt.root,
-                            first_subgroup_svt.leaf (from_grp, from_sgrp)
+                            first_subgroup_svt.root
                             ),
                         svt.root.lds_link
                         )
 
-                # (output groups) t to t criterion link 
-                if grp in self.output_chain:
-                    # intra-group criterion link to last subgroup t
-                    if sgrp < (grp.subgroups - 1):
-                        gfe.add_machine_edge_instance (
-                            MachineEdge (tv, grp.t_vertex[grp.subgroups - 1]),
-                            tv.stp_link
-                            )
-                    elif grp != last_out_grp:
-                        # inter-group criterion link to last output subgroup
-                        gfe.add_machine_edge_instance (
-                            MachineEdge (tv, last_out_subgroup_t_vertex),
-                            tv.stp_link
-                            )
+                # t to t criterion link 
+                # intra-group criterion link to last subgroup t
+                if sgrp < (grp.subgroups - 1):
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (tv, grp.t_vertex[grp.subgroups - 1]),
+                        tv.stp_link
+                        )
+                elif grp != last_out_grp:
+                    # inter-group criterion link to last output subgroup
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (tv, last_out_subgroup_t_vertex),
+                        tv.stp_link
+                        )
 
                 # stop (last output group/subgroup) t to s (multicast) link
                 for s in svt.vertices:

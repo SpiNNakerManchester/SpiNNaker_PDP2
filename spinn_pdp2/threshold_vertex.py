@@ -295,13 +295,13 @@ class ThresholdVertex(
                                 (1 << MLPConstants.ERROR_SHIFT))
 
         # criterion packets to be expected
-        if self.group.output_grp and last_sgrp:
+        if last_sgrp:
             # expect from every other subgroup
             crit_expected = self.group.subgroups - 1
 
             # last group also expects from every other group
             if self._is_last_out:
-                crit_expected += len (self.network.output_chain) - 1
+                crit_expected += len (self.network.groups) - 1
         else:
             crit_expected = 0
 
@@ -488,12 +488,9 @@ class ThresholdVertex(
         # write link keys: fds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
-        # write link keys: stp (OUTPUT groups only)
-        if self.group.output_grp:
-            spec.write_value (routing_info.get_first_key_from_pre_vertex (
-                self, self.stp_link), data_type = DataType.UINT32)
-        else:
-            spec.write_value (0, data_type = DataType.UINT32)
+        # write link keys: stp
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.stp_link), data_type = DataType.UINT32)
 
         # write link keys: lds (padding)
         spec.write_value (0, data_type = DataType.UINT32)

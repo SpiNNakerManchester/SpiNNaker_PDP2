@@ -221,6 +221,8 @@ void sb_process (uint key, uint payload)
       if (sb_thrds_pend == SPINN_THRD_PROC)
       {
         // if done initialise semaphore:
+        sb_thrds_pend = SPINN_SB_THRDS;
+
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we need have to wait for the partial link delta sums

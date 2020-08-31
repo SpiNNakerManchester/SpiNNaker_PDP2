@@ -34,7 +34,7 @@ class MLPConstants ():
     DEF_IN_PROCS  = 0
 
     MAX_SUBGROUP_UNITS = 32
-    MAX_S_CORE_LINKS = 32
+    MAX_S_CORE_LINKS = 8
 
     MAX_OUT_PROCS = 5
     DEF_OUT_PROCS = 2

@@ -579,21 +579,21 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
                - SPINN_SHORT_ACTIV_SHIFT);
     t_max_target = SPINN_SHORT_ACTIV_MIN_POS << (SPINN_ACTIV_SHIFT
                - SPINN_SHORT_ACTIV_SHIFT);
-
-    // check if expecting a previous criterion value
-    if (tcfg.crit_expected)
-    {
-      tf_crit_init = 0;
-    }
-    else
-    {
-      tf_crit_init = 1;
-    }
-
-    // initialise flag and previous value
-    tf_crit_rdy = tf_crit_init;
-    tf_crit_prev = TRUE;
   }
+
+  // check if expecting a previous criterion value
+  if (tcfg.crit_expected)
+  {
+    tf_crit_init = 0;
+  }
+  else
+  {
+    tf_crit_init = 1;
+  }
+
+  // initialise flag and previous value
+  tf_crit_rdy = tf_crit_init;
+  tf_crit_prev = TRUE;
 
   // initialise processing thread flag
   tf_active = FALSE;

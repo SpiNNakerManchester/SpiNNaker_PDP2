@@ -114,65 +114,37 @@ void tf_process (uint key, uint payload)
     // access thread semaphore and flags with interrupts disabled,
     uint cpsr = spin1_int_disable ();
 
-    // and check if all other threads done
-    if (tcfg.output_grp)
+    // report processing thread done,
+    //NOTE: tick stop decision cannot have arrived!
+    tf_thrds_pend &= ~SPINN_THRD_PROC;
+
+    // check if criterion value can be forwarded
+    if (tf_crit_rdy)
     {
-      // report processing thread done,
-      //NOTE: tick stop decision cannot have arrived!
-      tf_thrds_pend &= ~SPINN_THRD_PROC;
+      // initialise flag,
+      tf_crit_rdy = tf_crit_init;
 
-      // check if criterion value can be forwarded
-      if (tf_crit_rdy)
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // send (criterion/tick stop) packet,
+      tf_send_stop ();
+
+      // and advance tick if last group
+      //NOTE: last group does not get a stop decision
+      if (tcfg.is_last_output)
       {
-        // initialise flag,
-        tf_crit_rdy = tf_crit_init;
-
-        // restore interrupts after flag access,
-        spin1_mode_restore (cpsr);
-
-        // send (criterion/tick stop) packet,
-        tf_send_stop ();
-
-        // and advance tick if last group
-        //NOTE: last group does not get a stop decision
-        if (tcfg.is_last_output)
-        {
-          //TODO: check if need to schedule or can simply call
-          tf_advance_tick ();
-        }
-      }
-      else
-      {
-        // flag that local value is ready,
-        tf_crit_rdy = 1;
-
-        // and restore interrupts after flag access
-        spin1_mode_restore (cpsr);
+        //TODO: check if need to schedule or can simply call
+        tf_advance_tick ();
       }
     }
     else
     {
-      // check if all other threads done
-      if (tf_thrds_pend == SPINN_THRD_PROC)
-      {
-        // initialise semaphore,
-        tf_thrds_pend = SPINN_TF_THRDS;
+      // flag that local value is ready,
+      tf_crit_rdy = 1;
 
-        // restore interrupts after flag access,
-        spin1_mode_restore (cpsr);
-
-        // and advance tick
-        //TODO: check if need to schedule or can simply call
-        tf_advance_tick ();
-      }
-      else
-      {
-        // if not done report processing thread done,
-        tf_thrds_pend &= ~SPINN_THRD_PROC;
-
-        // and restore interrupts after flag access
-        spin1_mode_restore (cpsr);
-      }
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
     }
   }
 }

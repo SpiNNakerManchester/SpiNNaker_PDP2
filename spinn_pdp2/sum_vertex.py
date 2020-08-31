@@ -159,21 +159,36 @@ class SumVertex(
         num_vrt = ((self.network.subgroups - 2) //
                    (MLPConstants.MAX_S_CORE_LINKS - 1)) + 1
 
+        lvs = ((num_vrt - 1) * (MLPConstants.MAX_S_CORE_LINKS - 1))
+
         # number of expected packets
         if self.index == (num_vrt - 1):
             # the last vertex in the tree may expect fewer packets
             #NOTE: this could be the root in a single-vertex tree
-            expected = (self.network.subgroups -
-                         ((MLPConstants.MAX_S_CORE_LINKS - 1) * self.index))
+            expected = self.network.subgroups - lvs
         else:
             expected = MLPConstants.MAX_S_CORE_LINKS
 
+        # keep track of these on a unit-by-unit basis
         fwd_expect = expected
         bkp_expect = expected
-        lds_expect = expected * self._units
+
+        # keep track of the total, not unit-by-unit, count of lds packets
+        k = lvs // MLPConstants.MAX_S_CORE_LINKS
+        if self.index > (num_vrt - 2 - k):
+            # lds packets from w cores only
+            lds_expect = expected * self._units
+        elif self.index == (num_vrt - 2 - k):
+            # lds packets from w cores and other s cores
+            wp = lvs % MLPConstants.MAX_S_CORE_LINKS
+            sp = MLPConstants.MAX_S_CORE_LINKS - wp
+            lds_expect = wp * self._units + sp
+        else:
+            # lds packets from other s cores only
+            lds_expect = MLPConstants.MAX_S_CORE_LINKS
 
         # first subgroup expects a partial lds from every other subgroup
-        if self.subgroup == 0:
+        if self.index == 0 and self.subgroup == 0:
             lds_expect += self.group.subgroups - 1
 
             # first group expects a partial lds from every other group
@@ -378,7 +393,7 @@ class SumVertexTree(
                 MachineEdge (vt, self.vertices[to_vrt]), vt.lds_link
                 )
 
-            # take away one free link from to_vrt
+            # take away one free link from vertex to_vrt
             free_links -= 1
 
             # if out of free links use next available vertex
@@ -393,9 +408,9 @@ class SumVertexTree(
                 # assign available leaf vertex
                 self._leaf_map[(grp.id, sgrp)] = self.vertices[to_vrt]
 
-                # take away one free link from to_vrt
+                # take away one free link from vertex to_vrt
                 free_links -= 1
-    
+
                 # if out of free links use next available vertex
                 if free_links == 0:
                     free_links = max_links
