@@ -8,5 +8,6 @@ void s_stop_packet     (uint key);
 void s_net_stop_packet (uint key);
 
 void s_lds_packet     (uint payload);
+void s_sync_packet    (void);
 
 #endif

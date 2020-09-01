@@ -236,7 +236,17 @@ void var_init (uint reset_examples)
 
   // initialise thread semaphores
   sf_thrds_pend = SPINN_SF_THRDS;
-  sb_thrds_pend = SPINN_SB_THRDS;
+
+  if (scfg.sync_expected != 0)
+  {
+    sb_thrds_init = SPINN_SB_THRDS | SPINN_THRD_SYNC;
+  }
+  else
+  {
+    sb_thrds_init = SPINN_SB_THRDS;
+  }
+
+  sb_thrds_pend = sb_thrds_init;
 
   // initialise processing thread flag
   s_active = FALSE;
@@ -255,6 +265,7 @@ void var_init (uint reset_examples)
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
   fdsKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+  bpsKey = rt[BPS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
@@ -267,6 +278,7 @@ void var_init (uint reset_examples)
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
   spk_sent = 0;  // sync packets sent
+  spk_recv = 0;  // sync packets received
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
@@ -408,6 +420,7 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
+  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);

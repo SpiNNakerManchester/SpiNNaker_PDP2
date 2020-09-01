@@ -488,6 +488,9 @@ class ThresholdVertex(
         # write link keys: fds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: bps (padding)
+        spec.write_value (0, data_type = DataType.UINT32)
+
         # write link keys: stp
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.stp_link), data_type = DataType.UINT32)

@@ -72,20 +72,27 @@ void t_receivePacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void w_handleBKPPacket (uint key, uint payload)
 {
-#ifdef DEBUG
   // check packet type,
   uint pkt_type = key & SPINN_TYPE_MASK;
 
-  // and report unexpected packet type
-  if (pkt_type != SPINN_DATA_KEY)
+  // process BACKPROP data packet,
+  if (pkt_type == SPINN_DATA_KEY)
   {
-    stage_done (SPINN_UNXPD_PKT, key);
+    t_backprop_packet (key, payload);
     return;
   }
-#endif
 
-  // process BACKPROP data packet,
-  t_backprop_packet (key, payload);
+  // or process synchronisation packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    t_sync_packet ();
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -352,6 +359,33 @@ void t_backprop_packet (uint key, uint payload)
       // if not done report comms thread done
       tb_thrds_pend &= ~SPINN_THRD_COMS;
     }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a sync packet
+// ------------------------------------------------------------------------
+void t_sync_packet (void)
+{
+#ifdef DEBUG
+  spk_recv++;
+#endif
+
+  // check if all other threads done
+  if (tb_thrds_pend == SPINN_THRD_SYNC)
+  {
+    // initialise semaphore,
+    tb_thrds_pend = SPINN_TB_THRDS;
+
+    // and advance tick
+    spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
+  }
+  else
+  {
+    // report sync thread done
+    tb_thrds_pend &= ~SPINN_THRD_SYNC;
   }
 }
 // ------------------------------------------------------------------------

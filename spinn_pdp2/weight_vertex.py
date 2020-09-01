@@ -350,6 +350,9 @@ class WeightVertex(
         # write link keys: fds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: bps (padding)
+        spec.write_value (0, data_type = DataType.UINT32)
+
         # write link keys: stp (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 

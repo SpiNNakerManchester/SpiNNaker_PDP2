@@ -28,8 +28,9 @@ enum MLPKeys {
   FWD  = 0,
   BKP  = 1,
   FDS  = 2,
-  STP  = 3,
-  LDS  = 4
+  BPS  = 3,
+  STP  = 4,
+  LDS  = 5
 };
 
 
@@ -255,14 +256,15 @@ typedef struct w_conf             // weight core configuration
 // sum cores accumulate accumulate b-d-ps sent by weight cores and
 // compute unit nets (FORWARD phase) and errors (BACKPROP phase)
 // ------------------------------------------------------------------------
-typedef struct s_conf               // sum core configuration
+typedef struct s_conf             // sum core configuration
 {
-  uint         num_units;           // this core's number of units
-  scoreboard_t fwd_expected;        // num of expected partial nets
-  scoreboard_t bkp_expected;        // num of expected partial errors
-  scoreboard_t lds_expected;        // num of expected partial link delta sums
-  uchar        is_first_group;      // is this the first group in the network?
-  uchar        is_tree_root;        // is this the root of an s_core tree?
+  uint         num_units;         // this core's number of units
+  scoreboard_t fwd_expected;      // num of expected partial nets
+  scoreboard_t bkp_expected;      // num of expected partial errors
+  scoreboard_t lds_expected;      // num of expected partial link delta sums
+  scoreboard_t sync_expected;     // num of expected sync packets
+  uchar        is_first_group;    // is this the first group in the network?
+  uchar        is_tree_root;      // is this the root of an s_core tree?
 } s_conf_t;
 // ------------------------------------------------------------------------
 

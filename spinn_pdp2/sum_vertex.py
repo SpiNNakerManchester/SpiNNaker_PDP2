@@ -62,10 +62,11 @@ class SumVertex(
         self._ex_cfg  = self.network.ex_set.example_config
 
         # forward, backprop, link delta summation and sync link names
-        self._fwd_link = f"fwd_s{self.group.id}/{self.subgroup}"
-        self._bkp_link = f"bkp_s{self.group.id}/{self.subgroup}"
-        self._lds_link = f"lds_s{self.group.id}/{self.subgroup}"
-        self._fds_link = f"fds_s{self.group.id}/{self.subgroup}"
+        self._fwd_link = f"fwd_s{self.group.id}/{self.subgroup}/{self.index}"
+        self._bkp_link = f"bkp_s{self.group.id}/{self.subgroup}/{self.index}"
+        self._lds_link = f"lds_s{self.group.id}/{self.subgroup}/{self.index}"
+        self._fds_link = f"fds_s{self.group.id}/{self.subgroup}/{self.index}"
+        self._bps_link = f"bps_s{self.group.id}/{self.subgroup}/{self.index}"
 
         # sum core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
@@ -132,6 +133,10 @@ class SumVertex(
         return self._fds_link
 
     @property
+    def bps_link (self):
+        return self._bps_link
+
+    @property
     def config (self):
         """ returns a packed string that corresponds to
             (C struct) s_conf in mlp_types.h:
@@ -142,6 +147,7 @@ class SumVertex(
               scoreboard_t fwd_expect;
               scoreboard_t bkp_expect;
               scoreboard_t lds_expect;
+              scoreboard_t sync_expected;
               uchar        is_first_group;
               uchar        is_tree_root;
             } s_conf_t;
@@ -195,14 +201,26 @@ class SumVertex(
             if is_first_group:
                 lds_expect += len (self.network.groups) - 1
 
+        # sync packets are handled by root nodes only
+        if self.index == 0 and self.subgroup == 0:
+            # first subgroup expects from every other subgroup in group
+            sync_expect = self.group.subgroups - 1
+
+            # first group expect from every other group
+            if is_first_group:
+                sync_expect += len (self.network.groups) - 1
+        else:
+            sync_expect = 0
+
         # is this the root of a SumVertex tree?
         is_tree_root = self.index == 0
 
-        return struct.pack ("<4I2B2x",
+        return struct.pack ("<5I2B2x",
                             self._units,
                             fwd_expect,
                             bkp_expect,
                             lds_expect,
+                            sync_expect,
                             is_first_group,
                             is_tree_root
                             )
@@ -288,6 +306,13 @@ class SumVertex(
         if (self.index == 0):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.fds_link), data_type = DataType.UINT32)
+        else:
+            spec.write_value (0, data_type = DataType.UINT32)
+
+        # write link keys: bps (padding if not SumVertex tree root)
+        if (self.index == 0):
+            spec.write_value (routing_info.get_first_key_from_pre_vertex (
+                self, self.bps_link), data_type = DataType.UINT32)
         else:
             spec.write_value (0, data_type = DataType.UINT32)
 

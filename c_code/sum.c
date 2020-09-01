@@ -28,12 +28,16 @@ uint fwdKey;               // packet ID for FORWARD-phase data
 uint bkpKey;               // packet ID for BACKPROP-phase data
 uint ldsKey;               // packet ID for link delta summation
 uint fdsKey;               // packet ID for FORWARD synchronisation
+uint bpsKey;               // packet ID for BACKPROP synchronisation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 
-uchar        net_stop;     // network stop decision
+uchar        sync_rdy;     // ready to synchronise?
 uchar        net_stop_rdy; // ready to deal with network stop decision
+
+uchar        tick_stop;    // current tick stop decision
+uchar        net_stop;     // network stop decision
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
@@ -45,7 +49,6 @@ proc_phase_t phase;        // FORWARD or BACKPROP
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
-uchar        tick_stop;    // current tick stop decision
 
 uint         to_epoch   = 0;
 uint         to_example = 0;
@@ -94,7 +97,9 @@ uint             sf_thrds_pend;     // thread semaphore
 scoreboard_t   * sb_arrived[2];     // keep count of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
 uint             sb_thrds_pend;     // thread semaphore
+uint             sb_thrds_init;     // thread semaphore initialisation
 scoreboard_t     s_lds_arrived;     // keep count of the number of partial link delta sums
+scoreboard_t     s_sync_arrived;    // keep count of expected sync packets
 // ------------------------------------------------------------------------
 
 
@@ -109,6 +114,7 @@ uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
 uint spk_sent;  // sync packets sent
+uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received

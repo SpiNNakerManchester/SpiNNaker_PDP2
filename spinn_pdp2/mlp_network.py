@@ -1024,6 +1024,36 @@ class MLPNetwork():
                         last_out_subgroup_t_vertex.stp_link
                         )
 
+
+                # backprop tick sync s to t (multicast) link
+                gfe.add_machine_edge_instance (
+                    MachineEdge (
+                        first_subgroup_svt.root,
+                        tv
+                        ),
+                    first_subgroup_svt.root.bps_link
+                    )
+
+                # s to s backprop tick sync link 
+                if sgrp != 0:
+                    # first subgroup collects from all other subgroups
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (
+                            svt.root,
+                            grp.s_vertex[0].root
+                            ),
+                        svt.root.bps_link
+                        )
+                elif grp != first_lds_grp:
+                    # first group collects from all other groups
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (
+                            svt.root,
+                            first_subgroup_svt.root
+                            ),
+                        svt.root.bps_link
+                        )
+
         self._graph_rdy = True
 
 

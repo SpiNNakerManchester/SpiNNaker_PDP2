@@ -221,7 +221,7 @@ void sb_process (uint key, uint payload)
       if (sb_thrds_pend == SPINN_THRD_PROC)
       {
         // if done initialise semaphore:
-        sb_thrds_pend = SPINN_SB_THRDS;
+        sb_thrds_pend = sb_thrds_init;
 
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
@@ -232,11 +232,22 @@ void sb_process (uint key, uint payload)
             && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_SB_END_TICK + 1)
         {
-          sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA;
+          sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
         }
 
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
+
+        // send sync packet to allow next tick to start,
+        if (scfg.is_tree_root)
+        {
+          while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+          pkt_sent++;
+          spk_sent++;
+#endif
+        }
 
         // and advance tick
         sb_advance_tick ();

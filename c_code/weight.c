@@ -48,6 +48,8 @@ uint32_t stage_num_steps;  // current stage number of steps
 uchar        sync_rdy;     // ready to synchronise?
 uchar        epoch_rdy;    // this tick completed an epoch?
 uchar        net_stop_rdy; // ready to deal with network stop decision
+
+uchar        tick_stop;    // current tick stop decision
 uchar        net_stop;     // network stop decision
 
 uint         epoch;        // current training iteration
@@ -60,7 +62,6 @@ proc_phase_t phase;        // FORWARD or BACKPROP
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
-uchar        tick_stop;    // current tick stop decision
 
 uint         to_epoch   = 0;
 uint         to_example = 0;

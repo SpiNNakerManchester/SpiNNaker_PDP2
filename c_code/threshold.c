@@ -86,7 +86,10 @@ uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 uint32_t stage_rec_flags;  // current stage recording flags
 
+uchar        sync_rdy;     // ready to synchronise?
 uchar        net_stop_rdy; // ready to deal with network stop decision
+
+uchar        tick_stop;    // current tick stop decision
 uchar        net_stop;     // network stop decision
 
 uint         epoch;        // current training iteration
@@ -101,7 +104,6 @@ uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
 uint         ev_tick;      // current tick in event
-uchar        tick_stop;    // current tick stop decision
 
 uint         to_epoch   = 0;
 uint         to_example = 0;
@@ -204,6 +206,7 @@ uint sent_bkp;  // packets sent in BACKPROP phase
 uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
+uint spk_recv;  // sync packets received
 uint crt_sent;  // criterion packets sent
 uint crt_recv;  // criterion packets received
 uint stp_sent;  // stop packets sent

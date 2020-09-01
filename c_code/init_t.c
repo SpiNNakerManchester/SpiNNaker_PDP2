@@ -631,6 +631,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   pkt_recv = 0;  // total packets received
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
+  spk_recv = 0;  // sync packets received
   crt_sent = 0;  // criterion packets sent
   crt_recv = 0;  // criterion packets received
   stp_sent = 0;  // stop packets sent
@@ -804,6 +805,7 @@ void stage_done (uint ec, uint key)
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   }
+  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
 #endif
 

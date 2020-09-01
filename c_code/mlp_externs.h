@@ -14,6 +14,7 @@ extern uint fwdKey;               // packet ID for FORWARD-phase data
 extern uint bkpKey;               // packet ID for BACKPROP-phase data
 extern uint ldsKey;               // packet ID for link delta summation
 extern uint fdsKey;               // packet ID for FORWARD synchronisation
+extern uint bpsKey;               // packet ID for BACKPROP synchronisation
 
 extern uint32_t stage_step;       // current stage step
 extern uint32_t stage_num_steps;  // current stage number of steps
@@ -22,6 +23,8 @@ extern uint32_t stage_rec_flags;  // current stage recording flags
 extern uchar        sync_rdy;     // ready to synchronise?
 extern uchar        epoch_rdy;    // this tick completed an epoch?
 extern uchar        net_stop_rdy; // ready to deal with network stop decision
+
+extern uchar        tick_stop;    // current tick stop decision
 extern uchar        net_stop;     // network stop decision
 
 extern uint         epoch;        // current training/testing iteration
@@ -34,7 +37,6 @@ extern uint         event_idx;    // index into current event
 extern uint         max_ticks;    // maximum number of ticks in current event
 extern uint         min_ticks;    // minimum number of ticks in current event
 extern uint         tick;         // current tick in phase
-extern uchar        tick_stop;    // current tick stop decision
 extern uint         ev_tick;      // current tick in event
 extern proc_phase_t phase;        // FORWARD or BACKPROP
 
@@ -101,7 +103,9 @@ extern uint             sf_thrds_pend;  // thread semaphore
 extern scoreboard_t   * sb_arrived[2];  // keep count of expected error b-d-p
 extern scoreboard_t     sb_done;        // current tick error computation done
 extern uint             sb_thrds_pend;  // thread semaphore
+extern uint             sb_thrds_init;  // thread semaphore initialisation
 extern scoreboard_t     s_lds_arrived;  // keep count of received link delta sums
+extern scoreboard_t     s_sync_arrived; // keep count of expected sync packets
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
