@@ -796,6 +796,10 @@ class MLPNetwork():
         """
         print ("generating machine graph")
 
+        # path to binary files
+        binaries_path = os.path.join(os.path.dirname(__file__), "..", "binaries")
+
+        # estimate number of SpiNNaker boards required
         # number of subgroups
         for grp in self.groups:
             self.subgroups += grp.subgroups
@@ -808,28 +812,31 @@ class MLPNetwork():
         t_cores = self.subgroups
         cores = w_cores + s_cores + i_cores + t_cores
 
-        # number of required chips
-        chips = ((cores - 1) // MLPConstants.DEF_SPINN_CORES_PER_CHIP) + 1
-
-        # number of required boards
-        boards = ((chips - 1) // MLPConstants.DEF_SPINN_CHIPS_PER_BOARD) + 1
-
         s = '' if cores == 1 else 's'
         print (f"need {cores} SpiNNaker core{s}")
+
+        # number of required chips
+        chips = ((cores - 1) // MLPConstants.DEF_SPINN_CORES_PER_CHIP) + 1
 
         s = '' if chips == 1 else 's'
         print (f"estimating {chips} SpiNNaker chip{s}")
 
+        # number of required boards
+        boards = ((chips - 1) // MLPConstants.DEF_SPINN_CHIPS_PER_BOARD) + 1
+
         s = '' if boards == 1 else 's'
         print (f"requesting {boards} SpiNNaker board{s}")
 
-        # path to binary files
-        binaries_path = os.path.join(os.path.dirname(__file__), "..", "binaries")
-
-        # setup the machine graph
-        gfe.setup (model_binary_folder = binaries_path,
-                   n_boards_required = boards
-                   )
+        # request a SpiNNaker machine and setup the machine graph
+        try:
+            gfe.setup (model_binary_folder = binaries_path,
+                       n_boards_required = boards
+                       )
+        except Exception as err:
+            print ("\n--------------------------------------------------")
+            print (f"error: {err}")
+            print ("--------------------------------------------------\n")
+            return False
 
         # create weight, sum, input and threshold
         # machine vertices associated with every subgroup
@@ -1027,6 +1034,8 @@ class MLPNetwork():
 
         self._graph_rdy = True
 
+        return True
+
 
     def train (self,
                update_function = None,
@@ -1135,7 +1144,10 @@ class MLPNetwork():
 
         # generate machine graph - if needed
         if not self._graph_rdy:
-            self.generate_machine_graph ()
+            if not self.generate_machine_graph ():
+                print ("run aborted: error generating machine graph")
+                self._aborted = True
+                return
 
         # initialise recorded data flag
         self._rec_data_rdy = False
