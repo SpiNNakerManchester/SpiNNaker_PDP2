@@ -10,6 +10,7 @@ SOURCE_DIRS = .
 SOURCES = sum.c comms_s.c process_s.c init_s.c
 
 LIBRARIES += -lm
+CFLAGS += -Wno-shift-negative-value
 
 # The GFE application standard makefile
 include $(SPINN_DIRS)/make/local.mk
