@@ -1,4 +1,4 @@
-SpiNNaker_PDP2: Back-Propagation ANNs on SpiNNaker
+PDP<sup>2</sup>: Back-Propagation ANNs on SpiNNaker
 ====================================================
 
 This repository contains software to implement artificial neural
