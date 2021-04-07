@@ -25,7 +25,7 @@ exec(open("spinn_pdp2/_version.py").read())
 assert __version__
 
 install_requires = [
-    'SpiNNakerGraphFrontEnd >= 1!5.1.1, < 1!6.0.0']
+    'SpiNNakerGraphFrontEnd == 1!6.0.0']
 
 # Build a list of all project modules, as well as supplementary files
 main_package = "spinn_pdp2"
