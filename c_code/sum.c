@@ -183,7 +183,7 @@ void get_started (void)
 // ------------------------------------------------------------------------
 // main: register callbacks and initialise basic system variables
 // ------------------------------------------------------------------------
-void c_main ()
+void c_main (void)
 {
   // get core IDs,
   chipID = spin1_get_chip_id ();

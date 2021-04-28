@@ -186,7 +186,7 @@ uint mem_init (void)
 // ------------------------------------------------------------------------
 // allocate memory for and initialise INPUT INTEGRATOR state
 // ------------------------------------------------------------------------
-uint init_in_integr ()
+uint init_in_integr (void)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "init_in_integr\n");

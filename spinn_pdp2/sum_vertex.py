@@ -11,8 +11,6 @@ from pacman.model.resources.resource_container \
 
 from spinn_utilities.overrides import overrides
 
-from spinn_front_end_common.abstract_models.abstract_provides_n_keys_for_partition \
-    import AbstractProvidesNKeysForPartition
 from spinn_front_end_common.abstract_models import \
     AbstractRewritesDataSpecification
 from spinn_front_end_common.abstract_models.impl \
@@ -30,7 +28,6 @@ from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 class SumVertex(
         SimulatorVertex,
         MachineDataSpecableVertex,
-        AbstractProvidesNKeysForPartition,
         AbstractRewritesDataSpecification
         ):
 
@@ -42,16 +39,16 @@ class SumVertex(
                  network,
                  group,
                  subgroup,
-                 index = 0
+                 idx = 0
                  ):
 
         self._network  = network
         self._group    = group
         self._subgroup = subgroup
-        self._index    = index
+        self._idx    = idx
 
         super(SumVertex, self).__init__(
-            label = f"s_core{self.group.id}/{self.subgroup}/{self.index}",
+            label = f"s_core{self.group.id}/{self.subgroup}/{self.idx}",
             binary_name = "sum.aplx",
             constraints = None)
 
@@ -112,8 +109,8 @@ class SumVertex(
         return self._subgroup
 
     @property
-    def index (self):
-        return self._index
+    def idx (self):
+        return self._idx
 
     @property
     def fwd_link (self):
@@ -162,7 +159,7 @@ class SumVertex(
         lvs = ((num_vrt - 1) * (MLPConstants.MAX_S_CORE_LINKS - 1))
 
         # number of expected packets
-        if self.index == (num_vrt - 1):
+        if self.idx == (num_vrt - 1):
             # the last vertex in the tree may expect fewer packets
             #NOTE: this could be the root in a single-vertex tree
             expected = self.network.subgroups - lvs
@@ -175,10 +172,10 @@ class SumVertex(
 
         # keep track of the total, not unit-by-unit, count of lds packets
         k = lvs // MLPConstants.MAX_S_CORE_LINKS
-        if self.index > (num_vrt - 2 - k):
+        if self.idx > (num_vrt - 2 - k):
             # lds packets from w cores only
             lds_expect = expected * self._units
-        elif self.index == (num_vrt - 2 - k):
+        elif self.idx == (num_vrt - 2 - k):
             # lds packets from w cores and other s cores
             wp = lvs % MLPConstants.MAX_S_CORE_LINKS
             sp = MLPConstants.MAX_S_CORE_LINKS - wp
@@ -188,7 +185,7 @@ class SumVertex(
             lds_expect = MLPConstants.MAX_S_CORE_LINKS
 
         # first subgroup expects a partial lds from every other subgroup
-        if self.index == 0 and self.subgroup == 0:
+        if self.idx == 0 and self.subgroup == 0:
             lds_expect += self.group.subgroups - 1
 
             # first group expects a partial lds from every other group
@@ -196,7 +193,7 @@ class SumVertex(
                 lds_expect += len (self.network.groups) - 1
 
         # is this the root of a SumVertex tree?
-        is_tree_root = self.index == 0
+        is_tree_root = self.idx == 0
 
         return struct.pack ("<4I2B2x",
                             self._units,
@@ -216,8 +213,8 @@ class SumVertex(
         return resources
 
 
-    @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
-    def get_n_keys_for_partition (self, partition, graph_mapper):
+    @overrides (MachineVertex.get_n_keys_for_partition)
+    def get_n_keys_for_partition (self, _partition):
         return MLPConstants.KEY_SPACE_SIZE
 
 
@@ -285,7 +282,7 @@ class SumVertex(
             self, self.bkp_link), data_type = DataType.UINT32)
 
         # write link keys: fds (padding if not SumVertex tree root)
-        if (self.index == 0):
+        if (self.idx == 0):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.fds_link), data_type = DataType.UINT32)
         else:
@@ -326,13 +323,13 @@ class SumVertex(
         spec.end_specification()
 
 
-    @overrides(AbstractRewritesDataSpecification.requires_memory_regions_to_be_reloaded)
-    def requires_memory_regions_to_be_reloaded(self):
+    @overrides(AbstractRewritesDataSpecification.reload_required)
+    def reload_required(self):
         return True
 
 
-    @overrides(AbstractRewritesDataSpecification.mark_regions_reloaded)
-    def mark_regions_reloaded(self):
+    @overrides(AbstractRewritesDataSpecification.set_reload_required)
+    def set_reload_required(self, new_value):
         """
             TODO: not really sure what this method is used for!
         """

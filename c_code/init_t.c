@@ -342,7 +342,7 @@ void t_init_outputs (void)
 // ------------------------------------------------------------------------
 // allocate memory for OUTPUT INTEGRATOR state
 // ------------------------------------------------------------------------
-uint init_out_integr ()
+uint init_out_integr (void)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "init_out_integr\n");
@@ -381,7 +381,7 @@ uint init_out_integr ()
 // allocate memory for HARD CLAMP state
 //TODO: This function is currently a stub
 // ------------------------------------------------------------------------
-uint init_out_hard_clamp ()
+uint init_out_hard_clamp (void)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "init_out_hard_clamp\n");
@@ -414,7 +414,7 @@ uint init_out_hard_clamp ()
 // allocate memory for WEAK CLAMP state
 //TODO: This function is currently a stub
 // ------------------------------------------------------------------------
-uint init_out_weak_clamp ()
+uint init_out_weak_clamp (void)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "init_out_weak_clamp\n");

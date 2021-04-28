@@ -2,6 +2,7 @@
 #include "spin1_api.h"
 // square root function
 #include "sqrt.h"
+#include "assert.h"
 
 // mlp
 #include "mlp_params.h"
