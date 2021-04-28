@@ -2,15 +2,12 @@ import struct
 
 from data_specification.enums.data_type import DataType
 
-from pacman.model.constraints.placer_constraints import ChipAndCoreConstraint
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.resources import ResourceContainer, VariableSDRAM, ConstantSDRAM
 from pacman.executor.injection_decorator import inject_items
 
 from spinn_utilities.overrides import overrides
 
-from spinn_front_end_common.abstract_models.abstract_provides_n_keys_for_partition \
-    import AbstractProvidesNKeysForPartition
 from spinn_front_end_common.abstract_models import \
     AbstractRewritesDataSpecification
 from spinn_front_end_common.abstract_models.impl \
@@ -36,7 +33,6 @@ from spinn_pdp2.mlp_types import MLPConstants, MLPRegions, \
 class ThresholdVertex(
         SimulatorVertex,
         MachineDataSpecableVertex,
-        AbstractProvidesNKeysForPartition,
         AbstractRewritesDataSpecification,
         AbstractReceiveBuffersToHost
         ):
@@ -344,8 +340,8 @@ class ThresholdVertex(
         return resources
 
 
-    @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
-    def get_n_keys_for_partition (self, partition, graph_mapper):
+    @overrides (MachineVertex.get_n_keys_for_partition)
+    def get_n_keys_for_partition (self, _partition):
         return MLPConstants.KEY_SPACE_SIZE
 
 
@@ -546,13 +542,13 @@ class ThresholdVertex(
         spec.end_specification()
 
 
-    @overrides(AbstractRewritesDataSpecification.requires_memory_regions_to_be_reloaded)
-    def requires_memory_regions_to_be_reloaded(self):
+    @overrides(AbstractRewritesDataSpecification.reload_required)
+    def reload_required(self):
         return True
 
 
-    @overrides(AbstractRewritesDataSpecification.mark_regions_reloaded)
-    def mark_regions_reloaded(self):
+    @overrides(AbstractRewritesDataSpecification.set_reload_required)
+    def set_reload_required(self, new_value):
         """
             TODO: not really sure what this method is used for!
         """

@@ -107,7 +107,7 @@ void tf_process (uint key, uint payload)
       }
 
       if (t_rec_step_updt) {
-        recording_do_step_update(stage_step++);
+        stage_step++;
       }
     }
 
@@ -366,7 +366,7 @@ void tf_advance_event (void)
       }
 
       if (t_rec_step_updt) {
-        recording_do_step_update(stage_step++);
+        stage_step++;
       }
     }
 
