@@ -54,6 +54,7 @@ rand10x40.set (num_updates = 300,
 
 # set recording option
 rand10x40.recording_options (rec_test_results = True,
+                             results_file = "rand10x40_test_results.out",
                              rec_outputs = True,
                              rec_example_last_tick_only = False
                              )
