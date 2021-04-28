@@ -37,91 +37,93 @@ class InputVertex(
 
     def __init__(self,
                  network,
-                 group
+                 group,
+                 subgroup
                  ):
 
+        self._network  = network
+        self._group    = group
+        self._subgroup = subgroup
+
         super(InputVertex, self).__init__(
-            label = "i_core{}".format (group.id),
+            label = f"i_core{self.group.id}/{self.subgroup}",
             binary_name = "input.aplx",
             constraints = None)
 
         self._stage = 0
 
         # application-level data
-        self._network = network
-        self._group   = group
-        self._set_cfg = network._ex_set.set_config
-        self._ex_cfg  = network._ex_set.example_config
-        self._ev_cfg  = network._ex_set.event_config
+        self._set_cfg = self.network.ex_set.set_config
+        self._ex_cfg  = self.network.ex_set.example_config
+        self._ev_cfg  = self.network.ex_set.event_config
 
         # application parameters
-        self._in_integr_dt = 1.0 / network.ticks_per_int
+        self._in_integr_dt = 1.0 / self.network.ticks_per_int
 
-        # forward and backprop link partition names
-        self._fwd_link = "fwd_i{}".format (self.group.id)
-        self._bkp_link = []
-        for p in range (self._group.partitions):
-            self._bkp_link.append ("bkp_i{}_{}".format (self.group.id, p))
+        # forward and backprop link names
+        self._fwd_link = f"fwd_i{self.group.id}/{self.subgroup}"
+        self._bkp_link = f"bkp_i{self.group.id}/{self.subgroup}"
 
-        # reserve key space for every link
-        self._n_keys = MLPConstants.KEY_SPACE_SIZE
+        # input core-specific parameters
+        self._units = self.group.subunits[self.subgroup]
 
-        # configuration and data files
-        # find out the size of an integer!
-        _data_int = DataType.INT32
-
+        # configuration and data sizes
         # network configuration structure
-        self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.network_config)
+        self._NETWORK_CONFIGURATION_BYTES = len (self.network.network_config)
 
         # core configuration structure
-        self._N_CORE_CONFIGURATION_BYTES = \
-            len (self.config)
+        self._CORE_CONFIGURATION_BYTES = len (self.config)
 
         # set configuration structure
-        self._N_EXAMPLE_SET_BYTES = \
-            len (self._set_cfg)
+        self._EXAMPLE_SET_BYTES = len (self._set_cfg)
 
         # list of example configurations
-        self._N_EXAMPLES_BYTES = \
-            len (self._ex_cfg) * len (self._ex_cfg[0])
+        self._EXAMPLES_BYTES = len (self._ex_cfg) * len (self._ex_cfg[0])
 
         # list of event configurations
-        self._N_EVENTS_BYTES = \
-            len (self._ev_cfg) * len (self._ev_cfg[0])
+        self._EVENTS_BYTES = len (self._ev_cfg) * len (self._ev_cfg[0])
 
-        # list of group inputs (empty if not an INPUT group)
-        self._N_INPUTS_BYTES = \
-            len (self._group.inputs) * _data_int.size
+        # list of subgroup inputs (empty if not an INPUT group)
+        if self.group.input_grp:
+            self._INPUTS_BYTES = ((len (self.group.inputs) // self.group.units) *
+                                  self._units * DataType.INT32.size)
+        else:
+            self._INPUTS_BYTES = 0
 
-        # keys are integers
-        # i cores require a different key for every group partition
-        self._N_KEYS_BYTES = _data_int.size * \
-            (MLPConstants.NUM_KEYS_REQ + self.group.partitions)
+        # list of routing keys
+        self._KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * DataType.INT32.size
 
         # stage configuration structure
-        self._N_STAGE_CONFIGURATION_BYTES = len (self._network.stage_config)
+        self._STAGE_CONFIGURATION_BYTES = len (self.network.stage_config)
 
         # reserve SDRAM space used to store historic data
-        self._NET_HISTORY_BYTES = (MLPConstants.LONG_NET_SIZE // 8) * \
-            self.group.units * self._network.global_max_ticks
+        self._NET_HISTORY_BYTES = ((MLPConstants.LONG_NET_SIZE // 8) *
+            self._units * self.network.global_max_ticks)
 
 
         self._sdram_usage = (
-            self._N_NETWORK_CONFIGURATION_BYTES + \
-            self._N_CORE_CONFIGURATION_BYTES + \
-            self._N_EXAMPLE_SET_BYTES + \
-            self._N_EXAMPLES_BYTES + \
-            self._N_EVENTS_BYTES + \
-            self._N_INPUTS_BYTES + \
-            self._N_KEYS_BYTES + \
-            self._N_STAGE_CONFIGURATION_BYTES + \
+            self._NETWORK_CONFIGURATION_BYTES +
+            self._CORE_CONFIGURATION_BYTES +
+            self._EXAMPLE_SET_BYTES +
+            self._EXAMPLES_BYTES +
+            self._EVENTS_BYTES +
+            self._INPUTS_BYTES +
+            self._KEYS_BYTES +
+            self._STAGE_CONFIGURATION_BYTES +
             self._NET_HISTORY_BYTES
         )
 
     @property
+    def network (self):
+        return self._network
+
+    @property
     def group (self):
         return self._group
+
+    @property
+    def subgroup (self):
+        return self._subgroup
 
     @property
     def fwd_link (self):
@@ -141,7 +143,6 @@ class InputVertex(
               uchar         output_grp;
               uchar         input_grp;
               uint          num_units;
-              uint          partitions;
               uint          num_in_procs;
               uint          procs_list[SPINN_NUM_IN_PROCS];
               uchar         in_integr_en;
@@ -155,21 +156,21 @@ class InputVertex(
             explicit padding
         """
         # integration dt is an MLP fixed-point fpreal
-        in_integr_dt = int (self._in_integr_dt * (1 << MLPConstants.FPREAL_SHIFT))
+        in_integr_dt = int (self._in_integr_dt *
+                            (1 << MLPConstants.FPREAL_SHIFT))
 
         # soft_clamp_strength is an MLP fixed-point fpreal
-        soft_clamp_strength = int (self.group.soft_clamp_strength *\
-                           (1 << MLPConstants.FPREAL_SHIFT))
+        soft_clamp_strength = int (self.group.soft_clamp_strength *
+                                   (1 << MLPConstants.FPREAL_SHIFT))
 
         # init output is an MLP fixed-point activation_t
-        init_output = int (self.group.init_output *\
+        init_output = int (self.group.init_output *
                            (1 << MLPConstants.ACTIV_SHIFT))
 
-        return struct.pack ("<2B2x5IB3x4i",
+        return struct.pack ("<2B2x4IB3x4i",
                             self.group.output_grp,
                             self.group.input_grp,
-                            self.group.units,
-                            self.group.partitions,
+                            self._units,
                             self.group.num_in_procs,
                             self.group.in_procs_list[0].value,
                             self.group.in_procs_list[1].value,
@@ -191,7 +192,7 @@ class InputVertex(
 
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
-        return self._n_keys
+        return MLPConstants.KEY_SPACE_SIZE
 
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
@@ -204,17 +205,17 @@ class InputVertex(
 
         # Reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,
-                                    self._N_NETWORK_CONFIGURATION_BYTES)
+                                    self._NETWORK_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.network_config:
+        for c in self.network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
         spec.reserve_memory_region (MLPRegions.CORE.value,
-                                    self._N_CORE_CONFIGURATION_BYTES)
+                                    self._CORE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.CORE.value)
 
@@ -224,7 +225,7 @@ class InputVertex(
 
         # Reserve and write the example set region
         spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
-                                    self._N_EXAMPLE_SET_BYTES)
+                                    self._EXAMPLE_SET_BYTES)
 
         spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
 
@@ -234,7 +235,7 @@ class InputVertex(
 
         # Reserve and write the examples region
         spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
-                                    self._N_EXAMPLES_BYTES)
+                                    self._EXAMPLES_BYTES)
 
         spec.switch_write_focus (MLPRegions.EXAMPLES.value)
 
@@ -245,7 +246,7 @@ class InputVertex(
 
         # Reserve and write the events region
         spec.reserve_memory_region (MLPRegions.EVENTS.value,
-                                    self._N_EVENTS_BYTES)
+                                    self._EVENTS_BYTES)
 
         spec.switch_write_focus (MLPRegions.EVENTS.value)
 
@@ -255,25 +256,28 @@ class InputVertex(
                 spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the input data region (if INPUT group)
-        if self._N_INPUTS_BYTES != 0:
+        if self.group.input_grp:
             spec.reserve_memory_region (MLPRegions.INPUTS.value,
-                                        self._N_INPUTS_BYTES)
+                                        self._INPUTS_BYTES)
 
             spec.switch_write_focus (MLPRegions.INPUTS.value)
 
             # write inputs to spec
-            for _i in self._group.inputs:
-                # inputs are MLP fixed-point activation_t
-                #NOTE: check for absent or NaN
-                if (_i is None) or (_i != _i):
-                    _inp = MLPConstants.ACTIV_NaN
-                else:
-                    _inp = int (_i * (1 << MLPConstants.ACTIV_SHIFT))
-                spec.write_value (_inp, data_type = DataType.UINT32)
+            us = self.subgroup * MLPConstants.MAX_SUBGROUP_UNITS
+            for _ in range (len (self.group.inputs) // self.group.units):
+                for i in self.group.inputs[us : us + self._units]:
+                    # inputs are fixed-point activation_t
+                    #NOTE: check for absent or NaN
+                    if (i is None) or (i != i):
+                        inp = MLPConstants.ACTIV_NaN
+                    else:
+                        inp = int (i * (1 << MLPConstants.ACTIV_SHIFT))
+                    spec.write_value (inp, data_type = DataType.UINT32)
+                us += self.group.units
 
         # Reserve and write the routing region
         spec.reserve_memory_region (MLPRegions.ROUTING.value,
-                                    self._N_KEYS_BYTES)
+                                    self._KEYS_BYTES)
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
@@ -281,8 +285,9 @@ class InputVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.fwd_link), data_type = DataType.UINT32)
 
-        # write link keys: bkp (padding - keys written below)
-        spec.write_value (0, data_type = DataType.UINT32)
+        # write link keys: bkp
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.bkp_link), data_type = DataType.UINT32)
 
         # write link keys: fds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
@@ -293,19 +298,14 @@ class InputVertex(
         # write link keys: lds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
-        # write link keys: bkpi
-        for p in range (self.group.partitions):
-            spec.write_value (routing_info.get_first_key_from_pre_vertex (
-                self, self.bkp_link[p]), data_type = DataType.UINT32)
-
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
-                                    self._N_STAGE_CONFIGURATION_BYTES)
+                                    self._STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification ()
@@ -315,12 +315,12 @@ class InputVertex(
     def regenerate_data_specification(self, spec, placement):
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
-                                    self._N_STAGE_CONFIGURATION_BYTES)
+                                    self._STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification()

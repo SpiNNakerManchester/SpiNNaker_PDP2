@@ -25,19 +25,20 @@ class MLPGroup():
         self.write_blk    = write_blk
         self.is_first_out = is_first_out
         self.label        = label
-        self.VERBOSE      = VERBOSE
 
-        # number of partitions required for this group
-        self.partitions = (self.units + MLPConstants.MAX_BLK_UNITS - 1)\
-            // MLPConstants.MAX_BLK_UNITS
+        # number of subgroups required for this group
+        self.subgroups = (self.units + MLPConstants.MAX_SUBGROUP_UNITS - 1)\
+            // MLPConstants.MAX_SUBGROUP_UNITS
 
         if VERBOSE:
-            if self.partitions == 1:
-                print (f"creating group {self.label} with 1 partition")
-            else:
-                print (f"creating group {self.label} with "
-                       f"{self.partitions} partitions"
-                       )
+            s = '' if self.subgroups == 1 else 's'
+            print (f"creating group {self.label} with "
+                   f"{self.subgroups} subgroup{s}"
+                   )
+
+        # number of units per subgroup
+        self.subunits = [MLPConstants.MAX_SUBGROUP_UNITS] * (self.subgroups - 1)
+        self.subunits.append (self.units - sum (self.subunits))
 
         # keep track of associated incoming links
         self.links_from = []
@@ -53,9 +54,9 @@ class MLPGroup():
 
         # keep track of associated vertices
         self.w_vertices = []
-        self.s_vertex   = None
-        self.i_vertex   = None
-        self.t_vertex   = None
+        self.s_vertex   = []
+        self.i_vertex   = []
+        self.t_vertex   = []
 
         # group function parameters
         self.output_grp = (MLPGroupTypes.OUTPUT in self.type)

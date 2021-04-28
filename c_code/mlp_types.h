@@ -24,16 +24,12 @@ enum MLPRecordings {
   TICK_DATA    = 2
 };
 
-// t cores can have more than one FWD key (due to partitions)
-// i cores can have more than one BKP key (due to partitions)
 enum MLPKeys {
   FWD  = 0,
   BKP  = 1,
   FDS  = 2,
   STP  = 3,
-  LDS  = 4,
-  FWDT = 5,
-  BKPI = 5
+  LDS  = 4
 };
 
 
@@ -223,7 +219,6 @@ typedef struct network_conf     // MLP network configuration
   uchar net_type;               // type of neural net
   uint  ticks_per_int;          // number of ticks per interval
   uint  global_max_ticks;       // max number of ticks across all the examples
-  uint  num_write_blks;         // number of groups that write outputs
 } network_conf_t;
 // ------------------------------------------------------------------------
 
@@ -232,8 +227,8 @@ typedef struct network_conf     // MLP network configuration
 // weight core configuration
 // ------------------------------------------------------------------------
 // The neural net is represented by a weight matrix.
-// The matrix is divided into num_rblks x num_cblk weight blocks
-// and every weight core computes for one of these blocks.
+// The matrix is divided into a number of weight blocks and each
+// weight core gets assigned one of these blocks for computation.
 // Each block is associated with a single projection, i.e., it contains
 // connection weights associated with a single origin group and a single
 // destination group (which can be the same in recurrent networks).
@@ -245,8 +240,6 @@ typedef struct w_conf             // weight core configuration
 {
   uint         num_rows;          // rows in this core's block
   uint         num_cols;          // columns in this core's block
-  uint         row_blk;           // this core's row block number
-  uint         col_blk;           // this core's column block number
   scoreboard_t sync_expected;     // num of expected sync packets
   activation_t initOutput;        // initial value for unit outputs
   short_fpreal learningRate;      // network learning rate
@@ -267,9 +260,9 @@ typedef struct s_conf               // sum core configuration
   uint         num_units;           // this core's number of units
   scoreboard_t fwd_expected;        // num of expected partial nets
   scoreboard_t bkp_expected;        // num of expected partial errors
-  scoreboard_t ldsa_expected;       // num of expected partial link delta sums
-  scoreboard_t ldst_expected;       // num of expected link delta sum totals
+  scoreboard_t lds_expected;        // num of expected partial link delta sums
   uchar        is_first_group;      // is this the first group in the network?
+  uchar        is_tree_root;        // is this the root of an s_core tree?
 } s_conf_t;
 // ------------------------------------------------------------------------
 
@@ -285,7 +278,6 @@ typedef struct i_conf                // input core configuration
   uchar         output_grp;          // is this an OUTPUT group?
   uchar         input_grp;           // is this an INPUT group?
   uint          num_units;           // this core's number of units
-  uint          partitions;          // this groups's number of partitions
   uint          num_in_procs;        // number of input (net) comp procedures
   uint          procs_list[SPINN_NUM_IN_PROCS];
   uchar         in_integr_en;        // input INTEGRATOR in use
@@ -310,9 +302,8 @@ typedef struct t_conf                  // threshold core configuration
 {
   uchar         output_grp;            // is this an OUTPUT group?
   uchar         input_grp;             // is this an INPUT group?
+  uchar         is_last_sgrp;          // is last subgroup of the group?
   uint          num_units;             // this core's number of units
-  uint          partitions;            // this group's number of partitions
-  uint          write_blk;             // this core's write block
   uchar         hard_clamp_en;         // HARD CLAMP in use
   uchar         out_integr_en;         // output INTEGRATOR in use
   fpreal        out_integr_dt;         // integration time const for input integr
@@ -322,9 +313,10 @@ typedef struct t_conf                  // threshold core configuration
   activation_t  initOutput;            // initial value for unit outputs
   error_t       tst_group_criterion;   // test-mode convergence criterion value
   error_t       trn_group_criterion;   // train-mode convergence criterion value
+  uint          crit_expected;         // num of expected partial crit pkts
   uchar         criterion_function;    // function to eval convergence criterion
-  uchar         is_first_output_group; // is this the first of the output groups
-  uchar         is_last_output_group;  // is this the last of the output groups
+  uchar         is_first_output;       // is this the first output subgroup
+  uchar         is_last_output;        // is this the last output subgroup
   uchar         error_function;        // error function used for BACKPROP
 } t_conf_t;
 // ------------------------------------------------------------------------

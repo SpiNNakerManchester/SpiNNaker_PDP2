@@ -12,9 +12,7 @@ extern uint coreID;               // 5-bit virtual core ID
 
 extern uint fwdKey;               // packet ID for FORWARD-phase data
 extern uint bkpKey;               // packet ID for BACKPROP-phase data
-extern uint ldsaKey;              // packet ID for link delta summation accumulators
-extern uint ldstKey;              // packet ID for link delta summation totals
-extern uint ldsrKey;              // packet ID for link delta summation reports
+extern uint ldsKey;               // packet ID for link delta summation
 extern uint fdsKey;               // packet ID for FORWARD synchronisation
 
 extern uint32_t stage_step;       // current stage step
@@ -92,19 +90,18 @@ extern activation_t     * w_output_history;
 // ------------------------------------------------------------------------
 // sum core variables
 // ------------------------------------------------------------------------
-extern long_net_t     * s_nets[2];     // unit nets computed in current tick
-extern long_error_t   * s_errors[2];   // errors computed in current tick
-extern pkt_queue_t      s_pkt_queue;   // queue to hold received packets
-extern uchar            s_active;      // processing packets from queue?
-extern lds_t            s_lds_part;    // partial link delta sum
-extern scoreboard_t   * sf_arrived[2]; // keep count of expected net b-d-p
-extern scoreboard_t     sf_done;       // current tick net computation done
-extern uint             sf_thrds_pend; // thread semaphore
-extern scoreboard_t   * sb_arrived[2]; // keep count of expected error b-d-p
-extern scoreboard_t     sb_done;       // current tick error computation done
-extern uint             sb_thrds_pend; // thread semaphore
-extern scoreboard_t     s_ldsa_arrived; // keep count of the number of partial link delta sums
-extern scoreboard_t     s_ldst_arrived; // keep count of the number of link delta sum totals
+extern long_net_t     * s_nets[2];      // unit nets computed in current tick
+extern long_error_t   * s_errors[2];    // errors computed in current tick
+extern pkt_queue_t      s_pkt_queue;    // queue to hold received packets
+extern uchar            s_active;       // processing packets from queue?
+extern lds_t            s_lds_part;     // partial link delta sum
+extern scoreboard_t   * sf_arrived[2];  // keep count of expected net b-d-p
+extern scoreboard_t     sf_done;        // current tick net computation done
+extern uint             sf_thrds_pend;  // thread semaphore
+extern scoreboard_t   * sb_arrived[2];  // keep count of expected error b-d-p
+extern scoreboard_t     sb_done;        // current tick error computation done
+extern uint             sb_thrds_pend;  // thread semaphore
+extern scoreboard_t     s_lds_arrived;  // keep count of received link delta sums
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -129,10 +126,8 @@ extern scoreboard_t     ib_done;       // current tick delta computation done
 extern long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
 extern long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
 
-extern uint           * i_bkpKey;      // i cores have one bkpKey per partition
-
 // history arrays
-extern long_net_t      * i_net_history; //sdram pointer where to store input history
+extern long_net_t     * i_net_history; //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -160,7 +155,8 @@ extern uchar            tf_active;     // processing FWD-phase packet queue?
 extern scoreboard_t     tf_arrived;    // keep count of expected nets
 extern uint             tf_thrds_pend; // thread semaphore
 extern uchar            tf_crit_prev;  // criterion value received
-extern uchar            tf_init_crit;  // criterion init value
+extern scoreboard_t     tf_crit_arrived;  // keep count of expected crit pkts
+extern uchar            tf_crit_init;  // criterion init value
 extern uchar            tf_crit_rdy;   // criterion can be forwarded
 extern uchar            tf_stop_crit;  // stop criterion met?
 extern uchar            tf_group_crit;     // stop criterion met for all groups?
@@ -188,18 +184,16 @@ extern uchar            t_rec_results;    // record test results to SDRAM
 extern uchar            t_rec_tick_data;  // record tick data to SDRAM
 extern uchar            t_rec_step_updt;  // update recording step
 
-extern uint           * t_fwdKey;      // t cores have one fwdKey per partition
-
 // history arrays
 extern net_t          * t_net_history;
 extern activation_t   * t_output_history;
 extern long_deriv_t   * t_output_deriv_history;
 // ------------------------------------------------------------------------
 
+#ifdef DEBUG
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-#ifdef DEBUG
 extern uint pkt_sent;  // total packets sent
 extern uint sent_fwd;  // packets sent in FORWARD phase
 extern uint sent_bkp;  // packets sent in BACKPROP phase
@@ -216,12 +210,8 @@ extern uint stp_sent;  // stop packets sent
 extern uint stp_recv;  // stop packets received
 extern uint stn_sent;  // network_stop packets sent
 extern uint stn_recv;  // network_stop packets received
-extern uint lda_sent;  // partial link_delta packets sent
-extern uint lda_recv;  // partial link_delta packets received
-extern uint ldt_sent;  // total link_delta packets sent
-extern uint ldt_recv;  // total link_delta packets received
-extern uint ldr_sent;  // link_delta packets sent
-extern uint ldr_recv;  // link_delta packets received
+extern uint lds_sent;  // link_delta packets sent
+extern uint lds_recv;  // link_delta packets received
 extern uint tot_tick;  // total number of ticks executed
 extern uint wght_ups;  // number of weight updates done
 extern uint wrng_phs;  // packets received in wrong phase
@@ -230,7 +220,20 @@ extern uint wrng_bph;  // BACKPROP packets received in wrong phase
 extern uint wrng_pth;  // unexpected processing thread
 extern uint wrng_cth;  // unexpected comms thread
 extern uint wrng_sth;  // unexpected stop thread
-#endif
 // ------------------------------------------------------------------------
+#endif
+
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+extern uint prf_fwd_min;  // minimum FORWARD processing time
+extern uint prf_fwd_max;  // maximum FORWARD processing time
+extern uint prf_bkp_min;  // minimum BACKPROP processing time
+extern uint prf_bkp_max;  // maximum BACKPROP processing time
+// ------------------------------------------------------------------------
+#endif
+
 
 #endif

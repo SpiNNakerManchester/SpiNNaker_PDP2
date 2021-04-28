@@ -40,7 +40,7 @@ uint coreID;               // 5-bit virtual core ID
 
 uint fwdKey;               // packet ID for FORWARD-phase data
 uint bkpKey;               // packet ID for BACKPROP-phase data
-uint ldsaKey;              // packet ID for link delta summation
+uint ldsKey;               // packet ID for link delta summation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
@@ -142,8 +142,8 @@ uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
-uint lda_sent;  // partial link_delta packets sent
-uint ldr_recv;  // link_delta packets received
+uint lds_sent;  // link_delta packets sent
+uint lds_recv;  // link_delta packets received
 uint wrng_fph;  // FORWARD packets received in wrong phase
 uint wrng_bph;  // BACKPROP packets received in wrong phase
 uint wght_ups;  // number of weight updates done
@@ -151,6 +151,18 @@ uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
+// ------------------------------------------------------------------------
+#endif
+
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+uint prf_fwd_min;  // minimum FORWARD processing time
+uint prf_fwd_max;  // maximum FORWARD processing time
+uint prf_bkp_min;  // minimum BACKPROP processing time
+uint prf_bkp_max;  // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
 

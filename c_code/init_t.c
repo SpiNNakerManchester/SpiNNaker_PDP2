@@ -27,6 +27,11 @@ uint cfg_init (void)
   io_printf (IO_BUF, "threshold\n");
 #endif
 
+#ifdef PROFILE
+  // configure timer 2 for profiling
+  tc[T2_CONTROL] = SPINN_PROFILER_CFG;
+#endif
+
   // read the data specification header
   data_specification_metadata_t * data =
           data_specification_get_data_address();
@@ -150,8 +155,8 @@ uint cfg_init (void)
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "og: %d\n", tcfg.output_grp);
   io_printf (IO_BUF, "ig: %d\n", tcfg.input_grp);
+  io_printf (IO_BUF, "ls: %d\n", tcfg.is_last_sgrp);
   io_printf (IO_BUF, "nu: %d\n", tcfg.num_units);
-  io_printf (IO_BUF, "wb: %d\n", tcfg.write_blk);
   io_printf (IO_BUF, "ie: %d\n", tcfg.out_integr_en);
   io_printf (IO_BUF, "dt: %f\n", tcfg.out_integr_dt);
   io_printf (IO_BUF, "np: %d\n", tcfg.num_out_procs);
@@ -165,9 +170,10 @@ uint cfg_init (void)
         tcfg.initOutput, SPINN_ACTIV_SHIFT));
   io_printf (IO_BUF, "gs: %k\n", tcfg.tst_group_criterion);
   io_printf (IO_BUF, "gt: %k\n", tcfg.trn_group_criterion);
+  io_printf (IO_BUF, "ce: %d\n", tcfg.crit_expected);
   io_printf (IO_BUF, "cf: %d\n", tcfg.criterion_function);
-  io_printf (IO_BUF, "fg: %d\n", tcfg.is_first_output_group);
-  io_printf (IO_BUF, "lg: %d\n", tcfg.is_last_output_group);
+  io_printf (IO_BUF, "fo: %d\n", tcfg.is_first_output);
+  io_printf (IO_BUF, "lo: %d\n", tcfg.is_last_output);
   io_printf (IO_BUF, "ef: %d\n", tcfg.error_function);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
@@ -234,14 +240,6 @@ uint mem_init (void)
   // allocate memory for net packet queue
   if ((t_pkt_queue.queue = ((packet_t *)
          spin1_malloc (SPINN_THLD_PQ_LEN * sizeof (packet_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  // allocate memory for forward keys (one per partition)
-  if ((t_fwdKey = ((uint *)
-         spin1_malloc (tcfg.partitions * sizeof (uint)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -488,7 +486,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   net_stop = 0;
 
   // initialise max and min ticks
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     // get max number of ticks for first event
     if (ev[event_idx].max_time != SPINN_FP_NaN)
@@ -535,19 +533,20 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tb_procs = 0;
   tb_comms = 1;
 
-  // initialise received net and error scoreboards
+  // initialise received net, error and criterion scoreboards
   tf_arrived = 0;
   tb_arrived = 0;
+  tf_crit_arrived = 0;
 
   // initialise thread semaphores
   tf_thrds_pend = SPINN_TF_THRDS;
   tb_thrds_pend = SPINN_TB_THRDS;
 
   // initialise recording options
-  t_rec_results = xcfg.rec_results && tcfg.is_last_output_group &&
+  t_rec_results = xcfg.rec_results && tcfg.is_last_output &&
       !xcfg.training && (stage_rec_flags & (1 << SPINN_REC_RESULTS));
 
-  t_rec_tick_data = xcfg.rec_outputs && tcfg.is_first_output_group &&
+  t_rec_tick_data = xcfg.rec_outputs && tcfg.is_first_output &&
       (stage_rec_flags & (1 << SPINN_REC_TICK_DATA));
 
   t_rec_outputs = xcfg.rec_outputs && tcfg.output_grp &&
@@ -580,19 +579,21 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
                - SPINN_SHORT_ACTIV_SHIFT);
     t_max_target = SPINN_SHORT_ACTIV_MIN_POS << (SPINN_ACTIV_SHIFT
                - SPINN_SHORT_ACTIV_SHIFT);
-
-    // no need to wait for previous value if first group
-    if (tcfg.is_first_output_group)
-    {
-      tf_init_crit = 1;
-      tf_crit_prev = TRUE;
-    }
-    else
-    {
-      tf_init_crit = 0;
-    }
-    tf_crit_rdy = tf_init_crit;
   }
+
+  // check if expecting a previous criterion value
+  if (tcfg.crit_expected)
+  {
+    tf_crit_init = 0;
+  }
+  else
+  {
+    tf_crit_init = 1;
+  }
+
+  // initialise flag and previous value
+  tf_crit_rdy = tf_crit_init;
+  tf_crit_prev = TRUE;
 
   // initialise processing thread flag
   tf_active = FALSE;
@@ -602,15 +603,11 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   t_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is initialised to 0
-  for (uint p = 0; p < tcfg.partitions; p++)
-  {
-    t_fwdKey[p] = rt[FWDT + p] | SPINN_PHASE_KEY (SPINN_FORWARD);
-  }
-
+  //NOTE: colour is implicitly initialised to 0
+  fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     // tick stop key
     tf_stop_key = rt[STP] | SPINN_STOP_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
@@ -642,14 +639,29 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   stn_recv = 0;  // network_stop packets received
   wrng_phs = 0;  // packets received in wrong phase
   tot_tick = 0;  // total number of ticks executed
+  // ------------------------------------------------------------------------
 #endif
 
 #if defined(DEBUG) && defined(DEBUG_THRDS)
+  // ------------------------------------------------------------------------
+  // THREAD DEBUG variables
+  // ------------------------------------------------------------------------
   wrng_pth = 0;  // unexpected processing thread
   wrng_cth = 0;  // unexpected comms thread
   wrng_sth = 0;  // unexpected stop thread
-#endif
   // ------------------------------------------------------------------------
+#endif
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+prf_fwd_min = SPINN_PROFILER_START;  // minimum FORWARD processing time
+prf_fwd_max = 0;                     // maximum FORWARD processing time
+prf_bkp_min = SPINN_PROFILER_START;  // minimum BACKPROP processing time
+prf_bkp_max = 0;                     // maximum BACKPROP processing time
+// ------------------------------------------------------------------------
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -777,22 +789,18 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  if (tcfg.is_first_output_group)
+  io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
+  if (tcfg.is_last_sgrp)
   {
-    io_printf (IO_BUF, "criterion recv: first\n");
+    io_printf (IO_BUF, "crit recv:%d\n", crt_recv);
   }
-  else
-  {
-  io_printf (IO_BUF, "criterion recv:%d\n", crt_recv);
-  }
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
     io_printf (IO_BUF, "stpn sent:%d\n", stn_sent);
   }
   else
   {
-    io_printf (IO_BUF, "criterion sent:%d\n", crt_sent);
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   }
@@ -803,6 +811,17 @@ void stage_done (uint ec, uint key)
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
+#endif
+
+#ifdef PROFILE
+  // report PROFILER values
+  io_printf (IO_BUF, "min fwd proc:%u\n", prf_fwd_min);
+  io_printf (IO_BUF, "max fwd proc:%u\n", prf_fwd_max);
+  if (xcfg.training)
+  {
+    io_printf (IO_BUF, "min bkp proc:%u\n", prf_bkp_min);
+    io_printf (IO_BUF, "max bkp proc:%u\n", prf_bkp_max);
+  }
 #endif
 
 #ifdef DEBUG

@@ -153,7 +153,8 @@ uchar            tf_active;         // processing FWD-phase packet queue?
 scoreboard_t     tf_arrived;        // keep count of expected nets
 uint             tf_thrds_pend;     // thread semaphore
 uchar            tf_crit_prev;      // criterion value received
-uchar            tf_init_crit;      // criterion init value
+scoreboard_t     tf_crit_arrived;   // keep count of expected crit pkts
+uchar            tf_crit_init;      // criterion init value
 uchar            tf_crit_rdy;       // criterion can be forwarded
 uchar            tf_stop_crit;      // stop criterion met?
 uchar            tf_group_crit;     // stop criterion met for all groups?
@@ -186,8 +187,6 @@ uchar            t_rec_results;     // record test results to SDRAM
 uchar            t_rec_tick_data;   // record tick data to SDRAM
 uchar            t_rec_step_updt;   // update recording step
 
-uint           * t_fwdKey;          // t cores have one fwdKey per partition
-
 // history arrays
 net_t          * t_net_history;
 activation_t   * t_output_history;
@@ -216,6 +215,18 @@ uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
+// ------------------------------------------------------------------------
+#endif
+
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+uint prf_fwd_min;  // minimum FORWARD processing time
+uint prf_fwd_max;  // maximum FORWARD processing time
+uint prf_bkp_min;  // minimum BACKPROP processing time
+uint prf_bkp_max;  // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
 

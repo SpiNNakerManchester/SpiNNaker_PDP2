@@ -121,19 +121,19 @@ void t_processFWDQueue (uint unused0, uint unused1)
       tf_process (key, payload);
     }
 
-    // process criterion packet,
+    // or process criterion packet,
     else if (pkt_type == SPINN_CRIT_KEY)
     {
       t_criterion_packet (key);
     }
 
-    // process tick stop packet,
+    // or process tick stop packet,
     else if (pkt_type == SPINN_STOP_KEY)
     {
       t_stop_packet (key);
     }
 
-    // process network stop packet,
+    // or process network stop packet,
     else if (pkt_type == SPINN_STPN_KEY)
     {
       t_net_stop_packet (key);
@@ -170,38 +170,48 @@ void t_criterion_packet (uint key)
 #endif
 
   // partial criterion value arrived,
-  tf_crit_prev = key & SPINN_STPD_MASK;
+  tf_crit_prev = tf_crit_prev && (key & SPINN_STPD_MASK);
 
-  // access flag with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
+  // update scoreboard,
+  tf_crit_arrived++;
 
-  // and check if updated criterion value can be forwarded
-  if (tf_crit_rdy)
+  // and check if all criterion packets arrived
+  if (tf_crit_arrived == tcfg.crit_expected)
   {
-    // initialise flag,
-    tf_crit_rdy = tf_init_crit;
+    // initialise scoreboard for next tick,
+    tf_crit_arrived = 0;
 
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
+    // access flag with interrupts disabled,
+    uint cpsr = spin1_int_disable ();
 
-    // send stop packet,
-    tf_send_stop ();
-
-    // and advance tick if last_output_group
-    //NOTE: last output group does not get a tick stop packet
-    // so it's ready to advance tick
-    if (tcfg.is_last_output_group)
+    // and check if updated criterion value can be forwarded
+    if (tf_crit_rdy)
     {
-      tf_advance_tick ();
-    }
-  }
-  else
-  {
-    // flag ready to forward criterion,
-    tf_crit_rdy = 1;
+      // initialise flag,
+      tf_crit_rdy = 0;
 
-    // and restore interrupts after flag access
-    spin1_mode_restore (cpsr);
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // send stop packet,
+      tf_send_stop ();
+
+      // and advance tick if last_output_group
+      //NOTE: last output group does not get a tick stop packet
+      // so it's ready to advance tick
+      if (tcfg.is_last_output)
+      {
+        tf_advance_tick ();
+      }
+    }
+    else
+    {
+      // flag ready to forward criterion,
+      tf_crit_rdy = 1;
+
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
+    }
   }
 }
 // ------------------------------------------------------------------------
@@ -311,7 +321,7 @@ void t_backprop_packet (uint key, uint payload)
   // store received error,
   t_errors[tb_comms][inx] = (error_t) payload;
 
-  // and update scoreboard,
+  // update scoreboard,
   tb_arrived++;
 
   // if all expected errors have arrived may move to next tick
@@ -362,7 +372,12 @@ void tf_send_stop (void)
   // "aggregate" criteria,
   tf_stop_crit = tf_stop_crit && tf_crit_prev;
 
-  if (tcfg.is_last_output_group)
+  // initialise previous value,
+  //TODO: should this be done in critical section?
+  tf_crit_prev = TRUE;
+
+  // make stop decision,
+  if (tcfg.is_last_output)
   {
     tf_group_crit = tf_stop_crit;
 
@@ -386,7 +401,7 @@ void tf_send_stop (void)
 
 #ifdef DEBUG
   pkt_sent++;
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     stp_sent++;
   }

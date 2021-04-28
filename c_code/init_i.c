@@ -26,6 +26,11 @@ uint cfg_init (void)
   io_printf (IO_BUF, "input\n");
 #endif
 
+#ifdef PROFILE
+  // configure timer 2 for profiling
+  tc[T2_CONTROL] = SPINN_PROFILER_CFG;
+#endif
+
   // read the data specification header
   data_specification_metadata_t * data =
           data_specification_get_data_address();
@@ -148,14 +153,6 @@ uint mem_init (void)
     return (SPINN_MEM_UNAVAIL);
   }
 
-  // allocate memory for BACKPROP keys (one per partition)
-  if ((i_bkpKey = ((uint *)
-         spin1_malloc (icfg.partitions * sizeof (uint)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
   // allocate memory for INPUT functions
   for (uint i = 0; i < icfg.num_in_procs; i++)
   {
@@ -271,13 +268,9 @@ void var_init (uint reset_examples)
   i_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is initialised to 0.
+  //NOTE: colour is implicitly initialised to 0
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
-
-  for (uint p = 0; p < icfg.partitions; p++)
-  {
-    i_bkpKey[p] = rt[BKPI + p] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  }
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
   // if the INPUT INTEGRATOR is used
   // reset the memory of the INTEGRATOR state variables
@@ -315,6 +308,17 @@ void var_init (uint reset_examples)
   wrng_sth = 0;  // unexpected stop thread
   tot_tick = 0;  // total number of ticks executed
   // ------------------------------------------------------------------------
+#endif
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+prf_fwd_min = SPINN_PROFILER_START;  // minimum FORWARD processing time
+prf_fwd_max = 0;                     // maximum FORWARD processing time
+prf_bkp_min = SPINN_PROFILER_START;  // minimum BACKPROP processing time
+prf_bkp_max = 0;                     // maximum BACKPROP processing time
+// ------------------------------------------------------------------------
 #endif
 }
 // ------------------------------------------------------------------------
@@ -428,6 +432,17 @@ void stage_done (uint ec, uint key)
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
+#endif
+
+#ifdef PROFILE
+  // report PROFILER values
+  io_printf (IO_BUF, "min fwd proc:%u\n", prf_fwd_min);
+  io_printf (IO_BUF, "max fwd proc:%u\n", prf_fwd_max);
+  if (xcfg.training)
+  {
+    io_printf (IO_BUF, "min bkp proc:%u\n", prf_bkp_min);
+    io_printf (IO_BUF, "max bkp proc:%u\n", prf_bkp_max);
+  }
 #endif
 
 #ifdef DEBUG

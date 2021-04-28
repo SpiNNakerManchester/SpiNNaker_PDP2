@@ -12,6 +12,16 @@
 #define SPINN_TIMER_TICK_PERIOD  1000000
 #define SPINN_PRINT_SHIFT        16
 
+
+// ------------------------------------------------------------------------
+// profiler constants
+// ------------------------------------------------------------------------
+// configure timer2 for profiling: enabled, free running,
+// interrupt disabled, no pre-scale and 32-bit one-shot mode
+#define SPINN_PROFILER_CFG       0x83
+#define SPINN_PROFILER_START     0xffffffff
+
+
 // ------------------------------------------------------------------------
 // neural net constants
 // ------------------------------------------------------------------------
@@ -89,9 +99,7 @@
 // packet type keys
 #define SPINN_DATA_KEY       0x00000000
 #define SPINN_SYNC_KEY       0x00001000
-#define SPINN_LDST_KEY       0x00002000
 #define SPINN_LDSA_KEY       0x00003000
-#define SPINN_LDSR_KEY       0x00004000
 #define SPINN_CRIT_KEY       0x00005000
 #define SPINN_STPN_KEY       0x00006000
 #define SPINN_STOP_KEY       0x00007000
@@ -126,17 +134,6 @@
 
 
 // ------------------------------------------------------------------------
-// core function types
-// ------------------------------------------------------------------------
-#define SPINN_WEIGHT_PROC    0x0
-#define SPINN_SUM_PROC       0x1
-#define SPINN_THRESHOLD_PROC 0x2
-#define SPINN_INPUT_PROC     0x3
-#define SPINN_UNUSED_PROC    0x4
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
 // implementation parameters
 // ------------------------------------------------------------------------
 //TODO: check if sizes are appropriate
@@ -154,8 +151,6 @@
 #define SPINN_THRD_COMS      ((SPINN_THRD_PROC) << 1)
 #define SPINN_THRD_STOP      ((SPINN_THRD_COMS) << 1)
 #define SPINN_THRD_LDSA      ((SPINN_THRD_STOP) << 1)
-#define SPINN_THRD_LDST      ((SPINN_THRD_LDSA) << 1)
-#define SPINN_THRD_LDSR      (SPINN_THRD_LDSA)
 
 #define SPINN_WF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_COMS | SPINN_THRD_STOP)
 #define SPINN_WB_THRDS       (SPINN_THRD_PROC)
@@ -207,12 +202,12 @@
 // ------------------------------------------------------------------------
 // EXIT codes -- error
 // ------------------------------------------------------------------------
-#define SPINN_NO_ERROR         0
-#define SPINN_MEM_UNAVAIL      1
-#define SPINN_QUEUE_FULL       2
-#define SPINN_TIMEOUT_EXIT     3
-#define SPINN_UNXPD_PKT        4
-#define SPINN_CFG_UNAVAIL      5
+#define SPINN_NO_ERROR       0
+#define SPINN_MEM_UNAVAIL    1
+#define SPINN_QUEUE_FULL     2
+#define SPINN_TIMEOUT_EXIT   3
+#define SPINN_UNXPD_PKT      4
+#define SPINN_CFG_UNAVAIL    5
 // ------------------------------------------------------------------------
 
 #endif

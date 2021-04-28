@@ -32,6 +32,11 @@ void wf_process (uint unused0, uint unused1)
   // compute all net block dot-products and send them for accumulation,
   for (uint j = 0; j < wcfg.num_cols; j++)
   {
+#ifdef PROFILE
+    // start profiler
+    tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
     long_net_t net_part_tmp = 0;
 
     for (uint i = 0; i < wcfg.num_rows; i++)
@@ -59,6 +64,13 @@ void wf_process (uint unused0, uint unused1)
 #ifdef DEBUG
     pkt_sent++;
     sent_fwd++;
+#endif
+
+#ifdef PROFILE
+    // update profiler values
+    uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+    if (cnt < prf_fwd_min) prf_fwd_min = cnt;
+    if (cnt > prf_fwd_max) prf_fwd_max = cnt;
 #endif
   }
 
@@ -104,13 +116,11 @@ void wb_process (uint key, uint payload)
   recv_bkp++;
   if (phase == SPINN_FORWARD)
     wrng_bph++;
+#endif
 
-  uint blk = (key & SPINN_BLOCK_MASK) >> SPINN_BLOCK_SHIFT;
-  if (blk != wcfg.col_blk)
-  {
-    pkt_bwbk++;
-    return;
-  }
+#ifdef PROFILE
+  // start profiler
+  tc[T2_LOAD] = SPINN_PROFILER_START;
 #endif
 
   // get delta index: mask out phase and block data,
@@ -208,13 +218,20 @@ void wb_process (uint key, uint payload)
       lds_to_send = (lds_t) link_delta_sum;
 
     // and send partial link delta sum
-    while (!spin1_send_mc_packet (ldsaKey, (uint) lds_to_send, WITH_PAYLOAD));
+    while (!spin1_send_mc_packet (ldsKey, (uint) lds_to_send, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;
-    lda_sent++;
+    lds_sent++;
 #endif
   }
+
+#ifdef PROFILE
+  // update profiler values
+  uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+  if (cnt < prf_bkp_min) prf_bkp_min = cnt;
+  if (cnt > prf_bkp_max) prf_bkp_max = cnt;
+#endif
 
   // if done with all deltas advance tick
   if (wb_arrived == wcfg.num_cols)
@@ -242,7 +259,7 @@ void wb_process (uint key, uint payload)
           && example_cnt == (xcfg.num_examples - 1)
           && tick == SPINN_WB_END_TICK + 1)
       {
-        wb_thrds_pend = SPINN_WB_THRDS | SPINN_THRD_LDSR;
+        wb_thrds_pend = SPINN_WB_THRDS | SPINN_THRD_LDSA;
       }
 
       // restore interrupts after semaphore access,

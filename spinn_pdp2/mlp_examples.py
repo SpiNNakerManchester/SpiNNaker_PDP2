@@ -556,8 +556,11 @@ class MLPExampleSet ():
         # clean up
         ef.close ()
 
-        # report examples read
-        print (f"{examples_file} contains {len (self.examples)} examples")
+        # report total number of examples read
+        s = '' if len (self.examples) == 1 else 's'
+        print (f"file {examples_file} contains "
+               f"{len (self.examples)} example{s}"
+               )
 
         # mark examples file as loaded
         self.examples_loaded = True

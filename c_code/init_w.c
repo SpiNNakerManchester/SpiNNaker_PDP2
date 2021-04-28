@@ -26,6 +26,11 @@ uint cfg_init (void)
   io_printf (IO_BUF, "weight\n");
 #endif
 
+#ifdef PROFILE
+  // configure timer 2 for profiling
+  tc[T2_CONTROL] = SPINN_PROFILER_CFG;
+#endif
+
   // read the data specification header
   data_specification_metadata_t * data =
           data_specification_get_data_address();
@@ -93,8 +98,6 @@ uint cfg_init (void)
 #ifdef DEBUG_CFG
   io_printf (IO_BUF, "nr: %d\n", wcfg.num_rows);
   io_printf (IO_BUF, "nc: %d\n", wcfg.num_cols);
-  io_printf (IO_BUF, "rb: %d\n", wcfg.row_blk);
-  io_printf (IO_BUF, "cb: %d\n", wcfg.col_blk);
   io_printf (IO_BUF, "lr: %k\n", wcfg.learningRate);
   io_printf (IO_BUF, "wd: %k\n", wcfg.weightDecay);
   io_printf (IO_BUF, "mm: %k\n", wcfg.momentum);
@@ -324,12 +327,10 @@ void var_init (uint init_weights, uint reset_examples)
   wb_update_func = w_update_procs[xcfg.update_function];
 
   // initialise packet keys
-  //NOTE: colour is initialised to 0.
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD)
-      | SPINN_BLOCK_KEY(wcfg.col_blk);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP)
-      | SPINN_BLOCK_KEY(wcfg.row_blk);
-  ldsaKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  //NOTE: colour is implicitly initialised to 0
+  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
+  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
@@ -347,8 +348,8 @@ void var_init (uint init_weights, uint reset_examples)
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
-  lda_sent = 0;  // partial link_delta packets sent
-  ldr_recv = 0;  // link_delta packets received
+  lds_sent = 0;  // link_delta packets sent
+  lds_recv = 0;  // link_delta packets received
   wrng_fph = 0;  // FORWARD packets received in wrong phase
   wrng_bph = 0;  // BACKPROP received in wrong phase
   wght_ups = 0;  // number of weight updates done
@@ -357,6 +358,17 @@ void var_init (uint init_weights, uint reset_examples)
   wrng_sth = 0;  // unexpected stop thread
   tot_tick = 0;  // total number of ticks executed
   // ------------------------------------------------------------------------
+#endif
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+prf_fwd_min = SPINN_PROFILER_START;  // minimum FORWARD processing time
+prf_fwd_max = 0;                     // maximum FORWARD processing time
+prf_bkp_min = SPINN_PROFILER_START;  // minimum BACKPROP processing time
+prf_bkp_max = 0;                     // maximum BACKPROP processing time
+// ------------------------------------------------------------------------
 #endif
 }
 // ------------------------------------------------------------------------
@@ -472,8 +484,8 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);
-  io_printf (IO_BUF, "ldsa sent:%d\n", lda_sent);
-  io_printf (IO_BUF, "ldsr recv:%d\n", ldr_recv);
+  io_printf (IO_BUF, "lds sent:%d\n", lds_sent);
+  io_printf (IO_BUF, "lds recv:%d\n", lds_recv);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
@@ -484,6 +496,17 @@ void stage_done (uint ec, uint key)
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
   io_printf (IO_BUF, "------\n");
   io_printf (IO_BUF, "weight updates:%d\n", wght_ups);
+#endif
+
+#ifdef PROFILE
+  // report PROFILER values
+  io_printf (IO_BUF, "min fwd proc:%u\n", prf_fwd_min);
+  io_printf (IO_BUF, "max fwd proc:%u\n", prf_fwd_max);
+  if (xcfg.training)
+  {
+    io_printf (IO_BUF, "min bkp proc:%u\n", prf_bkp_min);
+    io_printf (IO_BUF, "max bkp proc:%u\n", prf_bkp_max);
+  }
 #endif
 
 #ifdef DEBUG

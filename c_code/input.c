@@ -116,7 +116,7 @@ long_delta_t   * i_deltas;          // deltas computed in current tick
 pkt_queue_t      i_pkt_queue;       // queue to hold received packets
 uchar            i_active;          // processing packets from queue?
 
-long_net_t     * i_last_integr_net; //last INTEGRATOR output value
+long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
 long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
 
 uint             i_it_idx;          // index into current inputs/targets
@@ -131,10 +131,8 @@ uint             if_thrds_pend;     // thread semaphore
 long_delta_t   * ib_init_delta;     // initial delta value for every tick
 scoreboard_t     ib_done;           // current tick delta computation done
 
-uint           * i_bkpKey;          // i cores have one bkpKey per partition
-
 // history arrays
-long_net_t     * i_net_history;   //sdram pointer where to store input history
+long_net_t     * i_net_history;     //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 
 
@@ -156,6 +154,18 @@ uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
+// ------------------------------------------------------------------------
+#endif
+
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+uint prf_fwd_min;  // minimum FORWARD processing time
+uint prf_fwd_max;  // maximum FORWARD processing time
+uint prf_bkp_min;  // minimum BACKPROP processing time
+uint prf_bkp_max;  // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
 

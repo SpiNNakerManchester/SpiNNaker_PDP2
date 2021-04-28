@@ -26,8 +26,7 @@ uint coreID;               // 5-bit virtual core ID
 
 uint fwdKey;               // packet ID for FORWARD-phase data
 uint bkpKey;               // packet ID for BACKPROP-phase data
-uint ldstKey;              // packet ID for link delta summation totals
-uint ldsrKey;              // packet ID for link delta summation reports
+uint ldsKey;               // packet ID for link delta summation
 uint fdsKey;               // packet ID for FORWARD synchronisation
 
 uint32_t stage_step;       // current stage step
@@ -95,8 +94,7 @@ uint             sf_thrds_pend;     // thread semaphore
 scoreboard_t   * sb_arrived[2];     // keep count of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
 uint             sb_thrds_pend;     // thread semaphore
-scoreboard_t     s_ldsa_arrived;    // keep count of the number of partial link delta sums
-scoreboard_t     s_ldst_arrived;    // keep count of the number of link delta sum totals
+scoreboard_t     s_lds_arrived;     // keep count of the number of partial link delta sums
 // ------------------------------------------------------------------------
 
 
@@ -114,15 +112,25 @@ uint spk_sent;  // sync packets sent
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
-uint lda_recv;  // partial link_delta packets received
-uint ldt_sent;  // total link_delta packets sent
-uint ldt_recv;  // total link_delta packets received
-uint ldr_sent;  // link_delta packets sent
+uint lds_sent;  // link_delta packets sent
+uint lds_recv;  // link_delta packets received
 uint wrng_phs;  // packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
 uint tot_tick;  // total number of ticks executed
+// ------------------------------------------------------------------------
+#endif
+
+
+#ifdef PROFILE
+// ------------------------------------------------------------------------
+// PROFILER variables
+// ------------------------------------------------------------------------
+uint prf_fwd_min;  // minimum FORWARD processing time
+uint prf_fwd_max;  // maximum FORWARD processing time
+uint prf_bkp_min;  // minimum BACKPROP processing time
+uint prf_bkp_max;  // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
 

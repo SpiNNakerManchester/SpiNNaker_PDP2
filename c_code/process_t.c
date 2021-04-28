@@ -35,6 +35,11 @@ void tf_process (uint key, uint payload)
     wrng_phs++;
 #endif
 
+#ifdef PROFILE
+  // start profiler
+  tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
   // get net index: mask out block, phase and colour data,
   uint inx = (key & SPINN_NET_MASK);
 
@@ -58,9 +63,8 @@ void tf_process (uint key, uint payload)
   }
 
   // send newly computed output to w cores,
-  while (!spin1_send_mc_packet ((t_fwdKey[inx >> SPINN_BLOCK_SHIFT] | inx),
-                                 (uint) t_outputs[inx],
-                                 WITH_PAYLOAD
+  while (!spin1_send_mc_packet ((fwdKey | inx), (uint) t_outputs[inx],
+                                WITH_PAYLOAD
                                )
         );
 
@@ -75,6 +79,13 @@ void tf_process (uint key, uint payload)
 
   // mark net as arrived,
   tf_arrived++;
+
+#ifdef PROFILE
+  // update profiler values
+  uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+  if (cnt < prf_fwd_min) prf_fwd_min = cnt;
+  if (cnt > prf_fwd_max) prf_fwd_max = cnt;
+#endif
 
   // and check if all nets arrived (i.e., all outputs done)
   if (tf_arrived == tcfg.num_units)
@@ -103,65 +114,37 @@ void tf_process (uint key, uint payload)
     // access thread semaphore and flags with interrupts disabled,
     uint cpsr = spin1_int_disable ();
 
-    // and check if all other threads done
-    if (tcfg.output_grp)
+    // report processing thread done,
+    //NOTE: tick stop decision cannot have arrived!
+    tf_thrds_pend &= ~SPINN_THRD_PROC;
+
+    // check if criterion value can be forwarded
+    if (tf_crit_rdy)
     {
-      // report processing thread done,
-      //NOTE: tick stop decision cannot have arrived!
-      tf_thrds_pend &= ~SPINN_THRD_PROC;
+      // initialise flag,
+      tf_crit_rdy = tf_crit_init;
 
-      // check if criterion value can be forwarded
-      if (tf_crit_rdy)
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // send (criterion/tick stop) packet,
+      tf_send_stop ();
+
+      // and advance tick if last group
+      //NOTE: last group does not get a stop decision
+      if (tcfg.is_last_output)
       {
-        // initialise semaphore,
-        tf_crit_rdy = tf_init_crit;
-
-        // restore interrupts after flag access,
-        spin1_mode_restore (cpsr);
-
-        // send (criterion/tick stop) packet,
-        tf_send_stop ();
-
-        // and advance tick if last group
-        //NOTE: last group does not get a stop decision
-        if (tcfg.is_last_output_group)
-        {
-          //TODO: check if need to schedule or can simply call
-          tf_advance_tick ();
-        }
-      }
-      else
-      {
-        // flag that local value is ready,
-        tf_crit_rdy = 1;
-
-        // and restore interrupts after flag access
-        spin1_mode_restore (cpsr);
+        //TODO: check if need to schedule or can simply call
+        tf_advance_tick ();
       }
     }
     else
     {
-      // check if all other threads done
-      if (tf_thrds_pend == SPINN_THRD_PROC)
-      {
-        // initialise semaphore,
-        tf_thrds_pend = SPINN_TF_THRDS;
+      // flag that local value is ready,
+      tf_crit_rdy = 1;
 
-        // restore interrupts after flag access,
-        spin1_mode_restore (cpsr);
-
-        // and advance tick
-        //TODO: check if need to schedule or can simply call
-        tf_advance_tick ();
-      }
-      else
-      {
-        // if not done report processing thread done,
-        tf_thrds_pend &= ~SPINN_THRD_PROC;
-
-        // and restore interrupts after flag access
-        spin1_mode_restore (cpsr);
-      }
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
     }
   }
 }
@@ -185,6 +168,11 @@ void tb_process (uint unused0, uint unused1)
   //TODO: this needs checking!
   for (uint inx = 0; inx < tcfg.num_units; inx++)
   {
+#ifdef PROFILE
+    // start profiler
+    tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
     if (tcfg.output_grp)
     {
       // output groups:
@@ -219,6 +207,13 @@ void tb_process (uint unused0, uint unused1)
 #ifdef DEBUG
     pkt_sent++;
     sent_bkp++;
+#endif
+
+#ifdef PROFILE
+    // update profiler values
+    uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+    if (cnt < prf_bkp_min) prf_bkp_min = cnt;
+    if (cnt > prf_bkp_max) prf_bkp_max = cnt;
 #endif
   }
 
@@ -272,7 +267,7 @@ void tf_advance_tick (void)
   if (tick_stop)
   {
     // update event criterion
-    if (tcfg.is_last_output_group)
+    if (tcfg.is_last_output)
     {
       tf_event_crit = tf_event_crit && tf_group_crit && (ev_tick >= min_ticks);
       max_evt = evt;
@@ -324,7 +319,7 @@ void tb_advance_tick (uint unused0, uint unused1)
     t_switch_to_fw ();
 
     // update example criterion,
-    if (tcfg.is_last_output_group)
+    if (tcfg.is_last_output)
     {
       tf_example_crit = tf_example_crit && tf_event_crit && (max_evt >= num_events - 1);
     }
@@ -409,7 +404,7 @@ void tf_advance_event (void)
       t_it_idx += tcfg.num_units;
 
       // and update number of ticks for new event
-      if (tcfg.is_last_output_group)
+      if (tcfg.is_last_output)
       {
         // maximum
         if (ev[event_idx + evt].max_time != SPINN_FP_NaN)
@@ -469,7 +464,7 @@ void t_advance_example (void)
     epoch++;
 
     // check if stage done,
-    if (tcfg.is_last_output_group)
+    if (tcfg.is_last_output)
     {
       // report network stop decision,
       nsd = (!xcfg.training || (epoch >= xcfg.num_epochs)) ? 1 : tf_example_crit;
@@ -561,7 +556,7 @@ void t_advance_example (void)
   t_init_outputs ();
 
   // and update next event data
-  if (tcfg.is_last_output_group)
+  if (tcfg.is_last_output)
   {
     // update number of ticks for new event,
     // maximum

@@ -1,7 +1,10 @@
 import struct
 
+import spinnaker_graph_front_end as gfe
+
 from data_specification.enums.data_type import DataType
 
+from pacman.model.graphs.machine import MachineEdge
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.resources.resource_container \
     import ResourceContainer, ConstantSDRAM
@@ -37,86 +40,80 @@ class SumVertex(
 
     def __init__(self,
                  network,
-                 group
+                 group,
+                 subgroup,
+                 index = 0
                  ):
 
+        self._network  = network
+        self._group    = group
+        self._subgroup = subgroup
+        self._index    = index
+
         super(SumVertex, self).__init__(
-            label = "s_core{}".format (group.id),
+            label = f"s_core{self.group.id}/{self.subgroup}/{self.index}",
             binary_name = "sum.aplx",
             constraints = None)
 
         self._stage = 0
 
         # application-level data
-        self._network = network
-        self._group   = group
-        self._set_cfg = network._ex_set.set_config
-        self._ex_cfg  = network._ex_set.example_config
+        self._set_cfg = self.network.ex_set.set_config
+        self._ex_cfg  = self.network.ex_set.example_config
 
-        # check if first group in the network
-        if self.group.id == network.groups[0].id:
-            self._is_first_group = 1
-        else:
-            self._is_first_group = 0
-
-        # forward, backprop, and link delta summation link partition names
-        self._fwd_link = "fwd_s{}".format (self.group.id)
-        self._bkp_link = "bkp_s{}".format (self.group.id)
-        self._lds_link = "lds_s{}".format (self.group.id)
-        self._fds_link = "fds_s{}".format (self.group.id)
+        # forward, backprop, link delta summation and sync link names
+        self._fwd_link = f"fwd_s{self.group.id}/{self.subgroup}"
+        self._bkp_link = f"bkp_s{self.group.id}/{self.subgroup}"
+        self._lds_link = f"lds_s{self.group.id}/{self.subgroup}"
+        self._fds_link = f"fds_s{self.group.id}/{self.subgroup}"
 
         # sum core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
-        self._fwd_expect  = network.partitions
-        self._bkp_expect  = network.partitions
-        self._ldsa_expect = network.partitions * self.group.units
-        self._ldst_expect = len (network.groups) - 1
+        self._units = self.group.subunits[self.subgroup]
 
-        # weight update function
-        self.update_function = network._update_function
-
-        # reserve key space for every link
-        self._n_keys = MLPConstants.KEY_SPACE_SIZE
-
-        # configuration and data files
-        # find out the size of an integer!
-        _data_int = DataType.INT32
-
+        # configuration and data sizes
         # network configuration structure
-        self._N_NETWORK_CONFIGURATION_BYTES = \
-            len (self._network.network_config)
+        self._NETWORK_CONFIGURATION_BYTES = len (self.network.network_config)
 
         # core configuration structure
-        self._N_CORE_CONFIGURATION_BYTES = \
-            len (self.config)
+        self._CORE_CONFIGURATION_BYTES = len (self.config)
 
         # set configuration structure
-        self._N_EXAMPLE_SET_BYTES = \
-            len (self._set_cfg)
+        self._EXAMPLE_SET_BYTES = len (self._set_cfg)
 
         # list of example configurations
-        self._N_EXAMPLES_BYTES = \
-            len (self._ex_cfg) * len (self._ex_cfg[0])
+        self._EXAMPLES_BYTES = len (self._ex_cfg) * len (self._ex_cfg[0])
 
-        # keys are integers
-        self._N_KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * _data_int.size
+        # list of routing keys
+        self._KEYS_BYTES = MLPConstants.NUM_KEYS_REQ * (DataType.INT32).size
 
         # stage configuration structure
-        self._N_STAGE_CONFIGURATION_BYTES = \
-            len (self._network.stage_config)
+        self._STAGE_CONFIGURATION_BYTES = len (self.network.stage_config)
 
         self._sdram_usage = (
-            self._N_NETWORK_CONFIGURATION_BYTES + \
-            self._N_CORE_CONFIGURATION_BYTES + \
-            self._N_EXAMPLE_SET_BYTES + \
-            self._N_EXAMPLES_BYTES + \
-            self._N_KEYS_BYTES + \
-            self._N_STAGE_CONFIGURATION_BYTES
+            self._NETWORK_CONFIGURATION_BYTES +
+            self._CORE_CONFIGURATION_BYTES +
+            self._EXAMPLE_SET_BYTES +
+            self._EXAMPLES_BYTES +
+            self._KEYS_BYTES +
+            self._STAGE_CONFIGURATION_BYTES
         )
+
+    @property
+    def network (self):
+        return self._network
 
     @property
     def group (self):
         return self._group
+
+    @property
+    def subgroup (self):
+        return self._subgroup
+
+    @property
+    def index (self):
+        return self._index
 
     @property
     def fwd_link (self):
@@ -144,22 +141,70 @@ class SumVertex(
               uint         num_units;
               scoreboard_t fwd_expect;
               scoreboard_t bkp_expect;
-              scoreboard_t ldsa_expect;
-              scoreboard_t ldst_expect;
+              scoreboard_t lds_expect;
               uchar        is_first_group;
+              uchar        is_tree_root;
             } s_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
+        # check if first group in the network
+        if self.group == self.network.groups[0]:
+            is_first_group = 1
+        else:
+            is_first_group = 0
 
-        return struct.pack ("<5IB3x",
-                            self.group.units,
-                            self._fwd_expect,
-                            self._bkp_expect,
-                            self._ldsa_expect,
-                            self._ldst_expect,
-                            self._is_first_group
+        # number of vertices in this SumVertex tree
+        num_vrt = ((self.network.subgroups - 2) //
+                   (MLPConstants.MAX_S_CORE_LINKS - 1)) + 1
+
+        lvs = ((num_vrt - 1) * (MLPConstants.MAX_S_CORE_LINKS - 1))
+
+        # number of expected packets
+        if self.index == (num_vrt - 1):
+            # the last vertex in the tree may expect fewer packets
+            #NOTE: this could be the root in a single-vertex tree
+            expected = self.network.subgroups - lvs
+        else:
+            expected = MLPConstants.MAX_S_CORE_LINKS
+
+        # keep track of these on a unit-by-unit basis
+        fwd_expect = expected
+        bkp_expect = expected
+
+        # keep track of the total, not unit-by-unit, count of lds packets
+        k = lvs // MLPConstants.MAX_S_CORE_LINKS
+        if self.index > (num_vrt - 2 - k):
+            # lds packets from w cores only
+            lds_expect = expected * self._units
+        elif self.index == (num_vrt - 2 - k):
+            # lds packets from w cores and other s cores
+            wp = lvs % MLPConstants.MAX_S_CORE_LINKS
+            sp = MLPConstants.MAX_S_CORE_LINKS - wp
+            lds_expect = wp * self._units + sp
+        else:
+            # lds packets from other s cores only
+            lds_expect = MLPConstants.MAX_S_CORE_LINKS
+
+        # first subgroup expects a partial lds from every other subgroup
+        if self.index == 0 and self.subgroup == 0:
+            lds_expect += self.group.subgroups - 1
+
+            # first group expects a partial lds from every other group
+            if is_first_group:
+                lds_expect += len (self.network.groups) - 1
+
+        # is this the root of a SumVertex tree?
+        is_tree_root = self.index == 0
+
+        return struct.pack ("<4I2B2x",
+                            self._units,
+                            fwd_expect,
+                            bkp_expect,
+                            lds_expect,
+                            is_first_group,
+                            is_tree_root
                             )
 
     @property
@@ -173,7 +218,7 @@ class SumVertex(
 
     @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
     def get_n_keys_for_partition (self, partition, graph_mapper):
-        return self._n_keys
+        return MLPConstants.KEY_SPACE_SIZE
 
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
@@ -186,17 +231,17 @@ class SumVertex(
 
         # Reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,
-                                    self._N_NETWORK_CONFIGURATION_BYTES)
+                                    self._NETWORK_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.NETWORK.value)
 
         # write the network configuration into spec
-        for c in self._network.network_config:
+        for c in self.network.network_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         # Reserve and write the core configuration region
         spec.reserve_memory_region (MLPRegions.CORE.value,
-                                    self._N_CORE_CONFIGURATION_BYTES)
+                                    self._CORE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.CORE.value)
 
@@ -206,7 +251,7 @@ class SumVertex(
 
         # Reserve and write the example set region
         spec.reserve_memory_region (MLPRegions.EXAMPLE_SET.value,
-                                    self._N_EXAMPLE_SET_BYTES)
+                                    self._EXAMPLE_SET_BYTES)
 
         spec.switch_write_focus (MLPRegions.EXAMPLE_SET.value)
 
@@ -216,7 +261,7 @@ class SumVertex(
 
         # Reserve and write the examples region
         spec.reserve_memory_region (MLPRegions.EXAMPLES.value,
-                                    self._N_EXAMPLES_BYTES)
+                                    self._EXAMPLES_BYTES)
 
         spec.switch_write_focus (MLPRegions.EXAMPLES.value)
 
@@ -227,7 +272,7 @@ class SumVertex(
 
         # Reserve and write the routing region
         spec.reserve_memory_region (MLPRegions.ROUTING.value,
-                                    self._N_KEYS_BYTES)
+                                    self._KEYS_BYTES)
 
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
@@ -239,9 +284,12 @@ class SumVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
-        # write link keys: fds
-        spec.write_value (routing_info.get_first_key_from_pre_vertex (
-            self, self.fds_link), data_type = DataType.UINT32)
+        # write link keys: fds (padding if not SumVertex tree root)
+        if (self.index == 0):
+            spec.write_value (routing_info.get_first_key_from_pre_vertex (
+                self, self.fds_link), data_type = DataType.UINT32)
+        else:
+            spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: stp (padding)
         spec.write_value (0, data_type = DataType.UINT32)
@@ -252,12 +300,12 @@ class SumVertex(
 
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
-                                    self._N_STAGE_CONFIGURATION_BYTES)
+                                    self._STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification ()
@@ -267,12 +315,12 @@ class SumVertex(
     def regenerate_data_specification(self, spec, placement):
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
-                                    self._N_STAGE_CONFIGURATION_BYTES)
+                                    self._STAGE_CONFIGURATION_BYTES)
 
         spec.switch_write_focus (MLPRegions.STAGE.value)
 
         # write the stage configuration into spec
-        for c in self._network.stage_config:
+        for c in self.network.stage_config:
             spec.write_value (c, data_type = DataType.UINT8)
 
         spec.end_specification()
@@ -290,3 +338,104 @@ class SumVertex(
         """
         # prepare for next stage
         self._stage += 1
+
+
+#---------------------------------------------------------------------
+class SumVertexTree(
+        ):
+
+    """ implements a tree of sum vertices
+    """
+
+    def __init__(self,
+                 network,
+                 group,
+                 subgroup
+                 ):
+
+        max_links = MLPConstants.MAX_S_CORE_LINKS
+
+        # total number of Sum Vertices needed to build the tree
+        num_vrt = ((network.subgroups - 2) // (max_links - 1)) + 1
+
+        # the root vertex is used as pre-vertex for outgoing links
+        self._root = SumVertex (network, group, subgroup, 0)
+
+        # add the root to the graph
+        gfe.add_machine_vertex_instance (self.root)
+
+        # and to the list of all tree vertices
+        self._vertices = [self.root]
+
+        # create the SumVertex tree
+        free_links = max_links
+        to_vrt = 0
+        for vrt in range (1, num_vrt):
+            # create a SumVertex
+            vt = SumVertex (network, group, subgroup, vrt)
+
+            # add it to the list of vertices
+            self._vertices.append (vt)
+
+            # add it to the graph
+            gfe.add_machine_vertex_instance (vt)
+
+            # add all SumVertex links towards the tree root
+            gfe.add_machine_edge_instance (
+                MachineEdge (vt, self.vertices[to_vrt]), vt.fwd_link
+                )
+
+            gfe.add_machine_edge_instance (
+                MachineEdge (vt, self.vertices[to_vrt]), vt.bkp_link
+                )
+
+            gfe.add_machine_edge_instance (
+                MachineEdge (vt, self.vertices[to_vrt]), vt.lds_link
+                )
+
+            # take away one free link from vertex to_vrt
+            free_links -= 1
+
+            # if out of free links use next available vertex
+            if free_links == 0:
+                free_links = max_links
+                to_vrt += 1
+
+        # finally, map every pre-vertex to an available tree vertex
+        self._leaf_map = {}
+        for grp in network.groups:
+            for sgrp in range (grp.subgroups):
+                # assign available leaf vertex
+                self._leaf_map[(grp.id, sgrp)] = self.vertices[to_vrt]
+
+                # take away one free link from vertex to_vrt
+                free_links -= 1
+
+                # if out of free links use next available vertex
+                if free_links == 0:
+                    free_links = max_links
+                    to_vrt += 1
+
+
+    def leaf (self, group, subgroup):
+        """ returns the leaf SumVertex to link to
+            from a pre-vertex in group/subgroup
+
+        :param group:    pre-vertex group
+        :param subgroup: pre-vertex subgroup number
+
+        :type group:    MLPGroup
+        :type subgroup: integer
+
+        :return: a SumVertex
+        """
+        return self._leaf_map[(group.id, subgroup)]
+
+
+    @property
+    def root (self):
+        return self._root
+
+    @property
+    def vertices (self):
+        return self._vertices

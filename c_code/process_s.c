@@ -27,17 +27,30 @@ void sf_process (uint key, uint payload)
     wrng_phs++;
 #endif
 
+#ifdef PROFILE
+  // start profiler,
+  tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
   // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
 
   // get error colour: mask out block, phase and net index data,
-  uint clr = (key & SPINN_COLOUR_MASK) >> SPINN_COLOUR_SHIFT;
+  uint pkt_clr = key & SPINN_COLOUR_MASK;
+  uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
 
   // accumulate new net b-d-p,
   s_nets[clr][inx] += (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,
   sf_arrived[clr][inx]++;
+
+#ifdef PROFILE
+  // update profiler values,
+  uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+  if (cnt < prf_fwd_min) prf_fwd_min = cnt;
+  if (cnt > prf_fwd_max) prf_fwd_max = cnt;
+#endif
 
   // and check if dot product complete to compute net
   if (sf_arrived[clr][inx] == scfg.fwd_expected)
@@ -58,8 +71,9 @@ void sf_process (uint key, uint payload)
       net_tmp = (net_t) s_nets[clr][inx];
     }
 
-    // incorporate net index to the packet key and send,
-    while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
+    // incorporate colour and net index to the packet key and send,
+    while (!spin1_send_mc_packet ((fwdKey | pkt_clr | inx),
+        net_tmp, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;
@@ -124,17 +138,30 @@ void sb_process (uint key, uint payload)
     wrng_phs++;
 #endif
 
+#ifdef PROFILE
+  // start profiler,
+  tc[T2_LOAD] = SPINN_PROFILER_START;
+#endif
+
   // get error index: mask out block, phase and colour data,
   uint inx = key & SPINN_ERROR_MASK;
 
   // get error colour: mask out block, phase and net index data,
-  uint clr = (key & SPINN_COLOUR_MASK) >> SPINN_COLOUR_SHIFT;
+  uint pkt_clr = key & SPINN_COLOUR_MASK;
+  uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
 
   // accumulate new error b-d-p,
   s_errors[clr][inx] += (error_t) payload;
 
   // mark error b-d-p as arrived,
   sb_arrived[clr][inx]++;
+
+#ifdef PROFILE
+  // update profiler values,
+  uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
+  if (cnt < prf_bkp_min) prf_bkp_min = cnt;
+  if (cnt > prf_bkp_max) prf_bkp_max = cnt;
+#endif
 
   // and check if error complete to send to next stage
   if (sb_arrived[clr][inx] == scfg.bkp_expected)
@@ -160,8 +187,9 @@ void sb_process (uint key, uint payload)
     }
 */
 
-    // incorporate error index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
+    // incorporate colour and error index to the packet key and send,
+    while (!spin1_send_mc_packet ((bkpKey | pkt_clr | inx),
+        error, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;
@@ -193,6 +221,8 @@ void sb_process (uint key, uint payload)
       if (sb_thrds_pend == SPINN_THRD_PROC)
       {
         // if done initialise semaphore:
+        sb_thrds_pend = SPINN_SB_THRDS;
+
         // if we are using Doug's Momentum, and we have reached the end of the
         // epoch (i.e. we are on the last example, and are about to move on to
         // the last tick, we need have to wait for the partial link delta sums
@@ -202,16 +232,7 @@ void sb_process (uint key, uint payload)
             && example_cnt == (xcfg.num_examples - 1)
             && tick == SPINN_SB_END_TICK + 1)
         {
-          // if this s core relates to the first group in the network, then we
-          // also need to wait for the link delta sum totals
-          if (scfg.is_first_group)
-          {
-            sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA | SPINN_THRD_LDST;
-          }
-          else
-          {
-            sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA;
-          }
+          sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA;
         }
 
         // restore interrupts after flag access,
@@ -385,14 +406,6 @@ void s_advance_example (void)
 
     // reset example count for next epoch,
     example_cnt = 0;
-
-    // and reset the partial link delta sum
-    if (xcfg.training)
-    {
-      s_lds_part = 0;
-      s_ldsa_arrived = 0;
-      s_ldst_arrived = 0;
-    }
   }
 
   // start from first event for next example,
@@ -400,11 +413,14 @@ void s_advance_example (void)
   num_events = ex[example_inx].num_events;
 
   // and send sync packet to allow next example to start
-  while (!spin1_send_mc_packet (fdsKey, 0, NO_PAYLOAD));
+  if (scfg.is_tree_root)
+  {
+    while (!spin1_send_mc_packet (fdsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
-  pkt_sent++;
-  spk_sent++;
+    pkt_sent++;
+    spk_sent++;
 #endif
+  }
 }
 // ------------------------------------------------------------------------
