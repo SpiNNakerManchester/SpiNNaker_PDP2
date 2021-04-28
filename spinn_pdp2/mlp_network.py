@@ -53,6 +53,7 @@ class MLPNetwork():
 
         # default data recording options
         self._rec_test_results           = True
+        self._results_file               = None
         self._rec_outputs                = True
         self._rec_example_last_tick_only = False
 
@@ -152,6 +153,10 @@ class MLPNetwork():
     @property
     def rec_test_results (self):
         return self._rec_test_results
+
+    @property
+    def results_file (self):
+        return self._results_file
 
     @property
     def rec_outputs (self):
@@ -444,17 +449,20 @@ class MLPNetwork():
 
     def recording_options (self,
              rec_test_results           = None,
+             results_file               = None,
              rec_outputs                = None,
              rec_example_last_tick_only = None
              ):
         """ set data recording options
 
         :param rec_test_results: record test results
+        :param results_file: file in which test results should be recorded
         :param rec_outputs: record unit outputs
         :param rec_example_last_tick_only: record unit outputs only for
                                             last tick of examples
 
         :type rec_test_results: boolean
+        :type results_file: string
         :type rec_outputs: boolean
         :type rec_example_last_tick_only: boolean
         """
@@ -463,6 +471,14 @@ class MLPNetwork():
             self._rec_test_results = rec_test_results
         else:
             print (f"rec_test_results pre-set to {self._rec_test_results}")
+
+        if results_file is not None:
+            print (f"setting results_file to {results_file}")
+            self._results_file = results_file
+            with open(results_file, 'w') as f:
+                f.write("epoch,numExamples,numTicks,numCorrect\n")
+        else:
+            print (f"results_file pre-set to {self._results_file}")
 
         if rec_outputs is not None:
             print (f"setting rec_outputs to {rec_outputs}")
@@ -789,6 +805,13 @@ class MLPNetwork():
                     ticks_tested, examples_correct
                     ))
                 print ("--------------------------------------------------\n")
+
+                if self._results_file is not None:
+                    with open(self._results_file, 'a') as f:
+                        f.write("{},{},{},{}\n".format(
+                            epochs_trained, examples_tested, ticks_tested,
+                            examples_correct
+                            ))
 
 
     def generate_machine_graph (self):
