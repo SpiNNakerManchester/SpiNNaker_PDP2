@@ -68,6 +68,6 @@ jobs:
       env:
         CFLAGS: -fdiagnostics-color=always
 
-    - name: Build documentation using doxygen
-      run: make doxysetup doxygen
-      working-directory: neural_modelling
+    #- name: Build documentation using doxygen
+    #  run: make doxysetup doxygen
+    #  working-directory: neural_modelling
