@@ -51,10 +51,10 @@ jobs:
       run: python setup.py install
       working-directory: SpiNNUtils
 
-    - name: Lint C code using Vera++
-      uses: ./support/actions/vera
-      with:
-        base-dir: c_code
+    #- name: Lint C code using Vera++
+    #  uses: ./support/actions/vera
+    #  with:
+    #    base-dir: c_code
 
     - name: Build C dependencies
       run: |
@@ -68,6 +68,6 @@ jobs:
       env:
         CFLAGS: -fdiagnostics-color=always
 
-    - name: Build documentation using doxygen
-      run: make doxysetup doxygen
-      working-directory: neural_modelling
+    #- name: Build documentation using doxygen
+    #  run: make doxysetup doxygen
+    #  working-directory: neural_modelling
