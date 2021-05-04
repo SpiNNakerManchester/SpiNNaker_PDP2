@@ -12,6 +12,9 @@
 **/binaries/**
 **/build/*.txt
 **/build/**/*.txt
+**/examples/**/*.ex
+**/examples/**/*.in
+**/examples/**/*.txt
 **/modified_src/**
 **/reports/**
 **/*.aplx
