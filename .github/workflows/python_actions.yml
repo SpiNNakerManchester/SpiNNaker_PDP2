@@ -73,9 +73,9 @@ jobs:
     #  with:
     #    package: spinn_pdp2
 
-    #- name: Run rat copyright enforcement
-    #  if: matrix.python-version == 3.8
-    #  uses: ./support/actions/check-copyrights
+    - name: Run rat copyright enforcement
+      if: matrix.python-version == 3.8
+      uses: ./support/actions/check-copyrights
 
     - name: Validate all XML
       if: matrix.python-version == 3.8
