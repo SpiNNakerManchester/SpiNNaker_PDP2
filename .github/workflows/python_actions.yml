@@ -65,13 +65,13 @@ jobs:
         cover-packages: spinn_pdp2
         coveralls-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Lint with flake8
-      run: flake8 spinn_pdp2 unittests
+    #- name: Lint with flake8
+    #  run: flake8 spinn_pdp2 unittests
 
-    - name: Lint with pylint
-      uses: ./support/actions/pylint
-      with:
-        package: spinn_pdp2
+    #- name: Lint with pylint
+    #  uses: ./support/actions/pylint
+    #  with:
+    #    package: spinn_pdp2
 
     #- name: Run rat copyright enforcement
     #  if: matrix.python-version == 3.8

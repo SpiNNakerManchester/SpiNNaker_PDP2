@@ -51,10 +51,10 @@ jobs:
       run: python setup.py install
       working-directory: SpiNNUtils
 
-    - name: Lint C code using Vera++
-      uses: ./support/actions/vera
-      with:
-        base-dir: c_code
+    #- name: Lint C code using Vera++
+    #  uses: ./support/actions/vera
+    #  with:
+    #    base-dir: c_code
 
     - name: Build C dependencies
       run: |
