@@ -1,3 +1,18 @@
+# Copyright (c) 2015-2021 The University of Manchester
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from spinn_pdp2.mlp_network import MLPNetwork
 from spinn_pdp2.mlp_types   import MLPNetworkTypes, MLPGroupTypes
 from spinn_pdp2.mlp_types   import MLPInputProcs
@@ -88,8 +103,8 @@ set1.set (grace_time = 1.0,
 visSemPhon.read_Lens_weights_file (
     "visSemPhon_weights.txt")
 
-# train the network for 100 epochs
-visSemPhon.train (num_updates = 100)
+# train the network for 10 epochs
+visSemPhon.train (num_updates = 10)
 
 # close the application
 visSemPhon.end ()
