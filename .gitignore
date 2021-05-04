@@ -1,5 +1,6 @@
 .*
 !.gitignore
+!.ratexcludes
 *~
 *.a
 *.aplx
