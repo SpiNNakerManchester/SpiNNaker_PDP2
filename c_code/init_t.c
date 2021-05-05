@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2015-2021 The University of Manchester
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 // SpiNNaker API
 #include "spin1_api.h"
 
@@ -342,7 +359,7 @@ void t_init_outputs (void)
 // ------------------------------------------------------------------------
 // allocate memory for OUTPUT INTEGRATOR state
 // ------------------------------------------------------------------------
-uint init_out_integr ()
+uint init_out_integr (void)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "init_out_integr\n");
@@ -381,7 +398,7 @@ uint init_out_integr ()
 // allocate memory for HARD CLAMP state
 //TODO: This function is currently a stub
 // ------------------------------------------------------------------------
-uint init_out_hard_clamp ()
+uint init_out_hard_clamp (void)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "init_out_hard_clamp\n");
@@ -414,7 +431,7 @@ uint init_out_hard_clamp ()
 // allocate memory for WEAK CLAMP state
 //TODO: This function is currently a stub
 // ------------------------------------------------------------------------
-uint init_out_weak_clamp ()
+uint init_out_weak_clamp (void)
 {
 #ifdef TRACE
   io_printf (IO_BUF, "init_out_weak_clamp\n");

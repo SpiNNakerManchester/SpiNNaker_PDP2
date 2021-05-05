@@ -1,5 +1,6 @@
 .*
 !.gitignore
+!.ratexcludes
 *~
 *.a
 *.aplx
@@ -25,6 +26,7 @@
 **/spynnaker.cfg
 **/application_generated_data_files
 **/binaries
+!**/binaries/__init__.py
 **/build
 **/data
 **/modified_src/
