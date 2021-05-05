@@ -38,7 +38,7 @@ visSemPhon = MLPNetwork (net_type = MLPNetworkTypes.CONTINUOUS,
 hidden_size = 50
 
 # instantiate network groups (layers)
-Visual  = visSemPhon.group (units = 40,
+Visual  = visSemPhon.group (units = 400,
                           group_type = [MLPGroupTypes.INPUT],
                           label = "V"
                           )
@@ -103,8 +103,8 @@ set1.set (grace_time = 1.0,
 visSemPhon.read_Lens_weights_file (
     "visSemPhon_weights.txt")
 
-# train the network for 10 epochs
-visSemPhon.train (num_updates = 10)
+# train the network for 1 epoch
+visSemPhon.train (num_updates = 1)
 
 # close the application
 visSemPhon.end ()
