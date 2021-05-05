@@ -1,3 +1,18 @@
+# Copyright (c) 2015-2021 The University of Manchester
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import struct
 
 from data_specification.enums.data_type import DataType
@@ -8,8 +23,6 @@ from pacman.model.resources.resource_container \
 
 from spinn_utilities.overrides import overrides
 
-from spinn_front_end_common.abstract_models.abstract_provides_n_keys_for_partition \
-    import AbstractProvidesNKeysForPartition
 from spinn_front_end_common.abstract_models import \
     AbstractRewritesDataSpecification
 from spinn_front_end_common.abstract_models.impl \
@@ -27,7 +40,6 @@ from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 class WeightVertex(
         SimulatorVertex,
         MachineDataSpecableVertex,
-        AbstractProvidesNKeysForPartition,
         AbstractRewritesDataSpecification
         ):
 
@@ -257,8 +269,8 @@ class WeightVertex(
         return resources
 
 
-    @overrides (AbstractProvidesNKeysForPartition.get_n_keys_for_partition)
-    def get_n_keys_for_partition (self, partition, graph_mapper):
+    @overrides (MachineVertex.get_n_keys_for_partition)
+    def get_n_keys_for_partition (self, _partition):
         return MLPConstants.KEY_SPACE_SIZE
 
 
@@ -385,13 +397,13 @@ class WeightVertex(
         spec.end_specification()
 
 
-    @overrides(AbstractRewritesDataSpecification.requires_memory_regions_to_be_reloaded)
-    def requires_memory_regions_to_be_reloaded(self):
+    @overrides(AbstractRewritesDataSpecification.reload_required)
+    def reload_required(self):
         return True
 
 
-    @overrides(AbstractRewritesDataSpecification.mark_regions_reloaded)
-    def mark_regions_reloaded(self):
+    @overrides(AbstractRewritesDataSpecification.set_reload_required)
+    def set_reload_required(self, new_value):
         """
             TODO: not really sure what this method is used for!
         """

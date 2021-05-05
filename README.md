@@ -1,11 +1,9 @@
 PDP<sup>2</sup>: Cognitive Systems Modelling on SpiNNaker
 =========================================================
 
-This repository contains software to implement Parallel Distributed Processing (PDP) models of cognitive systems on SpiNNaker, a Parallel Distributed Processor (PDP). Perhaps the best example of a PDP cognitive system is the human brain, which contains approximately one hundred billion neurones. For this,
-and other reasons, many psychologists believe that PDP models are the best way of describing human cognition.
+The human brain contains approximately one hundred billion neurons that can be thought of as a network of information processing elements. The Parallel Distributed Processing (PDP) model of cognition is a framework developed by McClelland, Rumelhart, Hinton and others to try to explain how cognition operates in the brain. Much of the power of the PDP models derives from their learning algorithms.
 
-In this context, PDP systems are modelled using Artificial Neural Networks (ANNs). The ANNs implemented here follow the 'Lens' style, but can easily be
-adapted to a different style or feature set. For further information about Lens see:
+This repository contains software to implement PDP models of cognitive systems on SpiNNaker, a Parallel Distributed Processor (PDP). In this context, PDP systems are modelled using Artificial Neural Networks (ANNs) using backpropagation as their learning algorithm. The ANNs implemented here follow the 'Lens' style, but can be easily adapted to a different style or feature set. For further information about Lens see:
 
 [Lens manual @ CMU](https://ni.cmu.edu/~plaut/Lens/Manual)
 
@@ -22,7 +20,7 @@ Development Platform
 This software is based on the SpiNNaker Graph-Front-End (GFE) platform. The GFE must be installed to use this software. For further information
 about the GFE see:
 
-[GFE introduction](http://spinnakermanchester.github.io/graph_front_end/5.0.0/index.html)
+[GFE introduction](http://spinnakermanchester.github.io/graph_front_end/6.0.0/index.html)
 
 [GFE github repository](https://github.com/SpiNNakerManchester/SpiNNakerGraphFrontEnd)
 
@@ -36,9 +34,9 @@ This software is licensed under the terms of the GNU General Public License v3.0
 Contributors
 ------------
 
-Many people have contributed to the development of ANNs on SpiNNaker, amongst them J Moy, LA Plana, SR Welbourne, X Jin, S Davidson, AD Rast, S Davis and SB Furber, all associated with The University of Manchester at the time of their contribution.
+Many people have contributed to the development of the software to model cognitive systems on SpiNNaker, amongst them JV Moy, LA Plana, SR Welbourne, X Jin, S Davidson, AD Rast, S Davis and SB Furber, all associated with The University of Manchester at the time of their contribution.
 
-The development of the project has relied heavily on the work of the [SpiNNaker software contributors](http://spinnakermanchester.github.io/common_pages/5.0.0/LicenseAgreement.html#contributors).
+The development of the project has relied heavily on the work of the [SpiNNaker software contributors](http://spinnakermanchester.github.io/common_pages/6.0.0/LicenseAgreement.html#contributors).
 
 Acknowledgments
 ---------------
