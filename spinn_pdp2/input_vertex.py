@@ -32,7 +32,7 @@ from spinn_front_end_common.utilities.constants \
 
 from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
-    import generate_steps_system_data_region
+    import generate_system_data_region
 
 from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
@@ -213,7 +213,7 @@ class InputVertex(
             reverse_iptags):
 
         # Generate the system data region for simulation.c requirements
-        generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)
+        generate_system_data_region(spec, MLPRegions.SYSTEM.value, self)
 
         # Reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,

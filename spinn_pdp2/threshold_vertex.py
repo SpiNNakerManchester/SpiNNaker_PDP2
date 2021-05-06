@@ -38,7 +38,7 @@ from spinn_front_end_common.utilities.helpful_functions import (
 
 from spinnaker_graph_front_end.utilities import SimulatorVertex
 from spinnaker_graph_front_end.utilities.data_utils \
-    import generate_steps_system_data_region
+    import generate_system_data_region
 
 from spinn_pdp2.mlp_types import MLPConstants, MLPRegions, \
     MLPVarSizeRecordings, MLPConstSizeRecordings, MLPExtraRecordings
@@ -388,7 +388,7 @@ class ThresholdVertex(
             reverse_iptags, data_n_steps):
 
         # Generate the system data region for simulation.c requirements
-        generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)
+        generate_system_data_region(spec, MLPRegions.SYSTEM.value, self)
 
         # reserve and write the network configuration region
         spec.reserve_memory_region (MLPRegions.NETWORK.value,
