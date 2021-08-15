@@ -3,7 +3,7 @@ PDP<sup>2</sup>: Cognitive Systems Modelling on SpiNNaker
 
 The human brain contains approximately one hundred billion neurons that can be thought of as a network of information processing elements. The Parallel Distributed Processing (PDP) model of cognition is a framework developed by McClelland, Rumelhart, Hinton and others to try to explain how cognition operates in the brain. Much of the power of the PDP models derives from their learning algorithms.
 
-This repository contains software to implement PDP models of cognitive systems on SpiNNaker, a Parallel Distributed Processor (PDP). In this context, PDP systems are modelled using Artificial Neural Networks (ANNs) using backpropagation as their learning algorithm. The ANNs implemented here follow the 'Lens' style, but can be easily adapted to a different style or feature set. For further information about Lens see:
+This repository contains software to implement PDP models of cognitive systems on SpiNNaker, a Parallel Distributed Processor (PDP). In this context, PDP systems are modelled using Artificial Neural Networks (ANNs) that apply backpropagation as their learning algorithm. The ANNs implemented here follow the 'Lens' style, but can be easily adapted to a different style or feature set. For further information about Lens see:
 
 [Lens manual @ CMU](https://ni.cmu.edu/~plaut/Lens/Manual)
 
