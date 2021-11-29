@@ -19,7 +19,6 @@ from data_specification.enums.data_type import DataType
 
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.resources import ResourceContainer, VariableSDRAM, ConstantSDRAM
-from pacman.executor.injection_decorator import inject_items
 
 from spinn_utilities.overrides import overrides
 
@@ -27,6 +26,7 @@ from spinn_front_end_common.abstract_models import \
     AbstractRewritesDataSpecification
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
+from spinn_front_end_common.data import FecDataView
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT, BYTES_PER_WORD
 from spinn_front_end_common.interface.buffer_management.buffer_models import (
@@ -378,14 +378,10 @@ class ThresholdVertex(
         return raw_data
 
 
-    @inject_items({
-        "data_n_steps": "DataNSteps"
-    })
-    @overrides(MachineDataSpecableVertex.generate_machine_data_specification,
-               additional_arguments=["data_n_steps"])
+    @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
     def generate_machine_data_specification(
             self, spec, placement, machine_graph, routing_info, iptags,
-            reverse_iptags, data_n_steps):
+            reverse_iptags):
 
         # Generate the system data region for simulation.c requirements
         generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)
@@ -524,6 +520,7 @@ class ThresholdVertex(
                 )
 
             # write the actual recording channel sizes for a stage
+            data_n_steps = FecDataView().max_run_time_steps
             _sizes = [data_n_steps * sz for sz in self.VAR_CHANNEL_SIZES]
             _sizes.extend([sz for sz in self.CONST_CHANNEL_SIZES])
             if self._is_first_out:
