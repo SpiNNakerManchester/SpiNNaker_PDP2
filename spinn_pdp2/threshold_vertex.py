@@ -520,7 +520,7 @@ class ThresholdVertex(
                 )
 
             # write the actual recording channel sizes for a stage
-            data_n_steps = FecDataView().max_run_time_steps
+            data_n_steps = FecDataView.get_max_run_time_steps()
             _sizes = [data_n_steps * sz for sz in self.VAR_CHANNEL_SIZES]
             _sizes.extend([sz for sz in self.CONST_CHANNEL_SIZES])
             if self._is_first_out:
