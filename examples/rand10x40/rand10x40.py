@@ -1,3 +1,18 @@
+# Copyright (c) 2015-2021 The University of Manchester
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from spinn_pdp2.mlp_network import MLPNetwork
 from spinn_pdp2.mlp_types   import MLPNetworkTypes, MLPGroupTypes, MLPUpdateFuncs
 from spinn_pdp2.mlp_types   import MLPInputProcs
@@ -48,7 +63,7 @@ set1.set (grace_time = 1.0,
           )
 
 # set network parameters
-rand10x40.set (num_updates = 300,
+rand10x40.set (num_updates = 10,
                train_group_crit = 0.2
                )
 
@@ -75,8 +90,8 @@ rand10x40.train (update_function = MLPUpdateFuncs.UPD_STEEPEST)
 # generate Lens-style output file
 rand10x40.write_Lens_output_file ("rand10x40_train.out")
 
-# pause execution between stages for debugging
-rand10x40.pause ()
+# uncomment to pause execution between stages for debugging
+#rand10x40.pause ()
 
 # test the network again for 20 example
 rand10x40.test (num_examples = 20)
