@@ -908,8 +908,8 @@ class MLPNetwork():
                 gfe.add_machine_vertex_instance (tv)
 
         # groups and subgroups with special functions
-        first_lds_grp = self.groups[0]
-        first_subgroup_svt = first_lds_grp.s_vertex[0]
+        first_grp = self.groups[0]
+        first_subgroup_svt = first_grp.s_vertex[0]
 
         last_out_grp = self.output_chain[-1]
         last_out_subgroup_t_vertex = (
@@ -977,13 +977,15 @@ class MLPNetwork():
                         last_out_subgroup_t_vertex.stp_link
                         )
 
-                    # intra-subgroup sync s to w (multicast) link
+                    # intra-subgroup backprop to forward sync s to w (multicast) link
+                    # to make sure that s core tree is ready for initial forward tick
                     gfe.add_machine_edge_instance (
                         MachineEdge (svt.root, wv),
                         svt.root.fds_link
                         )
 
-                    # inter-subgroup sync s to w (multicast) link
+                    # inter-subgroup backprop to forward sync s to w (multicast) link
+                    # to make sure that s core tree finished current BACKPROP tick
                     #NOTE: avoid duplicates
                     if grp != from_grp or sgrp != from_sgrp:
                         gfe.add_machine_edge_instance (
@@ -1025,7 +1027,7 @@ class MLPNetwork():
                             ),
                         svt.root.lds_link
                         )
-                elif grp != first_lds_grp:
+                elif grp != first_grp:
                     # first group collects from all other groups
                     gfe.add_machine_edge_instance (
                         MachineEdge (
@@ -1079,7 +1081,8 @@ class MLPNetwork():
                     first_subgroup_svt.root.bps_link
                     )
 
-                # s to s backprop tick sync link 
+                # s to s backprop tick sync link
+                #NOTE: s cores that are tree internal nodes not involved
                 if sgrp != 0:
                     # first subgroup collects from all other subgroups
                     gfe.add_machine_edge_instance (
@@ -1089,7 +1092,7 @@ class MLPNetwork():
                             ),
                         svt.root.bps_link
                         )
-                elif grp != first_lds_grp:
+                elif grp != first_grp:
                     # first group collects from all other groups
                     gfe.add_machine_edge_instance (
                         MachineEdge (
