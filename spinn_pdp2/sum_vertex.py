@@ -60,7 +60,10 @@ class SumVertex(
         self._network  = network
         self._group    = group
         self._subgroup = subgroup
-        self._idx    = idx
+        self._idx      = idx
+
+        # is this the root of a SumVertex tree?
+        self._is_tree_root = idx == 0
 
         super(SumVertex, self).__init__(
             label = f"s_core{self.group.id}/{self.subgroup}/{self.idx}",
@@ -125,8 +128,16 @@ class SumVertex(
         return self._subgroup
 
     @property
+    def units (self):
+        return self._units
+
+    @property
     def idx (self):
         return self._idx
+
+    @property
+    def is_tree_root (self):
+        return self._is_tree_root
 
     @property
     def fwd_link (self):
@@ -168,10 +179,7 @@ class SumVertex(
             explicit padding
         """
         # check if first group in the network
-        if self.group == self.network.groups[0]:
-            is_first_group = 1
-        else:
-            is_first_group = 0
+        is_first_group = self.group == self.network.groups[0]
 
         # number of vertices in this SumVertex tree
         num_vrt = ((self.network.subgroups - 2) //
@@ -195,18 +203,18 @@ class SumVertex(
         k = lvs // MLPConstants.MAX_S_CORE_LINKS
         if self.idx > (num_vrt - 2 - k):
             # lds packets from w cores only
-            lds_expect = expected * self._units
+            lds_expect = expected * self.units
         elif self.idx == (num_vrt - 2 - k):
             # lds packets from w cores and other s cores
             wp = lvs % MLPConstants.MAX_S_CORE_LINKS
             sp = MLPConstants.MAX_S_CORE_LINKS - wp
-            lds_expect = wp * self._units + sp
+            lds_expect = wp * self.units + sp
         else:
             # lds packets from other s cores only
             lds_expect = MLPConstants.MAX_S_CORE_LINKS
 
         # first subgroup expects a partial lds from every other subgroup
-        if self.idx == 0 and self.subgroup == 0:
+        if self.is_tree_root and self.subgroup == 0:
             lds_expect += self.group.subgroups - 1
 
             # first group expects a partial lds from every other group
@@ -214,7 +222,7 @@ class SumVertex(
                 lds_expect += len (self.network.groups) - 1
 
         # sync packets are handled by root nodes only
-        if self.idx == 0 and self.subgroup == 0:
+        if self.is_tree_root and self.subgroup == 0:
             # first subgroup expects from every other subgroup in group
             sync_expect = self.group.subgroups - 1
 
@@ -224,17 +232,14 @@ class SumVertex(
         else:
             sync_expect = 0
 
-        # is this the root of a SumVertex tree?
-        is_tree_root = self.idx == 0
-
         return struct.pack ("<5I2B2x",
-                            self._units,
+                            self.units,
                             fwd_expect,
                             bkp_expect,
                             lds_expect,
                             sync_expect,
                             is_first_group,
-                            is_tree_root
+                            self.is_tree_root
                             )
 
     @property
@@ -315,14 +320,14 @@ class SumVertex(
             self, self.bkp_link), data_type = DataType.UINT32)
 
         # write link keys: fds (padding if not SumVertex tree root)
-        if (self.idx == 0):
+        if (self.is_tree_root):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.fds_link), data_type = DataType.UINT32)
         else:
             spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: bps (padding if not SumVertex tree root)
-        if (self.idx == 0):
+        if (self.is_tree_root):
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.bps_link), data_type = DataType.UINT32)
         else:
