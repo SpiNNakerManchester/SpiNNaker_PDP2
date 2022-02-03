@@ -761,7 +761,6 @@ void stage_done (uint ec, uint key)
       io_printf (IO_BUF, "stage OK\n");
       break;
 
-#if defined(DEBUG_EXIT)
     case SPINN_CFG_UNAVAIL:
       io_printf (IO_BUF, "core configuration failed\n");
       io_printf (IO_BUF, "stage aborted\n");
@@ -796,7 +795,6 @@ void stage_done (uint ec, uint key)
                 );
       io_printf (IO_BUF, "stage aborted\n");
       break;
-#endif
   }
 #endif
 
