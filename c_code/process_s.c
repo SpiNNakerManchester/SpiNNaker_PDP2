@@ -57,10 +57,10 @@ void sf_process (uint key, uint payload)
   uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
 
   // accumulate new net b-d-p,
-  s_nets[clr][inx] += (long_net_t) ((net_t) payload);
+  s_nets[inx] += (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,
-  sf_arrived[clr][inx]++;
+  sf_arrived[inx]++;
 
 #ifdef PROFILE
   // update profiler values,
@@ -70,22 +70,22 @@ void sf_process (uint key, uint payload)
 #endif
 
   // and check if dot product complete to compute net
-  if (sf_arrived[clr][inx] == scfg.fwd_expected)
+  if (sf_arrived[inx] == scfg.fwd_expected)
   {
     net_t net_tmp;
 
     // saturate and cast the long nets before sending,
-    if (s_nets[clr][inx] >= (long_net_t) SPINN_NET_MAX)
+    if (s_nets[inx] >= (long_net_t) SPINN_NET_MAX)
     {
       net_tmp = (net_t) SPINN_NET_MAX;
     }
-    else if (s_nets[clr][inx] <= (long_net_t) SPINN_NET_MIN)
+    else if (s_nets[inx] <= (long_net_t) SPINN_NET_MIN)
     {
       net_tmp = (net_t) SPINN_NET_MIN;
     }
     else
     {
-      net_tmp = (net_t) s_nets[clr][inx];
+      net_tmp = (net_t) s_nets[inx];
     }
 
     // incorporate colour and net index to the packet key and send,
@@ -98,8 +98,8 @@ void sf_process (uint key, uint payload)
 #endif
 
     // prepare for next tick,
-    s_nets[clr][inx] = 0;
-    sf_arrived[clr][inx] = 0;
+    s_nets[inx] = 0;
+    sf_arrived[inx] = 0;
 
     // mark net as done,
     sf_done++;
@@ -168,10 +168,10 @@ void sb_process (uint key, uint payload)
   uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
 
   // accumulate new error b-d-p,
-  s_errors[clr][inx] += (error_t) payload;
+  s_errors[inx] += (error_t) payload;
 
   // mark error b-d-p as arrived,
-  sb_arrived[clr][inx]++;
+  sb_arrived[inx]++;
 
 #ifdef PROFILE
   // update profiler values,
@@ -181,13 +181,13 @@ void sb_process (uint key, uint payload)
 #endif
 
   // and check if error complete to send to next stage
-  if (sb_arrived[clr][inx] == scfg.bkp_expected)
+  if (sb_arrived[inx] == scfg.bkp_expected)
   {
     //NOTE: may need to use long_error_t and saturate before sending
-    error_t error = s_errors[clr][inx];
+    error_t error = s_errors[inx];
 
 /*
-    long_error_t err_tmp = s_errors[clr][inx]
+    long_error_t err_tmp = s_errors[inx]
                               >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
 
     if (err_tmp >= (long_error_t) SPINN_ERROR_MAX)
@@ -214,8 +214,8 @@ void sb_process (uint key, uint payload)
 #endif
 
     // prepare for next tick,
-    s_errors[clr][inx] = 0;
-    sb_arrived[clr][inx] = 0;
+    s_errors[inx] = 0;
+    sb_arrived[inx] = 0;
 
     // mark error as done,
     sb_done++;

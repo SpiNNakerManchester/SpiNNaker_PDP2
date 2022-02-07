@@ -658,9 +658,6 @@ void wf_advance_tick (uint unused0, uint unused1)
   }
 #endif
 
-  // change packet key colour,
-  fwdKey ^= SPINN_COLOUR_KEY;
-
   // update pointer to processing unit outputs,
   wf_procs = 1 - wf_procs;
 
@@ -694,9 +691,6 @@ void wb_advance_tick (void)
 #ifdef DEBUG
   tot_tick++;
 #endif
-
-  // change packet key colour,
-  bkpKey ^= SPINN_COLOUR_KEY;
 
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)

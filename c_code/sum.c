@@ -97,21 +97,21 @@ address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 // sum cores compute unit nets and errors (accumulate b-d-ps).
 // ------------------------------------------------------------------------
-long_net_t     * s_nets[2];         // unit nets computed in current tick
-long_error_t   * s_errors[2];       // errors computed in current tick
+long_net_t     * s_nets;            // unit nets computed in current tick
+long_error_t   * s_errors;          // errors computed in current tick
 pkt_queue_t      s_pkt_queue;       // queue to hold received packets
 uchar            s_active;          // processing packets from queue?
 lds_t            s_lds_part;        // partial link delta sum
 
 // FORWARD phase specific
 // (net computation)
-scoreboard_t   * sf_arrived[2];     // keep count of expected net b-d-p
+scoreboard_t   * sf_arrived;        // keep count of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
 uint             sf_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific
 // (error computation)
-scoreboard_t   * sb_arrived[2];     // keep count of expected error b-d-p
+scoreboard_t   * sb_arrived;        // keep count of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
 uint             sb_thrds_pend;     // thread semaphore
 uint             sb_thrds_init;     // thread semaphore initialisation

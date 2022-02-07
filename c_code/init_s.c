@@ -130,14 +130,7 @@ uint cfg_init (void)
 uint mem_init (void)
 {
   // allocate memory for nets
-  if ((s_nets[0] = ((long_net_t *)
-         spin1_malloc (scfg.num_units * sizeof (long_net_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((s_nets[1] = ((long_net_t *)
+  if ((s_nets = ((long_net_t *)
          spin1_malloc (scfg.num_units * sizeof (long_net_t)))) == NULL
      )
   {
@@ -145,14 +138,7 @@ uint mem_init (void)
   }
 
   // allocate memory for errors
-  if ((s_errors[0] = ((long_error_t *)
-         spin1_malloc (scfg.num_units * sizeof (long_error_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((s_errors[1] = ((long_error_t *)
+  if ((s_errors = ((long_error_t *)
          spin1_malloc (scfg.num_units * sizeof (long_error_t)))) == NULL
      )
   {
@@ -168,14 +154,7 @@ uint mem_init (void)
   }
 
   // allocate memory for received net b-d-ps scoreboards
-  if ((sf_arrived[0] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((sf_arrived[1] = ((scoreboard_t *)
+  if ((sf_arrived = ((scoreboard_t *)
           spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
      )
   {
@@ -183,14 +162,7 @@ uint mem_init (void)
   }
 
   // allocate memory for received error b-d-ps scoreboards
-  if ((sb_arrived[0] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((sb_arrived[1] = ((scoreboard_t *)
+  if ((sb_arrived = ((scoreboard_t *)
           spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
      )
   {
@@ -239,14 +211,10 @@ void var_init (uint reset_examples)
   // initialise nets, errors and scoreboards
   for (uint i = 0; i < scfg.num_units; i++)
   {
-    s_nets[0][i] = 0;
-    s_nets[1][i] = 0;
-    s_errors[0][i] = 0;
-    s_errors[1][i] = 0;
-    sf_arrived[0][i] = 0;
-    sf_arrived[1][i] = 0;
-    sb_arrived[0][i] = 0;
-    sb_arrived[1][i] = 0;
+    s_nets[i] = 0;
+    s_errors[i] = 0;
+    sf_arrived[i] = 0;
+    sb_arrived[i] = 0;
   }
   sf_done = 0;
   sb_done = 0;
@@ -415,9 +383,8 @@ void stage_done (uint ec, uint key)
       io_printf (IO_BUF, "(fd:%u bd:%u)\n", sf_done, sb_done);
       for (uint i = 0; i < scfg.num_units; i++)
       {
-        io_printf (IO_BUF, "%2d: (fa[0]:%u ba[0]:%u fa[1]:%u ba[1]:%u)\n", i,
-                    sf_arrived[0][i], sb_arrived[0][i],
-                    sf_arrived[1][i], sb_arrived[1][i]
+        io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,
+                    sf_arrived[i], sb_arrived[i]
                   );
       }
       io_printf (IO_BUF, "stage aborted\n");

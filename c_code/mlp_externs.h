@@ -109,15 +109,15 @@ extern activation_t     * w_output_history;
 // ------------------------------------------------------------------------
 // sum core variables
 // ------------------------------------------------------------------------
-extern long_net_t     * s_nets[2];      // unit nets computed in current tick
-extern long_error_t   * s_errors[2];    // errors computed in current tick
+extern long_net_t     * s_nets;         // unit nets computed in current tick
+extern long_error_t   * s_errors;       // errors computed in current tick
 extern pkt_queue_t      s_pkt_queue;    // queue to hold received packets
 extern uchar            s_active;       // processing packets from queue?
 extern lds_t            s_lds_part;     // partial link delta sum
-extern scoreboard_t   * sf_arrived[2];  // keep count of expected net b-d-p
+extern scoreboard_t   * sf_arrived;     // keep count of expected net b-d-p
 extern scoreboard_t     sf_done;        // current tick net computation done
 extern uint             sf_thrds_pend;  // thread semaphore
-extern scoreboard_t   * sb_arrived[2];  // keep count of expected error b-d-p
+extern scoreboard_t   * sb_arrived;     // keep count of expected error b-d-p
 extern scoreboard_t     sb_done;        // current tick error computation done
 extern uint             sb_thrds_pend;  // thread semaphore
 extern uint             sb_thrds_init;  // thread semaphore initialisation
