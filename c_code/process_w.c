@@ -141,7 +141,7 @@ void wb_process (uint key, uint payload)
 #endif
 
   // get delta index: mask out phase and block data,
-  uint inx = key & SPINN_BLKDLT_MASK;
+  uint inx = key & SPINN_DELTA_MASK;
 
   // packet carries a delta as payload
   delta_t delta = (delta_t) payload;

@@ -198,7 +198,7 @@ void w_forward_packet (uint key, uint payload)
 #endif
 
   // get output index: mask out phase, core and block data,
-  uint inx = key & SPINN_BLKOUT_MASK;
+  uint inx = key & SPINN_OUTPUT_MASK;
 
   // store received unit output,
   w_outputs[wf_comms][inx] = (activation_t) payload;

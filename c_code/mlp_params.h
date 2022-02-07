@@ -134,13 +134,6 @@
 #define SPINN_COLOUR_SHIFT   10
 #define SPINN_COLOUR_MASK    (1 << SPINN_COLOUR_SHIFT)
 
-// block management
-#define SPINN_BLOCK_SHIFT    5
-#define SPINN_BLOCK_MASK     ((0xff << SPINN_BLOCK_SHIFT) & 0xff)
-#define SPINN_BLOCK_KEY(p)   (p << SPINN_BLOCK_SHIFT)
-#define SPINN_BLKOUT_MASK    ((1 << SPINN_BLOCK_SHIFT) - 1)
-#define SPINN_BLKDLT_MASK    ((1 << SPINN_BLOCK_SHIFT) - 1)
-
 // packet data masks
 #define SPINN_OUTPUT_MASK    0x000000ff
 #define SPINN_NET_MASK       0x000000ff
