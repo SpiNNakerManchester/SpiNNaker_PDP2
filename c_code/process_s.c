@@ -54,7 +54,6 @@ void sf_process (uint key, uint payload)
 
   // get error colour: mask out block, phase and net index data,
   uint pkt_clr = key & SPINN_COLOUR_MASK;
-  uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
 
   // accumulate new net b-d-p,
   s_nets[inx] += (long_net_t) ((net_t) payload);
@@ -165,7 +164,6 @@ void sb_process (uint key, uint payload)
 
   // get error colour: mask out block, phase and net index data,
   uint pkt_clr = key & SPINN_COLOUR_MASK;
-  uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
 
   // accumulate new error b-d-p,
   s_errors[inx] += (error_t) payload;
