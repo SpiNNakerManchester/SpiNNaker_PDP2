@@ -135,11 +135,11 @@
 #define SPINN_COLOUR_MASK    (1 << SPINN_COLOUR_SHIFT)
 
 // packet data masks
-#define SPINN_OUTPUT_MASK    0x000000ff
-#define SPINN_NET_MASK       0x000000ff
-#define SPINN_DELTA_MASK     0x000000ff
-#define SPINN_ERROR_MASK     0x000000ff
-#define SPINN_STPD_MASK      0x000000ff
+#define SPINN_OUTPUT_MASK    (SPINN_COLOUR_MASK - 1)
+#define SPINN_NET_MASK       (SPINN_COLOUR_MASK - 1)
+#define SPINN_DELTA_MASK     (SPINN_COLOUR_MASK - 1)
+#define SPINN_ERROR_MASK     (SPINN_COLOUR_MASK - 1)
+#define SPINN_STPD_MASK      (SPINN_COLOUR_MASK - 1)
 // ------------------------------------------------------------------------
 
 
