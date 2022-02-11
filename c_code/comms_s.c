@@ -137,10 +137,9 @@ void s_processQueue (uint unused0, uint unused1)
     }
 
     // or process deadlock recovery packet,
-    if (pkt_type == SPINN_DLRV_KEY)
+    else if (pkt_type == SPINN_DLRV_KEY)
     {
       s_dlrv_packet ();
-      return;
     }
 
 #ifdef DEBUG

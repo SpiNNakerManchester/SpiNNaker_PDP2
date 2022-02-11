@@ -164,10 +164,9 @@ void t_processFWDQueue (uint unused0, uint unused1)
     }
 
     // or process deadlock recovery packet,
-    if (pkt_type == SPINN_DLRV_KEY)
+    else if (pkt_type == SPINN_DLRV_KEY)
     {
       t_dlrv_packet ();
-      return;
     }
 
 #ifdef DEBUG
