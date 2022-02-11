@@ -120,6 +120,7 @@
 #define SPINN_CRIT_KEY       0x00005000
 #define SPINN_STPN_KEY       0x00006000
 #define SPINN_STOP_KEY       0x00007000
+#define SPINN_DLRV_KEY       0x0000f000
 
 // packet type mask
 #define SPINN_TYPE_MASK      0x0000f000

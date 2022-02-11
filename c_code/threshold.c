@@ -184,6 +184,7 @@ test_results_t   t_test_results;    // test results to report to host
 stop_crit_t      tf_stop_func;      // stop evaluation function
 uint             tf_stop_key;       // stop criterion packet key
 uint             tf_stpn_key;       // stop network packet key
+uint             tf_dlrv_key;       // deadlock recovery packet key
 
 // BACKPROP phase specific
 // (error delta computation)
@@ -263,6 +264,9 @@ void timeout (uint ticks, uint unused)
   // check if progress has been made
   if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
+	// send deadlock recovery packet to all other cores
+	while (!spin1_send_mc_packet (tf_dlrv_key, 0, NO_PAYLOAD));
+
     // report timeout error
     stage_done (SPINN_TIMEOUT_EXIT, 0);
   }
@@ -325,8 +329,11 @@ void c_main (void)
   var_init (TRUE, TRUE);
 
   // set up timer (used for background deadlock check),
-  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
-  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
+  if (tcfg.is_last_output)
+  {
+	  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
+	  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
+  }
 
   // set up packet received callbacks,
   spin1_callback_on (MC_PACKET_RECEIVED, t_receivePacket, SPINN_PACKET_P);

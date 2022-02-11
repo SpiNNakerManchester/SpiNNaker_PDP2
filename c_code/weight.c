@@ -259,8 +259,8 @@ void c_main (void)
   var_init (TRUE, TRUE);
 
   // set up timer (used for background deadlock check),
-  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
-  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
+  //lap spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
+  //lap spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
   // set up packet received callbacks,
   spin1_callback_on (MC_PACKET_RECEIVED, w_receivePacket, SPINN_PACKET_P);

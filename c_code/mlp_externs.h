@@ -188,6 +188,7 @@ extern test_results_t   t_test_results;    // test results to report to host
 extern stop_crit_t      tf_stop_func;  // stop evaluation function
 extern uint             tf_stop_key;   // stop criterion packet key
 extern uint             tf_stpn_key;   // stop network packet key
+extern uint             tf_dlrv_key;   // deadlock recovery packet key
 extern uint             tb_procs;      // pointer to processing errors
 extern uint             tb_comms;      // pointer to receiving errors
 extern scoreboard_t     tb_arrived;    // keep count of expected errors

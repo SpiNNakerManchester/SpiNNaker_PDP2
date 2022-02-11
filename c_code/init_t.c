@@ -631,6 +631,9 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
 
     // network stop key
     tf_stpn_key = rt[STP] | SPINN_STPN_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+
+    // deadlock recovery key
+    tf_dlrv_key = rt[STP] | SPINN_DLRV_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
   else
   {
