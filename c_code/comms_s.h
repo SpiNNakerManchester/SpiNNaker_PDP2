@@ -23,6 +23,7 @@ void s_processQueue  (uint unused0, uint unused1);
 
 void s_stop_packet     (uint key);
 void s_net_stop_packet (uint key);
+void s_dlrv_packet     (void);
 
 void s_lds_packet     (uint payload);
 void s_sync_packet    (void);

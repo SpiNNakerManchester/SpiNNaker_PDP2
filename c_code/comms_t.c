@@ -163,6 +163,13 @@ void t_processFWDQueue (uint unused0, uint unused1)
       t_net_stop_packet (key);
     }
 
+    // or process deadlock recovery packet,
+    if (pkt_type == SPINN_DLRV_KEY)
+    {
+      t_dlrv_packet ();
+      return;
+    }
+
 #ifdef DEBUG
     // or report unexpected packet type,
     else
@@ -324,6 +331,17 @@ void t_net_stop_packet (uint key)
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void t_dlrv_packet (void)
+{
+  // report timeout error
+  stage_done (SPINN_TIMEOUT_EXIT, 0);
 }
 // ------------------------------------------------------------------------
 

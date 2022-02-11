@@ -116,6 +116,13 @@ void w_handleFWDPacket (uint key, uint payload)
     return;
   }
 
+  // or process deadlock recovery packet,
+  if (pkt_type == SPINN_DLRV_KEY)
+  {
+    w_dlrv_packet ();
+    return;
+  }
+
 #ifdef DEBUG
   // or report unexpected packet type
   stage_done (SPINN_UNXPD_PKT, key);
@@ -364,6 +371,17 @@ void w_sync_packet (void)
       sync_rdy = TRUE;
     }
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void w_dlrv_packet (void)
+{
+  // report timeout error
+  stage_done (SPINN_TIMEOUT_EXIT, 0);
 }
 // ------------------------------------------------------------------------
 

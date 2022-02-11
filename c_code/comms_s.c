@@ -136,6 +136,13 @@ void s_processQueue (uint unused0, uint unused1)
       s_sync_packet ();
     }
 
+    // or process deadlock recovery packet,
+    if (pkt_type == SPINN_DLRV_KEY)
+    {
+      s_dlrv_packet ();
+      return;
+    }
+
 #ifdef DEBUG
     // or report unknown packet type,
     else
@@ -384,5 +391,16 @@ void s_sync_packet (void)
       spin1_mode_restore (cpsr);
     }
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void s_dlrv_packet (void)
+{
+  // report timeout error
+  stage_done (SPINN_TIMEOUT_EXIT, 0);
 }
 // ------------------------------------------------------------------------

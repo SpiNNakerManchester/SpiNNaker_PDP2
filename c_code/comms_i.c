@@ -125,6 +125,13 @@ void i_processQueue (uint unused0, uint unused1)
       i_net_stop_packet (key);
     }
 
+    // or process deadlock recovery packet,
+    if (pkt_type == SPINN_DLRV_KEY)
+    {
+      i_dlrv_packet ();
+      return;
+    }
+
 #ifdef DEBUG
     // or report unknown packet type,
     else
@@ -230,6 +237,17 @@ void i_net_stop_packet (uint key)
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void i_dlrv_packet (void)
+{
+  // report timeout error
+  stage_done (SPINN_TIMEOUT_EXIT, 0);
 }
 // ------------------------------------------------------------------------
 
