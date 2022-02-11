@@ -232,6 +232,8 @@ extern uint stp_sent;  // stop packets sent
 extern uint stp_recv;  // stop packets received
 extern uint stn_sent;  // network_stop packets sent
 extern uint stn_recv;  // network_stop packets received
+extern uint dlr_sent;  // deadlock recovery packets sent
+extern uint dlr_recv;  // deadlock recovery packets received
 extern uint lds_sent;  // link_delta packets sent
 extern uint lds_recv;  // link_delta packets received
 extern uint tot_tick;  // total number of ticks executed

@@ -231,6 +231,8 @@ uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_sent;  // network_stop packets sent
 uint stn_recv;  // network_stop packets received
+uint dlr_sent;  // deadlock recovery packets sent
+uint dlr_recv;  // deadlock recovery packets received
 uint wrng_phs;  // packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
@@ -264,6 +266,10 @@ void timeout (uint ticks, uint unused)
   // check if progress has been made
   if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
+#ifdef DEBUG
+    dlr_sent++;
+#endif
+
 	// send deadlock recovery packet to all other cores
 	while (!spin1_send_mc_packet (tf_dlrv_key, 0, NO_PAYLOAD));
 

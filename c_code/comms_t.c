@@ -339,6 +339,10 @@ void t_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void t_dlrv_packet (void)
 {
+#ifdef DEBUG
+  dlr_recv++;
+#endif
+
   // report timeout error
   stage_done (SPINN_TIMEOUT_EXIT, 0);
 }
