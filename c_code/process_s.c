@@ -265,7 +265,11 @@ void sb_process (uint key, uint payload)
         }
 
         // and advance tick
-        sb_advance_tick ();
+        //NOTE: root of first group tree does not receive backprop sync packets
+        if (scfg.is_first_group && scfg.is_tree_root)
+        {
+          sb_advance_tick ();
+        }
       }
       else
       {
@@ -434,19 +438,8 @@ void s_advance_example (void)
     example_cnt = 0;
   }
 
-  // start from first event for next example,
+  // and start from first event for next example,
   evt = 0;
   num_events = ex[example_inx].num_events;
-
-  // and send sync packet to allow next example to start
-  if (scfg.is_tree_root)
-  {
-    while (!spin1_send_mc_packet (fdsKey, 0, NO_PAYLOAD));
-
-#ifdef DEBUG
-    pkt_sent++;
-    spk_sent++;
-#endif
-  }
 }
 // ------------------------------------------------------------------------

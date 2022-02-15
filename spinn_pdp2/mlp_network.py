@@ -977,21 +977,11 @@ class MLPNetwork():
                         last_out_subgroup_t_vertex.stp_link
                         )
 
-                    # intra-subgroup backprop to forward sync s to w (multicast) link
-                    # to make sure that s core tree is ready for initial forward tick
+                    # backprop sync distribution first output group s to w (multicast) link
                     gfe.add_machine_edge_instance (
-                        MachineEdge (svt.root, wv),
-                        svt.root.fds_link
+                        MachineEdge (first_subgroup_svt.root, wv),
+                        first_subgroup_svt.root.bps_link
                         )
-
-                    # inter-subgroup backprop to forward sync s to w (multicast) link
-                    # to make sure that s core tree finished current BACKPROP tick
-                    #NOTE: avoid duplicates
-                    if grp != from_grp or sgrp != from_sgrp:
-                        gfe.add_machine_edge_instance (
-                            MachineEdge (from_svt.root, wv),
-                            from_svt.root.fds_link
-                            )
 
                 # forward s to i link
                 gfe.add_machine_edge_instance (
@@ -1072,16 +1062,27 @@ class MLPNetwork():
                         )
 
 
-                # backprop tick sync s to t (multicast) link
+                # backprop sync distribution first output group s to s (multicast) link
+                for s in svt.vertices:
+                    if s != first_subgroup_svt.root:
+                        gfe.add_machine_edge_instance (
+                            MachineEdge (first_subgroup_svt.root, s),
+                            first_subgroup_svt.root.bps_link
+                            )
+
+                # backprop sync distribution first output group s to i (multicast) link
                 gfe.add_machine_edge_instance (
-                    MachineEdge (
-                        first_subgroup_svt.root,
-                        tv
-                        ),
+                    MachineEdge (first_subgroup_svt.root, iv),
                     first_subgroup_svt.root.bps_link
                     )
 
-                # s to s backprop tick sync link
+                # backprop sync distribution first output group s to t (multicast) link
+                gfe.add_machine_edge_instance (
+                    MachineEdge (first_subgroup_svt.root, tv),
+                    first_subgroup_svt.root.bps_link
+                    )
+
+                # backprop sync generation s to s links
                 #NOTE: s cores that are tree internal nodes not involved
                 if sgrp != 0:
                     # first subgroup collects from all other subgroups

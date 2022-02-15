@@ -44,10 +44,9 @@ enum MLPRecordings {
 enum MLPKeys {
   FWD  = 0,
   BKP  = 1,
-  FDS  = 2,
-  BPS  = 3,
-  STP  = 4,
-  LDS  = 5
+  BPS  = 2,
+  STP  = 3,
+  LDS  = 4
 };
 
 

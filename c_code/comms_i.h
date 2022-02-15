@@ -22,6 +22,7 @@ void i_receivePacket (uint key,     uint payload);
 void i_processQueue  (uint unused0, uint unused1);
 
 void i_stop_packet     (uint key);
+void i_sync_packet     (void);
 void i_net_stop_packet (uint key);
 void i_dlrv_packet     (void);
 

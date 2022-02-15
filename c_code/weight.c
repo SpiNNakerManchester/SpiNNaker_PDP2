@@ -62,7 +62,6 @@ uint ldsKey;               // packet ID for link delta summation
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 
-uchar        sync_rdy;     // ready to synchronise?
 uchar        epoch_rdy;    // this tick completed an epoch?
 uchar        net_stop_rdy; // ready to deal with network stop decision
 

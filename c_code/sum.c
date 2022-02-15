@@ -44,13 +44,11 @@ uint coreID;               // 5-bit virtual core ID
 uint fwdKey;               // packet ID for FORWARD-phase data
 uint bkpKey;               // packet ID for BACKPROP-phase data
 uint ldsKey;               // packet ID for link delta summation
-uint fdsKey;               // packet ID for FORWARD synchronisation
 uint bpsKey;               // packet ID for BACKPROP synchronisation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 
-uchar        sync_rdy;     // ready to synchronise?
 uchar        net_stop_rdy; // ready to deal with network stop decision
 
 uchar        tick_stop;    // current tick stop decision

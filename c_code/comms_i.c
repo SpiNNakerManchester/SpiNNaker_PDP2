@@ -119,6 +119,12 @@ void i_processQueue (uint unused0, uint unused1)
       i_stop_packet (key);
     }
 
+    // or process synchronisation packet,
+    else if (pkt_type == SPINN_SYNC_KEY)
+    {
+      i_sync_packet ();
+    }
+
     // or process network stop packet,
     else if (pkt_type == SPINN_STPN_KEY)
     {
@@ -188,6 +194,42 @@ void i_stop_packet (uint key)
   {
     // if not done report processing thread done
     if_thrds_pend &= ~SPINN_THRD_STOP;
+
+    // and restore interrupts after semaphore access
+    spin1_mode_restore (cpsr);
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a sync packet
+// ------------------------------------------------------------------------
+void i_sync_packet (void)
+{
+#ifdef DEBUG
+  spk_recv++;
+#endif
+
+  // access thread semaphore with interrupts disabled,
+  uint cpsr = spin1_int_disable ();
+
+  // check if all other threads done
+  if (ib_thrds_pend == SPINN_THRD_SYNC)
+  {
+    // initialise semaphore,
+    ib_thrds_pend = SPINN_IB_THRDS;
+
+    // restore interrupts after semaphore access,
+    spin1_mode_restore (cpsr);
+
+    // and advance tick
+    ib_advance_tick ();
+  }
+  else
+  {
+    // report sync thread done
+    ib_thrds_pend &= ~SPINN_THRD_SYNC;
 
     // and restore interrupts after semaphore access
     spin1_mode_restore (cpsr);

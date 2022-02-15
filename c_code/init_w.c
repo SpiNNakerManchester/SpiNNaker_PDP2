@@ -296,7 +296,6 @@ void var_init (uint init_weights, uint reset_examples)
   tick = SPINN_W_INIT_TICK;
 
   // initialise sync flags
-  sync_rdy = FALSE;
   epoch_rdy = FALSE;
   net_stop_rdy = FALSE;
   net_stop = 0;

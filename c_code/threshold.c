@@ -103,7 +103,6 @@ uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 uint32_t stage_rec_flags;  // current stage recording flags
 
-uchar        sync_rdy;     // ready to synchronise?
 uchar        net_stop_rdy; // ready to deal with network stop decision
 
 uchar        tick_stop;    // current tick stop decision

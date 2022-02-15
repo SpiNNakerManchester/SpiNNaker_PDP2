@@ -268,6 +268,8 @@ void wb_process (uint key, uint payload)
     if (wb_thrds_pend == SPINN_THRD_PROC)
     {
       // if done initialise thread semaphore,
+      wb_thrds_pend = SPINN_WB_THRDS;
+
       // if we are using Doug's Momentum, and we have reached the end of the
       // epoch (i.e. we are on the last example, and are about to move on to
       // the last tick, we have to wait for the total link delta sum to
@@ -276,7 +278,7 @@ void wb_process (uint key, uint payload)
           && example_cnt == (xcfg.num_examples - 1)
           && tick == SPINN_WB_END_TICK + 1)
       {
-        wb_thrds_pend = SPINN_WB_THRDS | SPINN_THRD_LDSA;
+        wb_thrds_pend |= SPINN_THRD_LDSA;
       }
 
       // restore interrupts after semaphore access,
@@ -824,10 +826,9 @@ void w_advance_example (void)
   uint cpsr = spin1_int_disable ();
 
   // and check if can trigger next example computation
-  if (sync_rdy && net_stop_rdy)
+  if (net_stop_rdy)
   {
-    // clear flags for next tick,
-    sync_rdy = FALSE;
+    // clear flag for next tick,
     net_stop_rdy = FALSE;
 
     // restore interrupts after flag access,

@@ -276,6 +276,7 @@ void var_init (uint reset_examples)
 
   // initialise thread semaphores
   if_thrds_pend = SPINN_IF_THRDS;
+  ib_thrds_pend = SPINN_IB_THRDS;
 
   // initialise processing thread flag
   i_active = FALSE;
@@ -316,6 +317,7 @@ void var_init (uint reset_examples)
   pkt_recv = 0;  // total packets received
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
+  spk_recv = 0;  // sync packets received
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
@@ -445,6 +447,7 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
