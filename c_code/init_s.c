@@ -114,6 +114,7 @@ uint cfg_init (void)
   io_printf (IO_BUF, "le: %d\n", scfg.lds_expected);
   io_printf (IO_BUF, "uf: %d\n", xcfg.update_function);
   io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
+  io_printf (IO_BUF, "tr: %d\n", scfg.is_tree_root);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
   io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
@@ -224,7 +225,7 @@ void var_init (uint reset_examples)
 
   if (scfg.sync_expected != 0)
   {
-    sb_thrds_init = SPINN_SB_THRDS | SPINN_THRD_SYNC;
+    sb_thrds_init = SPINN_SB_THRDS | SPINN_THRD_SGEN;
   }
   else
   {
@@ -249,8 +250,17 @@ void var_init (uint reset_examples)
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  fdsKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
-  bpsKey = rt[BPS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+
+  if (scfg.is_first_group && scfg.is_tree_root)
+  {
+	// backprop synchronisation
+	bpsKey = rt[BPS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  }
+  else
+  {
+	// backprop synchronisation generation
+	bpsKey = rt[BPS] | SPINN_SGEN_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  }
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------

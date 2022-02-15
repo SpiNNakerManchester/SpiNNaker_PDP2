@@ -202,8 +202,29 @@ void ib_process (uint key, uint payload)
     // prepare for next tick,
     ib_done = 0;
 
-    // and advance tick
-    ib_advance_tick ();
+    // access thread semaphore with interrupts disabled
+    uint cpsr = spin1_int_disable ();
+
+    // check if all other threads done
+    if (ib_thrds_pend == SPINN_THRD_PROC)
+    {
+      // if done initialise semaphore,
+      ib_thrds_pend = SPINN_IB_THRDS;
+
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // and advance tick
+      ib_advance_tick ();
+    }
+    else
+    {
+      // if not done report processing thread done,
+      ib_thrds_pend &= ~SPINN_THRD_PROC;
+
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
+    }
   }
 }
 // ------------------------------------------------------------------------

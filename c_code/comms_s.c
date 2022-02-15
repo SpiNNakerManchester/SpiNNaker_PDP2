@@ -130,10 +130,16 @@ void s_processQueue (uint unused0, uint unused1)
       s_net_stop_packet (key);
     }
 
-    // or process synchronisation packet,
+    // or process backprop synchronisation packet,
     else if (pkt_type == SPINN_SYNC_KEY)
     {
       s_sync_packet ();
+    }
+
+    // or process backprop synchronisation generation packet,
+    else if (pkt_type == SPINN_SGEN_KEY)
+    {
+      s_sgen_packet ();
     }
 
     // or process deadlock recovery packet,
@@ -252,6 +258,94 @@ void s_net_stop_packet (uint key)
 
 
 // ------------------------------------------------------------------------
+// process a backprop synchronisation packet
+// ------------------------------------------------------------------------
+void s_sync_packet (void)
+{
+#ifdef DEBUG
+  spk_recv++;
+#endif
+
+  // advance tick
+  sb_advance_tick ();
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a backprop synchronisation generation packet
+// ------------------------------------------------------------------------
+void s_sgen_packet (void)
+{
+#ifdef DEBUG
+  spk_recv++;
+#endif
+
+  // update count of sync packets,
+  s_sync_arrived++;
+
+  // and check if all expected packets arrived
+  if (s_sync_arrived == scfg.sync_expected)
+  {
+    // prepare for next synchronisation,
+    s_sync_arrived = 0;
+
+    // access thread semaphore with interrupts disabled,
+    uint cpsr = spin1_int_disable ();
+
+    // and check if all other threads done
+    if (sb_thrds_pend == SPINN_THRD_SGEN)
+    {
+      // initialise semaphore,
+      sb_thrds_pend = sb_thrds_init;
+
+      // if we are using Doug's Momentum, and we have reached the end of the
+      // epoch (i.e. we are on the last example, and are about to move on to
+      // the last tick, we need have to wait for the partial link delta sums
+      // to arrive
+      //TODO: find a better place to do this calculation
+      if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+          && example_cnt == (xcfg.num_examples - 1)
+          && tick == SPINN_SB_END_TICK + 1)
+      {
+        sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
+      }
+
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // send sync packet to allow next tick to start,
+      if (scfg.is_tree_root)
+      {
+        while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+        pkt_sent++;
+        spk_sent++;
+#endif
+      }
+
+      // and advance tick
+      //NOTE: root of first group tree does not receive backprop sync packets
+      if (scfg.is_first_group && scfg.is_tree_root)
+      {
+        sb_advance_tick ();
+      }
+    }
+    else
+    {
+      // report sync thread done,
+      sb_thrds_pend &= ~SPINN_THRD_SGEN;
+
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // process LDS packet: accumulate the received partial link delta sums
 // ------------------------------------------------------------------------
 void s_lds_packet (uint payload)
@@ -316,75 +410,6 @@ void s_lds_packet (uint payload)
     {
       // report processing thread done,
       sb_thrds_pend &= ~SPINN_THRD_LDSA;
-
-      // and restore interrupts after flag access
-      spin1_mode_restore (cpsr);
-    }
-  }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process a sync packet
-// ------------------------------------------------------------------------
-void s_sync_packet (void)
-{
-#ifdef DEBUG
-  spk_recv++;
-#endif
-
-  // update count of sync packets,
-  s_sync_arrived++;
-
-  // and check if all expected packets arrived
-  if (s_sync_arrived == scfg.sync_expected)
-  {
-    // prepare for next synchronisation,
-    s_sync_arrived = 0;
-
-    // access thread semaphore with interrupts disabled,
-    uint cpsr = spin1_int_disable ();
-
-    // and check if all other threads done
-    if (sb_thrds_pend == SPINN_THRD_SYNC)
-    {
-      // initialise semaphore,
-      sb_thrds_pend = sb_thrds_init;
-
-      // if we are using Doug's Momentum, and we have reached the end of the
-      // epoch (i.e. we are on the last example, and are about to move on to
-      // the last tick, we need have to wait for the partial link delta sums
-      // to arrive
-      //TODO: find a better place to do this calculation
-      if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-          && example_cnt == (xcfg.num_examples - 1)
-          && tick == SPINN_SB_END_TICK + 1)
-      {
-        sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
-      }
-
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
-
-      // send sync packet to allow next tick to start,
-      if (scfg.is_tree_root)
-      {
-        while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
-
-#ifdef DEBUG
-        pkt_sent++;
-        spk_sent++;
-#endif
-      }
-
-      // and advance tick
-      sb_advance_tick ();
-    }
-    else
-    {
-      // report sync thread done,
-      sb_thrds_pend &= ~SPINN_THRD_SYNC;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);

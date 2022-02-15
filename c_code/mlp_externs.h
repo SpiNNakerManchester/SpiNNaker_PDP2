@@ -30,14 +30,12 @@ extern uint coreID;               // 5-bit virtual core ID
 extern uint fwdKey;               // packet ID for FORWARD-phase data
 extern uint bkpKey;               // packet ID for BACKPROP-phase data
 extern uint ldsKey;               // packet ID for link delta summation
-extern uint fdsKey;               // packet ID for FORWARD synchronisation
 extern uint bpsKey;               // packet ID for BACKPROP synchronisation
 
 extern uint32_t stage_step;       // current stage step
 extern uint32_t stage_num_steps;  // current stage number of steps
 extern uint32_t stage_rec_flags;  // current stage recording flags
 
-extern uchar        sync_rdy;     // ready to synchronise?
 extern uchar        epoch_rdy;    // this tick completed an epoch?
 extern uchar        net_stop_rdy; // ready to deal with network stop decision
 
@@ -143,6 +141,7 @@ extern uint             i_it_idx;      // index into current inputs/targets
 extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_pend; // thread semaphore
 extern long_delta_t   * ib_init_delta; // initial delta value for every tick
+extern uint             ib_thrds_pend; // thread semaphore
 extern scoreboard_t     ib_done;       // current tick delta computation done
 extern long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
 extern long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value

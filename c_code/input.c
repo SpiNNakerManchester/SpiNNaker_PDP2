@@ -148,6 +148,7 @@ uint             if_thrds_pend;     // thread semaphore
 // (delta processing)
 long_delta_t   * ib_init_delta;     // initial delta value for every tick
 scoreboard_t     ib_done;           // current tick delta computation done
+uint             ib_thrds_pend;     // thread semaphore
 
 // history arrays
 long_net_t     * i_net_history;     //sdram pointer where to store input history
@@ -164,6 +165,7 @@ uint sent_bkp;  // packets sent in BACKPROP phase
 uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
+uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received

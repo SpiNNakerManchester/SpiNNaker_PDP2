@@ -109,13 +109,6 @@ void w_handleFWDPacket (uint key, uint payload)
     return;
   }
 
-  // or process synchronisation packet,
-  if (pkt_type == SPINN_SYNC_KEY)
-  {
-    w_sync_packet ();
-    return;
-  }
-
   // or process deadlock recovery packet,
   if (pkt_type == SPINN_DLRV_KEY)
   {
@@ -164,6 +157,12 @@ void w_processBKPQueue (uint unused0, uint unused1)
     if (pkt_type == SPINN_DATA_KEY)
     {
       wb_process (key, payload);
+    }
+
+    // or process synchronisation packet,
+    else if (pkt_type == SPINN_SYNC_KEY)
+    {
+      w_sync_packet ();
     }
 
     // or process LDS result packet,
@@ -299,10 +298,9 @@ void w_net_stop_packet (uint key)
   net_stop = key & SPINN_STPD_MASK;
 
   // check if ready for network stop decision
-  if (sync_rdy && epoch_rdy)
+  if (epoch_rdy)
   {
-    // clear flags for next tick,
-    sync_rdy = FALSE;
+    // clear flag for next tick,
     epoch_rdy = FALSE;
 
     // and decide what to do
@@ -328,6 +326,17 @@ void w_net_stop_packet (uint key)
 
 
 // ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void w_dlrv_packet (void)
+{
+  // report timeout error
+  stage_done (SPINN_TIMEOUT_EXIT, 0);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // process a sync packet
 // ------------------------------------------------------------------------
 void w_sync_packet (void)
@@ -336,52 +345,29 @@ void w_sync_packet (void)
   spk_recv++;
 #endif
 
-  // update count of sync packets,
-  w_sync_arrived++;
+  // access thread semaphore with interrupts disabled,
+  uint cpsr = spin1_int_disable ();
 
-  // and check if all expected packets arrived
-  if (w_sync_arrived == wcfg.sync_expected)
+  // check if all other threads done
+  if (wb_thrds_pend == SPINN_THRD_SYNC)
   {
-    // prepare for next synchronisation,
-    w_sync_arrived = 0;
+    // initialise semaphore,
+    wb_thrds_pend = SPINN_WB_THRDS;
 
-    // and check if can trigger next example computation
-    if (net_stop_rdy && epoch_rdy)
-    {
-      // clear flags for next tick,
-      net_stop_rdy = FALSE;
-      epoch_rdy = FALSE;
+    // restore interrupts after semaphore access,
+    spin1_mode_restore (cpsr);
 
-      // and decide what to do
-      if (net_stop)
-      {
-        // finish stage and report no error
-        //TODO: check if need to schedule or can simply call
-        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
-      }
-      else
-      {
-        // and trigger computation
-        spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
-      }
-    }
-    else
-    {
-      // flag as ready
-      sync_rdy = TRUE;
-    }
+    // and advance tick
+    wb_advance_tick ();
   }
-}
-// ------------------------------------------------------------------------
+  else
+  {
+    // report sync thread done
+    wb_thrds_pend &= ~SPINN_THRD_SYNC;
 
-
-// ------------------------------------------------------------------------
-// process a deadlock recovery packet
-// ------------------------------------------------------------------------
-void w_dlrv_packet (void)
-{
-  // report timeout error
-  stage_done (SPINN_TIMEOUT_EXIT, 0);
+    // and restore interrupts after semaphore access
+    spin1_mode_restore (cpsr);
+  }
 }
 // ------------------------------------------------------------------------
 
