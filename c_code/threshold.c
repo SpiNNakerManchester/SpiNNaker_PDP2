@@ -164,6 +164,7 @@ short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
 uint             t_it_idx;          // index into current inputs/targets
 pkt_queue_t      t_pkt_queue;       // queue to hold received nets
+uint             t_dlrv_cnt;        // limit deadlock recovery attempts
 
 // FORWARD phase specific
 // (output computation)
@@ -269,44 +270,57 @@ void timeout (uint ticks, uint unused)
     dlr_sent++;
 #endif
 
-	// send deadlock recovery packet to all other cores
-	while (!spin1_send_mc_packet (tf_dlrv_key, 0, NO_PAYLOAD));
-
-    // restart tick
-    if (phase == SPINN_FORWARD)
+    t_dlrv_cnt++;
+    if (t_dlrv_cnt >= SPINN_DLRV_MAX_CNT)
     {
-      // initialise thread semaphore,
-      tf_thrds_pend = SPINN_TF_THRDS;
+      // send deadlock recovery packet to all other cores,
+      while (!spin1_send_mc_packet(tf_dlrv_key, 0, NO_PAYLOAD));
 
-      // initialise scoreboards,
-      tf_arrived = 0;
-      tf_crit_arrived = 0;
-
-      // initialise flag and previous value,
-      tf_crit_rdy = tf_crit_init;
-      tf_crit_prev = TRUE;
-
-      // and initialise processing thread flag
-      tf_active = FALSE;
+      // and report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
     }
     else
     {
-      // initialise thread semaphore,
-      tb_thrds_pend = SPINN_TB_THRDS;
+      // send deadlock recovery packet to all other cores
+      while (!spin1_send_mc_packet(tf_dlrv_key, 0, NO_PAYLOAD));
 
-      // initialise scoreboard,
-      tb_arrived = 0;
+      // restart tick
+      if (phase == SPINN_FORWARD) {
+        // initialise thread semaphore,
+        tf_thrds_pend = SPINN_TF_THRDS;
 
-      // and trigger computation
-      spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
+        // initialise scoreboards,
+        tf_arrived = 0;
+        tf_crit_arrived = 0;
+
+        // initialise flag and previous value,
+        tf_crit_rdy = tf_crit_init;
+        tf_crit_prev = TRUE;
+
+        // and initialise processing thread flag
+        tf_active = FALSE;
+      } else {
+        // initialise thread semaphore,
+        tb_thrds_pend = SPINN_TB_THRDS;
+
+        // initialise scoreboard,
+        tb_arrived = 0;
+
+        // and trigger computation
+        spin1_schedule_callback(tb_process, 0, 0, SPINN_TB_PROCESS_P);
+      }
     }
   }
   else
   {
-    // update checked variables
+    // update checked variables,
     to_epoch   = epoch;
     to_example = example_cnt;
     to_tick    = tick;
+
+    // and initialise deadlock recovery attempt count
+    t_dlrv_cnt = 0;
+
   }
 }
 // ------------------------------------------------------------------------

@@ -171,6 +171,7 @@ extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output der
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
 extern uint             t_it_idx;      // index into current inputs/targets
 extern pkt_queue_t      t_pkt_queue;   // queue to hold received packets
+extern uint             t_dlrv_cnt;    // limit deadlock recovery attempts
 extern uchar            tf_active;     // processing FWD-phase packet queue?
 extern scoreboard_t     tf_arrived;    // keep count of expected nets
 extern uint             tf_thrds_pend; // thread semaphore

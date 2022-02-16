@@ -334,9 +334,6 @@ void w_dlrv_packet (void)
   dlr_recv++;
 #endif
 
-  // report timeout error
-  //lap stage_done (SPINN_TIMEOUT_EXIT, 0);
-
   // restart tick
   if (phase == SPINN_FORWARD)
   {

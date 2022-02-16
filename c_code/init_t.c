@@ -494,6 +494,9 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   // initialise phase
   phase = SPINN_FORWARD;
 
+  // initialise deadlock recovery attempt count
+  t_dlrv_cnt = 0;
+
   // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
   ev_tick = SPINN_T_INIT_TICK;
