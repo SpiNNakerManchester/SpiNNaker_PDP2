@@ -28,7 +28,10 @@
 // ------------------------------------------------------------------------
 #define SPINN_TIMER_TICK_PERIOD  1000000
 #define SPINN_PRINT_SHIFT        16
+
+// deadlock recovery constants
 #define SPINN_DLRV_MAX_CNT       3
+#define SPINN_DLRV_ABT           0x0001
 
 
 // ------------------------------------------------------------------------
@@ -143,6 +146,7 @@
 #define SPINN_DELTA_MASK     (SPINN_COLOUR_MASK - 1)
 #define SPINN_ERROR_MASK     (SPINN_COLOUR_MASK - 1)
 #define SPINN_STPD_MASK      (SPINN_COLOUR_MASK - 1)
+#define SPINN_DLRV_MASK      (SPINN_COLOUR_MASK - 1)
 // ------------------------------------------------------------------------
 
 

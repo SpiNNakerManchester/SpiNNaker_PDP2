@@ -166,7 +166,15 @@ void t_processFWDQueue (uint unused0, uint unused1)
     // or process deadlock recovery packet,
     else if (pkt_type == SPINN_DLRV_KEY)
     {
-      t_dlrv_packet ();
+      if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+      {
+        // report timeout error
+        stage_done (SPINN_TIMEOUT_EXIT, 0);
+      }
+      else
+      {
+        t_dlrv_packet ();
+      }
     }
 
 #ifdef DEBUG

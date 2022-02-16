@@ -112,7 +112,16 @@ void w_handleFWDPacket (uint key, uint payload)
   // or process deadlock recovery packet,
   if (pkt_type == SPINN_DLRV_KEY)
   {
-    w_dlrv_packet ();
+    if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+    {
+      // report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
+    }
+    else
+    {
+      w_dlrv_packet ();
+    }
+
     return;
   }
 
@@ -338,7 +347,7 @@ void w_dlrv_packet (void)
   if (phase == SPINN_FORWARD)
   {
     // initialise thread semaphore,
-	wf_thrds_pend = SPINN_WF_THRDS;
+    wf_thrds_pend = SPINN_WF_THRDS;
 
     // initialise scoreboard,
     wf_arrived = 0;

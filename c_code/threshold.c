@@ -274,7 +274,7 @@ void timeout (uint ticks, uint unused)
     if (t_dlrv_cnt >= SPINN_DLRV_MAX_CNT)
     {
       // send deadlock recovery packet to all other cores,
-      while (!spin1_send_mc_packet(tf_dlrv_key, 0, NO_PAYLOAD));
+      while (!spin1_send_mc_packet(tf_dlrv_key | SPINN_DLRV_ABT, 0, NO_PAYLOAD));
 
       // and report timeout error
       stage_done (SPINN_TIMEOUT_EXIT, 0);
