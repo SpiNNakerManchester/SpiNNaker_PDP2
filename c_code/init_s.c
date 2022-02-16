@@ -225,7 +225,7 @@ void var_init (uint reset_examples)
 
   if (scfg.sync_expected != 0)
   {
-    sb_thrds_init = SPINN_SB_THRDS | SPINN_THRD_SGEN;
+    sb_thrds_init = SPINN_SB_THRDS | SPINN_THRD_SYNC;
   }
   else
   {

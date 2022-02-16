@@ -294,7 +294,7 @@ void s_sgen_packet (void)
     uint cpsr = spin1_int_disable ();
 
     // and check if all other threads done
-    if (sb_thrds_pend == SPINN_THRD_SGEN)
+    if (sb_thrds_pend == SPINN_THRD_SYNC)
     {
       // initialise semaphore,
       sb_thrds_pend = sb_thrds_init;
@@ -335,7 +335,7 @@ void s_sgen_packet (void)
     else
     {
       // report sync thread done,
-      sb_thrds_pend &= ~SPINN_THRD_SGEN;
+      sb_thrds_pend &= ~SPINN_THRD_SYNC;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
