@@ -330,8 +330,27 @@ void w_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void w_dlrv_packet (void)
 {
-  // report timeout error
-  stage_done (SPINN_TIMEOUT_EXIT, 0);
+#ifdef DEBUG
+  dlr_recv++;
+#endif
+
+  // restart tick
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+	wf_thrds_pend = SPINN_WF_THRDS;
+
+    // initialise scoreboard,
+    wf_arrived = 0;
+
+    // and trigger computation
+    spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+  }
+  else
+  {
+    // report timeout error
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
+  }
 }
 // ------------------------------------------------------------------------
 

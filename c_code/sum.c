@@ -133,6 +133,7 @@ uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
+uint dlr_recv;  // deadlock recovery packets received
 uint lds_sent;  // link_delta packets sent
 uint lds_recv;  // link_delta packets received
 uint wrng_phs;  // packets received in wrong phase

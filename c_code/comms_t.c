@@ -343,8 +343,28 @@ void t_dlrv_packet (void)
   dlr_recv++;
 #endif
 
-  // report timeout error
-  stage_done (SPINN_TIMEOUT_EXIT, 0);
+  // restart tick
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    tf_thrds_pend = SPINN_TF_THRDS;
+
+    // initialise scoreboards,
+    tf_arrived = 0;
+    tf_crit_arrived = 0;
+
+    // initialise flag and previous value,
+    tf_crit_rdy = tf_crit_init;
+    tf_crit_prev = TRUE;
+
+    // and initialise processing thread flag
+    tf_active = FALSE;
+  }
+  else
+  {
+    // report timeout error
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
+  }
 }
 // ------------------------------------------------------------------------
 

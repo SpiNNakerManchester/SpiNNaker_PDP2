@@ -424,7 +424,28 @@ void s_lds_packet (uint payload)
 // ------------------------------------------------------------------------
 void s_dlrv_packet (void)
 {
-  // report timeout error
-  stage_done (SPINN_TIMEOUT_EXIT, 0);
+#ifdef DEBUG
+  dlr_recv++;
+#endif
+
+  // restart tick
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    sf_thrds_pend = SPINN_SF_THRDS;
+
+    // and initialise nets and scoreboards
+    for (uint i = 0; i < scfg.num_units; i++)
+    {
+      s_nets[i] = 0;
+      sf_arrived[i] = 0;
+    }
+    sf_done = 0;
+  }
+  else
+  {
+    // report timeout error
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
+  }
 }
 // ------------------------------------------------------------------------

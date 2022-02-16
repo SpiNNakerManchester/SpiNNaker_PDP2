@@ -287,8 +287,24 @@ void i_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void i_dlrv_packet (void)
 {
-  // report timeout error
-  stage_done (SPINN_TIMEOUT_EXIT, 0);
+#ifdef DEBUG
+  dlr_recv++;
+#endif
+
+  // restart tick
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    if_thrds_pend = SPINN_IF_THRDS;
+
+    // and initialise scoreboard
+    if_done = 0;
+  }
+  else
+  {
+    // report timeout error
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
+  }
 }
 // ------------------------------------------------------------------------
 
