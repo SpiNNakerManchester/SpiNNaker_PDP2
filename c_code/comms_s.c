@@ -444,8 +444,15 @@ void s_dlrv_packet (void)
   }
   else
   {
-    // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT, 0);
+    // initialise thread semaphore,
+    sb_thrds_pend = sb_thrds_init;
+
+    // and initialise nets and scoreboards
+    for (uint i = 0; i < scfg.num_units; i++) {
+      s_errors[i] = 0;
+      sb_arrived[i] = 0;
+    }
+    sb_done = 0;
   }
 }
 // ------------------------------------------------------------------------

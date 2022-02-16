@@ -334,6 +334,9 @@ void w_dlrv_packet (void)
   dlr_recv++;
 #endif
 
+  // report timeout error
+  //lap stage_done (SPINN_TIMEOUT_EXIT, 0);
+
   // restart tick
   if (phase == SPINN_FORWARD)
   {
@@ -348,8 +351,19 @@ void w_dlrv_packet (void)
   }
   else
   {
-    // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT, 0);
+    // initialise thread semaphore,
+    wb_thrds_pend = SPINN_WB_THRDS;
+
+    // link delta sum in last BP tick if using Doug's momentum
+    if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+        && example_cnt == (xcfg.num_examples - 1)
+        && tick == SPINN_WB_END_TICK)
+    {
+      wb_thrds_pend |= SPINN_THRD_LDSA;
+    }
+
+    // initialise scoreboard,
+    wb_arrived = 0;
   }
 }
 // ------------------------------------------------------------------------

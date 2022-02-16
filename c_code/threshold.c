@@ -291,8 +291,14 @@ void timeout (uint ticks, uint unused)
     }
     else
     {
-      // report timeout error
-      stage_done (SPINN_TIMEOUT_EXIT, 0);
+      // initialise thread semaphore,
+      tb_thrds_pend = SPINN_TB_THRDS;
+
+      // initialise scoreboard,
+      tb_arrived = 0;
+
+      // and trigger computation
+      spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
     }
   }
   else

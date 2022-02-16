@@ -302,8 +302,11 @@ void i_dlrv_packet (void)
   }
   else
   {
-    // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT, 0);
+    // initialise thread semaphore,
+    ib_thrds_pend = SPINN_IB_THRDS;
+
+    // and initialise scoreboard
+    ib_done = 0;
   }
 }
 // ------------------------------------------------------------------------
