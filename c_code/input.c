@@ -169,7 +169,6 @@ uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
-uint dlr_recv;  // deadlock recovery packets received
 uint wrng_phs;  // packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
@@ -265,8 +264,8 @@ void c_main (void)
   var_init (TRUE);
 
   // set up timer (used for background deadlock check),
-  //lap spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
-  //lap spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
+  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
+  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
   // set up packet received callbacks,
   spin1_callback_on (MC_PACKET_RECEIVED, i_receivePacket, SPINN_PACKET_P);

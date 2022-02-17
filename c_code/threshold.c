@@ -164,7 +164,6 @@ short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
 uint             t_it_idx;          // index into current inputs/targets
 pkt_queue_t      t_pkt_queue;       // queue to hold received nets
-uint             t_dlrv_cnt;        // limit deadlock recovery attempts
 
 // FORWARD phase specific
 // (output computation)
@@ -184,7 +183,6 @@ test_results_t   t_test_results;    // test results to report to host
 stop_crit_t      tf_stop_func;      // stop evaluation function
 uint             tf_stop_key;       // stop criterion packet key
 uint             tf_stpn_key;       // stop network packet key
-uint             tf_dlrv_key;       // deadlock recovery packet key
 
 // BACKPROP phase specific
 // (error delta computation)
@@ -231,8 +229,6 @@ uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_sent;  // network_stop packets sent
 uint stn_recv;  // network_stop packets received
-uint dlr_sent;  // deadlock recovery packets sent
-uint dlr_recv;  // deadlock recovery packets received
 uint wrng_phs;  // packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
@@ -266,61 +262,15 @@ void timeout (uint ticks, uint unused)
   // check if progress has been made
   if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
   {
-#ifdef DEBUG
-    dlr_sent++;
-#endif
-
-    t_dlrv_cnt++;
-    if (t_dlrv_cnt >= SPINN_DLRV_MAX_CNT)
-    {
-      // send deadlock recovery packet to all other cores,
-      while (!spin1_send_mc_packet(tf_dlrv_key | SPINN_DLRV_ABT, 0, NO_PAYLOAD));
-
-      // and report timeout error
-      stage_done (SPINN_TIMEOUT_EXIT, 0);
-    }
-    else
-    {
-      // send deadlock recovery packet to all other cores
-      while (!spin1_send_mc_packet(tf_dlrv_key, 0, NO_PAYLOAD));
-
-      // restart tick
-      if (phase == SPINN_FORWARD) {
-        // initialise thread semaphore,
-        tf_thrds_pend = SPINN_TF_THRDS;
-
-        // initialise scoreboards,
-        tf_arrived = 0;
-        tf_crit_arrived = 0;
-
-        // initialise flag and previous value,
-        tf_crit_rdy = tf_crit_init;
-        tf_crit_prev = TRUE;
-
-        // and initialise processing thread flag
-        tf_active = FALSE;
-      } else {
-        // initialise thread semaphore,
-        tb_thrds_pend = SPINN_TB_THRDS;
-
-        // initialise scoreboard,
-        tb_arrived = 0;
-
-        // and trigger computation
-        spin1_schedule_callback(tb_process, 0, 0, SPINN_TB_PROCESS_P);
-      }
-    }
+    // report timeout error
+    stage_done (SPINN_TIMEOUT_EXIT, 0);
   }
   else
   {
-    // update checked variables,
+    // update checked variables
     to_epoch   = epoch;
     to_example = example_cnt;
     to_tick    = tick;
-
-    // and initialise deadlock recovery attempt count
-    t_dlrv_cnt = 0;
-
   }
 }
 // ------------------------------------------------------------------------
@@ -374,11 +324,8 @@ void c_main (void)
   var_init (TRUE, TRUE);
 
   // set up timer (used for background deadlock check),
-  if (tcfg.is_last_output)
-  {
-	  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
-	  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
-  }
+  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
+  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
   // set up packet received callbacks,
   spin1_callback_on (MC_PACKET_RECEIVED, t_receivePacket, SPINN_PACKET_P);

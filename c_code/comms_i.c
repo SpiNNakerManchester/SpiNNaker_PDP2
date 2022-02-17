@@ -131,20 +131,6 @@ void i_processQueue (uint unused0, uint unused1)
       i_net_stop_packet (key);
     }
 
-    // or process deadlock recovery packet,
-    else if (pkt_type == SPINN_DLRV_KEY)
-    {
-      if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
-      {
-        // report timeout error
-        stage_done (SPINN_TIMEOUT_EXIT, 0);
-      }
-      else
-      {
-        i_dlrv_packet ();
-      }
-    }
-
 #ifdef DEBUG
     // or report unknown packet type,
     else
@@ -285,36 +271,6 @@ void i_net_stop_packet (uint key)
 
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
-  }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process a deadlock recovery packet
-// ------------------------------------------------------------------------
-void i_dlrv_packet (void)
-{
-#ifdef DEBUG
-  dlr_recv++;
-#endif
-
-  // restart tick
-  if (phase == SPINN_FORWARD)
-  {
-    // initialise thread semaphore,
-    if_thrds_pend = SPINN_IF_THRDS;
-
-    // and initialise scoreboard
-    if_done = 0;
-  }
-  else
-  {
-    // initialise thread semaphore,
-    ib_thrds_pend = SPINN_IB_THRDS;
-
-    // and initialise scoreboard
-    ib_done = 0;
   }
 }
 // ------------------------------------------------------------------------
