@@ -52,9 +52,6 @@ void sf_process (uint key, uint payload)
   // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
 
-  // get error colour: mask out block, phase and net index data,
-  uint pkt_clr = key & SPINN_COLOUR_MASK;
-
   // accumulate new net b-d-p,
   s_nets[inx] += (long_net_t) ((net_t) payload);
 
@@ -87,9 +84,8 @@ void sf_process (uint key, uint payload)
       net_tmp = (net_t) s_nets[inx];
     }
 
-    // incorporate colour and net index to the packet key and send,
-    while (!spin1_send_mc_packet ((fwdKey | pkt_clr | inx),
-        net_tmp, WITH_PAYLOAD));
+    // incorporate net index to the packet key and send,
+    while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;
@@ -162,9 +158,6 @@ void sb_process (uint key, uint payload)
   // get error index: mask out block, phase and colour data,
   uint inx = key & SPINN_ERROR_MASK;
 
-  // get error colour: mask out block, phase and net index data,
-  uint pkt_clr = key & SPINN_COLOUR_MASK;
-
   // accumulate new error b-d-p,
   s_errors[inx] += (error_t) payload;
 
@@ -202,9 +195,8 @@ void sb_process (uint key, uint payload)
     }
 */
 
-    // incorporate colour and error index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | pkt_clr | inx),
-        error, WITH_PAYLOAD));
+    // incorporate error index to the packet key and send,
+    while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;
@@ -265,8 +257,8 @@ void sb_process (uint key, uint payload)
         }
 
         // and advance tick
-        //NOTE: root of first group tree does not receive backprop sync packets
-        if (scfg.is_first_group && scfg.is_tree_root)
+        //NOTE: first root does *not* get a backprop sync packet
+        if (scfg.is_first_root)
         {
           sb_advance_tick ();
         }

@@ -29,6 +29,10 @@
 #define SPINN_TIMER_TICK_PERIOD  1000000
 #define SPINN_PRINT_SHIFT        16
 
+// deadlock recovery constants
+#define SPINN_DLRV_MAX_CNT       3
+#define SPINN_DLRV_ABT           0x0001
+
 
 // ------------------------------------------------------------------------
 // profiler constants
@@ -121,6 +125,7 @@
 #define SPINN_CRIT_KEY       0x00005000
 #define SPINN_STPN_KEY       0x00006000
 #define SPINN_STOP_KEY       0x00007000
+#define SPINN_DLRV_KEY       0x0000f000
 
 // packet type mask
 #define SPINN_TYPE_MASK      0x0000f000
@@ -141,6 +146,7 @@
 #define SPINN_DELTA_MASK     (SPINN_COLOUR_MASK - 1)
 #define SPINN_ERROR_MASK     (SPINN_COLOUR_MASK - 1)
 #define SPINN_STPD_MASK      (SPINN_COLOUR_MASK - 1)
+#define SPINN_DLRV_MASK      (SPINN_COLOUR_MASK - 1)
 // ------------------------------------------------------------------------
 
 

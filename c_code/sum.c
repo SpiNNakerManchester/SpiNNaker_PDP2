@@ -64,10 +64,6 @@ proc_phase_t phase;        // FORWARD or BACKPROP
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
-
-uint         to_epoch   = 0;
-uint         to_example = 0;
-uint         to_tick    = 0;
 // ------------------------------------------------------------------------
 
 
@@ -133,6 +129,7 @@ uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
+uint dlr_recv;  // deadlock recovery packets received
 uint lds_sent;  // link_delta packets sent
 uint lds_recv;  // link_delta packets received
 uint wrng_phs;  // packets received in wrong phase
@@ -154,32 +151,6 @@ uint prf_bkp_min;  // minimum BACKPROP processing time
 uint prf_bkp_max;  // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
-
-
-// ------------------------------------------------------------------------
-// timer callback: check that there has been progress in execution.
-// If no progress has been made terminate with SPINN_TIMEOUT_EXIT code.
-// ------------------------------------------------------------------------
-void timeout (uint ticks, uint unused)
-{
-  (void) ticks;
-  (void) unused;
-
-  // check if progress has been made
-  if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
-  {
-    // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT, 0);
-  }
-  else
-  {
-    // update checked variables
-    to_epoch   = epoch;
-    to_example = example_cnt;
-    to_tick    = tick;
-  }
-}
-// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
@@ -228,10 +199,6 @@ void c_main (void)
 
   // initialise variables,
   var_init (TRUE);
-
-  // set up timer (used for background deadlock check),
-  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
-  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
 
   // set up packet received callbacks,
   spin1_callback_on (MC_PACKET_RECEIVED, s_receivePacket, SPINN_PACKET_P);

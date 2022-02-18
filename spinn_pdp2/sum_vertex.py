@@ -168,6 +168,7 @@ class SumVertex(
               scoreboard_t sync_expected;
               uchar        is_first_group;
               uchar        is_tree_root;
+              uchar        is_first_root;
             } s_conf_t;
 
             pack: standard sizes, little-endian byte order,
@@ -175,6 +176,9 @@ class SumVertex(
         """
         # check if first group in the network
         is_first_group = self.group == self.network.groups[0]
+
+        # check if this is the root of the link delta sum s_core tree
+        is_first_root = is_first_group and self.subgroup == 0 and self.is_tree_root
 
         # number of vertices in this SumVertex tree
         num_vrt = ((self.network.subgroups - 2) //
@@ -227,14 +231,15 @@ class SumVertex(
         else:
             sync_expect = 0
 
-        return struct.pack ("<5I2B2x",
+        return struct.pack ("<5I3Bx",
                             self.units,
                             fwd_expect,
                             bkp_expect,
                             lds_expect,
                             sync_expect,
                             is_first_group,
-                            self.is_tree_root
+                            self.is_tree_root,
+                            is_first_root
                             )
 
     @property

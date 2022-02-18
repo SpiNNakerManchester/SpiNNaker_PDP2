@@ -26,6 +26,7 @@ void w_forward_packet  (uint key, uint payload);
 void w_stop_packet     (uint key);
 void w_net_stop_packet (uint key);
 void w_sync_packet     (void);
+void w_dlrv_packet     (void);
 
 void w_lds_packet (uint payload);
 

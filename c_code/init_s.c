@@ -115,6 +115,7 @@ uint cfg_init (void)
   io_printf (IO_BUF, "uf: %d\n", xcfg.update_function);
   io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
   io_printf (IO_BUF, "tr: %d\n", scfg.is_tree_root);
+  io_printf (IO_BUF, "r0: %d\n", scfg.is_first_root);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
   io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
@@ -223,6 +224,7 @@ void var_init (uint reset_examples)
   // initialise thread semaphores
   sf_thrds_pend = SPINN_SF_THRDS;
 
+  // not all s cores take part in backprop sync generation
   if (scfg.sync_expected != 0)
   {
     sb_thrds_init = SPINN_SB_THRDS | SPINN_THRD_SYNC;
@@ -251,15 +253,15 @@ void var_init (uint reset_examples)
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
-  if (scfg.is_first_group && scfg.is_tree_root)
+  if (scfg.is_first_root)
   {
-	// backprop synchronisation
-	bpsKey = rt[BPS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+    // backprop synchronisation distribution
+    bpsKey = rt[BPS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
   }
   else
   {
-	// backprop synchronisation generation
-	bpsKey = rt[BPS] | SPINN_SGEN_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+    // backprop synchronisation generation
+    bpsKey = rt[BPS] | SPINN_SGEN_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
   }
 
 #ifdef DEBUG
@@ -277,6 +279,7 @@ void var_init (uint reset_examples)
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
+  dlr_recv = 0;  // deadlock recovery packets received
   lds_recv = 0;  // link_delta packets received
   lds_sent = 0;  // link_delta packets sent
   wrng_phs = 0;  // packets received in wrong phase
@@ -413,6 +416,7 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "lds recv:%d\n", lds_recv);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);
   io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);

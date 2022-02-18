@@ -25,6 +25,7 @@ void t_processFWDQueue (uint unused0, uint unused1);
 void t_criterion_packet (uint key);
 void t_stop_packet      (uint key);
 void t_net_stop_packet  (uint key);
+void t_dlrv_packet      (void);
 
 void t_backprop_packet (uint key, uint payload);
 void t_sync_packet     (void);

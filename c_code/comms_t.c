@@ -163,6 +163,20 @@ void t_processFWDQueue (uint unused0, uint unused1)
       t_net_stop_packet (key);
     }
 
+    // or process deadlock recovery packet,
+    else if (pkt_type == SPINN_DLRV_KEY)
+    {
+      if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+      {
+        // report timeout error
+        stage_done (SPINN_TIMEOUT_EXIT, 0);
+      }
+      else
+      {
+        t_dlrv_packet ();
+      }
+    }
+
 #ifdef DEBUG
     // or report unexpected packet type,
     else
@@ -323,6 +337,47 @@ void t_net_stop_packet (uint key)
 
     // and restore interrupts after flag access
     spin1_mode_restore (cpsr);
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void t_dlrv_packet (void)
+{
+#ifdef DEBUG
+  dlr_recv++;
+#endif
+
+  // restart tick
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    tf_thrds_pend = SPINN_TF_THRDS;
+
+    // initialise scoreboards,
+    tf_arrived = 0;
+    tf_crit_arrived = 0;
+
+    // initialise flag and previous value,
+    tf_crit_rdy = tf_crit_init;
+    tf_crit_prev = TRUE;
+
+    // and initialise processing thread flag
+    tf_active = FALSE;
+  }
+  else
+  {
+    // initialise thread semaphore,
+    tb_thrds_pend = SPINN_TB_THRDS;
+
+    // initialise scoreboard,
+    tb_arrived = 0;
+
+    // and trigger computation
+    spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
   }
 }
 // ------------------------------------------------------------------------

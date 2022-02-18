@@ -494,6 +494,9 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   // initialise phase
   phase = SPINN_FORWARD;
 
+  // initialise deadlock recovery attempt count
+  t_dlrv_cnt = 0;
+
   // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
   ev_tick = SPINN_T_INIT_TICK;
@@ -631,6 +634,9 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
 
     // network stop key
     tf_stpn_key = rt[STP] | SPINN_STPN_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+
+    // deadlock recovery key
+    tf_dlrv_key = rt[STP] | SPINN_DLRV_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
   else
   {
@@ -655,6 +661,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   stp_recv = 0;  // stop packets received
   stn_sent = 0;  // network_stop packets sent
   stn_recv = 0;  // network_stop packets received
+  dlr_sent = 0;  // deadlock recovery packets sent
+  dlr_recv = 0;  // deadlock recovery packets received
   wrng_phs = 0;  // packets received in wrong phase
   tot_tick = 0;  // total number of ticks executed
   // ------------------------------------------------------------------------
@@ -814,11 +822,13 @@ void stage_done (uint ec, uint key)
   {
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
     io_printf (IO_BUF, "stpn sent:%d\n", stn_sent);
+    io_printf (IO_BUF, "dlrv sent:%d\n", dlr_sent);
   }
   else
   {
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+    io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);
   }
   io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);

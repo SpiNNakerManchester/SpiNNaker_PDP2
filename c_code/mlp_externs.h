@@ -171,6 +171,7 @@ extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output der
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
 extern uint             t_it_idx;      // index into current inputs/targets
 extern pkt_queue_t      t_pkt_queue;   // queue to hold received packets
+extern uint             t_dlrv_cnt;    // limit deadlock recovery attempts
 extern uchar            tf_active;     // processing FWD-phase packet queue?
 extern scoreboard_t     tf_arrived;    // keep count of expected nets
 extern uint             tf_thrds_pend; // thread semaphore
@@ -187,6 +188,7 @@ extern test_results_t   t_test_results;    // test results to report to host
 extern stop_crit_t      tf_stop_func;  // stop evaluation function
 extern uint             tf_stop_key;   // stop criterion packet key
 extern uint             tf_stpn_key;   // stop network packet key
+extern uint             tf_dlrv_key;   // deadlock recovery packet key
 extern uint             tb_procs;      // pointer to processing errors
 extern uint             tb_comms;      // pointer to receiving errors
 extern scoreboard_t     tb_arrived;    // keep count of expected errors
@@ -230,6 +232,8 @@ extern uint stp_sent;  // stop packets sent
 extern uint stp_recv;  // stop packets received
 extern uint stn_sent;  // network_stop packets sent
 extern uint stn_recv;  // network_stop packets received
+extern uint dlr_sent;  // deadlock recovery packets sent
+extern uint dlr_recv;  // deadlock recovery packets received
 extern uint lds_sent;  // link_delta packets sent
 extern uint lds_recv;  // link_delta packets received
 extern uint tot_tick;  // total number of ticks executed

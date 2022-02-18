@@ -109,6 +109,22 @@ void w_handleFWDPacket (uint key, uint payload)
     return;
   }
 
+  // or process deadlock recovery packet,
+  if (pkt_type == SPINN_DLRV_KEY)
+  {
+    if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+    {
+      // report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
+    }
+    else
+    {
+      w_dlrv_packet ();
+    }
+
+    return;
+  }
+
 #ifdef DEBUG
   // or report unexpected packet type
   stage_done (SPINN_UNXPD_PKT, key);
@@ -313,6 +329,47 @@ void w_net_stop_packet (uint key)
   {
     // flag as ready
     net_stop_rdy = TRUE;
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void w_dlrv_packet (void)
+{
+#ifdef DEBUG
+  dlr_recv++;
+#endif
+
+  // restart tick
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    wf_thrds_pend = SPINN_WF_THRDS;
+
+    // initialise scoreboard,
+    wf_arrived = 0;
+
+    // and trigger computation
+    spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
+  }
+  else
+  {
+    // initialise thread semaphore,
+    wb_thrds_pend = SPINN_WB_THRDS;
+
+    // link delta sum in last BP tick if using Doug's momentum
+    if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+        && example_cnt == (xcfg.num_examples - 1)
+        && tick == SPINN_WB_END_TICK)
+    {
+      wb_thrds_pend |= SPINN_THRD_LDSA;
+    }
+
+    // initialise scoreboard,
+    wb_arrived = 0;
   }
 }
 // ------------------------------------------------------------------------

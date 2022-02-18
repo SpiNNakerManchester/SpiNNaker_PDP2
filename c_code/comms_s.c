@@ -142,6 +142,20 @@ void s_processQueue (uint unused0, uint unused1)
       s_sgen_packet ();
     }
 
+    // or process deadlock recovery packet,
+    else if (pkt_type == SPINN_DLRV_KEY)
+    {
+      if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+      {
+        // report timeout error
+        stage_done (SPINN_TIMEOUT_EXIT, 0);
+      }
+      else
+      {
+        s_dlrv_packet ();
+      }
+    }
+
 #ifdef DEBUG
     // or report unknown packet type,
     else
@@ -310,7 +324,11 @@ void s_lds_packet (uint payload)
       }
 
       // and advance tick
-      sb_advance_tick ();
+      //NOTE: first root does *not* get a backprop sync packet
+      if (scfg.is_first_root)
+      {
+        sb_advance_tick ();
+      }
     }
     else
     {
@@ -323,6 +341,8 @@ void s_lds_packet (uint payload)
   }
 }
 // ------------------------------------------------------------------------
+
+
 // ------------------------------------------------------------------------
 // process a backprop synchronisation packet
 // ------------------------------------------------------------------------
@@ -381,19 +401,16 @@ void s_sgen_packet (void)
       spin1_mode_restore (cpsr);
 
       // send sync packet to allow next tick to start,
-      if (scfg.is_tree_root)
-      {
-        while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+      while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
-        pkt_sent++;
-        spk_sent++;
+      pkt_sent++;
+      spk_sent++;
 #endif
-      }
 
       // and advance tick
-      //NOTE: root of first group tree does not receive backprop sync packets
-      if (scfg.is_first_group && scfg.is_tree_root)
+      //NOTE: first root does *not* get a backprop sync packet
+      if (scfg.is_first_root)
       {
         sb_advance_tick ();
       }
@@ -406,6 +423,45 @@ void s_sgen_packet (void)
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
     }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void s_dlrv_packet (void)
+{
+#ifdef DEBUG
+  dlr_recv++;
+#endif
+
+  // restart tick
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    sf_thrds_pend = SPINN_SF_THRDS;
+
+    // and initialise nets and scoreboards
+    for (uint i = 0; i < scfg.num_units; i++)
+    {
+      s_nets[i] = 0;
+      sf_arrived[i] = 0;
+    }
+    sf_done = 0;
+  }
+  else
+  {
+    // initialise thread semaphore,
+    sb_thrds_pend = sb_thrds_init;
+
+    // and initialise nets and scoreboards
+    for (uint i = 0; i < scfg.num_units; i++) {
+      s_errors[i] = 0;
+      sb_arrived[i] = 0;
+    }
+    sb_done = 0;
   }
 }
 // ------------------------------------------------------------------------
