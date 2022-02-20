@@ -142,6 +142,12 @@ void s_processQueue (uint unused0, uint unused1)
       s_sgen_packet ();
     }
 
+    // or process forward sync generation packet,
+    else if (pkt_type == SPINN_FSGN_KEY)
+    {
+      s_fsgn_packet ();
+    }
+
     // or process deadlock recovery packet,
     else if (pkt_type == SPINN_DLRV_KEY)
     {
@@ -186,37 +192,11 @@ void s_stop_packet (uint key)
   stp_recv++;
 #endif
 
-  // tick stop decision arrived,
+  // get tick stop decision,
   tick_stop = key & SPINN_STPD_MASK;
 
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(sf_thrds_pend & SPINN_THRD_STOP))
-    wrng_sth++;
-#endif
-
-  // and check if all other threads done
-  if (sf_thrds_pend == SPINN_THRD_STOP)
-  {
-    // if done initialise semaphore,
-    sf_thrds_pend = SPINN_SF_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    sf_advance_tick ();
-  }
-  else
-  {
-    // if not done report processing thread done,
-    sf_thrds_pend &= ~SPINN_THRD_STOP;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
-  }
+  // and advance tick
+  sf_advance_tick ();
 }
 // ------------------------------------------------------------------------
 
@@ -429,6 +409,36 @@ void s_sgen_packet (void)
 
 
 // ------------------------------------------------------------------------
+// process a forward sync generation packet
+// ------------------------------------------------------------------------
+void s_fsgn_packet (void)
+{
+#ifdef DEBUG
+  fsg_recv++;
+#endif
+
+  // update count of forward sync generation packets,
+  s_fsgn_arrived++;
+
+  // and check if all expected packets arrived
+  if (s_fsgn_arrived == s_fsgn_expected)
+  {
+    // prepare for next synchronisation,
+    s_fsgn_arrived = 0;
+
+    // and report forward sync gen
+    while (!spin1_send_mc_packet(fsgKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+    pkt_sent++;
+    fsg_sent++;
+#endif
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // process a deadlock recovery packet
 // ------------------------------------------------------------------------
 void s_dlrv_packet (void)
@@ -441,7 +451,7 @@ void s_dlrv_packet (void)
   if (phase == SPINN_FORWARD)
   {
     // initialise thread semaphore,
-    sf_thrds_pend = SPINN_SF_THRDS;
+    sf_thrds_pend = sf_thrds_init;
 
     // and initialise nets and scoreboards
     for (uint i = 0; i < scfg.num_units; i++)

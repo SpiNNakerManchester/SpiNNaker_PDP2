@@ -233,25 +233,13 @@ void w_forward_packet (uint key, uint payload)
     // update pointer to received unit outputs,
     wf_comms = 1 - wf_comms;
 
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(wf_thrds_pend & SPINN_THRD_COMS))
-      wrng_cth++;
+    // trigger forward sync generation,
+    while (!spin1_send_mc_packet (fsgKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+    pkt_sent++;
+    fsg_sent++;
 #endif
-
-    // and check if all other threads are done,
-    if (wf_thrds_pend == SPINN_THRD_COMS)
-    {
-      // if done initialise thread semaphore,
-      wf_thrds_pend = SPINN_WF_THRDS;
-
-      // and advance tick
-      spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
-    }
-    else
-    {
-      // if not done report comms thread done
-      wf_thrds_pend &= ~SPINN_THRD_COMS;
-    }
   }
 }
 // ------------------------------------------------------------------------
@@ -268,28 +256,11 @@ void w_stop_packet (uint key)
     wrng_fph++;
 #endif
 
-  // tick stop decision arrived,
+  // get tick stop decision,
   tick_stop = key & SPINN_STPD_MASK;
 
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(wf_thrds_pend & SPINN_THRD_STOP))
-    wrng_sth++;
-#endif
-
-  // check if all other threads done
-  if (wf_thrds_pend == SPINN_THRD_STOP)
-  {
-    // if done initialise thread semaphore,
-    wf_thrds_pend = SPINN_WF_THRDS;
-
-    // and advance tick
-    spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
-  }
-  else
-  {
-    // if not done report stop thread done
-    wf_thrds_pend &= ~SPINN_THRD_STOP;
-  }
+  // and advance tick
+  spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
 }
 // ------------------------------------------------------------------------
 

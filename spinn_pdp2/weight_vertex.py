@@ -369,6 +369,9 @@ class WeightVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
 
+        # write link keys: fsg (padding)
+        spec.write_value (0, data_type = DataType.UINT32)
+
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
                                     self._STAGE_CONFIGURATION_BYTES)

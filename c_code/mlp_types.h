@@ -46,7 +46,8 @@ enum MLPKeys {
   BKP  = 1,
   BPS  = 2,
   STP  = 3,
-  LDS  = 4
+  LDS  = 4,
+  FSG  = 5
 };
 
 

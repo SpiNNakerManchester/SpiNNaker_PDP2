@@ -343,10 +343,12 @@ void var_init (uint init_weights, uint reset_examples)
   wb_update_func = w_update_procs[xcfg.update_function];
 
   // initialise packet keys
-  //NOTE: colour is implicitly initialised to 0
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
   ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
+
+  //NOTE: forward sync gen packets follow the FORWARD route but use a different key
+  fsgKey = rt[FWD] | SPINN_FSGN_KEY;
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
@@ -361,6 +363,7 @@ void var_init (uint init_weights, uint reset_examples)
   pkt_fwbk = 0;  // unused packets received in FORWARD phase
   pkt_bwbk = 0;  // unused packets received in BACKPROP phase
   spk_recv = 0;  // sync packets received
+  fsg_sent = 0;  // forward sync generation packets sent
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
@@ -503,6 +506,7 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);
   io_printf (IO_BUF, "lds sent:%d\n", lds_sent);
   io_printf (IO_BUF, "lds recv:%d\n", lds_recv);
+  io_printf (IO_BUF, "fsgn sent:%d\n", fsg_sent);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);

@@ -49,7 +49,7 @@ void if_process (uint key, uint payload)
   tc[T2_LOAD] = SPINN_PROFILER_START;
 #endif
 
-  // get net index: mask out block, phase and colour data,
+  // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
 
   // store received net to be processed,
@@ -75,7 +75,7 @@ void if_process (uint key, uint payload)
     net_tmp = (net_t) i_nets[inx];
   }
 
-  // incorporate net index to the packet key and send,
+  // and incorporate net index to the packet key and send
   while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
 #ifdef DEBUG
@@ -83,51 +83,12 @@ void if_process (uint key, uint payload)
   sent_fwd++;
 #endif
 
-  // mark net as done,
-  if_done++;
-
 #ifdef PROFILE
   // update profiler values,
   uint cnt = SPINN_PROFILER_START - tc[T2_COUNT];
   if (cnt < prf_fwd_min) prf_fwd_min = cnt;
   if (cnt > prf_fwd_max) prf_fwd_max = cnt;
 #endif
-
-  // and check if all nets done
-  if (if_done == icfg.num_units)
-  {
-    // prepare for next tick,
-    if_done = 0;
-
-    // access thread semaphore with interrupts disabled
-    uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(if_thrds_pend & SPINN_THRD_PROC))
-      wrng_pth++;
-#endif
-
-    // check if all other threads done
-    if (if_thrds_pend == SPINN_THRD_PROC)
-    {
-      // if done initialise semaphore,
-      if_thrds_pend = SPINN_IF_THRDS;
-
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
-
-      // and advance tick
-      if_advance_tick ();
-    }
-    else
-    {
-      // if not done report processing thread done,
-      if_thrds_pend &= ~SPINN_THRD_PROC;
-
-      // and restore interrupts after flag access
-      spin1_mode_restore (cpsr);
-    }
-  }
 }
 // ------------------------------------------------------------------------
 
@@ -148,7 +109,7 @@ void ib_process (uint key, uint payload)
   tc[T2_LOAD] = SPINN_PROFILER_START;
 #endif
 
-  // get delta index: mask out block, phase and colour data,
+  // get delta index: mask out block and phase data,
   uint inx = key & SPINN_DELTA_MASK;
 
   // store received delta to be processed,

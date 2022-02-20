@@ -92,48 +92,9 @@ void sf_process (uint key, uint payload)
     sent_fwd++;
 #endif
 
-    // prepare for next tick,
+    // and prepare for next tick
     s_nets[inx] = 0;
     sf_arrived[inx] = 0;
-
-    // mark net as done,
-    sf_done++;
-
-    // and check if all nets done
-    if (sf_done == scfg.num_units)
-    {
-       // prepare for next tick,
-       sf_done = 0;
-
-      // access thread semaphore with interrupts disabled
-      uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-      if (!(sf_thrds_pend & SPINN_THRD_PROC))
-        wrng_pth++;
-#endif
-
-      // and check if all other threads done
-      if (sf_thrds_pend == SPINN_THRD_PROC)
-      {
-        // if done initialise semaphore
-        sf_thrds_pend = SPINN_SF_THRDS;
-
-        // restore interrupts after flag access,
-        spin1_mode_restore (cpsr);
-
-        // and advance tick
-        sf_advance_tick ();
-      }
-      else
-      {
-        // if not done report processing thread done,
-        sf_thrds_pend &= ~SPINN_THRD_PROC;
-
-        // and restore interrupts after flag access
-        spin1_mode_restore (cpsr);
-      }
-    }
   }
 }
 // ------------------------------------------------------------------------
@@ -155,7 +116,7 @@ void sb_process (uint key, uint payload)
   tc[T2_LOAD] = SPINN_PROFILER_START;
 #endif
 
-  // get error index: mask out block, phase and colour data,
+  // get error index: mask out block and phase data,
   uint inx = key & SPINN_ERROR_MASK;
 
   // accumulate new error b-d-p,

@@ -90,35 +90,6 @@ void wf_process (uint unused0, uint unused1)
     if (cnt > prf_fwd_max) prf_fwd_max = cnt;
 #endif
   }
-
-  // access thread semaphore with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(wf_thrds_pend & SPINN_THRD_PROC))
-    wrng_pth++;
-#endif
-
-  // and check if all other threads done
-  if (wf_thrds_pend == SPINN_THRD_PROC)
-  {
-    // if done initialise thread semaphore,
-    wf_thrds_pend = SPINN_WF_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    wf_advance_tick (0, 0);
-  }
-  else
-  {
-    // if not done report processing thread done,
-    wf_thrds_pend &= ~SPINN_THRD_PROC;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
-  }
 }
 // ------------------------------------------------------------------------
 

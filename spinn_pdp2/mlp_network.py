@@ -1103,6 +1103,33 @@ class MLPNetwork():
                         svt.root.bps_link
                         )
 
+                # forward sync generation s to s links
+                #NOTE: s cores that are tree internal nodes not involved
+                if sgrp != 0:
+                    # first subgroup collects from all other subgroups
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (
+                            svt.root,
+                            grp.s_vertex[0].root
+                            ),
+                        svt.root.fsg_link
+                        )
+                elif grp != first_grp:
+                    # first group collects from all other groups
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (
+                            svt.root,
+                            first_subgroup_svt.root
+                            ),
+                        svt.root.fsg_link
+                        )
+
+        # forward sync generation first s to last t link
+        gfe.add_machine_edge_instance (
+            MachineEdge (first_subgroup_svt.root, last_out_subgroup_t_vertex),
+            first_subgroup_svt.root.fsg_link
+            )
+
         self._graph_rdy = True
 
         return True

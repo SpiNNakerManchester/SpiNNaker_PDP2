@@ -121,7 +121,8 @@
 #define SPINN_DATA_KEY       0x00000000
 #define SPINN_SYNC_KEY       0x00001000
 #define SPINN_SGEN_KEY       0x00002000
-#define SPINN_LDSA_KEY       0x00003000
+#define SPINN_FSGN_KEY       0x00003000
+#define SPINN_LDSA_KEY       0x00004000
 #define SPINN_CRIT_KEY       0x00005000
 #define SPINN_STPN_KEY       0x00006000
 #define SPINN_STOP_KEY       0x00007000
@@ -164,18 +165,20 @@
 // ------------------------------------------------------------------------
 // thread parameters
 // ------------------------------------------------------------------------
+#define SPINN_NO_THRDS       0
 #define SPINN_THRD_PROC      1
 #define SPINN_THRD_COMS      ((SPINN_THRD_PROC) << 1)
 #define SPINN_THRD_CRIT      ((SPINN_THRD_COMS) << 1)
 #define SPINN_THRD_STOP      ((SPINN_THRD_CRIT) << 1)
 #define SPINN_THRD_LDSA      ((SPINN_THRD_STOP) << 1)
 #define SPINN_THRD_SYNC      ((SPINN_THRD_LDSA) << 1)
+#define SPINN_THRD_FSGN      ((SPINN_THRD_SYNC) << 1)
 
-#define SPINN_WF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_COMS | SPINN_THRD_STOP)
+#define SPINN_WF_THRDS       (SPINN_NO_THRDS)
 #define SPINN_WB_THRDS       (SPINN_THRD_PROC | SPINN_THRD_SYNC)
-#define SPINN_SF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
-#define SPINN_SB_THRDS       (SPINN_THRD_PROC)
-#define SPINN_IF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
+#define SPINN_SF_THRDS       (SPINN_NO_THRDS)
+#define SPINN_SB_THRDS       (SPINN_THRD_PROC | SPINN_THRD_SYNC)
+#define SPINN_IF_THRDS       (SPINN_NO_THRDS)
 #define SPINN_IB_THRDS       (SPINN_THRD_PROC | SPINN_THRD_SYNC)
 #define SPINN_TF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_CRIT)
 #define SPINN_TB_THRDS       (SPINN_THRD_PROC | SPINN_THRD_COMS | SPINN_THRD_SYNC)

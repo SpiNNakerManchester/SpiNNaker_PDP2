@@ -119,6 +119,7 @@ uint cfg_init (void)
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
   io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
+  io_printf (IO_BUF, "fs: 0x%08x\n", rt[FSG]);
 #endif
 
   return (SPINN_NO_ERROR);
@@ -221,19 +222,23 @@ void var_init (uint reset_examples)
   sf_done = 0;
   sb_done = 0;
 
+  s_sync_arrived = 0;
+  s_fsgn_arrived = 0;
+
+  // forward sync gen packets arrive from w and other s cores
+  s_fsgn_expected = scfg.fwd_expected + scfg.sync_expected;
+
   // initialise thread semaphores
-  sf_thrds_pend = SPINN_SF_THRDS;
+  sf_thrds_init = SPINN_SF_THRDS;
+  sb_thrds_init = SPINN_SB_THRDS;
 
   // not all s cores take part in backprop sync generation
-  if (scfg.sync_expected != 0)
+  if (scfg.sync_expected == 0)
   {
-    sb_thrds_init = SPINN_SB_THRDS | SPINN_THRD_SYNC;
-  }
-  else
-  {
-    sb_thrds_init = SPINN_SB_THRDS;
+    sb_thrds_init &= ~SPINN_THRD_SYNC;
   }
 
+  sf_thrds_pend = sf_thrds_init;
   sb_thrds_pend = sb_thrds_init;
 
   // initialise processing thread flag
@@ -248,7 +253,6 @@ void var_init (uint reset_examples)
   s_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is implicitly initialised to 0
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
@@ -264,6 +268,8 @@ void var_init (uint reset_examples)
     bpsKey = rt[BPS] | SPINN_SGEN_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
   }
 
+  fsgKey = rt[FSG] | SPINN_FSGN_KEY;
+
 #ifdef DEBUG
   // ------------------------------------------------------------------------
   // DEBUG variables
@@ -276,6 +282,8 @@ void var_init (uint reset_examples)
   recv_bkp = 0;  // packets received in BACKPROP phase
   spk_sent = 0;  // sync packets sent
   spk_recv = 0;  // sync packets received
+  fsg_sent = 0;  // forward sync generation packets sent
+  fsg_recv = 0;  // forward sync generation packets received
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
@@ -414,6 +422,8 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "lds sent:%d\n", lds_sent);
   io_printf (IO_BUF, "lds recv:%d\n", lds_recv);
+  io_printf (IO_BUF, "fsgn sent:%d\n", fsg_sent);
+  io_printf (IO_BUF, "fsgn recv:%d\n", fsg_recv);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);

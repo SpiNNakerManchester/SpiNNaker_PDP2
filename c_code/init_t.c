@@ -562,10 +562,16 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tf_thrds_init = SPINN_TF_THRDS;
   tb_thrds_init = SPINN_TB_THRDS;
 
-  // some cores do *not* expect a previous criterion value
+  // some cores do *not* receive a previous criterion value
   if (tcfg.crit_expected == 0)
   {
     tf_thrds_init &= ~SPINN_THRD_CRIT;
+  }
+
+  // last output subgroup receives forward sync gen packets
+  if (tcfg.is_last_output)
+  {
+    tf_thrds_init |= SPINN_THRD_FSGN;
   }
 
   tf_thrds_pend = tf_thrds_init;
@@ -621,7 +627,6 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   t_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is implicitly initialised to 0
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
@@ -655,6 +660,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   spk_recv = 0;  // sync packets received
   crt_sent = 0;  // criterion packets sent
   crt_recv = 0;  // criterion packets received
+  fsg_recv = 0;  // forward sync generation packets received
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_sent = 0;  // network_stop packets sent
@@ -815,6 +821,10 @@ void stage_done (uint ec, uint key)
   if (tcfg.is_last_sgrp)
   {
     io_printf (IO_BUF, "crit recv:%d\n", crt_recv);
+  }
+  if (tcfg.is_last_output)
+  {
+    io_printf (IO_BUF, "fsg recv:%d\n", fsg_recv);
   }
   if (tcfg.is_last_output)
   {

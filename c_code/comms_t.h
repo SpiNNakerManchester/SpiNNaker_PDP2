@@ -23,6 +23,7 @@ void w_handleBKPPacket (uint key,     uint payload);
 void t_processFWDQueue (uint unused0, uint unused1);
 
 void t_criterion_packet (uint key);
+void t_fsgn_packet      (void);
 void t_stop_packet      (uint key);
 void t_net_stop_packet  (uint key);
 void t_dlrv_packet      (void);

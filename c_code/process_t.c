@@ -57,7 +57,7 @@ void tf_process (uint key, uint payload)
   tc[T2_LOAD] = SPINN_PROFILER_START;
 #endif
 
-  // get net index: mask out block, phase and colour data,
+  // get net index: mask out block and phase data,
   uint inx = (key & SPINN_NET_MASK);
 
   // packet carries a net as payload,

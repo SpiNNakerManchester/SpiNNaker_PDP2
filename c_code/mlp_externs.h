@@ -31,6 +31,7 @@ extern uint fwdKey;               // packet ID for FORWARD-phase data
 extern uint bkpKey;               // packet ID for BACKPROP-phase data
 extern uint ldsKey;               // packet ID for link delta summation
 extern uint bpsKey;               // packet ID for BACKPROP synchronisation
+extern uint fsgKey;               // packet ID for FORWARD sync generation
 
 extern uint32_t stage_step;       // current stage step
 extern uint32_t stage_num_steps;  // current stage number of steps
@@ -113,14 +114,18 @@ extern pkt_queue_t      s_pkt_queue;    // queue to hold received packets
 extern uchar            s_active;       // processing packets from queue?
 extern lds_t            s_lds_part;     // partial link delta sum
 extern scoreboard_t   * sf_arrived;     // keep count of expected net b-d-p
+extern scoreboard_t     s_fsgn_arrived; // keep count of expected sync packets
 extern scoreboard_t     sf_done;        // current tick net computation done
 extern uint             sf_thrds_pend;  // thread semaphore
+extern uint             sf_thrds_init;  // thread semaphore initialisation
 extern scoreboard_t   * sb_arrived;     // keep count of expected error b-d-p
 extern scoreboard_t     sb_done;        // current tick error computation done
 extern uint             sb_thrds_pend;  // thread semaphore
 extern uint             sb_thrds_init;  // thread semaphore initialisation
 extern scoreboard_t     s_lds_arrived;  // keep count of received link delta sums
 extern scoreboard_t     s_sync_arrived; // keep count of expected sync packets
+extern scoreboard_t     s_fsgn_arrived; // keep count of forward sync gen packets
+extern uint             s_fsgn_expected;// expected count of forward sync gen packets
 // ------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------
@@ -228,6 +233,8 @@ extern uint spk_sent;  // sync packets sent
 extern uint spk_recv;  // sync packets received
 extern uint crt_sent;  // criterion packets sent
 extern uint crt_recv;  // criterion packets received
+extern uint fsg_sent;  // forward sync generation packets sent
+extern uint fsg_recv;  // forward sync generation packets received
 extern uint stp_sent;  // stop packets sent
 extern uint stp_recv;  // stop packets received
 extern uint stn_sent;  // network_stop packets sent

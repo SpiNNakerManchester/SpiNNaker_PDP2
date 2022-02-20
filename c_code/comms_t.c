@@ -151,6 +151,12 @@ void t_processFWDQueue (uint unused0, uint unused1)
       t_criterion_packet (key);
     }
 
+    // or process forward sync gen packet,
+    else if (pkt_type == SPINN_FSGN_KEY)
+    {
+      t_fsgn_packet ();
+    }
+
     // or process tick stop packet,
     else if (pkt_type == SPINN_STOP_KEY)
     {
@@ -250,6 +256,46 @@ void t_criterion_packet (uint key)
       // and restore interrupts after semaphore access
       spin1_mode_restore (cpsr);
     }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a forward sync generation packet
+// ------------------------------------------------------------------------
+void t_fsgn_packet (void)
+{
+#ifdef DEBUG
+  fsg_recv++;
+#endif
+
+  // access thread semaphore with interrupts disabled,
+  uint cpsr = spin1_int_disable();
+
+  // and check if all other threads are done
+  if (tf_thrds_pend == SPINN_THRD_FSGN) {
+    // if done initialise thread semaphore,
+    tf_thrds_pend = tf_thrds_init;
+
+    // restore interrupts after flag access,
+    spin1_mode_restore(cpsr);
+
+    // send stop packet,
+    tf_send_stop();
+
+    // and advance tick if last_output_group
+    //NOTE: last output group does not get a tick stop packet
+    // so it's ready to advance tick
+    if (tcfg.is_last_output) {
+      tf_advance_tick();
+    }
+  } else {
+    // if not done report thread done,
+    tf_thrds_pend &= ~SPINN_THRD_FSGN;
+
+    // and restore interrupts after semaphore access
+    spin1_mode_restore(cpsr);
   }
 }
 // ------------------------------------------------------------------------

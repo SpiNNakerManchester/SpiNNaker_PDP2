@@ -81,6 +81,7 @@ class SumVertex(
         self._bkp_link = f"bkp_s{self.group.id}/{self.subgroup}/{self.idx}"
         self._lds_link = f"lds_s{self.group.id}/{self.subgroup}/{self.idx}"
         self._bps_link = f"bps_s{self.group.id}/{self.subgroup}/{self.idx}"
+        self._fsg_link = f"fsg_s{self.group.id}/{self.subgroup}/{self.idx}"
 
         # sum core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
@@ -153,6 +154,10 @@ class SumVertex(
     @property
     def bps_link (self):
         return self._bps_link
+
+    @property
+    def fsg_link (self):
+        return self._fsg_link
 
     @property
     def config (self):
@@ -320,7 +325,7 @@ class SumVertex(
             self, self.bkp_link), data_type = DataType.UINT32)
 
         # write link keys: bps (padding if not SumVertex tree root)
-        if (self.is_tree_root):
+        if self.is_tree_root:
             spec.write_value (routing_info.get_first_key_from_pre_vertex (
                 self, self.bps_link), data_type = DataType.UINT32)
         else:
@@ -332,6 +337,10 @@ class SumVertex(
         # write link keys: lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
+
+        # write link keys: fsg
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.fsg_link), data_type = DataType.UINT32)
 
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
@@ -426,6 +435,10 @@ class SumVertexTree(
 
             gfe.add_machine_edge_instance (
                 MachineEdge (vt, self.vertices[to_vrt]), vt.lds_link
+                )
+
+            gfe.add_machine_edge_instance (
+                MachineEdge (vt, self.vertices[to_vrt]), vt.fsg_link
                 )
 
             # take away one free link from vertex to_vrt

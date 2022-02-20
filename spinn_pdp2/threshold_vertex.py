@@ -506,6 +506,9 @@ class ThresholdVertex(
         # write link keys: lds (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
+        # write link keys: fsg (padding)
+        spec.write_value (0, data_type = DataType.UINT32)
+
         # reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
                                     self._STAGE_CONFIGURATION_BYTES)

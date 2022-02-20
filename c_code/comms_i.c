@@ -175,37 +175,11 @@ void i_stop_packet (uint key)
   stp_recv++;
 #endif
 
-  // tick STOP decision arrived,
+  // get tick STOP decision,
   tick_stop = key & SPINN_STPD_MASK;
 
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(if_thrds_pend & SPINN_THRD_STOP))
-      wrng_sth++;
-#endif
-
-  // and check if all other threads done
-  if (if_thrds_pend == SPINN_THRD_STOP)
-  {
-    // if done initialise semaphore,
-    if_thrds_pend = SPINN_IF_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    if_advance_tick ();
-  }
-  else
-  {
-    // if not done report processing thread done
-    if_thrds_pend &= ~SPINN_THRD_STOP;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
-  }
+  // and advance tick
+  if_advance_tick ();
 }
 // ------------------------------------------------------------------------
 

@@ -45,6 +45,7 @@ uint fwdKey;               // packet ID for FORWARD-phase data
 uint bkpKey;               // packet ID for BACKPROP-phase data
 uint ldsKey;               // packet ID for link delta summation
 uint bpsKey;               // packet ID for BACKPROP synchronisation
+uint fsgKey;               // packet ID for FORWARD sync generation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
@@ -102,6 +103,7 @@ lds_t            s_lds_part;        // partial link delta sum
 scoreboard_t   * sf_arrived;        // keep count of expected net b-d-p
 scoreboard_t     sf_done;           // current tick net computation done
 uint             sf_thrds_pend;     // thread semaphore
+uint             sf_thrds_init;     // thread semaphore initialisation
 
 // BACKPROP phase specific
 // (error computation)
@@ -111,6 +113,8 @@ uint             sb_thrds_pend;     // thread semaphore
 uint             sb_thrds_init;     // thread semaphore initialisation
 scoreboard_t     s_lds_arrived;     // keep count of the number of partial link delta sums
 scoreboard_t     s_sync_arrived;    // keep count of expected sync packets
+scoreboard_t     s_fsgn_arrived;    // keep count of forward sync gen packets
+uint             s_fsgn_expected;   // expected count of forward sync gen packets
 // ------------------------------------------------------------------------
 
 
@@ -126,6 +130,8 @@ uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
 uint spk_sent;  // sync packets sent
 uint spk_recv;  // sync packets received
+uint fsg_sent;  // forward sync generation packets sent
+uint fsg_recv;  // forward sync generation packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
