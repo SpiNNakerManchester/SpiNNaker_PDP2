@@ -128,39 +128,35 @@ void tf_process (uint key, uint payload)
       }
     }
 
-    // access thread semaphore and flags with interrupts disabled,
+    // access thread semaphore with interrupts disabled,
     uint cpsr = spin1_int_disable ();
 
-    // report processing thread done,
-    //NOTE: tick stop decision cannot have arrived!
-    tf_thrds_pend &= ~SPINN_THRD_PROC;
-
-    // check if criterion value can be forwarded
-    if (tf_crit_rdy)
+    // and check if all other threads are done
+    if (tf_thrds_pend == SPINN_THRD_PROC)
     {
-      // initialise flag,
-      tf_crit_rdy = tf_crit_init;
+      // if done initialise thread semaphore,
+      tf_thrds_pend = tf_thrds_init;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
-      // send (criterion/tick stop) packet,
+      // send stop packet,
       tf_send_stop ();
 
-      // and advance tick if last group
-      //NOTE: last group does not get a stop decision
+      // and advance tick if last_output_group
+      //NOTE: last output group does not get a tick stop packet
+      // so it's ready to advance tick
       if (tcfg.is_last_output)
       {
-        //TODO: check if need to schedule or can simply call
         tf_advance_tick ();
       }
     }
     else
     {
-      // flag that local value is ready,
-      tf_crit_rdy = 1;
+      // if not done report thread done,
+      tf_thrds_pend &= ~SPINN_THRD_PROC;
 
-      // and restore interrupts after flag access
+      // and restore interrupts after semaphore access
       spin1_mode_restore (cpsr);
     }
   }
@@ -246,7 +242,7 @@ void tb_process (uint unused0, uint unused1)
   if (tb_thrds_pend == SPINN_THRD_PROC)
   {
     // if done initialise thread semaphore,
-    tb_thrds_pend = SPINN_TB_THRDS;
+    tb_thrds_pend = tb_thrds_init;
 
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);

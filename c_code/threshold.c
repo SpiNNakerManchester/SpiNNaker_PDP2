@@ -171,10 +171,9 @@ uint             t_dlrv_cnt;        // limit deadlock recovery attempts
 uchar            tf_active;         // processing FWD-phase packet queue?
 scoreboard_t     tf_arrived;        // keep count of expected nets
 uint             tf_thrds_pend;     // thread semaphore
+uint             tf_thrds_init;     // thread semaphore initial value
 uchar            tf_crit_prev;      // criterion value received
 scoreboard_t     tf_crit_arrived;   // keep count of expected crit pkts
-uchar            tf_crit_init;      // criterion init value
-uchar            tf_crit_rdy;       // criterion can be forwarded
 uchar            tf_stop_crit;      // stop criterion met?
 uchar            tf_group_crit;     // stop criterion met for all groups?
 uchar            tf_event_crit;     // stop criterion met for all events?
@@ -192,6 +191,7 @@ uint             tb_procs;          // pointer to processing errors
 uint             tb_comms;          // pointer to receiving errors
 scoreboard_t     tb_arrived;        // keep count of expected errors
 uint             tb_thrds_pend;     // thread semaphore
+uint             tb_thrds_init;     // thread semaphore initial value
 
 int              t_max_output_unit; // unit with highest output
 int              t_max_target_unit; // unit with highest target
@@ -287,21 +287,20 @@ void timeout (uint ticks, uint unused)
       // restart tick
       if (phase == SPINN_FORWARD) {
         // initialise thread semaphore,
-        tf_thrds_pend = SPINN_TF_THRDS;
+        tf_thrds_pend = tf_thrds_init;
 
         // initialise scoreboards,
         tf_arrived = 0;
         tf_crit_arrived = 0;
 
-        // initialise flag and previous value,
-        tf_crit_rdy = tf_crit_init;
+        // initialise previous value,
         tf_crit_prev = TRUE;
 
         // and initialise processing thread flag
         tf_active = FALSE;
       } else {
         // initialise thread semaphore,
-        tb_thrds_pend = SPINN_TB_THRDS;
+        tb_thrds_pend = tb_thrds_init;
 
         // initialise scoreboard,
         tb_arrived = 0;

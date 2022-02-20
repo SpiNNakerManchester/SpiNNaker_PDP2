@@ -219,14 +219,14 @@ void t_criterion_packet (uint key)
     // initialise scoreboard for next tick,
     tf_crit_arrived = 0;
 
-    // access flag with interrupts disabled,
+    // access thread semaphore with interrupts disabled,
     uint cpsr = spin1_int_disable ();
 
-    // and check if updated criterion value can be forwarded
-    if (tf_crit_rdy)
+    // and check if all other threads are done
+    if (tf_thrds_pend == SPINN_THRD_CRIT)
     {
-      // initialise flag,
-      tf_crit_rdy = 0;
+      // if done initialise thread semaphore,
+      tf_thrds_pend = tf_thrds_init;
 
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
@@ -244,10 +244,10 @@ void t_criterion_packet (uint key)
     }
     else
     {
-      // flag ready to forward criterion,
-      tf_crit_rdy = 1;
+      // if not done report thread done,
+      tf_thrds_pend &= ~SPINN_THRD_CRIT;
 
-      // and restore interrupts after flag access
+      // and restore interrupts after semaphore access
       spin1_mode_restore (cpsr);
     }
   }
@@ -264,37 +264,11 @@ void t_stop_packet (uint key)
   stp_recv++;
 #endif
 
-  // tick stop decision arrived,
+  // get tick stop decision,
   tick_stop = key & SPINN_STPD_MASK;
 
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(tf_thrds_pend & SPINN_THRD_STOP))
-    wrng_sth++;
-#endif
-
-  // and check if all other threads done
-  if (tf_thrds_pend == SPINN_THRD_STOP)
-  {
-    // initialise semaphore,
-    tf_thrds_pend = SPINN_TF_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    tf_advance_tick ();
-  }
-  else
-  {
-    // if not done report stop thread done,
-    tf_thrds_pend &= ~SPINN_THRD_STOP;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
-  }
+  // and advance tick
+  tf_advance_tick ();
 }
 // ------------------------------------------------------------------------
 
@@ -355,14 +329,13 @@ void t_dlrv_packet (void)
   if (phase == SPINN_FORWARD)
   {
     // initialise thread semaphore,
-    tf_thrds_pend = SPINN_TF_THRDS;
+    tf_thrds_pend = tf_thrds_init;
 
     // initialise scoreboards,
     tf_arrived = 0;
     tf_crit_arrived = 0;
 
-    // initialise flag and previous value,
-    tf_crit_rdy = tf_crit_init;
+    // initialise previous value,
     tf_crit_prev = TRUE;
 
     // and initialise processing thread flag
@@ -371,7 +344,7 @@ void t_dlrv_packet (void)
   else
   {
     // initialise thread semaphore,
-    tb_thrds_pend = SPINN_TB_THRDS;
+    tb_thrds_pend = tb_thrds_init;
 
     // initialise scoreboard,
     tb_arrived = 0;
@@ -421,7 +394,7 @@ void t_backprop_packet (uint key, uint payload)
     if (tb_thrds_pend == SPINN_THRD_COMS)
     {
       // if done initialise thread semaphore,
-      tb_thrds_pend = SPINN_TB_THRDS;
+      tb_thrds_pend = tb_thrds_init;
 
       // and advance tick
       spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
@@ -449,7 +422,7 @@ void t_sync_packet (void)
   if (tb_thrds_pend == SPINN_THRD_SYNC)
   {
     // initialise semaphore,
-    tb_thrds_pend = SPINN_TB_THRDS;
+    tb_thrds_pend = tb_thrds_init;
 
     // and advance tick
     spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);

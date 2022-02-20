@@ -166,7 +166,8 @@
 // ------------------------------------------------------------------------
 #define SPINN_THRD_PROC      1
 #define SPINN_THRD_COMS      ((SPINN_THRD_PROC) << 1)
-#define SPINN_THRD_STOP      ((SPINN_THRD_COMS) << 1)
+#define SPINN_THRD_CRIT      ((SPINN_THRD_COMS) << 1)
+#define SPINN_THRD_STOP      ((SPINN_THRD_CRIT) << 1)
 #define SPINN_THRD_LDSA      ((SPINN_THRD_STOP) << 1)
 #define SPINN_THRD_SYNC      ((SPINN_THRD_LDSA) << 1)
 
@@ -176,7 +177,7 @@
 #define SPINN_SB_THRDS       (SPINN_THRD_PROC)
 #define SPINN_IF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
 #define SPINN_IB_THRDS       (SPINN_THRD_PROC | SPINN_THRD_SYNC)
-#define SPINN_TF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_STOP)
+#define SPINN_TF_THRDS       (SPINN_THRD_PROC | SPINN_THRD_CRIT)
 #define SPINN_TB_THRDS       (SPINN_THRD_PROC | SPINN_THRD_COMS | SPINN_THRD_SYNC)
 
 // ------------------------------------------------------------------------

@@ -559,8 +559,17 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tf_crit_arrived = 0;
 
   // initialise thread semaphores
-  tf_thrds_pend = SPINN_TF_THRDS;
-  tb_thrds_pend = SPINN_TB_THRDS;
+  tf_thrds_init = SPINN_TF_THRDS;
+  tb_thrds_init = SPINN_TB_THRDS;
+
+  // some cores do *not* expect a previous criterion value
+  if (tcfg.crit_expected == 0)
+  {
+    tf_thrds_init &= ~SPINN_THRD_CRIT;
+  }
+
+  tf_thrds_pend = tf_thrds_init;
+  tb_thrds_pend = tb_thrds_init;
 
   // initialise recording options
   t_rec_results = xcfg.rec_results && tcfg.is_last_output &&
@@ -601,18 +610,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
                - SPINN_SHORT_ACTIV_SHIFT);
   }
 
-  // check if expecting a previous criterion value
-  if (tcfg.crit_expected)
-  {
-    tf_crit_init = 0;
-  }
-  else
-  {
-    tf_crit_init = 1;
-  }
-
-  // initialise flag and previous value
-  tf_crit_rdy = tf_crit_init;
+  // initialise previous value
   tf_crit_prev = TRUE;
 
   // initialise processing thread flag
@@ -798,8 +796,8 @@ void stage_done (uint ec, uint key)
                   tf_active, tf_arrived, tcfg.num_units,
                   tb_arrived, tcfg.num_units
                 );
-      io_printf (IO_BUF, "(tcr:%u fptd:%u bptd:%u)\n",
-                  tf_crit_rdy, tf_thrds_pend, tb_thrds_pend
+      io_printf (IO_BUF, "(fptd:%u bptd:%u)\n",
+                  tf_thrds_pend, tb_thrds_pend
                 );
       io_printf (IO_BUF, "stage aborted\n");
       break;

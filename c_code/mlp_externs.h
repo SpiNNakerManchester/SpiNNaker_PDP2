@@ -175,10 +175,9 @@ extern uint             t_dlrv_cnt;    // limit deadlock recovery attempts
 extern uchar            tf_active;     // processing FWD-phase packet queue?
 extern scoreboard_t     tf_arrived;    // keep count of expected nets
 extern uint             tf_thrds_pend; // thread semaphore
+extern uint             tf_thrds_init;     // thread semaphore initial value
 extern uchar            tf_crit_prev;  // criterion value received
 extern scoreboard_t     tf_crit_arrived;  // keep count of expected crit pkts
-extern uchar            tf_crit_init;  // criterion init value
-extern uchar            tf_crit_rdy;   // criterion can be forwarded
 extern uchar            tf_stop_crit;  // stop criterion met?
 extern uchar            tf_group_crit;     // stop criterion met for all groups?
 extern uchar            tf_event_crit;     // stop criterion met for all events?
@@ -193,6 +192,7 @@ extern uint             tb_procs;      // pointer to processing errors
 extern uint             tb_comms;      // pointer to receiving errors
 extern scoreboard_t     tb_arrived;    // keep count of expected errors
 extern uint             tb_thrds_pend; // thread semaphore
+extern uint             tb_thrds_init; // thread semaphore initial value
 extern int              t_max_output_unit; // unit with highest output
 extern int              t_max_target_unit; // unit with highest target
 extern activation_t     t_max_output;      // highest output value
