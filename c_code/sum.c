@@ -128,10 +128,11 @@ uint sent_bkp;  // packets sent in BACKPROP phase
 uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
-uint spk_sent;  // sync packets sent
 uint spk_recv;  // sync packets received
 uint fsg_sent;  // forward sync generation packets sent
 uint fsg_recv;  // forward sync generation packets received
+uint bsg_sent;  // BACKPROP sync generation packets sent
+uint bsg_recv;  // BACKPROP sync generation packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received

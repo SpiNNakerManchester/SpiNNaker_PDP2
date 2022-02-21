@@ -233,8 +233,10 @@ extern uint spk_sent;  // sync packets sent
 extern uint spk_recv;  // sync packets received
 extern uint crt_sent;  // criterion packets sent
 extern uint crt_recv;  // criterion packets received
-extern uint fsg_sent;  // forward sync generation packets sent
-extern uint fsg_recv;  // forward sync generation packets received
+extern uint fsg_sent;  // FORWARD sync generation packets sent
+extern uint fsg_recv;  // FORWARD sync generation packets received
+extern uint bsg_sent;  // BACKPROP sync generation packets sent
+extern uint bsg_recv;  // BACKPROP sync generation packets received
 extern uint stp_sent;  // stop packets sent
 extern uint stp_recv;  // stop packets received
 extern uint stn_sent;  // network_stop packets sent

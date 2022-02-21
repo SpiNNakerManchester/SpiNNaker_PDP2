@@ -100,6 +100,13 @@ void w_handleBKPPacket (uint key, uint payload)
   }
 
   // or process synchronisation packet,
+  if (pkt_type == SPINN_SGEN_KEY)
+  {
+    t_sgen_packet ();
+    return;
+  }
+
+  // or process synchronisation packet,
   if (pkt_type == SPINN_SYNC_KEY)
   {
     t_sync_packet ();
@@ -442,6 +449,17 @@ void t_backprop_packet (uint key, uint payload)
       // if done initialise thread semaphore,
       tb_thrds_pend = tb_thrds_init;
 
+      if (tcfg.is_last_output)
+      {
+        // send sync packet to allow next tick to start
+        while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+        pkt_sent++;
+        spk_sent++;
+#endif
+      }
+
       // and advance tick
       spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
     }
@@ -450,6 +468,41 @@ void t_backprop_packet (uint key, uint payload)
       // if not done report comms thread done
       tb_thrds_pend &= ~SPINN_THRD_COMS;
     }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a bakprop sync generation packet
+// ------------------------------------------------------------------------
+void t_sgen_packet (void)
+{
+#ifdef DEBUG
+  bsg_recv++;
+#endif
+
+  // check if all other threads done
+  if (tb_thrds_pend == SPINN_THRD_SYNC)
+  {
+    // initialise semaphore,
+    tb_thrds_pend = tb_thrds_init;
+
+    // send sync packet to allow next tick to start,
+    while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+    pkt_sent++;
+    spk_sent++;
+#endif
+
+    // and advance tick
+    spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
+  }
+  else
+  {
+    // report sync thread done
+    tb_thrds_pend &= ~SPINN_THRD_SYNC;
   }
 }
 // ------------------------------------------------------------------------

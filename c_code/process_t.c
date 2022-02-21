@@ -247,7 +247,18 @@ void tb_process (uint unused0, uint unused1)
     // restore interrupts after flag access,
     spin1_mode_restore (cpsr);
 
-    // and advance tick
+    if (tcfg.is_last_output)
+    {
+      // and send sync packet to allow next tick to start
+      while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+      pkt_sent++;
+      spk_sent++;
+#endif
+    }
+
+    // advance tick
     tb_advance_tick (0, 0);
   }
   else

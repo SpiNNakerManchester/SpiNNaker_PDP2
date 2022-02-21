@@ -98,6 +98,7 @@ uint coreID;               // 5-bit virtual core ID
 
 uint fwdKey;               // packet ID for FORWARD-phase data
 uint bkpKey;               // packet ID for BACKPROP-phase data
+uint bpsKey;               // packet ID for BACKPROP synchronisation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
@@ -224,10 +225,13 @@ uint sent_bkp;  // packets sent in BACKPROP phase
 uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
+uint spk_sent;  // sync packets sent
 uint spk_recv;  // sync packets received
 uint crt_sent;  // criterion packets sent
 uint crt_recv;  // criterion packets received
 uint fsg_recv;  // forward sync generation packets received
+uint bsg_sent;  // BACKPROP sync generation packets sent
+uint bsg_recv;  // BACKPROP sync generation packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_sent;  // network_stop packets sent

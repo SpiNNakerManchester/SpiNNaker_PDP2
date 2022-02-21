@@ -629,6 +629,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   // initialise packet keys
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  bpsKey = rt[STP] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
   if (tcfg.is_last_output)
   {
@@ -657,10 +658,13 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   pkt_recv = 0;  // total packets received
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
+  spk_sent = 0;  // sync packets sent
   spk_recv = 0;  // sync packets received
   crt_sent = 0;  // criterion packets sent
   crt_recv = 0;  // criterion packets received
   fsg_recv = 0;  // forward sync generation packets received
+  bsg_sent = 0;  // BACKPROP sync generation packets sent
+  bsg_recv = 0;  // BACKPROP sync generation packets received
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_sent = 0;  // network_stop packets sent
@@ -826,6 +830,8 @@ void stage_done (uint ec, uint key)
   {
     io_printf (IO_BUF, "fsg recv:%d\n", fsg_recv);
   }
+  io_printf (IO_BUF, "bsgn sent:%d\n", bsg_sent);
+  io_printf (IO_BUF, "bsgn recv:%d\n", bsg_recv);
   if (tcfg.is_last_output)
   {
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
@@ -838,6 +844,7 @@ void stage_done (uint ec, uint key)
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
     io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);
   }
+  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
   io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
 #endif

@@ -292,22 +292,15 @@ void s_lds_packet (uint payload)
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
-      // send sync packet to allow next tick to start,
+      // and send sync packet to allow next tick to start
       if (scfg.is_tree_root)
       {
         while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
         pkt_sent++;
-        spk_sent++;
+        bsg_sent++;
 #endif
-      }
-
-      // and advance tick
-      //NOTE: first root does *not* get a backprop sync packet
-      if (scfg.is_first_root)
-      {
-        sb_advance_tick ();
       }
     }
     else
@@ -344,7 +337,7 @@ void s_sync_packet (void)
 void s_sgen_packet (void)
 {
 #ifdef DEBUG
-  spk_recv++;
+  bsg_recv++;
 #endif
 
   // update count of sync packets,
@@ -380,20 +373,13 @@ void s_sgen_packet (void)
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
-      // send sync packet to allow next tick to start,
+      // and send sync packet to allow next tick to start
       while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
       pkt_sent++;
-      spk_sent++;
+      bsg_sent++;
 #endif
-
-      // and advance tick
-      //NOTE: first root does *not* get a backprop sync packet
-      if (scfg.is_first_root)
-      {
-        sb_advance_tick ();
-      }
     }
     else
     {
