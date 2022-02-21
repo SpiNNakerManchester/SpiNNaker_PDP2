@@ -221,51 +221,11 @@ void wb_process (uint key, uint payload)
   if (cnt > prf_bkp_max) prf_bkp_max = cnt;
 #endif
 
-  // if done with all deltas advance tick
+  // if done with all deltas prepare for next tick
   if (wb_arrived == wcfg.num_cols)
   {
-    // initialise arrival scoreboard for next tick,
+    // initialise arrival scoreboard
     wb_arrived = 0;
-
-    // access thread semaphore with interrupts disabled
-    uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(wb_thrds_pend & SPINN_THRD_PROC))
-      wrng_pth++;
-#endif
-
-    // and check if all other threads done
-    if (wb_thrds_pend == SPINN_THRD_PROC)
-    {
-      // if done initialise thread semaphore,
-      wb_thrds_pend = SPINN_WB_THRDS;
-
-      // if we are using Doug's Momentum, and we have reached the end of the
-      // epoch (i.e. we are on the last example, and are about to move on to
-      // the last tick, we have to wait for the total link delta sum to
-      // arrive
-      if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-          && example_cnt == (xcfg.num_examples - 1)
-          && tick == SPINN_WB_END_TICK + 1)
-      {
-        wb_thrds_pend |= SPINN_THRD_LDSA;
-      }
-
-      // restore interrupts after semaphore access,
-      spin1_mode_restore (cpsr);
-
-      // and advance tick
-      wb_advance_tick ();
-    }
-    else
-    {
-      // report processing thread done,
-      wb_thrds_pend &= ~SPINN_THRD_PROC;
-
-      // and restore interrupts after semaphore access
-      spin1_mode_restore (cpsr);
-    }
   }
 }
 // ------------------------------------------------------------------------+

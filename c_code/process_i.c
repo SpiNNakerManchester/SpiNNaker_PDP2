@@ -153,40 +153,6 @@ void ib_process (uint key, uint payload)
   if (cnt < prf_bkp_min) prf_bkp_min = cnt;
   if (cnt > prf_bkp_max) prf_bkp_max = cnt;
 #endif
-
-  // mark delta as done,
-  ib_done++;
-
-  // and check if all deltas done
-  if (ib_done == icfg.num_units)
-  {
-    // prepare for next tick,
-    ib_done = 0;
-
-    // access thread semaphore with interrupts disabled
-    uint cpsr = spin1_int_disable ();
-
-    // check if all other threads done
-    if (ib_thrds_pend == SPINN_THRD_PROC)
-    {
-      // if done initialise semaphore,
-      ib_thrds_pend = SPINN_IB_THRDS;
-
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
-
-      // and advance tick
-      ib_advance_tick ();
-    }
-    else
-    {
-      // if not done report processing thread done,
-      ib_thrds_pend &= ~SPINN_THRD_PROC;
-
-      // and restore interrupts after flag access
-      spin1_mode_restore (cpsr);
-    }
-  }
 }
 // ------------------------------------------------------------------------
 

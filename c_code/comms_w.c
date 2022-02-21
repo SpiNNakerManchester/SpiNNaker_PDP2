@@ -355,29 +355,8 @@ void w_sync_packet (void)
   spk_recv++;
 #endif
 
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
-  // check if all other threads done
-  if (wb_thrds_pend == SPINN_THRD_SYNC)
-  {
-    // initialise semaphore,
-    wb_thrds_pend = SPINN_WB_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    wb_advance_tick ();
-  }
-  else
-  {
-    // report sync thread done
-    wb_thrds_pend &= ~SPINN_THRD_SYNC;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
-  }
+  // advance tick
+  wb_advance_tick ();
 }
 // ------------------------------------------------------------------------
 
