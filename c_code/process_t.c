@@ -123,7 +123,8 @@ void tf_process (uint key, uint payload)
         record_outputs ();
       }
 
-      if (t_rec_step_updt) {
+      if (t_rec_step_updt)
+      {
         stage_step++;
       }
     }
@@ -228,46 +229,6 @@ void tb_process (uint unused0, uint unused1)
     if (cnt < prf_bkp_min) prf_bkp_min = cnt;
     if (cnt > prf_bkp_max) prf_bkp_max = cnt;
 #endif
-  }
-
-  // access thread semaphore with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(tb_thrds_pend & SPINN_THRD_PROC))
-    wrng_pth++;
-#endif
-
-  // and check if all other threads done
-  if (tb_thrds_pend == SPINN_THRD_PROC)
-  {
-    // if done initialise thread semaphore,
-    tb_thrds_pend = tb_thrds_init;
-
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
-
-    if (tcfg.is_last_output)
-    {
-      // and send sync packet to allow next tick to start
-      while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
-
-#ifdef DEBUG
-      pkt_sent++;
-      spk_sent++;
-#endif
-    }
-
-    // advance tick
-    tb_advance_tick (0, 0);
-  }
-  else
-  {
-    // if not done report processing thread done,
-    tb_thrds_pend &= ~SPINN_THRD_PROC;
-
-    // and restore interrupts after flag access
-    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------
@@ -389,7 +350,8 @@ void tf_advance_event (void)
         record_outputs ();
       }
 
-      if (t_rec_step_updt) {
+      if (t_rec_step_updt)
+      {
         stage_step++;
       }
     }

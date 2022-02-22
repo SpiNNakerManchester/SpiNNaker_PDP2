@@ -333,7 +333,8 @@ void t_init_outputs (void)
 {
   // if OUTPUT INTEGRATOR is used
   // reset the array of the last values
-  if (tcfg.out_integr_en) {
+  if (tcfg.out_integr_en)
+  {
     // initialise every unit output and send for processing
     for (uint i = 0; i < tcfg.num_units; i++)
     {
@@ -557,15 +558,27 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tf_arrived = 0;
   tb_arrived = 0;
   tf_crit_arrived = 0;
+  tb_bsgn_arrived = 0;
+
+  //NOTE: backprop sync gen and criterion expect the same number of pkts
+  tb_bsgn_expected = tcfg.crit_expected;
+
+  // last t also expects a backprop sync gen packet from first s
+  if (tcfg.is_last_output)
+  {
+    tb_bsgn_expected += 1;
+  }
 
   // initialise thread semaphores
   tf_thrds_init = SPINN_TF_THRDS;
   tb_thrds_init = SPINN_TB_THRDS;
 
-  // some cores do *not* receive a previous criterion value
+  // some cores neither receive a previous criterion value
+  // nor a backprop sync generation packet
   if (tcfg.crit_expected == 0)
   {
     tf_thrds_init &= ~SPINN_THRD_CRIT;
+    tb_thrds_init &= ~SPINN_THRD_BSGN;
   }
 
   // last output subgroup receives forward sync gen packets
@@ -629,10 +642,13 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   // initialise packet keys
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  bpsKey = rt[STP] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
   if (tcfg.is_last_output)
   {
+    // backprop sync distribution key
+    //NOTE: backprop sync follows the stop route but uses a different key
+    bpsKey = rt[STP] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+
     // tick stop key
     tf_stop_key = rt[STP] | SPINN_STOP_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
 
@@ -644,6 +660,10 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   }
   else
   {
+    // backprop sync generation key
+    //NOTE: backprop sync follows the stop route but uses a different key
+    bpsKey = rt[STP] | SPINN_BSGN_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+
     // criterion key
     tf_stop_key = rt[STP] | SPINN_CRIT_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
@@ -875,7 +895,8 @@ void stage_done (uint ec, uint key)
   // close recording channels,
   if (tcfg.output_grp)
   {
-    if (stage_rec_flags) {
+    if (stage_rec_flags)
+    {
       recording_finalise();
     }
   }
@@ -884,7 +905,9 @@ void stage_done (uint ec, uint key)
   if (ec == SPINN_NO_ERROR)
   {
     simulation_ready_to_read ();
-  } else {
+  }
+  else
+  {
     rt_error (RTE_SWERR);
   }
 }

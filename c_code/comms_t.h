@@ -29,7 +29,7 @@ void t_net_stop_packet  (uint key);
 void t_dlrv_packet      (void);
 
 void t_backprop_packet (uint key, uint payload);
-void t_sgen_packet     (void);
+void t_bsgn_packet     (void);
 void t_sync_packet     (void);
 
 void tf_send_stop (void);

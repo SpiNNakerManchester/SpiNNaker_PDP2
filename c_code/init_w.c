@@ -538,9 +538,12 @@ void stage_done (uint ec, uint key)
 #endif
 
   // and let host know that we're done
-  if (ec == SPINN_NO_ERROR) {
+  if (ec == SPINN_NO_ERROR)
+  {
     simulation_ready_to_read ();
-  } else {
+  }
+  else
+  {
     rt_error (RTE_SWERR);
   }
 }

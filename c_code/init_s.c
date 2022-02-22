@@ -235,7 +235,7 @@ void var_init (uint reset_examples)
   // not all s cores take part in backprop sync generation
   if (scfg.sync_expected == 0)
   {
-    sb_thrds_init &= ~SPINN_THRD_SYNC;
+    sb_thrds_init &= ~SPINN_THRD_BSGN;
   }
 
   sf_thrds_pend = sf_thrds_init;
@@ -257,9 +257,10 @@ void var_init (uint reset_examples)
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
-  //NOTE: backprop sync gen packets follow the forward sync gen route but use a different key
+  //NOTE: backprop sync gen packets follow the forward sync gen route but
+  //      use a different key
   fsgKey = rt[FSG] | SPINN_FSGN_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
-  bpsKey = rt[FSG] | SPINN_SGEN_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+  bpsKey = rt[FSG] | SPINN_BSGN_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
@@ -446,9 +447,12 @@ void stage_done (uint ec, uint key)
 #endif
 
   // and let host know that we're done
-  if (ec == SPINN_NO_ERROR) {
+  if (ec == SPINN_NO_ERROR)
+  {
     simulation_ready_to_read ();
-  } else {
+  }
+  else
+  {
     rt_error (RTE_SWERR);
   }
 }

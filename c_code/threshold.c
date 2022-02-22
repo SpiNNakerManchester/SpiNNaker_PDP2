@@ -193,6 +193,8 @@ uint             tb_comms;          // pointer to receiving errors
 scoreboard_t     tb_arrived;        // keep count of expected errors
 uint             tb_thrds_pend;     // thread semaphore
 uint             tb_thrds_init;     // thread semaphore initial value
+scoreboard_t     tb_bsgn_arrived;   // keep count of backprop sync gen pkts
+scoreboard_t     tb_bsgn_expected;  // keep count of backprop sync gen pkts
 
 int              t_max_output_unit; // unit with highest output
 int              t_max_target_unit; // unit with highest target
@@ -290,7 +292,8 @@ void timeout (uint ticks, uint unused)
       while (!spin1_send_mc_packet(tf_dlrv_key, 0, NO_PAYLOAD));
 
       // restart tick
-      if (phase == SPINN_FORWARD) {
+      if (phase == SPINN_FORWARD)
+      {
         // initialise thread semaphore,
         tf_thrds_pend = tf_thrds_init;
 
@@ -303,7 +306,9 @@ void timeout (uint ticks, uint unused)
 
         // and initialise processing thread flag
         tf_active = FALSE;
-      } else {
+      }
+      else
+      {
         // initialise thread semaphore,
         tb_thrds_pend = tb_thrds_init;
 

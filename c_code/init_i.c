@@ -476,7 +476,9 @@ void stage_done (uint ec, uint key)
   if (ec == SPINN_NO_ERROR)
   {
     simulation_ready_to_read ();
-  } else {
+  }
+  else
+  {
     rt_error (RTE_SWERR);
   }
 }

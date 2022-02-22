@@ -137,9 +137,9 @@ void s_processQueue (uint unused0, uint unused1)
     }
 
     // or process backprop synchronisation generation packet,
-    else if (pkt_type == SPINN_SGEN_KEY)
+    else if (pkt_type == SPINN_BSGN_KEY)
     {
-      s_sgen_packet ();
+      s_bsgn_packet ();
     }
 
     // or process forward sync generation packet,
@@ -334,7 +334,7 @@ void s_sync_packet (void)
 // ------------------------------------------------------------------------
 // process a backprop synchronisation generation packet
 // ------------------------------------------------------------------------
-void s_sgen_packet (void)
+void s_bsgn_packet (void)
 {
 #ifdef DEBUG
   bsg_recv++;
@@ -353,7 +353,7 @@ void s_sgen_packet (void)
     uint cpsr = spin1_int_disable ();
 
     // and check if all other threads done
-    if (sb_thrds_pend == SPINN_THRD_SYNC)
+    if (sb_thrds_pend == SPINN_THRD_BSGN)
     {
       // initialise semaphore,
       sb_thrds_pend = sb_thrds_init;
@@ -384,7 +384,7 @@ void s_sgen_packet (void)
     else
     {
       // report sync thread done,
-      sb_thrds_pend &= ~SPINN_THRD_SYNC;
+      sb_thrds_pend &= ~SPINN_THRD_BSGN;
 
       // and restore interrupts after flag access
       spin1_mode_restore (cpsr);
@@ -453,7 +453,8 @@ void s_dlrv_packet (void)
     sb_thrds_pend = sb_thrds_init;
 
     // and initialise nets and scoreboards
-    for (uint i = 0; i < scfg.num_units; i++) {
+    for (uint i = 0; i < scfg.num_units; i++)
+    {
       s_errors[i] = 0;
       sb_arrived[i] = 0;
     }

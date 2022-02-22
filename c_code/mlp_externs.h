@@ -198,6 +198,8 @@ extern uint             tb_comms;      // pointer to receiving errors
 extern scoreboard_t     tb_arrived;    // keep count of expected errors
 extern uint             tb_thrds_pend; // thread semaphore
 extern uint             tb_thrds_init; // thread semaphore initial value
+extern scoreboard_t     tb_bsgn_arrived;   // keep count of backprop sync gen pkts
+extern scoreboard_t     tb_bsgn_expected;  // keep count of backprop sync gen pkts
 extern int              t_max_output_unit; // unit with highest output
 extern int              t_max_target_unit; // unit with highest target
 extern activation_t     t_max_output;      // highest output value
