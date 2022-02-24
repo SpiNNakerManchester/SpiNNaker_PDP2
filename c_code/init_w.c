@@ -121,7 +121,6 @@ uint cfg_init (void)
   io_printf (IO_BUF, "uf: %d\n", xcfg.update_function);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-  io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
   io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
 #endif
 

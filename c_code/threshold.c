@@ -165,7 +165,8 @@ short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
 uint             t_it_idx;          // index into current inputs/targets
 pkt_queue_t      t_pkt_queue;       // queue to hold received nets
-uint             t_dlrv_cnt;        // limit deadlock recovery attempts
+uint             t_dlrv_cnt;        // count deadlock recovery attempts
+uint             t_dlrv_rep;        // count repeated deadlock recovery attempts
 
 // FORWARD phase specific
 // (output computation)
@@ -240,7 +241,8 @@ uint stn_sent;  // network_stop packets sent
 uint stn_recv;  // network_stop packets received
 uint dlr_sent;  // deadlock recovery packets sent
 uint dlr_recv;  // deadlock recovery packets received
-uint wrng_phs;  // packets received in wrong phase
+uint wrng_fph;  // FORWARD packets received in wrong phase
+uint wrng_bph;  // BACKPROP packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
@@ -275,12 +277,13 @@ void timeout (uint ticks, uint unused)
   {
 #ifdef DEBUG
     dlr_sent++;
+    if (t_dlrv_cnt > 0) t_dlrv_rep++;
 #endif
 
     t_dlrv_cnt++;
     if (t_dlrv_cnt >= SPINN_DLRV_MAX_CNT)
     {
-      // send deadlock recovery packet to all other cores,
+      // send abort on deadlock packet to all other cores,
       while (!spin1_send_mc_packet(tf_dlrv_key | SPINN_DLRV_ABT, 0, NO_PAYLOAD));
 
       // and report timeout error

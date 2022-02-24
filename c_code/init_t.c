@@ -495,8 +495,9 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   // initialise phase
   phase = SPINN_FORWARD;
 
-  // initialise deadlock recovery attempt count
+  // initialise deadlock recovery attempt counts
   t_dlrv_cnt = 0;
+  t_dlrv_rep = 0;
 
   // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
@@ -691,7 +692,8 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   stn_recv = 0;  // network_stop packets received
   dlr_sent = 0;  // deadlock recovery packets sent
   dlr_recv = 0;  // deadlock recovery packets received
-  wrng_phs = 0;  // packets received in wrong phase
+  wrng_fph = 0;  // FORWARD packets received in wrong phase
+  wrng_bph = 0;  // BACKPROP received in wrong phase
   tot_tick = 0;  // total number of ticks executed
   // ------------------------------------------------------------------------
 #endif
@@ -774,7 +776,7 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 void stage_done (uint ec, uint key)
 {
-#if !defined(DEBUG_EXIT)
+#if !defined(DEBUG) && !defined(DEBUG_EXIT)
   //NOTE: parameter 'key' is used only in DEBUG reporting
   (void) key;
 #endif
@@ -848,25 +850,27 @@ void stage_done (uint ec, uint key)
   }
   if (tcfg.is_last_output)
   {
-    io_printf (IO_BUF, "fsg recv:%d\n", fsg_recv);
+    io_printf (IO_BUF, "fsgn recv:%d\n", fsg_recv);
   }
   io_printf (IO_BUF, "bsgn sent:%d\n", bsg_sent);
   io_printf (IO_BUF, "bsgn recv:%d\n", bsg_recv);
   if (tcfg.is_last_output)
   {
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
+    io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
     io_printf (IO_BUF, "stpn sent:%d\n", stn_sent);
     io_printf (IO_BUF, "dlrv sent:%d\n", dlr_sent);
+    io_printf (IO_BUF, "dlrv reps:%d\n", t_dlrv_rep);
   }
   else
   {
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+    io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
     io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);
   }
-  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
-  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
-  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  if (wrng_fph) io_printf (IO_BUF, "fwd wrong phase:%d\n", wrng_fph);
+  if (wrng_bph) io_printf (IO_BUF, "bkp wrong phase:%d\n", wrng_bph);
 #endif
 
 #if defined(DEBUG) && defined(DEBUG_THRDS)

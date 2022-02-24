@@ -176,7 +176,8 @@ extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output der
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
 extern uint             t_it_idx;      // index into current inputs/targets
 extern pkt_queue_t      t_pkt_queue;   // queue to hold received packets
-extern uint             t_dlrv_cnt;    // limit deadlock recovery attempts
+extern uint             t_dlrv_cnt;        // count deadlock recovery attempts
+extern uint             t_dlrv_rep;        // count repeated deadlock recovery attempts
 extern uchar            tf_active;     // processing FWD-phase packet queue?
 extern scoreboard_t     tf_arrived;    // keep count of expected nets
 extern uint             tf_thrds_pend; // thread semaphore
@@ -249,7 +250,6 @@ extern uint lds_sent;  // link_delta packets sent
 extern uint lds_recv;  // link_delta packets received
 extern uint tot_tick;  // total number of ticks executed
 extern uint wght_ups;  // number of weight updates done
-extern uint wrng_phs;  // packets received in wrong phase
 extern uint wrng_fph;  // FORWARD packets received in wrong phase
 extern uint wrng_bph;  // BACKPROP packets received in wrong phase
 extern uint wrng_pth;  // unexpected processing thread

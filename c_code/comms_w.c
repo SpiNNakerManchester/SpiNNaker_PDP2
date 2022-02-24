@@ -112,6 +112,10 @@ void w_handleFWDPacket (uint key, uint payload)
   // or process deadlock recovery packet,
   if (pkt_type == SPINN_DLRV_KEY)
   {
+#ifdef DEBUG
+    dlr_recv++;
+#endif
+
     if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
     {
       // report timeout error
@@ -310,10 +314,6 @@ void w_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void w_dlrv_packet (void)
 {
-#ifdef DEBUG
-  dlr_recv++;
-#endif
-
   // restart tick
   if (phase == SPINN_FORWARD)
   {
@@ -353,6 +353,8 @@ void w_sync_packet (void)
 {
 #ifdef DEBUG
   spk_recv++;
+  if (phase == SPINN_FORWARD)
+    wrng_bph++;
 #endif
 
   // advance tick

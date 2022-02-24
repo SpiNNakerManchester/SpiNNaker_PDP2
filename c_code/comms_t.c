@@ -179,6 +179,10 @@ void t_processFWDQueue (uint unused0, uint unused1)
     // or process deadlock recovery packet,
     else if (pkt_type == SPINN_DLRV_KEY)
     {
+#ifdef DEBUG
+      dlr_recv++;
+#endif
+
       if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
       {
         // report timeout error
@@ -275,6 +279,8 @@ void t_fsgn_packet (void)
 {
 #ifdef DEBUG
   fsg_recv++;
+  if (phase == SPINN_BACKPROP)
+    wrng_fph++;
 #endif
 
   // access thread semaphore with interrupts disabled,
@@ -319,6 +325,8 @@ void t_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
+  if (phase == SPINN_BACKPROP)
+    wrng_fph++;
 #endif
 
   // get tick stop decision,
@@ -378,10 +386,6 @@ void t_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void t_dlrv_packet (void)
 {
-#ifdef DEBUG
-  dlr_recv++;
-#endif
-
   // restart tick
   if (phase == SPINN_FORWARD)
   {
@@ -421,7 +425,7 @@ void t_backprop_packet (uint key, uint payload)
 #ifdef DEBUG
   recv_bkp++;
   if (phase == SPINN_FORWARD)
-    wrng_phs++;
+    wrng_bph++;
 #endif
 
   // get error index: mask out phase, core and block data,
@@ -486,6 +490,8 @@ void t_bsgn_packet (void)
 {
 #ifdef DEBUG
   bsg_recv++;
+  if (phase == SPINN_FORWARD)
+    wrng_bph++;
 #endif
 
   // update scoreboard,
@@ -536,6 +542,8 @@ void t_sync_packet (void)
 {
 #ifdef DEBUG
   spk_recv++;
+  if (phase == SPINN_FORWARD)
+    wrng_bph++;
 #endif
 
   // advance tick

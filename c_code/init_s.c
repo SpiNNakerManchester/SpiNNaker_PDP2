@@ -283,7 +283,8 @@ void var_init (uint reset_examples)
   dlr_recv = 0;  // deadlock recovery packets received
   lds_recv = 0;  // link_delta packets received
   lds_sent = 0;  // link_delta packets sent
-  wrng_phs = 0;  // packets received in wrong phase
+  wrng_fph = 0;  // FORWARD packets received in wrong phase
+  wrng_bph = 0;  // BACKPROP received in wrong phase
   wrng_pth = 0;  // unexpected processing thread
   wrng_cth = 0;  // unexpected comms thread
   wrng_sth = 0;  // unexpected stop thread
@@ -423,7 +424,8 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);
   io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
-  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  if (wrng_fph) io_printf (IO_BUF, "fwd wrong phase:%d\n", wrng_fph);
+  if (wrng_bph) io_printf (IO_BUF, "bkp wrong phase:%d\n", wrng_bph);
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);

@@ -49,7 +49,7 @@ void tf_process (uint key, uint payload)
 #ifdef DEBUG
   recv_fwd++;
   if (phase == SPINN_BACKPROP)
-    wrng_phs++;
+    wrng_fph++;
 #endif
 
 #ifdef PROFILE

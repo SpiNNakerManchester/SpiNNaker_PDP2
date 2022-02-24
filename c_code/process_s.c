@@ -41,7 +41,7 @@ void sf_process (uint key, uint payload)
 #ifdef DEBUG
   recv_fwd++;
   if (phase != SPINN_FORWARD)
-    wrng_phs++;
+    wrng_fph++;
 #endif
 
 #ifdef PROFILE
@@ -108,7 +108,7 @@ void sb_process (uint key, uint payload)
 #ifdef DEBUG
   recv_bkp++;
   if (phase != SPINN_BACKPROP)
-    wrng_phs++;
+    wrng_bph++;
 #endif
 
 #ifdef PROFILE

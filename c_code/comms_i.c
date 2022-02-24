@@ -134,6 +134,10 @@ void i_processQueue (uint unused0, uint unused1)
     // or process deadlock recovery packet,
     else if (pkt_type == SPINN_DLRV_KEY)
     {
+#ifdef DEBUG
+      dlr_recv++;
+#endif
+
       if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
       {
         // report timeout error
@@ -173,6 +177,8 @@ void i_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
+  if (phase == SPINN_BACKPROP)
+    wrng_fph++;
 #endif
 
   // get tick STOP decision,
@@ -191,6 +197,8 @@ void i_sync_packet (void)
 {
 #ifdef DEBUG
   spk_recv++;
+  if (phase == SPINN_FORWARD)
+    wrng_bph++;
 #endif
 
   // advance tick
@@ -248,10 +256,6 @@ void i_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void i_dlrv_packet (void)
 {
-#ifdef DEBUG
-  dlr_recv++;
-#endif
-
   // restart tick
   if (phase == SPINN_FORWARD)
   {

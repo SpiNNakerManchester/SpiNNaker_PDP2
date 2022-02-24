@@ -139,7 +139,8 @@ uint stn_recv;  // network_stop packets received
 uint dlr_recv;  // deadlock recovery packets received
 uint lds_sent;  // link_delta packets sent
 uint lds_recv;  // link_delta packets received
-uint wrng_phs;  // packets received in wrong phase
+uint wrng_fph;  // FORWARD packets received in wrong phase
+uint wrng_bph;  // BACKPROP packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
