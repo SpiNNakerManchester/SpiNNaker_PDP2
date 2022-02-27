@@ -309,6 +309,9 @@ void sf_advance_event (void)
     // check if in training mode
     if (xcfg.training)
     {
+      //TODO: if using Doug's momentum and tick == SPINN_SB_END_TICK
+      // SPINN_THRD_LDSA has to be added to sb_thrds_init
+
       // move on to BACKPROP phase
       phase = SPINN_BACKPROP;
     }

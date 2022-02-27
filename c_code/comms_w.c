@@ -331,15 +331,7 @@ void w_dlrv_packet (void)
     // initialise thread semaphore,
     wb_thrds_pend = SPINN_WB_THRDS;
 
-    // link delta sum in last BP tick if using Doug's momentum
-    if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-        && example_cnt == (xcfg.num_examples - 1)
-        && tick == SPINN_WB_END_TICK)
-    {
-      wb_thrds_pend |= SPINN_THRD_LDSA;
-    }
-
-    // initialise scoreboard,
+    // and initialise scoreboard
     wb_arrived = 0;
   }
 }
@@ -372,37 +364,11 @@ void w_lds_packet (uint payload)
   lds_recv++;
 #endif
 
+  //TODO: need to synchronise the arrival of final ldsa packet
+  // to all w cores!
+
   // the final link delta sum for the epoch arrived
   w_lds_final = (lds_t) payload;
-
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(wb_thrds_pend & SPINN_THRD_LDSA))
-    wrng_cth++;
-#endif
-
-  // check if all other threads done
-  if (wb_thrds_pend == SPINN_THRD_LDSA)
-  {
-    // initialise semaphore (no link delta summation in next tick),
-    wb_thrds_pend = SPINN_WB_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    wb_advance_tick ();
-  }
-  else
-  {
-    // if not done report processing thread done,
-    wb_thrds_pend &= ~SPINN_THRD_LDSA;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
-  }
 }
 // ------------------------------------------------------------------------
 
