@@ -28,7 +28,7 @@ void w_net_stop_packet (uint key);
 void w_sync_packet     (void);
 void w_dlrv_packet     (void);
 
-void w_lds_packet (uint payload);
+void w_ldsa_packet (uint payload);
 
 void store_output    (uint index);
 void restore_outputs (uint tick);

@@ -141,7 +141,7 @@ void tf_process (uint key, uint payload)
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
-      // send stop packet,
+      // send criterion/stop packet,
       tf_send_stop ();
 
       // and advance tick if last_output_group

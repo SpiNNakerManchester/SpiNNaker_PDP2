@@ -181,7 +181,7 @@ void w_processBKPQueue (uint unused0, uint unused1)
     // or process LDS result packet,
     else if (pkt_type == SPINN_LDSA_KEY)
     {
-      w_lds_packet (payload);
+      w_ldsa_packet (payload);
     }
 
 #ifdef DEBUG
@@ -358,7 +358,7 @@ void w_sync_packet (void)
 // ------------------------------------------------------------------------
 // process an LDS result packet
 // ------------------------------------------------------------------------
-void w_lds_packet (uint payload)
+void w_ldsa_packet (uint payload)
 {
 #ifdef DEBUG
   lds_recv++;

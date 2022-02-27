@@ -248,7 +248,7 @@ void t_criterion_packet (uint key)
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
-      // send stop packet,
+      // send criterion/stop packet,
       tf_send_stop ();
 
       // and advance tick if last_output_group
@@ -295,7 +295,7 @@ void t_fsgn_packet (void)
     // restore interrupts after flag access,
     spin1_mode_restore(cpsr);
 
-    // send stop packet,
+    // send criterion/stop packet,
     tf_send_stop();
 
     // and advance tick if last_output_group
@@ -464,7 +464,7 @@ void t_backprop_packet (uint key, uint payload)
         spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
       }
 
-      // and backprop sync packet to allow next tick to start
+      // and send backprop sync packet to allow next tick to start
       while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
