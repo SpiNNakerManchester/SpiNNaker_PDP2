@@ -51,7 +51,7 @@ void t_receivePacket (uint key, uint payload)
   // BACKPROP-phase packets are handled immediately
   if (ph == SPINN_BACKPROP)
   {
-    w_handleBKPPacket (key, payload);
+    t_handleBKPPacket (key, payload);
     return;
   }
 
@@ -87,7 +87,7 @@ void t_receivePacket (uint key, uint payload)
 // handle BACKPROP-phase packets
 // (BACKPROP type)
 // ------------------------------------------------------------------------
-void w_handleBKPPacket (uint key, uint payload)
+void t_handleBKPPacket (uint key, uint payload)
 {
   // check packet type,
   uint pkt_type = key & SPINN_TYPE_MASK;
@@ -249,7 +249,7 @@ void t_criterion_packet (uint key)
       spin1_mode_restore (cpsr);
 
       // send criterion/stop packet,
-      tf_send_stop ();
+      send_stop_crit ();
 
       // and advance tick if last_output_group
       //NOTE: last output group does not get a tick stop packet
@@ -296,7 +296,7 @@ void t_fsgn_packet (void)
     spin1_mode_restore(cpsr);
 
     // send criterion/stop packet,
-    tf_send_stop();
+    send_stop_crit();
 
     // and advance tick if last_output_group
     //NOTE: last output group does not get a tick stop packet
@@ -558,10 +558,10 @@ void t_sync_packet (void)
 // message to communicate the final decision if the criterion has been reached
 // across all the output groups to all the cores in the simulation
 // ------------------------------------------------------------------------
-void tf_send_stop (void)
+void send_stop_crit (void)
 {
 #ifdef TRACE
-  io_printf (IO_BUF, "tf_send_stop\n");
+  io_printf (IO_BUF, "send_stop_crit\n");
 #endif
 
   // "aggregate" criteria,
@@ -588,11 +588,7 @@ void tf_send_stop (void)
   }
 
   // FORWARD aggregated criterion,
-  while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit),
-                                 0,
-                                 NO_PAYLOAD
-                               )
-        );
+  while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit), 0, NO_PAYLOAD));
 
 #ifdef DEBUG
   pkt_sent++;

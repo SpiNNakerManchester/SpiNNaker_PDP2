@@ -174,9 +174,7 @@ void wb_process (uint key, uint payload)
     if (wb_arrived == wcfg.num_cols)
     {
       // send computed error dot product,
-      while (!spin1_send_mc_packet ((bkpKey | i),
-              (uint) w_errors[i], WITH_PAYLOAD)
-            );
+      while (!spin1_send_mc_packet ((bkpKey | i), (uint) w_errors[i], WITH_PAYLOAD));
 
 #ifdef DEBUG
       pkt_sent++;

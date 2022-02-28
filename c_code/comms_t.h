@@ -19,7 +19,7 @@
 #define __COMMS_T_H__
 
 void t_receivePacket   (uint key,     uint payload);
-void w_handleBKPPacket (uint key,     uint payload);
+void t_handleBKPPacket (uint key,     uint payload);
 void t_processFWDQueue (uint unused0, uint unused1);
 
 void t_criterion_packet (uint key);
@@ -32,7 +32,7 @@ void t_backprop_packet (uint key, uint payload);
 void t_bsgn_packet     (void);
 void t_sync_packet     (void);
 
-void tf_send_stop (void);
+void send_stop_crit (void);
 
 void store_net            (uint inx);
 void restore_net          (uint inx, uint tick);

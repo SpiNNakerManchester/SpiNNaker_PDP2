@@ -80,10 +80,7 @@ void tf_process (uint key, uint payload)
   }
 
   // send newly computed output to w cores,
-  while (!spin1_send_mc_packet ((fwdKey | inx), (uint) t_outputs[inx],
-                                WITH_PAYLOAD
-                               )
-        );
+  while (!spin1_send_mc_packet ((fwdKey | inx), (uint) t_outputs[inx], WITH_PAYLOAD));
 
 #ifdef DEBUG
   pkt_sent++;
@@ -142,7 +139,7 @@ void tf_process (uint key, uint payload)
       spin1_mode_restore (cpsr);
 
       // send criterion/stop packet,
-      tf_send_stop ();
+      send_stop_crit ();
 
       // and advance tick if last_output_group
       //NOTE: last output group does not get a tick stop packet
@@ -456,9 +453,7 @@ void t_advance_example (void)
       nsd = (!xcfg.training || (epoch >= xcfg.num_epochs)) ? 1 : tf_example_crit;
 
       // broadcast network_stop decision,
-      while (!spin1_send_mc_packet (tf_stpn_key | nsd,
-          0, NO_PAYLOAD)
-          );
+      while (!spin1_send_mc_packet (tf_stpn_key | nsd, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
       pkt_sent++;

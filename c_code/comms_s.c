@@ -118,7 +118,7 @@ void s_processQueue (uint unused0, uint unused1)
       s_lds_packet (payload);
     }
 
-    // or process stop packet,
+    // or process tick stop packet,
     else if (pkt_type == SPINN_STOP_KEY)
     {
       s_stop_packet (key);
@@ -130,13 +130,13 @@ void s_processQueue (uint unused0, uint unused1)
       s_net_stop_packet (key);
     }
 
-    // or process backprop synchronisation packet,
+    // or process backprop sync packet,
     else if (pkt_type == SPINN_SYNC_KEY)
     {
       s_sync_packet ();
     }
 
-    // or process backprop synchronisation generation packet,
+    // or process backprop sync generation packet,
     else if (pkt_type == SPINN_BSGN_KEY)
     {
       s_bsgn_packet ();
@@ -323,7 +323,7 @@ void s_lds_packet (uint payload)
 
 
 // ------------------------------------------------------------------------
-// process a backprop synchronisation packet
+// process a backprop sync packet
 // ------------------------------------------------------------------------
 void s_sync_packet (void)
 {
@@ -340,7 +340,7 @@ void s_sync_packet (void)
 
 
 // ------------------------------------------------------------------------
-// process a backprop synchronisation generation packet
+// process a backprop sync generation packet
 // ------------------------------------------------------------------------
 void s_bsgn_packet (void)
 {

@@ -172,7 +172,7 @@ void w_processBKPQueue (uint unused0, uint unused1)
       wb_process (key, payload);
     }
 
-    // or process synchronisation packet,
+    // or process backprop sync packet,
     else if (pkt_type == SPINN_SYNC_KEY)
     {
       w_sync_packet ();
@@ -339,7 +339,7 @@ void w_dlrv_packet (void)
 
 
 // ------------------------------------------------------------------------
-// process a sync packet
+// process a backprop sync packet
 // ------------------------------------------------------------------------
 void w_sync_packet (void)
 {
