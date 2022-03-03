@@ -258,7 +258,6 @@ typedef struct w_conf             // weight core configuration
 {
   uint         num_rows;          // rows in this core's block
   uint         num_cols;          // columns in this core's block
-  scoreboard_t sync_expected;     // num of expected sync packets
   activation_t initOutput;        // initial value for unit outputs
   short_fpreal learningRate;      // network learning rate
   short_fpreal weightDecay;       // network weight decay
@@ -279,7 +278,8 @@ typedef struct s_conf             // sum core configuration
   scoreboard_t fwd_expected;      // num of expected partial nets
   scoreboard_t bkp_expected;      // num of expected partial errors
   scoreboard_t lds_expected;      // num of expected partial link delta sums
-  scoreboard_t sync_expected;     // num of expected sync packets
+  scoreboard_t fsgn_expected;     // num of expected forward sync gen packets
+  scoreboard_t bsgn_expected;     // num of expected backprop sync gen packets
   uchar        is_first_group;    // is this the first group in the network?
   uchar        is_tree_root;      // is this the root of an s_core tree?
   uchar        is_first_root;     // is this the root of group 0, subgroup 0?

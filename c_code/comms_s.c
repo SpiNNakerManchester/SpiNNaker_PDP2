@@ -390,13 +390,13 @@ void s_bsgn_packet (void)
 #endif
 
   // update count of sync packets,
-  s_sync_arrived++;
+  s_bsgn_arrived++;
 
   // and check if all expected packets arrived
-  if (s_sync_arrived == scfg.sync_expected)
+  if (s_bsgn_arrived == scfg.bsgn_expected)
   {
     // prepare for next synchronisation,
-    s_sync_arrived = 0;
+    s_bsgn_arrived = 0;
 
     // access thread semaphore with interrupts disabled,
     uint cpsr = spin1_int_disable ();
@@ -458,7 +458,7 @@ void s_fsgn_packet (void)
   s_fsgn_arrived++;
 
   // and check if all expected packets arrived
-  if (s_fsgn_arrived == s_fsgn_expected)
+  if (s_fsgn_arrived == scfg.fsgn_expected)
   {
     // prepare for next synchronisation,
     s_fsgn_arrived = 0;

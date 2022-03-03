@@ -574,18 +574,22 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tf_thrds_init = SPINN_TF_THRDS;
   tb_thrds_init = SPINN_TB_THRDS;
 
-  // some cores neither receive a previous criterion value
-  // nor a backprop sync generation packet
+  // some cores do not receive a previous criterion value
   if (tcfg.crit_expected == 0)
   {
     tf_thrds_init &= ~SPINN_THRD_CRIT;
-    tb_thrds_init &= ~SPINN_THRD_BSGN;
   }
 
   // last output subgroup receives forward sync gen packets
   if (tcfg.is_last_output)
   {
     tf_thrds_init |= SPINN_THRD_FSGN;
+  }
+
+  // some cores do not receive a backprop sync generation packet
+  if (tb_bsgn_expected == 0)
+  {
+    tb_thrds_init &= ~SPINN_THRD_BSGN;
   }
 
   tf_thrds_pend = tf_thrds_init;
@@ -828,7 +832,7 @@ void stage_done (uint ec, uint key)
                   tf_active, tf_arrived, tcfg.num_units,
                   tb_arrived, tcfg.num_units
                 );
-      io_printf (IO_BUF, "(fptd:%u bptd:%u)\n",
+      io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n",
                   tf_thrds_pend, tb_thrds_pend
                 );
       io_printf (IO_BUF, "stage aborted\n");

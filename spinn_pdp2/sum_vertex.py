@@ -162,10 +162,11 @@ class SumVertex(
             typedef struct s_conf
             {
               uint         num_units;
-              scoreboard_t fwd_expect;
-              scoreboard_t bkp_expect;
-              scoreboard_t lds_expect;
-              scoreboard_t sync_expected;
+              scoreboard_t fwd_expected;
+              scoreboard_t bkp_expected;
+              scoreboard_t lds_expected;
+              scoreboard_t fsgn_expected;
+              scoreboard_t bsgn_expected;
               uchar        is_first_group;
               uchar        is_tree_root;
               uchar        is_first_root;
@@ -195,48 +196,53 @@ class SumVertex(
             expected = MLPConstants.MAX_S_CORE_LINKS
 
         # keep track of these on a unit-by-unit basis
-        fwd_expect = expected
-        bkp_expect = expected
+        fwd_expected = expected
+        bkp_expected = expected
 
         # keep track of the total, not unit-by-unit, count of lds packets
         k = lvs // MLPConstants.MAX_S_CORE_LINKS
         if self.idx > (num_vrt - 2 - k):
             # lds packets from w cores only
-            lds_expect = expected * self.units
+            lds_expected = expected * self.units
         elif self.idx == (num_vrt - 2 - k):
             # lds packets from w cores and other s cores
             wp = lvs % MLPConstants.MAX_S_CORE_LINKS
             sp = MLPConstants.MAX_S_CORE_LINKS - wp
-            lds_expect = wp * self.units + sp
+            lds_expected = wp * self.units + sp
         else:
             # lds packets from other s cores only
-            lds_expect = MLPConstants.MAX_S_CORE_LINKS
+            lds_expected = MLPConstants.MAX_S_CORE_LINKS
 
         # first subgroup expects a partial lds from every other subgroup
         if self.is_tree_root and self.subgroup == 0:
-            lds_expect += self.group.subgroups - 1
+            lds_expected += self.group.subgroups - 1
 
             # first group expects a partial lds from every other group
             if is_first_group:
-                lds_expect += len (self.network.groups) - 1
+                lds_expected += len (self.network.groups) - 1
 
-        # sync packets are handled by root nodes only
+        # backprop sync gen packets are handled by root nodes only
         if self.is_tree_root and self.subgroup == 0:
             # first subgroup expects from every other subgroup in group
-            sync_expect = self.group.subgroups - 1
+            bsgn_expected = self.group.subgroups - 1
 
             # first group expect from every other group
             if is_first_group:
-                sync_expect += len (self.network.groups) - 1
+                bsgn_expected += len (self.network.groups) - 1
         else:
-            sync_expect = 0
+            bsgn_expected = 0
 
-        return struct.pack ("<5I3Bx",
+        # forward sync gen packets are handled by all nodes and
+        # receive from w cores
+        fsgn_expected = bsgn_expected + fwd_expected
+
+        return struct.pack ("<6I3Bx",
                             self.units,
-                            fwd_expect,
-                            bkp_expect,
-                            lds_expect,
-                            sync_expect,
+                            fwd_expected,
+                            bkp_expected,
+                            lds_expected,
+                            fsgn_expected,
+                            bsgn_expected,
                             is_first_group,
                             self.is_tree_root,
                             is_first_root

@@ -225,7 +225,6 @@ class WeightVertex(
             {
               uint           num_rows;
               uint           num_cols;
-              scoreboard_t   sync_expected;
               activation_t   initOutput;
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
@@ -235,12 +234,6 @@ class WeightVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # expect one sync packet from 'group' and one from 'from_group'
-        if self.group == self.from_group and self.subgroup == self.from_subgroup:
-            sync_expected = 1
-        else:
-            sync_expected = 2
-
         # init output is an MLP fixed-point activation_t
         init_output = int (self.from_group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
@@ -257,10 +250,9 @@ class WeightVertex(
         momentum = int (self._momentum *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<3Ii3h2x",
+        return struct.pack ("<2Ii3h2x",
                             self._num_rows,
                             self._num_cols,
-                            sync_expected,
                             init_output,
                             learning_rate,
                             weight_decay,

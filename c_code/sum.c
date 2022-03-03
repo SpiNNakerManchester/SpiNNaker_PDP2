@@ -112,7 +112,7 @@ scoreboard_t     sb_done;           // current tick error computation done
 uint             sb_thrds_pend;     // thread semaphore
 uint             sb_thrds_init;     // thread semaphore initialisation
 scoreboard_t     s_lds_arrived;     // keep count of the number of partial link delta sums
-scoreboard_t     s_sync_arrived;    // keep count of expected sync packets
+scoreboard_t     s_bsgn_arrived;    // keep count of expected sync packets
 scoreboard_t     s_fsgn_arrived;    // keep count of forward sync gen packets
 uint             s_fsgn_expected;   // expected count of forward sync gen packets
 // ------------------------------------------------------------------------

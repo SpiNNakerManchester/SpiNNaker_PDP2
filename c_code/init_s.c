@@ -112,6 +112,8 @@ uint cfg_init (void)
   io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
   io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
   io_printf (IO_BUF, "le: %d\n", scfg.lds_expected);
+  io_printf (IO_BUF, "fz: %d\n", scfg.fsgn_expected);
+  io_printf (IO_BUF, "bz: %d\n", scfg.bsgn_expected);
   io_printf (IO_BUF, "uf: %d\n", xcfg.update_function);
   io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
   io_printf (IO_BUF, "tr: %d\n", scfg.is_tree_root);
@@ -222,18 +224,15 @@ void var_init (uint reset_examples)
   sf_done = 0;
   sb_done = 0;
 
-  s_sync_arrived = 0;
+  s_bsgn_arrived = 0;
   s_fsgn_arrived = 0;
-
-  // forward sync gen packets arrive from w and other s cores
-  s_fsgn_expected = scfg.fwd_expected + scfg.sync_expected;
 
   // initialise thread semaphores
   sf_thrds_init = SPINN_SF_THRDS;
   sb_thrds_init = SPINN_SB_THRDS;
 
   // not all s cores take part in backprop sync generation
-  if (scfg.sync_expected == 0)
+  if (scfg.bsgn_expected == 0)
   {
     sb_thrds_init &= ~SPINN_THRD_BSGN;
   }
@@ -402,6 +401,7 @@ void stage_done (uint ec, uint key)
                     sf_arrived[i], sb_arrived[i]
                   );
       }
+      io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", sf_thrds_pend, sb_thrds_pend);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }

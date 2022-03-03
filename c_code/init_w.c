@@ -484,10 +484,10 @@ void stage_done (uint ec, uint key)
                  epoch, example_cnt, phase, tick
                 );
       io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-      io_printf (IO_BUF, "(fptd:%u bptd:%u)\n", wf_thrds_pend, wb_thrds_pend);
       io_printf (IO_BUF, "(fa:%u/%u ba:%u/%u)\n",
                  wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
                 );
+      io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", wf_thrds_pend, wb_thrds_pend);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }
