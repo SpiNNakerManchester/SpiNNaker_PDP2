@@ -18,8 +18,9 @@
 #ifndef __COMMS_S_H__
 #define __COMMS_S_H__
 
-void s_receivePacket (uint key,     uint payload);
-void s_processQueue  (uint unused0, uint unused1);
+void s_receiveDataPacket    (uint key,     uint payload);
+void s_receiveControlPacket (uint key,     uint unused);
+void s_processQueue         (uint unused0, uint unused1);
 
 void s_fsgn_packet     (void);
 void s_stop_packet     (uint key);

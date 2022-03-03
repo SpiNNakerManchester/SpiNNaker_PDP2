@@ -26,7 +26,7 @@
 // ------------------------------------------------------------------------
 // setup constants
 // ------------------------------------------------------------------------
-#define SPINN_TIMER_TICK_PERIOD  1000000
+#define SPINN_TIMER_TICK_PERIOD  100000
 #define SPINN_PRINT_SHIFT        16
 
 // deadlock recovery constants
@@ -194,18 +194,20 @@
 #define SPINN_TIMER_P        0
 
 // weight core priorities
-#define SPINN_WF_TICK_P      1
+#define SPINN_W_TICK_P       1
 #define SPINN_WF_PROCESS_P   2
 #define SPINN_WB_PROCESS_P   3
 
 // sum core priorities
-#define SPINN_S_PROCESS_P    1
+#define SPINN_S_TICK_P       1
+#define SPINN_S_PROCESS_P    2
 
 // input core priorities
-#define SPINN_I_PROCESS_P    1
+#define SPINN_I_TICK_P       1
+#define SPINN_I_PROCESS_P    2
 
 // threshold core priorities
-#define SPINN_TB_TICK_P      1
+#define SPINN_T_TICK_P       1
 #define SPINN_TB_PROCESS_P   2
 #define SPINN_TF_PROCESS_P   3
 

@@ -393,8 +393,8 @@ void c_main (void)
   }
 
   // set up packet received callbacks,
-  spin1_callback_on (MC_PACKET_RECEIVED, t_receivePacket, SPINN_PACKET_P);
-  spin1_callback_on (MCPL_PACKET_RECEIVED, t_receivePacket, SPINN_PACKET_P);
+  spin1_callback_on (MC_PACKET_RECEIVED, t_receiveControlPacket, SPINN_PACKET_P);
+  spin1_callback_on (MCPL_PACKET_RECEIVED, t_receiveDataPacket, SPINN_PACKET_P);
 
   // setup simulation,
   simulation_set_start_function (get_started);

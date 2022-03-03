@@ -80,7 +80,6 @@ class SumVertex(
         self._fwd_link = f"fwd_s{self.group.id}/{self.subgroup}/{self.idx}"
         self._bkp_link = f"bkp_s{self.group.id}/{self.subgroup}/{self.idx}"
         self._lds_link = f"lds_s{self.group.id}/{self.subgroup}/{self.idx}"
-        self._bps_link = f"bps_s{self.group.id}/{self.subgroup}/{self.idx}"
         self._fsg_link = f"fsg_s{self.group.id}/{self.subgroup}/{self.idx}"
 
         # sum core-specific parameters
@@ -150,10 +149,6 @@ class SumVertex(
     @property
     def lds_link (self):
         return self._lds_link
-
-    @property
-    def bps_link (self):
-        return self._bps_link
 
     @property
     def fsg_link (self):
@@ -324,12 +319,8 @@ class SumVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
-        # write link keys: bps (padding if not SumVertex tree root)
-        if self.is_tree_root:
-            spec.write_value (routing_info.get_first_key_from_pre_vertex (
-                self, self.bps_link), data_type = DataType.UINT32)
-        else:
-            spec.write_value (0, data_type = DataType.UINT32)
+        # write link keys: bps (padding)
+        spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: stp (padding)
         spec.write_value (0, data_type = DataType.UINT32)

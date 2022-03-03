@@ -33,10 +33,9 @@
 // includes functions to transfer data between DTCM and SDRAM
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// enqueue received packet
-// (FORWARD, BACKPROP, stop and net_stop types)
+// enqueue data packet
 // ------------------------------------------------------------------------
-void i_receivePacket (uint key, uint payload)
+void i_receiveDataPacket (uint key, uint payload)
 {
 #ifdef DEBUG
   pkt_recv++;
@@ -63,6 +62,69 @@ void i_receivePacket (uint key, uint payload)
       spin1_schedule_callback (i_processQueue, 0, 0, SPINN_I_PROCESS_P);
     }
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process control packet
+// ------------------------------------------------------------------------
+void i_receiveControlPacket (uint key, uint unused)
+{
+#ifdef DEBUG
+  pkt_recv++;
+#endif
+
+  (void) unused;
+
+  // check packet type,
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
+  // process tick stop packet,
+  if (pkt_type == SPINN_STOP_KEY)
+  {
+    i_stop_packet (key);
+    return;
+  }
+
+  // or process backprop sync packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    i_sync_packet ();
+    return;
+  }
+
+  // or process network stop packet,
+  if (pkt_type == SPINN_STPN_KEY)
+  {
+    i_net_stop_packet (key);
+    return;
+  }
+
+  // or process deadlock recovery packet,
+  if (pkt_type == SPINN_DLRV_KEY)
+  {
+#ifdef DEBUG
+    dlr_recv++;
+#endif
+
+    if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+    {
+      // report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
+    }
+    else
+    {
+      i_dlrv_packet ();
+    }
+
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -113,42 +175,6 @@ void i_processQueue (uint unused0, uint unused1)
       }
     }
 
-    // or process stop packet,
-    else if (pkt_type == SPINN_STOP_KEY)
-    {
-      i_stop_packet (key);
-    }
-
-    // or process synchronisation packet,
-    else if (pkt_type == SPINN_SYNC_KEY)
-    {
-      i_sync_packet ();
-    }
-
-    // or process network stop packet,
-    else if (pkt_type == SPINN_STPN_KEY)
-    {
-      i_net_stop_packet (key);
-    }
-
-    // or process deadlock recovery packet,
-    else if (pkt_type == SPINN_DLRV_KEY)
-    {
-#ifdef DEBUG
-      dlr_recv++;
-#endif
-
-      if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
-      {
-        // report timeout error
-        stage_done (SPINN_TIMEOUT_EXIT, 0);
-      }
-      else
-      {
-        i_dlrv_packet ();
-      }
-    }
-
 #ifdef DEBUG
     // or report unknown packet type,
     else
@@ -185,7 +211,7 @@ void i_stop_packet (uint key)
   tick_stop = key & SPINN_STPD_MASK;
 
   // and advance tick
-  if_advance_tick ();
+  spin1_schedule_callback (if_advance_tick, 0, 0, SPINN_I_TICK_P);
 }
 // ------------------------------------------------------------------------
 
@@ -202,7 +228,7 @@ void i_sync_packet (void)
 #endif
 
   // advance tick
-  ib_advance_tick ();
+  spin1_schedule_callback (ib_advance_tick, 0, 0, SPINN_I_TICK_P);
 }
 // ------------------------------------------------------------------------
 

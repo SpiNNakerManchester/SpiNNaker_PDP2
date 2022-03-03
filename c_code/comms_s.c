@@ -32,10 +32,9 @@
 // sum core communications routines
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// enqueue received packet
-// (FORWARD, BACKPROP, lds, stop and net_stop types)
+// enqueue data packet
 // ------------------------------------------------------------------------
-void s_receivePacket (uint key, uint payload)
+void s_receiveDataPacket (uint key, uint payload)
 {
 #ifdef DEBUG
   pkt_recv++;
@@ -62,6 +61,82 @@ void s_receivePacket (uint key, uint payload)
       spin1_schedule_callback (s_processQueue, 0, 0, SPINN_S_PROCESS_P);
     }
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process control packet
+// ------------------------------------------------------------------------
+void s_receiveControlPacket (uint key, uint unused)
+{
+#ifdef DEBUG
+  pkt_recv++;
+#endif
+
+  (void) unused;
+
+  // check packet type,
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
+  // process tick stop packet,
+  if (pkt_type == SPINN_STOP_KEY)
+  {
+    s_stop_packet (key);
+    return;
+  }
+
+  // or process backprop sync packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    s_sync_packet ();
+    return;
+  }
+
+  // or process network stop packet,
+  if (pkt_type == SPINN_STPN_KEY)
+  {
+    s_net_stop_packet (key);
+    return;
+  }
+
+  // or process deadlock recovery packet,
+  if (pkt_type == SPINN_DLRV_KEY)
+  {
+#ifdef DEBUG
+    dlr_recv++;
+#endif
+
+    if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+    {
+      // report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
+    }
+    else
+    {
+      s_dlrv_packet ();
+    }
+
+    return;
+  }
+
+  // or process unexpected data packet,
+  //NOTE: this is a workaround for an undiagnosed
+  //bug that drops the payload from data packets
+  if (pkt_type == SPINN_DATA_KEY)
+  {
+#ifdef DEBUG
+    wrng_cth++;
+#endif
+
+    s_receiveDataPacket (key, 0);
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -118,24 +193,6 @@ void s_processQueue (uint unused0, uint unused1)
       s_lds_packet (payload);
     }
 
-    // or process tick stop packet,
-    else if (pkt_type == SPINN_STOP_KEY)
-    {
-      s_stop_packet (key);
-    }
-
-    // or process network stop packet,
-    else if (pkt_type == SPINN_STPN_KEY)
-    {
-      s_net_stop_packet (key);
-    }
-
-    // or process backprop sync packet,
-    else if (pkt_type == SPINN_SYNC_KEY)
-    {
-      s_sync_packet ();
-    }
-
     // or process backprop sync generation packet,
     else if (pkt_type == SPINN_BSGN_KEY)
     {
@@ -146,24 +203,6 @@ void s_processQueue (uint unused0, uint unused1)
     else if (pkt_type == SPINN_FSGN_KEY)
     {
       s_fsgn_packet ();
-    }
-
-    // or process deadlock recovery packet,
-    else if (pkt_type == SPINN_DLRV_KEY)
-    {
-#ifdef DEBUG
-      dlr_recv++;
-#endif
-
-      if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
-      {
-        // report timeout error
-        stage_done (SPINN_TIMEOUT_EXIT, 0);
-      }
-      else
-      {
-        s_dlrv_packet ();
-      }
     }
 
 #ifdef DEBUG
@@ -183,70 +222,6 @@ void s_processQueue (uint unused0, uint unused1)
 
   // and restore interrupts
   spin1_mode_restore (cpsr);
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process a tick stop packet
-// ------------------------------------------------------------------------
-void s_stop_packet (uint key)
-{
-#ifdef DEBUG
-  stp_recv++;
-  if (phase == SPINN_BACKPROP)
-    wrng_fph++;
-#endif
-
-  // get tick stop decision,
-  tick_stop = key & SPINN_STPD_MASK;
-
-  // and advance tick
-  sf_advance_tick ();
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process a network stop packet
-// ------------------------------------------------------------------------
-void s_net_stop_packet (uint key)
-{
-#ifdef DEBUG
-  stn_recv++;
-#endif
-
-  // network stop decision arrived,
-  net_stop = key & SPINN_STPD_MASK;
-
-  // access flag with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
-  // and check if ready for network stop decision
-  if (net_stop_rdy)
-  {
-    // clear flag,
-    net_stop_rdy = FALSE;
-
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
-
-    // and decide what to do
-    if (net_stop)
-    {
-      // finish stage and report no error
-      //TODO: check if need to schedule or can simply call
-      spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
-    }
-  }
-  else
-  {
-    // flag ready for net_stop decision,
-    net_stop_rdy = TRUE;
-
-    // and restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
-  }
 }
 // ------------------------------------------------------------------------
 
@@ -301,7 +276,7 @@ void s_lds_packet (uint payload)
       // and send sync packet to allow next tick to start
       if (scfg.is_tree_root)
       {
-        while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+        while (!spin1_send_mc_packet (bpsKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
         pkt_sent++;
@@ -323,6 +298,26 @@ void s_lds_packet (uint payload)
 
 
 // ------------------------------------------------------------------------
+// process a tick stop packet
+// ------------------------------------------------------------------------
+void s_stop_packet (uint key)
+{
+#ifdef DEBUG
+  stp_recv++;
+  if (phase == SPINN_BACKPROP)
+    wrng_fph++;
+#endif
+
+  // get tick stop decision,
+  tick_stop = key & SPINN_STPD_MASK;
+
+  // and advance tick
+  spin1_schedule_callback (sf_advance_tick, 0, 0, SPINN_S_TICK_P);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // process a backprop sync packet
 // ------------------------------------------------------------------------
 void s_sync_packet (void)
@@ -334,7 +329,51 @@ void s_sync_packet (void)
 #endif
 
   // advance tick
-  sb_advance_tick ();
+  spin1_schedule_callback (sb_advance_tick, 0, 0, SPINN_S_TICK_P);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a network stop packet
+// ------------------------------------------------------------------------
+void s_net_stop_packet (uint key)
+{
+#ifdef DEBUG
+  stn_recv++;
+#endif
+
+  // network stop decision arrived,
+  net_stop = key & SPINN_STPD_MASK;
+
+  // access flag with interrupts disabled,
+  uint cpsr = spin1_int_disable ();
+
+  // and check if ready for network stop decision
+  if (net_stop_rdy)
+  {
+    // clear flag,
+    net_stop_rdy = FALSE;
+
+    // restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+
+    // and decide what to do
+    if (net_stop)
+    {
+      // finish stage and report no error
+      //TODO: check if need to schedule or can simply call
+      spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
+    }
+  }
+  else
+  {
+    // flag ready for net_stop decision,
+    net_stop_rdy = TRUE;
+
+    // and restore interrupts after flag access,
+    spin1_mode_restore (cpsr);
+  }
 }
 // ------------------------------------------------------------------------
 
@@ -384,7 +423,7 @@ void s_bsgn_packet (void)
       spin1_mode_restore (cpsr);
 
       // and send sync packet to allow next tick to start
-      while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+      while (!spin1_send_mc_packet (bpsKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
       pkt_sent++;
@@ -425,7 +464,7 @@ void s_fsgn_packet (void)
     s_fsgn_arrived = 0;
 
     // and report forward sync gen
-    while (!spin1_send_mc_packet(fsgKey, 0, NO_PAYLOAD));
+    while (!spin1_send_mc_packet(fsgKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;

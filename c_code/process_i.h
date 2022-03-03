@@ -21,8 +21,8 @@
 void if_process (uint key, uint payload);
 void ib_process (uint key, uint payload);
 
-void if_advance_tick   (void);
-void ib_advance_tick   (void);
+void if_advance_tick   (uint unused0, uint unused1);
+void ib_advance_tick   (uint unused0, uint unused1);
 void if_advance_event  (void);
 void i_advance_example (void);
 

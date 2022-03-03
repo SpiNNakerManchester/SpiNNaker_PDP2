@@ -21,7 +21,7 @@
 void tf_process (uint key,     uint payload);
 void tb_process (uint unused0, uint unused1);
 
-void tf_advance_tick   (void);
+void tf_advance_tick   (uint unused0, uint unused1);
 void tb_advance_tick   (uint unused0, uint unused1);
 void tf_advance_event  (void);
 void t_advance_example (void);

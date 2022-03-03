@@ -33,10 +33,9 @@
 // includes functions to transfer data between DTCM and SDRAM
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// initial handling of received packets
-// (FORWARD, BACKPROP, lds, stop, net_stop and sync types)
+// process data packet
 // ------------------------------------------------------------------------
-void w_receivePacket (uint key, uint payload)
+void w_receiveDataPacket (uint key, uint payload)
 {
 #ifdef DEBUG
   pkt_recv++;
@@ -80,25 +79,30 @@ void w_receivePacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
-// handle FORWARD-phase packets
-// (FORWARD, stop, net_stop and sync types)
+// process control packet
 // ------------------------------------------------------------------------
-void w_handleFWDPacket (uint key, uint payload)
+void w_receiveControlPacket (uint key, uint unused)
 {
+#ifdef DEBUG
+  pkt_recv++;
+#endif
+
+  (void) unused;
+
   // check packet type,
   uint pkt_type = key & SPINN_TYPE_MASK;
 
-  // process FORWARD data packet,
-  if (pkt_type == SPINN_DATA_KEY)
-  {
-    w_forward_packet (key, payload);
-    return;
-  }
-
-  // or process tick stop packet,
+  // process tick stop packet,
   if (pkt_type == SPINN_STOP_KEY)
   {
     w_stop_packet (key);
+    return;
+  }
+
+  // or process backprop sync packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    w_sync_packet ();
     return;
   }
 
@@ -126,6 +130,30 @@ void w_handleFWDPacket (uint key, uint payload)
       w_dlrv_packet ();
     }
 
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// handle FORWARD-phase packets
+// (FORWARD, stop, net_stop and sync types)
+// ------------------------------------------------------------------------
+void w_handleFWDPacket (uint key, uint payload)
+{
+  // check packet type,
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
+  // process FORWARD data packet,
+  if (pkt_type == SPINN_DATA_KEY)
+  {
+    w_forward_packet (key, payload);
     return;
   }
 
@@ -170,12 +198,6 @@ void w_processBKPQueue (uint unused0, uint unused1)
     if (pkt_type == SPINN_DATA_KEY)
     {
       wb_process (key, payload);
-    }
-
-    // or process backprop sync packet,
-    else if (pkt_type == SPINN_SYNC_KEY)
-    {
-      w_sync_packet ();
     }
 
     // or process LDS result packet,
@@ -234,17 +256,32 @@ void w_forward_packet (uint key, uint payload)
     // initialise scoreboard for next tick,
     wf_arrived = 0;
 
-    // update pointer to received unit outputs,
-    wf_comms = 1 - wf_comms;
-
     // trigger forward sync generation,
-    while (!spin1_send_mc_packet (fsgKey, 0, NO_PAYLOAD));
+    while (!spin1_send_mc_packet (fsgKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
     pkt_sent++;
     fsg_sent++;
 #endif
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process an LDS result packet
+// ------------------------------------------------------------------------
+void w_ldsa_packet (uint payload)
+{
+#ifdef DEBUG
+  lds_recv++;
+#endif
+
+  //TODO: need to synchronise the arrival of final ldsa packet
+  // to all w cores!
+
+  // the final link delta sum for the epoch arrived
+  w_lds_final = (lds_t) payload;
 }
 // ------------------------------------------------------------------------
 
@@ -264,7 +301,24 @@ void w_stop_packet (uint key)
   tick_stop = key & SPINN_STPD_MASK;
 
   // and advance tick
-  spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
+  spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_W_TICK_P);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a backprop sync packet
+// ------------------------------------------------------------------------
+void w_sync_packet (void)
+{
+#ifdef DEBUG
+  spk_recv++;
+  if (phase == SPINN_FORWARD)
+    wrng_bph++;
+#endif
+
+  // advance tick
+  spin1_schedule_callback (wb_advance_tick, 0, 0, SPINN_W_TICK_P);
 }
 // ------------------------------------------------------------------------
 
@@ -334,41 +388,6 @@ void w_dlrv_packet (void)
     // and initialise scoreboard
     wb_arrived = 0;
   }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process a backprop sync packet
-// ------------------------------------------------------------------------
-void w_sync_packet (void)
-{
-#ifdef DEBUG
-  spk_recv++;
-  if (phase == SPINN_FORWARD)
-    wrng_bph++;
-#endif
-
-  // advance tick
-  wb_advance_tick ();
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process an LDS result packet
-// ------------------------------------------------------------------------
-void w_ldsa_packet (uint payload)
-{
-#ifdef DEBUG
-  lds_recv++;
-#endif
-
-  //TODO: need to synchronise the arrival of final ldsa packet
-  // to all w cores!
-
-  // the final link delta sum for the epoch arrived
-  w_lds_final = (lds_t) payload;
 }
 // ------------------------------------------------------------------------
 

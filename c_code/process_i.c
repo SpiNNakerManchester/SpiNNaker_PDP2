@@ -161,8 +161,11 @@ void ib_process (uint key, uint payload)
 // FORWARD phase: the tick has been completed, move FORWARD to the next tick
 // updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
-void if_advance_tick (void)
+void if_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "if_advance_tick\n");
 #endif
@@ -189,8 +192,11 @@ void if_advance_tick (void)
 // BACKPROP phase: the tick has been completed, move FORWARD to the next tick
 // updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
-void ib_advance_tick (void)
+void ib_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "ib_advance_tick\n");
 #endif

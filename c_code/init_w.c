@@ -342,12 +342,10 @@ void var_init (uint init_weights, uint reset_examples)
   wb_update_func = w_update_procs[xcfg.update_function];
 
   // initialise packet keys
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  fwdKey = rt[FWD] | SPINN_DATA_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
+  bkpKey = rt[BKP] | SPINN_DATA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
   ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
-
-  //NOTE: forward sync gen packets follow the FORWARD route but use a different key
-  fsgKey = rt[FWD] | SPINN_FSGN_KEY;
+  fsgKey = rt[FSG] | SPINN_FSGN_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------

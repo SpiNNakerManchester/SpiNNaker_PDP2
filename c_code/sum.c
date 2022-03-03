@@ -209,8 +209,8 @@ void c_main (void)
   var_init (TRUE);
 
   // set up packet received callbacks,
-  spin1_callback_on (MC_PACKET_RECEIVED, s_receivePacket, SPINN_PACKET_P);
-  spin1_callback_on (MCPL_PACKET_RECEIVED, s_receivePacket, SPINN_PACKET_P);
+  spin1_callback_on (MC_PACKET_RECEIVED, s_receiveControlPacket, SPINN_PACKET_P);
+  spin1_callback_on (MCPL_PACKET_RECEIVED, s_receiveDataPacket, SPINN_PACKET_P);
 
   // setup simulation,
   simulation_set_start_function (get_started);

@@ -592,6 +592,9 @@ void wf_advance_tick (uint unused0, uint unused1)
   // update pointer to processing unit outputs,
   wf_procs = 1 - wf_procs;
 
+  // update pointer to received unit outputs,
+  wf_comms = 1 - wf_comms;
+
   // and check if end of event
   if (tick_stop)
   {
@@ -613,8 +616,11 @@ void wf_advance_tick (uint unused0, uint unused1)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void wb_advance_tick (void)
+void wb_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "wb_advance_tick\n");
 #endif

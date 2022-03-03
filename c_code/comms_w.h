@@ -18,9 +18,10 @@
 #ifndef __COMMS_W_H__
 #define __COMMS_W_H__
 
-void w_receivePacket   (uint key, uint payload);
-void w_handleFWDPacket (uint key, uint payload);
-void w_processBKPQueue (uint unused0, uint unused1);
+void w_receiveDataPacket    (uint key, uint payload);
+void w_receiveControlPacket (uint key,     uint unused);
+void w_handleFWDPacket      (uint key, uint payload);
+void w_processBKPQueue      (uint unused0, uint unused1);
 
 void w_forward_packet  (uint key, uint payload);
 void w_stop_packet     (uint key);

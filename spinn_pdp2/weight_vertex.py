@@ -110,6 +110,9 @@ class WeightVertex(
         self._lds_link = (f"lds_w{self.group.id}/{self.subgroup}"
                           f"_{self.from_group.id}/{self.from_subgroup}")
 
+        self._fsg_link = (f"fsg_w{self.group.id}/{self.subgroup}"
+                          f"_{self.from_group.id}/{self.from_subgroup}")
+
         # weight core-specific parameters
         # weight matrix parameters
         self._num_rows = self.from_group.subunits[self.from_subgroup]
@@ -208,6 +211,10 @@ class WeightVertex(
     @property
     def lds_link (self):
         return self._lds_link
+
+    @property
+    def fsg_link (self):
+        return self._fsg_link
 
     @property
     def config (self):
@@ -369,8 +376,9 @@ class WeightVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
 
-        # write link keys: fsg (padding)
-        spec.write_value (0, data_type = DataType.UINT32)
+        # write link keys: fsg
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.fsg_link), data_type = DataType.UINT32)
 
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,

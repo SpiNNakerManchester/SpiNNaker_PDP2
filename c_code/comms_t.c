@@ -36,10 +36,9 @@
 // includes functions to transfer data between DTCM and SDRAM
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// initial handling of received packets
-// (FORWARD, BACKPROP, criterion, stop and net_stop types)
+// process data packet
 // ------------------------------------------------------------------------
-void t_receivePacket (uint key, uint payload)
+void t_receiveDataPacket (uint key, uint payload)
 {
 #ifdef DEBUG
   pkt_recv++;
@@ -84,6 +83,69 @@ void t_receivePacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
+// process control packet
+// ------------------------------------------------------------------------
+void t_receiveControlPacket (uint key, uint unused)
+{
+#ifdef DEBUG
+  pkt_recv++;
+#endif
+
+  (void) unused;
+
+  // check packet type,
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
+  // process tick stop packet,
+  if (pkt_type == SPINN_STOP_KEY)
+  {
+    t_stop_packet (key);
+    return;
+  }
+
+  // or process backprop sync packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    t_sync_packet ();
+    return;
+  }
+
+  // or process network stop packet,
+  if (pkt_type == SPINN_STPN_KEY)
+  {
+    t_net_stop_packet (key);
+    return;
+  }
+
+  // or process deadlock recovery packet,
+  if (pkt_type == SPINN_DLRV_KEY)
+  {
+#ifdef DEBUG
+    dlr_recv++;
+#endif
+
+    if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+    {
+      // report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
+    }
+    else
+    {
+      t_dlrv_packet ();
+    }
+
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // handle BACKPROP-phase packets
 // (BACKPROP type)
 // ------------------------------------------------------------------------
@@ -103,13 +165,6 @@ void t_handleBKPPacket (uint key, uint payload)
   if (pkt_type == SPINN_BSGN_KEY)
   {
     t_bsgn_packet ();
-    return;
-  }
-
-  // or process synchronisation packet,
-  if (pkt_type == SPINN_SYNC_KEY)
-  {
-    t_sync_packet ();
     return;
   }
 
@@ -162,36 +217,6 @@ void t_processFWDQueue (uint unused0, uint unused1)
     else if (pkt_type == SPINN_FSGN_KEY)
     {
       t_fsgn_packet ();
-    }
-
-    // or process tick stop packet,
-    else if (pkt_type == SPINN_STOP_KEY)
-    {
-      t_stop_packet (key);
-    }
-
-    // or process network stop packet,
-    else if (pkt_type == SPINN_STPN_KEY)
-    {
-      t_net_stop_packet (key);
-    }
-
-    // or process deadlock recovery packet,
-    else if (pkt_type == SPINN_DLRV_KEY)
-    {
-#ifdef DEBUG
-      dlr_recv++;
-#endif
-
-      if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
-      {
-        // report timeout error
-        stage_done (SPINN_TIMEOUT_EXIT, 0);
-      }
-      else
-      {
-        t_dlrv_packet ();
-      }
     }
 
 #ifdef DEBUG
@@ -256,7 +281,7 @@ void t_criterion_packet (uint key)
       // so it's ready to advance tick
       if (tcfg.is_last_output)
       {
-        tf_advance_tick ();
+        spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_T_TICK_P);
       }
     }
     else
@@ -303,7 +328,7 @@ void t_fsgn_packet (void)
     // so it's ready to advance tick
     if (tcfg.is_last_output)
     {
-      tf_advance_tick();
+      spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_T_TICK_P);
     }
   }
   else
@@ -333,7 +358,24 @@ void t_stop_packet (uint key)
   tick_stop = key & SPINN_STPD_MASK;
 
   // and advance tick
-  tf_advance_tick ();
+  spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_T_TICK_P);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a backprop sync packet
+// ------------------------------------------------------------------------
+void t_sync_packet (void)
+{
+#ifdef DEBUG
+  spk_recv++;
+  if (phase == SPINN_FORWARD)
+    wrng_bph++;
+#endif
+
+  // advance tick
+  spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
 }
 // ------------------------------------------------------------------------
 
@@ -461,11 +503,12 @@ void t_backprop_packet (uint key, uint payload)
       //NOTE: last t core does *not* get a sync packet
       if (tcfg.is_last_output)
       {
-        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
+        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
       }
 
       // and send backprop sync packet to allow next tick to start
-      while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+      uint use_pl = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
+      while (!spin1_send_mc_packet (bpsKey, 0, use_pl));
 
 #ifdef DEBUG
       pkt_sent++;
@@ -475,7 +518,7 @@ void t_backprop_packet (uint key, uint payload)
     }
     else
     {
-      // if not done report comms thread done
+      // report comms thread done
       tb_thrds_pend &= ~SPINN_THRD_COMS;
     }
   }
@@ -513,11 +556,12 @@ void t_bsgn_packet (void)
       //NOTE: last t core does *not* get a sync packet
       if (tcfg.is_last_output)
       {
-        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
+        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
       }
 
-      // and send sync packet to allow next tick to start
-      while (!spin1_send_mc_packet(bpsKey, 0, NO_PAYLOAD));
+      // and send backprop sync packet to allow next tick to start
+      uint use_pl = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
+      while (!spin1_send_mc_packet (bpsKey, 0, use_pl));
 
 #ifdef DEBUG
       pkt_sent++;
@@ -531,23 +575,6 @@ void t_bsgn_packet (void)
       tb_thrds_pend &= ~SPINN_THRD_BSGN;
     }
   }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process a sync packet
-// ------------------------------------------------------------------------
-void t_sync_packet (void)
-{
-#ifdef DEBUG
-  spk_recv++;
-  if (phase == SPINN_FORWARD)
-    wrng_bph++;
-#endif
-
-  // advance tick
-  spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
 }
 // ------------------------------------------------------------------------
 
@@ -588,7 +615,8 @@ void send_stop_crit (void)
   }
 
   // FORWARD aggregated criterion,
-  while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit), 0, NO_PAYLOAD));
+  uint use_pl = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
+  while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit), 0, use_pl));
 
 #ifdef DEBUG
   pkt_sent++;

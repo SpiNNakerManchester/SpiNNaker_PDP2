@@ -209,7 +209,7 @@ void sb_process (uint key, uint payload)
         // and send sync packet to allow next tick to start
         if (scfg.is_tree_root)
         {
-          while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+          while (!spin1_send_mc_packet (bpsKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
           pkt_sent++;
@@ -235,8 +235,11 @@ void sb_process (uint key, uint payload)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sf_advance_tick (void)
+void sf_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "sf_advance_tick\n");
 #endif
@@ -263,8 +266,11 @@ void sf_advance_tick (void)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sb_advance_tick (void)
+void sb_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "sb_advance_tick\n");
 #endif

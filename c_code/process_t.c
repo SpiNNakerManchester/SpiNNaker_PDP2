@@ -107,25 +107,6 @@ void tf_process (uint key, uint payload)
     // initialise scoreboard for next tick,
     tf_arrived = 0;
 
-    // if recording all ticks,
-    if (!xcfg.rec_last_tick_only)
-    {
-      if (t_rec_tick_data)
-      {
-        record_tick_data ();
-      }
-
-      if (t_rec_outputs)
-      {
-        record_outputs ();
-      }
-
-      if (t_rec_step_updt)
-      {
-        stage_step++;
-      }
-    }
-
     // access thread semaphore with interrupts disabled,
     uint cpsr = spin1_int_disable ();
 
@@ -146,7 +127,7 @@ void tf_process (uint key, uint payload)
       // so it's ready to advance tick
       if (tcfg.is_last_output)
       {
-        tf_advance_tick ();
+        spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_T_TICK_P);
       }
     }
     else
@@ -235,8 +216,11 @@ void tb_process (uint unused0, uint unused1)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void tf_advance_tick (void)
+void tf_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "tf_advance_tick\n");
 #endif
@@ -244,6 +228,25 @@ void tf_advance_tick (void)
 #ifdef DEBUG
   tot_tick++;
 #endif
+
+  // if recording all ticks,
+  if (!xcfg.rec_last_tick_only)
+  {
+    if (t_rec_tick_data)
+    {
+      record_tick_data ();
+    }
+
+    if (t_rec_outputs)
+    {
+      record_outputs ();
+    }
+
+    if (t_rec_step_updt)
+    {
+      stage_step++;
+    }
+  }
 
   // check if done with event
   if (tick_stop)

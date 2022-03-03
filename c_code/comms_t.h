@@ -18,9 +18,10 @@
 #ifndef __COMMS_T_H__
 #define __COMMS_T_H__
 
-void t_receivePacket   (uint key,     uint payload);
-void t_handleBKPPacket (uint key,     uint payload);
-void t_processFWDQueue (uint unused0, uint unused1);
+void t_receiveDataPacket    (uint key,     uint payload);
+void t_receiveControlPacket (uint key,     uint unused);
+void t_handleBKPPacket      (uint key,     uint payload);
+void t_processFWDQueue      (uint unused0, uint unused1);
 
 void t_criterion_packet (uint key);
 void t_fsgn_packet      (void);
