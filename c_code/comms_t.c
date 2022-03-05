@@ -40,10 +40,6 @@
 // ------------------------------------------------------------------------
 void t_receiveDataPacket (uint key, uint payload)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   // check packet phase,
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
@@ -87,10 +83,6 @@ void t_receiveDataPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void t_receiveControlPacket (uint key, uint unused)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   (void) unused;
 
   // check packet type,
@@ -511,7 +503,6 @@ void t_backprop_packet (uint key, uint payload)
       while (!spin1_send_mc_packet (bpsKey, 0, use_pl));
 
 #ifdef DEBUG
-      pkt_sent++;
       if (tcfg.is_last_output) spk_sent++;
       else bsg_sent++;
 #endif
@@ -564,7 +555,6 @@ void t_bsgn_packet (void)
       while (!spin1_send_mc_packet (bpsKey, 0, use_pl));
 
 #ifdef DEBUG
-      pkt_sent++;
       if (tcfg.is_last_output) spk_sent++;
       else bsg_sent++;
 #endif
@@ -619,7 +609,6 @@ void send_stop_crit (void)
   while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit), 0, use_pl));
 
 #ifdef DEBUG
-  pkt_sent++;
   if (tcfg.is_last_output) stp_sent++;
   else crt_sent++;
 #endif

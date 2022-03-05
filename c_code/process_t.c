@@ -83,7 +83,6 @@ void tf_process (uint key, uint payload)
   while (!spin1_send_mc_packet ((fwdKey | inx), (uint) t_outputs[inx], WITH_PAYLOAD));
 
 #ifdef DEBUG
-  pkt_sent++;
   sent_fwd++;
 #endif
 
@@ -197,7 +196,6 @@ void tb_process (uint unused0, uint unused1)
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
 
 #ifdef DEBUG
-    pkt_sent++;
     sent_bkp++;
 #endif
 
@@ -459,7 +457,6 @@ void t_advance_example (void)
       while (!spin1_send_mc_packet (tf_stpn_key | nsd, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
-      pkt_sent++;
       stn_sent++;
 #endif
 

@@ -37,10 +37,6 @@
 // ------------------------------------------------------------------------
 void i_receiveDataPacket (uint key, uint payload)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   // queue packet - if space available
   uint new_tail = (i_pkt_queue.tail + 1) % SPINN_INPUT_PQ_LEN;
   if (new_tail == i_pkt_queue.head)
@@ -71,10 +67,6 @@ void i_receiveDataPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void i_receiveControlPacket (uint key, uint unused)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   (void) unused;
 
   // check packet type,

@@ -155,10 +155,8 @@ long_net_t     * i_net_history;     //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-uint pkt_sent;  // total packets sent
 uint sent_fwd;  // packets sent in FORWARD phase
 uint sent_bkp;  // packets sent in BACKPROP phase
-uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
 uint spk_recv;  // sync packets received

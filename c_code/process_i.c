@@ -79,7 +79,6 @@ void if_process (uint key, uint payload)
   while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
 #ifdef DEBUG
-  pkt_sent++;
   sent_fwd++;
 #endif
 
@@ -143,7 +142,6 @@ void ib_process (uint key, uint payload)
   while (!spin1_send_mc_packet ((bkpKey | inx), delta, WITH_PAYLOAD));
 
 #ifdef DEBUG
-  pkt_sent++;
   sent_bkp++;
 #endif
 

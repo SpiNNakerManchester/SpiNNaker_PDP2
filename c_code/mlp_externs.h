@@ -224,10 +224,8 @@ extern long_deriv_t   * t_output_deriv_history;
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-extern uint pkt_sent;  // total packets sent
 extern uint sent_fwd;  // packets sent in FORWARD phase
 extern uint sent_bkp;  // packets sent in BACKPROP phase
-extern uint pkt_recv;  // total packets received
 extern uint recv_fwd;  // packets received in FORWARD phase
 extern uint recv_bkp;  // packets received in BACKPROP phase
 extern uint pkt_fwbk;  // unused packets received in FORWARD phase

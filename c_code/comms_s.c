@@ -36,10 +36,6 @@
 // ------------------------------------------------------------------------
 void s_receiveDataPacket (uint key, uint payload)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   // queue packet - if space available
   uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
   if (new_tail == s_pkt_queue.head)
@@ -70,10 +66,6 @@ void s_receiveDataPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void s_receiveControlPacket (uint key, uint unused)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   (void) unused;
 
   // check packet type,
@@ -248,7 +240,6 @@ void s_lds_packet (uint payload)
     while (!spin1_send_mc_packet (ldsKey, s_lds_part, WITH_PAYLOAD));
 
 #ifdef DEBUG
-    pkt_sent++;
     lds_sent++;
 #endif
 
@@ -279,7 +270,6 @@ void s_lds_packet (uint payload)
         while (!spin1_send_mc_packet (bpsKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
-        pkt_sent++;
         bsg_sent++;
 #endif
       }
@@ -426,7 +416,6 @@ void s_bsgn_packet (void)
       while (!spin1_send_mc_packet (bpsKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
-      pkt_sent++;
       bsg_sent++;
 #endif
     }
@@ -467,7 +456,6 @@ void s_fsgn_packet (void)
     while (!spin1_send_mc_packet(fsgKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
-    pkt_sent++;
     fsg_sent++;
 #endif
   }

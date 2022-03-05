@@ -122,10 +122,8 @@ uint             s_fsgn_expected;   // expected count of forward sync gen packet
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-uint pkt_sent;  // total packets sent
 uint sent_fwd;  // packets sent in FORWARD phase
 uint sent_bkp;  // packets sent in BACKPROP phase
-uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
 uint spk_recv;  // sync packets received

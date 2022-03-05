@@ -351,10 +351,8 @@ void var_init (uint init_weights, uint reset_examples)
   // ------------------------------------------------------------------------
   // DEBUG variables
   // ------------------------------------------------------------------------
-  pkt_sent = 0;  // total packets sent
   sent_fwd = 0;  // packets sent in FORWARD phase
   sent_bkp = 0;  // packets sent in BACKPROP phase
-  pkt_recv = 0;  // total packets received
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
   pkt_fwbk = 0;  // unused packets received in FORWARD phase
@@ -496,8 +494,6 @@ void stage_done (uint ec, uint key)
 #ifdef DEBUG
   // report diagnostics
   io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);

@@ -37,10 +37,6 @@
 // ------------------------------------------------------------------------
 void w_receiveDataPacket (uint key, uint payload)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   // check packet phase,
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
@@ -83,10 +79,6 @@ void w_receiveDataPacket (uint key, uint payload)
 // ------------------------------------------------------------------------
 void w_receiveControlPacket (uint key, uint unused)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   (void) unused;
 
   // check packet type,
@@ -260,7 +252,6 @@ void w_forward_packet (uint key, uint payload)
     while (!spin1_send_mc_packet (fsgKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
-    pkt_sent++;
     fsg_sent++;
 #endif
   }
