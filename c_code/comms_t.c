@@ -423,6 +423,12 @@ void t_dlrv_packet (void)
   // restart tick
   if (phase == SPINN_FORWARD)
   {
+#ifdef DEBUG
+        crt_sent = 0;
+        crt_recv = 0;
+        fsg_recv = 0;
+#endif
+
     // initialise thread semaphore,
     tf_thrds_pend = tf_thrds_init;
 
@@ -441,8 +447,9 @@ void t_dlrv_packet (void)
     // initialise thread semaphore,
     tb_thrds_pend = tb_thrds_init;
 
-    // initialise scoreboard,
+    // initialise scoreboards,
     tb_arrived = 0;
+    tb_bsgn_arrived = 0;
 
     // and trigger computation
     spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);

@@ -583,6 +583,7 @@ void wf_advance_tick (uint unused0, uint unused1)
   if (tick)
   {
     tot_tick++;
+    fsg_sent = 0;
   }
 #endif
 

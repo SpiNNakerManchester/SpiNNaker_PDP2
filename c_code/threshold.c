@@ -228,11 +228,11 @@ uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
 uint spk_sent;  // sync packets sent
 uint spk_recv;  // sync packets received
-uint crt_sent;  // criterion packets sent
-uint crt_recv;  // criterion packets received
-uint fsg_recv;  // forward sync generation packets received
-uint bsg_sent;  // BACKPROP sync generation packets sent
-uint bsg_recv;  // BACKPROP sync generation packets received
+uint crt_sent;  // criterion packets sent (current tick)
+uint crt_recv;  // criterion packets received (current tick)
+uint fsg_recv;  // forward sync generation packets received (current tick)
+uint bsg_sent;  // BACKPROP sync generation packets sent (current tick)
+uint bsg_recv;  // BACKPROP sync generation packets received (current tick)
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_sent;  // network_stop packets sent
@@ -244,6 +244,7 @@ uint wrng_bph;  // BACKPROP packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
+
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -295,6 +296,12 @@ void timeout (uint ticks, uint unused)
       // restart tick
       if (phase == SPINN_FORWARD)
       {
+#ifdef DEBUG
+        crt_sent = 0;
+        crt_recv = 0;
+        fsg_recv = 0;
+#endif
+
         // initialise thread semaphore,
         tf_thrds_pend = tf_thrds_init;
 
@@ -313,8 +320,9 @@ void timeout (uint ticks, uint unused)
         // initialise thread semaphore,
         tb_thrds_pend = tb_thrds_init;
 
-        // initialise scoreboard,
+        // initialise scoreboards,
         tb_arrived = 0;
+        tb_bsgn_arrived = 0;
 
         // and trigger computation
         spin1_schedule_callback(tb_process, 0, 0, SPINN_TB_PROCESS_P);

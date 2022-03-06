@@ -243,6 +243,8 @@ void sf_advance_tick (uint unused0, uint unused1)
 
 #ifdef DEBUG
   tot_tick++;
+  fsg_sent = 0;
+  fsg_recv = 0;
 #endif
 
   // check if end of event

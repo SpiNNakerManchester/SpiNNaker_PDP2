@@ -270,10 +270,6 @@ void var_init (uint reset_examples)
     i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
-  // initialise scoreboards
-  if_done = 0;
-  ib_done = 0;
-
   // initialise thread semaphores
   if_thrds_pend = SPINN_IF_THRDS;
   ib_thrds_pend = SPINN_IB_THRDS;
@@ -431,7 +427,6 @@ void stage_done (uint ec, uint key)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                       epoch, example_cnt, phase, tick
                     );
-      io_printf (IO_BUF, "(fd:%u bd:%u)\n", if_done, ib_done);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }

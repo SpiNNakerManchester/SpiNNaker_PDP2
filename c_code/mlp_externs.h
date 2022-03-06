@@ -115,7 +115,6 @@ extern uchar            s_active;       // processing packets from queue?
 extern lds_t            s_lds_part;     // partial link delta sum
 extern scoreboard_t   * sf_arrived;     // keep count of expected net b-d-p
 extern scoreboard_t     s_fsgn_arrived; // keep count of expected sync packets
-extern scoreboard_t     sf_done;        // current tick net computation done
 extern uint             sf_thrds_pend;  // thread semaphore
 extern uint             sf_thrds_init;  // thread semaphore initialisation
 extern scoreboard_t   * sb_arrived;     // keep count of expected error b-d-p
@@ -143,11 +142,9 @@ extern long_delta_t   * i_deltas;      // deltas computed in current tick
 extern pkt_queue_t      i_pkt_queue;   // queue to hold received packets
 extern uchar            i_active;      // processing packets from queue?
 extern uint             i_it_idx;      // index into current inputs/targets
-extern scoreboard_t     if_done;       // current tick net computation done
 extern uint             if_thrds_pend; // thread semaphore
 extern long_delta_t   * ib_init_delta; // initial delta value for every tick
 extern uint             ib_thrds_pend; // thread semaphore
-extern scoreboard_t     ib_done;       // current tick delta computation done
 extern long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
 extern long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
 
@@ -232,12 +229,12 @@ extern uint pkt_fwbk;  // unused packets received in FORWARD phase
 extern uint pkt_bwbk;  // unused packets received in BACKPROP phase
 extern uint spk_sent;  // sync packets sent
 extern uint spk_recv;  // sync packets received
-extern uint crt_sent;  // criterion packets sent
-extern uint crt_recv;  // criterion packets received
-extern uint fsg_sent;  // FORWARD sync generation packets sent
-extern uint fsg_recv;  // FORWARD sync generation packets received
-extern uint bsg_sent;  // BACKPROP sync generation packets sent
-extern uint bsg_recv;  // BACKPROP sync generation packets received
+extern uint crt_sent;  // criterion packets sent (current tick)
+extern uint crt_recv;  // criterion packets received (current tick)
+extern uint fsg_sent;  // FORWARD sync generation packets sent (current tick)
+extern uint fsg_recv;  // FORWARD sync generation packets received (current tick)
+extern uint bsg_sent;  // BACKPROP sync generation packets sent (current tick)
+extern uint bsg_recv;  // BACKPROP sync generation packets received (current tick)
 extern uint stp_sent;  // stop packets sent
 extern uint stp_recv;  // stop packets received
 extern uint stn_sent;  // network_stop packets sent
@@ -246,13 +243,14 @@ extern uint dlr_sent;  // deadlock recovery packets sent
 extern uint dlr_recv;  // deadlock recovery packets received
 extern uint lds_sent;  // link_delta packets sent
 extern uint lds_recv;  // link_delta packets received
-extern uint tot_tick;  // total number of ticks executed
 extern uint wght_ups;  // number of weight updates done
 extern uint wrng_fph;  // FORWARD packets received in wrong phase
 extern uint wrng_bph;  // BACKPROP packets received in wrong phase
 extern uint wrng_pth;  // unexpected processing thread
 extern uint wrng_cth;  // unexpected comms thread
 extern uint wrng_sth;  // unexpected stop thread
+
+extern uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
 

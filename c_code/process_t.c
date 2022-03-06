@@ -225,6 +225,9 @@ void tf_advance_tick (uint unused0, uint unused1)
 
 #ifdef DEBUG
   tot_tick++;
+  crt_sent = 0;
+  crt_recv = 0;
+  fsg_recv = 0;
 #endif
 
   // if recording all ticks,

@@ -137,13 +137,11 @@ uint             i_it_idx;          // index into current inputs/targets
 
 // FORWARD phase specific
 // (net processing)
-scoreboard_t     if_done;           // current tick net computation done
 uint             if_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific
 // (delta processing)
 long_delta_t   * ib_init_delta;     // initial delta value for every tick
-scoreboard_t     ib_done;           // current tick delta computation done
 uint             ib_thrds_pend;     // thread semaphore
 
 // history arrays

@@ -683,11 +683,11 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   recv_bkp = 0;  // packets received in BACKPROP phase
   spk_sent = 0;  // sync packets sent
   spk_recv = 0;  // sync packets received
-  crt_sent = 0;  // criterion packets sent
-  crt_recv = 0;  // criterion packets received
-  fsg_recv = 0;  // forward sync generation packets received
-  bsg_sent = 0;  // BACKPROP sync generation packets sent
-  bsg_recv = 0;  // BACKPROP sync generation packets received
+  crt_sent = 0;  // criterion packets sent (current tick)
+  crt_recv = 0;  // criterion packets received (current tick)
+  fsg_recv = 0;  // forward sync generation packets received (current tick)
+  bsg_sent = 0;  // BACKPROP sync generation packets sent (current tick)
+  bsg_recv = 0;  // BACKPROP sync generation packets received (current tick)
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_sent = 0;  // network_stop packets sent
@@ -843,10 +843,13 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
-  io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
   if (tcfg.is_last_sgrp)
   {
     io_printf (IO_BUF, "crit recv:%d\n", crt_recv);
+  }
+  else
+  {
+    io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
   }
   if (tcfg.is_last_output)
   {

@@ -362,6 +362,10 @@ void w_dlrv_packet (void)
   // restart tick
   if (phase == SPINN_FORWARD)
   {
+#ifdef DEBUG
+        fsg_sent = 0;
+#endif
+
     // initialise thread semaphore,
     wf_thrds_pend = SPINN_WF_THRDS;
 

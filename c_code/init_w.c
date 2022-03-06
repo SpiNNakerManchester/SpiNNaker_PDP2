@@ -358,7 +358,7 @@ void var_init (uint init_weights, uint reset_examples)
   pkt_fwbk = 0;  // unused packets received in FORWARD phase
   pkt_bwbk = 0;  // unused packets received in BACKPROP phase
   spk_recv = 0;  // sync packets received
-  fsg_sent = 0;  // forward sync generation packets sent
+  fsg_sent = 0;  // forward sync generation packets sent (current tick)
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received

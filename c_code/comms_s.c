@@ -471,16 +471,22 @@ void s_dlrv_packet (void)
   // restart tick
   if (phase == SPINN_FORWARD)
   {
+#ifdef DEBUG
+        fsg_sent = 0;
+        fsg_recv = 0;
+#endif
+
     // initialise thread semaphore,
     sf_thrds_pend = sf_thrds_init;
 
     // and initialise nets and scoreboards
     for (uint i = 0; i < scfg.num_units; i++)
     {
-      s_nets[i] = 0;
-      sf_arrived[i] = 0;
+      s_nets[i]      = 0;
+      sf_arrived[i]  = 0;
     }
-    sf_done = 0;
+
+    s_fsgn_arrived = 0;
   }
   else
   {
@@ -490,9 +496,11 @@ void s_dlrv_packet (void)
     // and initialise nets and scoreboards
     for (uint i = 0; i < scfg.num_units; i++)
     {
-      s_errors[i] = 0;
-      sb_arrived[i] = 0;
+      s_errors[i]    = 0;
+      sb_arrived[i]  = 0;
     }
+
+    s_bsgn_arrived = 0;
     sb_done = 0;
   }
 }

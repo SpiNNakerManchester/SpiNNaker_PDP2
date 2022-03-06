@@ -101,7 +101,6 @@ lds_t            s_lds_part;        // partial link delta sum
 // FORWARD phase specific
 // (net computation)
 scoreboard_t   * sf_arrived;        // keep count of expected net b-d-p
-scoreboard_t     sf_done;           // current tick net computation done
 uint             sf_thrds_pend;     // thread semaphore
 uint             sf_thrds_init;     // thread semaphore initialisation
 
@@ -127,10 +126,10 @@ uint sent_bkp;  // packets sent in BACKPROP phase
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
 uint spk_recv;  // sync packets received
-uint fsg_sent;  // forward sync generation packets sent
-uint fsg_recv;  // forward sync generation packets received
-uint bsg_sent;  // BACKPROP sync generation packets sent
-uint bsg_recv;  // BACKPROP sync generation packets received
+uint fsg_sent;  // forward sync generation packets sent (current tick)
+uint fsg_recv;  // forward sync generation packets received (current tick)
+uint bsg_sent;  // BACKPROP sync generation packets sent (current tick)
+uint bsg_recv;  // BACKPROP sync generation packets received (current tick)
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
@@ -142,6 +141,7 @@ uint wrng_bph;  // BACKPROP packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
+
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif

@@ -221,11 +221,11 @@ void var_init (uint reset_examples)
     sf_arrived[i] = 0;
     sb_arrived[i] = 0;
   }
-  sf_done = 0;
+
   sb_done = 0;
 
-  s_bsgn_arrived = 0;
   s_fsgn_arrived = 0;
+  s_bsgn_arrived = 0;
 
   // initialise thread semaphores
   sf_thrds_init = SPINN_SF_THRDS;
@@ -270,8 +270,8 @@ void var_init (uint reset_examples)
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
   spk_recv = 0;  // sync packets received
-  fsg_sent = 0;  // forward sync generation packets sent
-  fsg_recv = 0;  // forward sync generation packets received
+  fsg_sent = 0;  // forward sync generation packets sent (current tick)
+  fsg_recv = 0;  // forward sync generation packets received (current tick)
   bsg_sent = 0;  // BACKPROP sync generation packets sent
   bsg_recv = 0;  // BACKPROP sync generation packets received
   stp_sent = 0;  // stop packets sent
@@ -392,7 +392,7 @@ void stage_done (uint ec, uint key)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                   epoch, example_cnt, phase, tick
                 );
-      io_printf (IO_BUF, "(fd:%u bd:%u)\n", sf_done, sb_done);
+      io_printf (IO_BUF, "(bd:%u)\n", sb_done);
       for (uint i = 0; i < scfg.num_units; i++)
       {
         io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,

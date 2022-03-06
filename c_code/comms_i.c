@@ -277,19 +277,13 @@ void i_dlrv_packet (void)
   // restart tick
   if (phase == SPINN_FORWARD)
   {
-    // initialise thread semaphore,
+    // initialise thread semaphore
     if_thrds_pend = SPINN_IF_THRDS;
-
-    // and initialise scoreboard
-    if_done = 0;
   }
   else
   {
-    // initialise thread semaphore,
+    // initialise thread semaphore
     ib_thrds_pend = SPINN_IB_THRDS;
-
-    // and initialise scoreboard
-    ib_done = 0;
   }
 }
 // ------------------------------------------------------------------------

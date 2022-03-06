@@ -151,7 +151,7 @@ uint recv_bkp;  // packets received in BACKPROP phase
 uint pkt_fwbk;  // unused packets received in FORWARD phase
 uint pkt_bwbk;  // unused packets received in BACKPROP phase
 uint spk_recv;  // sync packets received
-uint fsg_sent;  // forward sync generation packets sent
+uint fsg_sent;  // forward sync generation packets sent (current tick)
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
@@ -164,6 +164,7 @@ uint wght_ups;  // number of weight updates done
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
+
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
