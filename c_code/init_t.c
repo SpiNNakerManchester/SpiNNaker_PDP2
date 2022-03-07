@@ -843,13 +843,10 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
+  io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
   if (tcfg.is_last_sgrp)
   {
     io_printf (IO_BUF, "crit recv:%d\n", crt_recv);
-  }
-  else
-  {
-    io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
   }
   if (tcfg.is_last_output)
   {
