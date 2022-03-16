@@ -30,7 +30,6 @@ from spinn_front_end_common.abstract_models import \
     AbstractRewritesDataSpecification
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
-from spinn_front_end_common.data import FecDataView
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
 
@@ -236,9 +235,9 @@ class SumVertex(
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
     def generate_machine_data_specification(
-            self, spec, placement, iptags, reverse_iptags):
+            self, spec, placement, machine_graph, routing_info, iptags,
+            reverse_iptags):
 
-        routing_info = FecDataView.get_routing_infos()
         # Generate the system data region for simulation.c requirements
         generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)
 
