@@ -666,7 +666,7 @@ class MLPNetwork():
                         gtv = g.t_vertex[s]
                         try:
                             rec_outputs[g.write_blk].append (gtv.read (
-                                FecDataView.get_placement_of_vertex(ftv),
+                                FecDataView.get_placement_of_vertex(gtv),
                                 gfe.buffer_manager(),
                                 MLPVarSizeRecordings.OUTPUTS.value)
                                 )
@@ -801,7 +801,7 @@ class MLPNetwork():
             ltv = g.t_vertex[g.subgroups - 1]
             try:
                 rec_test_results = ltv.read (
-                    FecDataView.get_placement_of_vertex(ftv),
+                    FecDataView.get_placement_of_vertex(ltv),
                     gfe.buffer_manager(), MLPConstSizeRecordings.TEST_RESULTS.value
                     )
             except Exception as err:
