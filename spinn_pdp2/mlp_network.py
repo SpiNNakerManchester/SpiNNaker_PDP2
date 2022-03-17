@@ -1076,6 +1076,7 @@ class MLPNetwork():
 
     def train (self,
                update_function = None,
+               num_examples = None,
                num_updates = None
               ):
         """ do one stage in train mode
@@ -1089,7 +1090,7 @@ class MLPNetwork():
         self._stg_epochs = num_updates
 
         # sort the number of examples at configuration time
-        self._stg_examples = None
+        self._stg_examples = num_examples
 
         # always reset the example index at the start of training stage 
         self._stg_reset = True
