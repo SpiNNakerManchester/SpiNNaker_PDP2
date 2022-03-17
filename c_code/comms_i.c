@@ -274,7 +274,12 @@ void i_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void i_dlrv_packet (void)
 {
-  // restart tick
+#ifdef DEBUG
+  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - restarted\n",
+	     epoch, example_cnt, phase, tick
+    );
+#endif
+
   if (phase == SPINN_FORWARD)
   {
     // initialise thread semaphore

@@ -468,12 +468,26 @@ void s_fsgn_packet (void)
 // ------------------------------------------------------------------------
 void s_dlrv_packet (void)
 {
+#ifdef DEBUG
+  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - restarted!\n",
+	     epoch, example_cnt, phase, tick
+    );
+  io_printf (IO_BUF, "(bd:%u)\n", sb_done);
+  for (uint i = 0; i < scfg.num_units; i++)
+  {
+    io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,
+	       sf_arrived[i], sb_arrived[i]
+      );
+  }
+  io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", sf_thrds_pend, sb_thrds_pend);
+#endif
+
   // restart tick
   if (phase == SPINN_FORWARD)
   {
 #ifdef DEBUG
-        fsg_sent = 0;
-        fsg_recv = 0;
+    fsg_sent = 0;
+    fsg_recv = 0;
 #endif
 
     // initialise thread semaphore,
@@ -490,6 +504,11 @@ void s_dlrv_packet (void)
   }
   else
   {
+#ifdef DEBUG
+    bsg_sent = 0;
+    bsg_recv = 0;
+#endif
+
     // initialise thread semaphore,
     sb_thrds_pend = sb_thrds_init;
 

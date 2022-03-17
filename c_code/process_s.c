@@ -276,6 +276,8 @@ void sb_advance_tick (uint unused0, uint unused1)
 
 #ifdef DEBUG
   tot_tick++;
+  bsg_sent = 0;
+  bsg_recv = 0;
 #endif
 
   // check if end of BACKPROP phase
