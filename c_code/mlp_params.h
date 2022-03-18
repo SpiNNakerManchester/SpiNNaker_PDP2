@@ -133,21 +133,22 @@
 
 // packet condition keys
 #define SPINN_PHASE_KEY(p)   (p << SPINN_PHASE_SHIFT)
-#define SPINN_COLOUR_KEY     SPINN_COLOUR_MASK
 
-// packet condition masks
+// computation phase
 #define SPINN_PHASE_SHIFT    11
 #define SPINN_PHASE_MASK     (1 << SPINN_PHASE_SHIFT)
-#define SPINN_COLOUR_SHIFT   10
-#define SPINN_COLOUR_MASK    (1 << SPINN_COLOUR_SHIFT)
+
+// boolean result (criterion, tick stop, abort and such)
+#define SPINN_BOOL_SHIFT     10
+#define SPINN_BOOL_MASK      (1 << SPINN_BOOL_SHIFT)
 
 // packet data masks
-#define SPINN_OUTPUT_MASK    (SPINN_COLOUR_MASK - 1)
-#define SPINN_NET_MASK       (SPINN_COLOUR_MASK - 1)
-#define SPINN_DELTA_MASK     (SPINN_COLOUR_MASK - 1)
-#define SPINN_ERROR_MASK     (SPINN_COLOUR_MASK - 1)
-#define SPINN_STPD_MASK      (SPINN_COLOUR_MASK - 1)
-#define SPINN_DLRV_MASK      (SPINN_COLOUR_MASK - 1)
+#define SPINN_OUTPUT_MASK    (SPINN_BOOL_MASK - 1)
+#define SPINN_NET_MASK       (SPINN_BOOL_MASK - 1)
+#define SPINN_DELTA_MASK     (SPINN_BOOL_MASK - 1)
+#define SPINN_ERROR_MASK     (SPINN_BOOL_MASK - 1)
+#define SPINN_STPD_MASK      (SPINN_BOOL_MASK - 1)
+#define SPINN_DLRV_MASK      (SPINN_BOOL_MASK - 1)
 // ------------------------------------------------------------------------
 
 

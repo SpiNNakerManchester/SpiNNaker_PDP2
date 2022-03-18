@@ -245,9 +245,6 @@ void w_forward_packet (uint key, uint payload)
   // and check if all expected unit outputs have arrived
   if (wf_arrived == wcfg.num_rows)
   {
-    // initialise scoreboard for next tick,
-    wf_arrived = 0;
-
     // trigger forward sync generation,
     while (!spin1_send_mc_packet (fsgKey, 0, WITH_PAYLOAD));
 
@@ -391,8 +388,14 @@ void w_dlrv_packet (void)
     // initialise thread semaphore,
     wb_thrds_pend = SPINN_WB_THRDS;
 
-    // and initialise scoreboard
+    // initialise scoreboard,
     wb_arrived = 0;
+
+    // and initialise error
+    for (uint i = 0; i < wcfg.num_rows; i++)
+    {
+      w_errors[i] = 0;
+    }
   }
 }
 // ------------------------------------------------------------------------

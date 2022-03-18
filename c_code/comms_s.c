@@ -243,10 +243,6 @@ void s_lds_packet (uint payload)
     lds_sent++;
 #endif
 
-    // prepare for next epoch
-    s_lds_part = 0;
-    s_lds_arrived = 0;
-
     // access thread semaphore with interrupts disabled
     uint cpsr = spin1_int_disable ();
 
@@ -258,9 +254,6 @@ void s_lds_packet (uint payload)
     // check if all other threads done
     if (sb_thrds_pend == SPINN_THRD_LDSA)
     {
-      // initialise semaphore,
-      sb_thrds_pend = sb_thrds_init;
-
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
@@ -385,30 +378,12 @@ void s_bsgn_packet (void)
   // and check if all expected packets arrived
   if (s_bsgn_arrived == scfg.bsgn_expected)
   {
-    // prepare for next synchronisation,
-    s_bsgn_arrived = 0;
-
     // access thread semaphore with interrupts disabled,
     uint cpsr = spin1_int_disable ();
 
     // and check if all other threads done
     if (sb_thrds_pend == SPINN_THRD_BSGN)
     {
-      // initialise semaphore,
-      sb_thrds_pend = sb_thrds_init;
-
-      // if we are using Doug's Momentum, and we have reached the end of the
-      // epoch (i.e. we are on the last example, and are about to move on to
-      // the last tick, we need have to wait for the partial link delta sums
-      // to arrive
-      //TODO: find a better place to do this calculation
-      if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-          && example_cnt == (xcfg.num_examples - 1)
-          && tick == SPINN_SB_END_TICK + 1)
-      {
-        sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
-      }
-
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
@@ -449,10 +424,7 @@ void s_fsgn_packet (void)
   // and check if all expected packets arrived
   if (s_fsgn_arrived == scfg.fsgn_expected)
   {
-    // prepare for next synchronisation,
-    s_fsgn_arrived = 0;
-
-    // and report forward sync gen
+    // report forward sync gen
     while (!spin1_send_mc_packet(fsgKey, 0, WITH_PAYLOAD));
 
 #ifdef DEBUG
@@ -493,7 +465,7 @@ void s_dlrv_packet (void)
     // initialise thread semaphore,
     sf_thrds_pend = sf_thrds_init;
 
-    // and initialise nets and scoreboards
+    // initialise nets and scoreboards,
     for (uint i = 0; i < scfg.num_units; i++)
     {
       s_nets[i]      = 0;
@@ -512,15 +484,35 @@ void s_dlrv_packet (void)
     // initialise thread semaphore,
     sb_thrds_pend = sb_thrds_init;
 
-    // and initialise nets and scoreboards
-    for (uint i = 0; i < scfg.num_units; i++)
+    // if we are using Doug's Momentum, and we have reached the end of the
+    // epoch (i.e. we are on the last example, and are about to move on to
+    // the last tick, we have to wait for the partial link delta sums
+    //TODO: find a better place to do this calculation
+    if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+	&& example_cnt == (xcfg.num_examples - 1)
+	&& tick == SPINN_SB_END_TICK + 1)
     {
-      s_errors[i]    = 0;
-      sb_arrived[i]  = 0;
+      // update thread semaphore,
+      sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
+
+      // and initialise lds summation and scoreboard
+      s_lds_part = 0;
+      s_lds_arrived = 0;
     }
 
-    s_bsgn_arrived = 0;
+    // prepare for next epoch
+    s_lds_part = 0;
+    s_lds_arrived = 0;
+
+    // initialise errors and scoreboards,
+    for (uint i = 0; i < scfg.num_units; i++)
+    {
+      s_errors[i]   = 0;
+      sb_arrived[i] = 0;
+    }
+
     sb_done = 0;
+    s_bsgn_arrived = 0;
   }
 }
 // ------------------------------------------------------------------------

@@ -103,18 +103,12 @@ void tf_process (uint key, uint payload)
   // and check if all nets arrived (i.e., all outputs done)
   if (tf_arrived == tcfg.num_units)
   {
-    // initialise scoreboard for next tick,
-    tf_arrived = 0;
-
     // access thread semaphore with interrupts disabled,
     uint cpsr = spin1_int_disable ();
 
     // and check if all other threads are done
     if (tf_thrds_pend == SPINN_THRD_PROC)
     {
-      // if done initialise thread semaphore,
-      tf_thrds_pend = tf_thrds_init;
-
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
@@ -189,9 +183,6 @@ void tb_process (uint unused0, uint unused1)
 
     delta_t delta = t_deltas[inx];
 
-    // restore output for the previous forward tick
-    restore_output (inx, tick - 1);
-
     // send delta to input core for further processing
     while (!spin1_send_mc_packet ((bkpKey | inx), (uint) delta, WITH_PAYLOAD));
 
@@ -229,6 +220,16 @@ void tf_advance_tick (uint unused0, uint unused1)
   crt_recv = 0;
   fsg_recv = 0;
 #endif
+
+  // initialise thread semaphore,
+  tf_thrds_pend = tf_thrds_init;
+
+  // initialise scoreboards,
+  tf_arrived = 0;
+  tf_crit_arrived = 0;
+
+  // initialise previous value,
+  tf_crit_prev = TRUE;
 
   // if recording all ticks,
   if (!xcfg.rec_last_tick_only)
@@ -291,8 +292,18 @@ void tb_advance_tick (uint unused0, uint unused1)
   bsg_recv = 0;
 #endif
 
+  // initialise thread semaphore,
+  tb_thrds_pend = tb_thrds_init;
+
+  // initialise arrival scoreboards,
+  tb_arrived = 0;
+  tb_bsgn_arrived = 0;
+
   // update pointer to processing unit outputs,
   tb_procs = 1 - tb_procs;
+
+  // update pointer to received errors,
+  tb_comms = 1 - tb_comms;
 
   // check if done with BACKPROP phase
   if (tick == SPINN_TB_END_TICK)
@@ -317,8 +328,11 @@ void tb_advance_tick (uint unused0, uint unused1)
   }
   else
   {
-    // if not done decrement tick
+    // if not done decrement tick,
     tick--;
+
+    // restore tick outputs,
+    restore_outputs (tick);
 
     // and trigger computation
     spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);

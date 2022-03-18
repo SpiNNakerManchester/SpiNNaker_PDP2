@@ -250,18 +250,12 @@ void t_criterion_packet (uint key)
   // and check if all criterion packets arrived
   if (tf_crit_arrived == tcfg.crit_expected)
   {
-    // initialise scoreboard for next tick,
-    tf_crit_arrived = 0;
-
     // access thread semaphore with interrupts disabled,
     uint cpsr = spin1_int_disable ();
 
     // and check if all other threads are done
     if (tf_thrds_pend == SPINN_THRD_CRIT)
     {
-      // if done initialise thread semaphore,
-      tf_thrds_pend = tf_thrds_init;
-
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
@@ -306,9 +300,6 @@ void t_fsgn_packet (void)
   // and check if all other threads are done
   if (tf_thrds_pend == SPINN_THRD_FSGN)
   {
-    // if done initialise thread semaphore,
-    tf_thrds_pend = tf_thrds_init;
-
     // restore interrupts after flag access,
     spin1_mode_restore(cpsr);
 
@@ -499,12 +490,6 @@ void t_backprop_packet (uint key, uint payload)
   // if all expected errors have arrived may move to next tick
   if (tb_arrived == tcfg.num_units)
   {
-    // initialise arrival scoreboard for next tick,
-    tb_arrived = 0;
-
-    // update pointer to received errors,
-    tb_comms = 1 - tb_comms;
-
 #if defined(DEBUG) && defined(DEBUG_THRDS)
     if (!(tb_thrds_pend & SPINN_THRD_COMS))
       wrng_cth++;
@@ -559,9 +544,6 @@ void t_bsgn_packet (void)
   // and check if all backprop sync gen packets arrived
   if (tb_bsgn_arrived == tb_bsgn_expected)
   {
-    // initialise scoreboard for next tick,
-    tb_bsgn_arrived = 0;
-
     // check if all other threads done
     if (tb_thrds_pend == SPINN_THRD_BSGN)
     {
@@ -608,10 +590,6 @@ void send_stop_crit (void)
 
   // "aggregate" criteria,
   tf_stop_crit = tf_stop_crit && tf_crit_prev;
-
-  // initialise previous value,
-  //TODO: should this be done in critical section?
-  tf_crit_prev = TRUE;
 
   // make stop decision,
   if (tcfg.is_last_output)
@@ -696,6 +674,23 @@ void restore_output (uint inx, uint tick)
 #endif
 
   t_outputs[inx] = t_output_history[((tick * tcfg.num_units) + inx)];
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// restores the output of the specified unit for the requested tick
+// ------------------------------------------------------------------------
+void restore_outputs (uint tick)
+{
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_outputs\n");
+#endif
+
+  for (uint inx = 0; inx < tcfg.num_units; inx++)
+  {
+    t_outputs[inx] = t_output_history[((tick * tcfg.num_units) + inx)];
+  }
 }
 // ------------------------------------------------------------------------
 

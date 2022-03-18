@@ -115,9 +115,6 @@ void ib_process (uint key, uint payload)
   i_deltas[inx] = ((long_delta_t) ((delta_t) payload))
     << (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
 
-  // restore net for the previous tick
-  restore_net (inx, tick - 1);
-
   compute_in_back (inx);
 
   // saturate and cast the long deltas before sending
@@ -172,6 +169,9 @@ void if_advance_tick (uint unused0, uint unused1)
   tot_tick++;
 #endif
 
+  // initialise thread semaphore,
+  if_thrds_pend = SPINN_IF_THRDS;
+
   // check if end of event
   if (tick_stop)
   {
@@ -203,7 +203,10 @@ void ib_advance_tick (uint unused0, uint unused1)
   tot_tick++;
 #endif
 
-  // check if end of BACKPROP phase
+  // initialise thread semaphore,
+  ib_thrds_pend = SPINN_IB_THRDS;
+
+  // and check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
   {
     // initialise the tick count
@@ -217,8 +220,11 @@ void ib_advance_tick (uint unused0, uint unused1)
   }
   else
   {
-    // if not done decrement tick
+    // if not done decrement tick,
     tick--;
+
+    // and restore nets
+    restore_nets (tick);
   }
 }
 // ------------------------------------------------------------------------

@@ -178,9 +178,6 @@ void wb_process (uint key, uint payload)
 #ifdef DEBUG
       sent_bkp++;
 #endif
-
-      // and initialise error for next tick
-      w_errors[i] = 0;
     }
   }
 
@@ -215,13 +212,6 @@ void wb_process (uint key, uint payload)
   if (cnt < prf_bkp_min) prf_bkp_min = cnt;
   if (cnt > prf_bkp_max) prf_bkp_max = cnt;
 #endif
-
-  // if done with all deltas prepare for next tick
-  if (wb_arrived == wcfg.num_cols)
-  {
-    // initialise arrival scoreboard
-    wb_arrived = 0;
-  }
 }
 // ------------------------------------------------------------------------+
 
@@ -587,6 +577,12 @@ void wf_advance_tick (uint unused0, uint unused1)
   }
 #endif
 
+  // initialise thread semaphore,
+  wf_thrds_pend = SPINN_WF_THRDS;
+
+  // initialise scoreboard,
+  wf_arrived = 0;
+
   // update pointer to processing unit outputs,
   wf_procs = 1 - wf_procs;
 
@@ -627,6 +623,18 @@ void wb_advance_tick (uint unused0, uint unused1)
   tot_tick++;
 #endif
 
+  // initialise thread semaphore,
+  wb_thrds_pend = SPINN_WB_THRDS;
+
+  // initialise scoreboard,
+  wb_arrived = 0;
+
+  // initialise error,
+  for (uint i = 0; i < wcfg.num_rows; i++)
+  {
+    w_errors[i] = 0;
+  }
+
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)
   {
@@ -663,16 +671,7 @@ void wf_advance_event (void)
   // check if done with example's FORWARD phase
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
-    // access thread semaphore with interrupts disabled
-    uint cpsr = spin1_int_disable ();
-
-    // initialise thread semaphore,
-    wf_thrds_pend = SPINN_WF_THRDS;
-
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
-
-    // and check if in training mode
+    // check if in training mode
     if (xcfg.training)
     {
       // move on to BACKPROP phase

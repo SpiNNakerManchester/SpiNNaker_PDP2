@@ -314,9 +314,26 @@ void store_net (uint inx)
 void restore_net (uint inx, uint tick)
 {
 #ifdef TRACE
-  io_printf (IO_BUF, "restore_nets\n");
+  io_printf (IO_BUF, "restore_net\n");
 #endif
 
   i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// restores all unit nets for the requested tick
+// ------------------------------------------------------------------------
+void restore_nets (uint tick)
+{
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_nets\n");
+#endif
+
+  for (uint inx = 0; inx < icfg.num_units; inx++)
+  {
+    i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
+  }
 }
 // ------------------------------------------------------------------------

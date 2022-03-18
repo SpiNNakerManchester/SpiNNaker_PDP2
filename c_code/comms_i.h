@@ -27,8 +27,9 @@ void i_sync_packet     (void);
 void i_net_stop_packet (uint key);
 void i_dlrv_packet     (void);
 
-void store_net   (uint inx);
-void restore_net (uint inx, uint tick);
+void store_net    (uint inx);
+void restore_net  (uint inx, uint tick);
+void restore_nets (uint tick);
 
 #endif
  

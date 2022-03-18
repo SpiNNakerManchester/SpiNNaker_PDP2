@@ -39,6 +39,7 @@ void store_net            (uint inx);
 void restore_net          (uint inx, uint tick);
 void store_output         (uint inx);
 void restore_output       (uint inx, uint tick);
+void restore_outputs      (uint tick);
 void store_output_deriv   (uint inx);
 void restore_output_deriv (uint inx, uint tick);
 
