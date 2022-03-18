@@ -100,7 +100,7 @@ void i_receiveControlPacket (uint key, uint unused)
     dlr_recv++;
 #endif
 
-    if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+    if (key & SPINN_ABRT_MASK)
     {
       // report timeout error
       stage_done (SPINN_TIMEOUT_EXIT, 0);
@@ -200,7 +200,8 @@ void i_stop_packet (uint key)
 #endif
 
   // get tick STOP decision,
-  tick_stop = key & SPINN_STPD_MASK;
+  //NOTE: be careful with variable size
+  tick_stop = (key & SPINN_STOP_MASK) ? 1 : 0;
 
   // and advance tick
   spin1_schedule_callback (if_advance_tick, 0, 0, SPINN_I_TICK_P);

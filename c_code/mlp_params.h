@@ -31,8 +31,11 @@
 
 // deadlock recovery constants
 #define SPINN_DLRV_MAX_CNT       3
-#define SPINN_DLRV_ABT           0x0001
 
+// boolean results can be transmitted inside SpiNNaker routing keys
+#define SPINN_BOOL_ZERO      0
+#define SPINN_BOOL_ONE       (1 << SPINN_BOOL_SHIFT)
+#define SPINN_DLRV_ABRT      SPINN_BOOL_ONE
 
 // ------------------------------------------------------------------------
 // profiler constants
@@ -141,6 +144,9 @@
 // boolean result (criterion, tick stop, abort and such)
 #define SPINN_BOOL_SHIFT     10
 #define SPINN_BOOL_MASK      (1 << SPINN_BOOL_SHIFT)
+#define SPINN_CRIT_MASK      SPINN_BOOL_MASK
+#define SPINN_STOP_MASK      SPINN_BOOL_MASK
+#define SPINN_ABRT_MASK      SPINN_BOOL_MASK
 
 // packet data masks
 #define SPINN_OUTPUT_MASK    (SPINN_BOOL_MASK - 1)
@@ -148,7 +154,6 @@
 #define SPINN_DELTA_MASK     (SPINN_BOOL_MASK - 1)
 #define SPINN_ERROR_MASK     (SPINN_BOOL_MASK - 1)
 #define SPINN_STPD_MASK      (SPINN_BOOL_MASK - 1)
-#define SPINN_DLRV_MASK      (SPINN_BOOL_MASK - 1)
 // ------------------------------------------------------------------------
 
 

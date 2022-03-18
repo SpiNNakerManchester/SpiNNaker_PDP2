@@ -116,7 +116,7 @@ void t_receiveControlPacket (uint key, uint unused)
     dlr_recv++;
 #endif
 
-    if ((key & SPINN_DLRV_MASK) == SPINN_DLRV_ABT)
+    if (key & SPINN_ABRT_MASK)
     {
       // report timeout error
       stage_done (SPINN_TIMEOUT_EXIT, 0);
@@ -242,7 +242,10 @@ void t_criterion_packet (uint key)
 #endif
 
   // partial criterion value arrived,
-  tf_crit_prev = tf_crit_prev && (key & SPINN_STPD_MASK);
+  //NOTE: be careful with variable size
+  uchar crit_recv = (key & SPINN_CRIT_MASK) ? 1 : 0;
+  
+  tf_crit_prev = tf_crit_prev && crit_recv;
 
   // update scoreboard,
   tf_crit_arrived++;
@@ -338,7 +341,8 @@ void t_stop_packet (uint key)
 #endif
 
   // get tick stop decision,
-  tick_stop = key & SPINN_STPD_MASK;
+  //NOTE: be careful with variable size
+  tick_stop = (key & SPINN_STOP_MASK) ? 1 : 0;
 
   // and advance tick
   spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_T_TICK_P);
@@ -608,8 +612,11 @@ void send_stop_crit (void)
   }
 
   // FORWARD aggregated criterion,
+  //NOTE: be careful with variable size
+  uint stop_crit = (tf_stop_crit) ? SPINN_BOOL_ONE : SPINN_BOOL_ZERO;
+
   uint use_pl = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
-  while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit), 0, use_pl));
+  while (!spin1_send_mc_packet ((tf_stop_key | stop_crit), 0, use_pl));
 
 #ifdef DEBUG
   if (tcfg.is_last_output) stp_sent++;
