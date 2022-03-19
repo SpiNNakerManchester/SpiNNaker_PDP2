@@ -76,6 +76,9 @@ uint         evt;          // current event in example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
+
+uint         dlrv;         // deadlock recovery mode
+
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
@@ -124,7 +127,7 @@ scoreboard_t       w_sync_arrived;    // keep count of expected sync packets
 // procs = in use for current b-d-p computation
 // comms = being received for next tick
 uint             wf_procs;          // pointer to processing unit outputs
-uint             wf_comms;          // pointer to receiving unit outputs
+uint             wf_comms;          // pointer to received unit outputs
 scoreboard_t     wf_arrived;        // keep count of received unit outputs
 uint             wf_thrds_pend;     // thread semaphore
 

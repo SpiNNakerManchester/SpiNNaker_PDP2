@@ -388,7 +388,20 @@ void in_integr (uint inx)
   io_printf (IO_BUF, "in_integr\n");
 #endif
 
-  long_net_t  last_net = i_last_integr_net[inx];
+  // use stored value if in deadlock recovery
+  long_net_t last_net = i_last_integr_net[inx];
+  if (dlrv)
+  {
+    last_net = i_last_integr_net_dlrv[inx];
+  }
+  else
+  {
+    // remember last value in case of deadlock recovery
+    i_last_integr_net_dlrv[inx] = i_last_integr_net[inx];
+
+    last_net = i_last_integr_net[inx];
+  }
+
   long_net_t  desired_net = i_nets[inx];
   long_fpreal dt = icfg.in_integr_dt;
 
@@ -476,7 +489,19 @@ void in_integr_back (uint inx)
   io_printf (IO_BUF, "in_integr_back\n");
 #endif
 
-  long_delta_t last_delta = i_last_integr_delta[inx];
+  // use stored value if in deadlock recovery
+  long_delta_t last_delta;
+  if (dlrv)
+  {
+    last_delta = i_last_integr_delta_dlrv[inx];
+  }
+  else
+  {
+    // remember last value in case of deadlock recovery
+    i_last_integr_delta_dlrv[inx] = i_last_integr_delta[inx];
+
+    last_delta = i_last_integr_delta[inx];
+  }
 
   long_fpreal dt = icfg.in_integr_dt;
 

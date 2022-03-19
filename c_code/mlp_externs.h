@@ -56,6 +56,8 @@ extern uint         tick;         // current tick in phase
 extern uint         ev_tick;      // current tick in event
 extern proc_phase_t phase;        // FORWARD or BACKPROP
 
+extern uint         dlrv;         // deadlock recovery mode
+
 extern uint                 *rt; // multicast routing keys data
 extern weight_t             *wt; // initial connection weights
 extern struct mlp_set       *es; // example set data
@@ -93,7 +95,7 @@ extern fpreal             w_delta_dt;    // scaling factor for link deltas
 extern lds_t              w_lds_final;   // final link delta sum
 extern scoreboard_t       w_sync_arrived; // keep count of expected sync packets
 extern uint               wf_procs;      // pointer to processing unit outputs
-extern uint               wf_comms;      // pointer to receiving unit outputs
+extern uint               wf_comms;      // pointer to received unit outputs
 extern scoreboard_t       wf_arrived;    // keep count of received unit outputs
 extern uint               wf_thrds_pend; // thread semaphore
 extern uchar              wb_active;     // processing BKP-phase packet queue?
@@ -145,8 +147,10 @@ extern uint             i_it_idx;      // index into current inputs/targets
 extern uint             if_thrds_pend; // thread semaphore
 extern long_delta_t   * ib_init_delta; // initial delta value for every tick
 extern uint             ib_thrds_pend; // thread semaphore
-extern long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
-extern long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
+extern long_net_t     * i_last_integr_net;   // last INTEGRATOR output value
+extern long_delta_t   * i_last_integr_delta; // last INTEGRATOR delta value
+extern long_net_t     * i_last_integr_net_dlrv;   // deadlock recovery
+extern long_delta_t   * i_last_integr_delta_dlrv; // deadlock recovery
 
 // history arrays
 extern long_net_t     * i_net_history; //sdram pointer where to store input history
@@ -168,8 +172,10 @@ extern out_error_t     const t_out_error[SPINN_NUM_ERROR_PROCS];
 extern activation_t   * t_outputs;     // current tick unit outputs
 extern net_t          * t_nets;        // nets received from input cores
 extern error_t        * t_errors[2];   // error banks: current and next tick
-extern activation_t   * t_last_integr_output;   //last INTEGRATOR output value
-extern long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output deriv
+extern activation_t   * t_last_integr_output;        // last INTEGRATOR output value
+extern long_deriv_t   * t_last_integr_output_deriv; // last INTEGRATOR output deriv
+extern activation_t   * t_last_integr_output_dlrv;       // deadlock recovery
+extern long_deriv_t   * t_last_integr_output_deriv_dlrv; // deadlock recovery
 extern activation_t   * t_instant_outputs; // output stored BACKPROP
 extern uint             t_it_idx;      // index into current inputs/targets
 extern pkt_queue_t      t_pkt_queue;   // queue to hold received packets
@@ -192,7 +198,7 @@ extern uint             tf_stop_key;   // stop criterion packet key
 extern uint             tf_stpn_key;   // stop network packet key
 extern uint             tf_dlrv_key;   // deadlock recovery packet key
 extern uint             tb_procs;      // pointer to processing errors
-extern uint             tb_comms;      // pointer to receiving errors
+extern uint             tb_comms;      // pointer to received errors
 extern scoreboard_t     tb_arrived;    // keep count of expected errors
 extern uint             tb_thrds_pend; // thread semaphore
 extern uint             tb_thrds_init; // thread semaphore initial value

@@ -664,7 +664,19 @@ void out_integr (uint inx)
   io_printf (IO_BUF, "out_integr\n");
 #endif
 
-  activation_t last_output = t_last_integr_output[inx];
+  // use stored value if in deadlock recovery
+  activation_t last_output;
+  if (dlrv)
+  {
+    last_output = t_last_integr_output_dlrv[inx];
+  }
+  else
+  {
+    // remember last value in case of deadlock recovery
+    t_last_integr_output_dlrv[inx] = t_last_integr_output[inx];
+
+    last_output = t_last_integr_output[inx];
+  }
 
   activation_t new_output = t_outputs[inx];
 
@@ -858,7 +870,19 @@ void out_integr_back (uint inx)
   io_printf (IO_BUF, "out_integr_back\n");
 #endif
 
-  long_deriv_t last_output_deriv = t_last_integr_output_deriv[inx];
+  // use stored value if in deadlock recovery
+  long_deriv_t last_output_deriv;
+  if (dlrv)
+  {
+    last_output_deriv = t_last_integr_output_deriv_dlrv[inx];
+  }
+  else
+  {
+    // remember last value in case of deadlock recovery
+    t_last_integr_output_deriv_dlrv[inx] = t_last_integr_output_deriv[inx];
+
+    last_output_deriv = t_last_integr_output_deriv[inx];
+  }
 
   long_fpreal dt = (long_fpreal) tcfg.out_integr_dt;
 
@@ -1141,12 +1165,7 @@ void send_stop_crit (void)
 
   // FORWARD aggregated criterion - stop decision if last t core
   uint stop_crit = (tf_stop_crit) ? SPINN_BOOL_ONE : SPINN_BOOL_ZERO;
-  uint pkt_key = tf_stop_key | stop_crit;
-
-#ifdef DEBUG
-  // include tick (for synchronisation checks)
-  pkt_key |= (tick & SPINN_TICK_MASK);
-#endif
+  uint pkt_key = tf_stop_key | stop_crit | (tick & SPINN_TICK_MASK);
 
   uint use_pl = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
 
@@ -1156,6 +1175,29 @@ void send_stop_crit (void)
   if (tcfg.is_last_output) stp_sent++;
   else crt_sent++;
 #endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// sned BACKPROP sync to move to next tick
+// ------------------------------------------------------------------------
+void send_sync (void)
+{
+  uint pkt_key = bpsKey;
+  uint use_pl;
+
+  if (tcfg.is_last_output)
+  {
+    pkt_key |= (tick & SPINN_TICK_MASK);
+    use_pl = NO_PAYLOAD;
+  }
+  else
+  {
+    use_pl = WITH_PAYLOAD;
+  }
+
+  while (!spin1_send_mc_packet (pkt_key, 0, use_pl));
 }
 // ------------------------------------------------------------------------
 

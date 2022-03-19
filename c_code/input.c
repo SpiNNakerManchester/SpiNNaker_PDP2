@@ -93,6 +93,9 @@ uint         evt;          // current event in example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
+
+uint         dlrv;         // deadlock recovery mode
+
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
@@ -132,6 +135,8 @@ uchar            i_active;          // processing packets from queue?
 
 long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
 long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
+long_net_t     * i_last_integr_net_dlrv;   // deadlock recovery
+long_delta_t   * i_last_integr_delta_dlrv; // deadlock recovery
 
 uint             i_it_idx;          // index into current inputs/targets
 

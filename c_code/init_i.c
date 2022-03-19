@@ -225,6 +225,22 @@ uint init_in_integr (void)
       return (SPINN_MEM_UNAVAIL);
   }
 
+  // allocate memory for deadlock recovery outputs
+  if ((i_last_integr_net_dlrv = ((long_net_t *)
+         spin1_malloc (icfg.num_units * sizeof (long_net_t)))) == NULL
+       )
+  {
+      return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate memory for deadlock recovery deltas
+  if ((i_last_integr_delta_dlrv = ((long_delta_t *)
+         spin1_malloc (icfg.num_units * sizeof (long_delta_t)))) == NULL
+       )
+  {
+      return (SPINN_MEM_UNAVAIL);
+  }
+
   return (SPINN_NO_ERROR);
 }
 // ------------------------------------------------------------------------
@@ -235,7 +251,7 @@ uint init_in_integr (void)
 // ------------------------------------------------------------------------
 void tick_init (uint restart)
 {
-  (void) restart;
+  dlrv = restart;
 
   if (phase == SPINN_FORWARD)
   {
@@ -310,7 +326,7 @@ void var_init (uint reset_examples)
   // reset the memory of the INTEGRATOR state variables
   if (icfg.in_integr_en)
   {
-    for (uint i = 0; i<icfg.num_units; i++)
+    for (uint i = 0; i < icfg.num_units; i++)
     {
       i_last_integr_net[i] = (long_net_t) icfg.initNets;
       i_last_integr_delta[i] = 0;

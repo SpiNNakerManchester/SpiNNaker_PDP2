@@ -48,7 +48,8 @@ void max_stop_crit       (uint inx);
 void error_cross_entropy (uint inx);
 void error_squared       (uint inx);
 
-void send_stop_crit (void);
+void send_stop_crit       (void);
+void send_sync            (void);
 
 void store_net            (uint inx);
 void restore_net          (uint inx, uint tick);

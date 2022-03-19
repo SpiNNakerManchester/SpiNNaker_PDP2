@@ -117,6 +117,9 @@ uint         max_evt;      // the last event reached in the current example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
+
+uint         dlrv;         // deadlock recovery mode
+
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
@@ -160,6 +163,8 @@ net_t          * t_nets;            // nets received from input cores
 error_t        * t_errors[2];       // error banks: current and next tick
 activation_t   * t_last_integr_output;  //last INTEGRATOR output value
 long_deriv_t   * t_last_integr_output_deriv; //last INTEGRATOR output deriv value
+activation_t   * t_last_integr_output_dlrv;       // deadlock recovery
+long_deriv_t   * t_last_integr_output_deriv_dlrv; // deadlock recovery
 activation_t   * t_instant_outputs; // current output value stored for the backward pass
 short_activ_t  * t_out_hard_clamp_data; //values injected by hard clamps
 short_activ_t  * t_out_weak_clamp_data; //values injected by weak clamps
@@ -190,7 +195,7 @@ uint             tf_dlrv_key;       // deadlock recovery packet key
 // BACKPROP phase specific
 // (error delta computation)
 uint             tb_procs;          // pointer to processing errors
-uint             tb_comms;          // pointer to receiving errors
+uint             tb_comms;          // pointer to received errors
 scoreboard_t     tb_arrived;        // keep count of expected errors
 uint             tb_thrds_pend;     // thread semaphore
 uint             tb_thrds_init;     // thread semaphore initial value

@@ -311,6 +311,8 @@ void s_sync_packet (uint key)
   if (phase == SPINN_FORWARD) wrng_bph++;
   uint tick_recv = key & SPINN_TICK_MASK;
   if (tick_recv != tick) wrng_pth++;
+#else
+  (void) key;
 #endif
 
   // advance tick

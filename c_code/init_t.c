@@ -326,7 +326,7 @@ uint mem_init (void)
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 //NOTE: There is a conflict in the initialisation routine between
-// versions 2.63 and 2.64 of LENS. This function LENS version 2.63.
+// versions 2.63 and 2.64 of LENS. This function follows LENS 2.63.
 // Added comments indicate changes to apply LENS version 2.64
 // ------------------------------------------------------------------------
 void t_init_outputs (void)
@@ -385,6 +385,20 @@ uint init_out_integr (void)
   if ((t_instant_outputs = ((activation_t *)
        spin1_malloc (tcfg.num_units * ncfg.global_max_ticks *
            sizeof (activation_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((t_last_integr_output_dlrv = ((activation_t *)
+       spin1_malloc (tcfg.num_units * sizeof (activation_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((t_last_integr_output_deriv_dlrv = ((long_deriv_t *)
+       spin1_malloc (tcfg.num_units * sizeof (long_deriv_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -464,6 +478,8 @@ uint init_out_weak_clamp (void)
 // ------------------------------------------------------------------------
 void tick_init (uint restart)
 {
+  dlrv = restart;
+
   if (phase == SPINN_FORWARD)
   {
     // initialise thread semaphore,
@@ -479,25 +495,22 @@ void tick_init (uint restart)
     // initialise criterion,
     tf_stop_crit = TRUE;
 
-    // and record outputs - if recording all ticks
-    if (!restart)
+    // and record outputs - if recording all ticks,
+    if (!restart && !xcfg.rec_last_tick_only)
     {
-      if (!xcfg.rec_last_tick_only)
+      if (t_rec_tick_data)
       {
-	if (t_rec_tick_data)
-	{
-	  record_tick_data ();
-	}
+	record_tick_data ();
+      }
 
-	if (t_rec_outputs)
-	{
-	  record_outputs ();
-	}
+      if (t_rec_outputs)
+      {
+	record_outputs ();
+      }
 
-	if (t_rec_step_updt)
-	{
-	  stage_step++;
-	}
+      if (t_rec_step_updt)
+      {
+	stage_step++;
       }
     }
   }
@@ -510,7 +523,7 @@ void tick_init (uint restart)
     tb_arrived = 0;
     tb_bsgn_arrived = 0;
 
-    // and update error buffer pointers
+    // and update error buffer pointers,
     if (!restart)
     {
       // update pointer to processing errors,

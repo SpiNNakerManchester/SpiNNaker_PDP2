@@ -361,6 +361,8 @@ void t_sync_packet (uint key)
   if (phase == SPINN_FORWARD) wrng_bph++;
   uint tick_recv = key & SPINN_TICK_MASK;
   if (tick_recv != tick) wrng_pth++;
+#else
+  (void) key;
 #endif
 
   // advance tick
@@ -484,24 +486,20 @@ void t_backprop_packet (uint key, uint payload)
     // and check if all other threads are done,
     if (tb_thrds_pend == SPINN_THRD_COMS)
     {
-      // if done initialise thread semaphore,
-      tb_thrds_pend = tb_thrds_init;
-
-      // advance tick,
-      //NOTE: last t core does *not* get a sync packet
-      if (tcfg.is_last_output)
-      {
-        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
-      }
-
-      // and send backprop sync packet to allow next tick to start
-      uint use_pl = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
-      while (!spin1_send_mc_packet (bpsKey, 0, use_pl));
+      // send backprop sync packet to allow next tick to start,
+      send_sync ();
 
 #ifdef DEBUG
       if (tcfg.is_last_output) spk_sent++;
       else bsg_sent++;
 #endif
+
+      // and advance tick
+      //NOTE: last t core does *not* get a sync packet
+      if (tcfg.is_last_output)
+      {
+        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
+      }
     }
     else
     {
@@ -533,31 +531,20 @@ void t_bsgn_packet (void)
     // check if all other threads done
     if (tb_thrds_pend == SPINN_THRD_BSGN)
     {
-      // initialise semaphore,
-      tb_thrds_pend = tb_thrds_init;
-
-      // advance tick,
-      //NOTE: last t core does *not* get a sync packet
-      if (tcfg.is_last_output)
-      {
-        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
-      }
-
-      // and send backprop sync packet to allow next tick to start
-      uint pkt_key = bpsKey;
-
-#ifdef DEBUG
-      // include tick (for synchronisation checks)
-      pkt_key |= (tick & SPINN_TICK_MASK);
-#endif
-
-      uint use_pl = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
-      while (!spin1_send_mc_packet (pkt_key, 0, use_pl));
+      // send backprop sync packet to allow next tick to start,
+      send_sync ();
 
 #ifdef DEBUG
       if (tcfg.is_last_output) spk_sent++;
       else bsg_sent++;
 #endif
+
+      // and advance tick
+      //NOTE: last t core does *not* get a sync packet
+      if (tcfg.is_last_output)
+      {
+        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
+      }
     }
     else
     {
