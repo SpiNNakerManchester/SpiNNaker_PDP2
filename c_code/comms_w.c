@@ -306,7 +306,7 @@ void w_sync_packet (uint key)
   uint tick_recv = key & SPINN_TICK_MASK;
   if (tick_recv != tick) wrng_pth++;
 #else
-  (void) key
+  (void) key;
 #endif
 
   // advance tick
