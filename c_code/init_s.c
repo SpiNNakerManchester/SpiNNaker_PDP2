@@ -180,6 +180,66 @@ uint mem_init (void)
 
 
 // ------------------------------------------------------------------------
+// initialise variables at (re)start of a tick
+// ------------------------------------------------------------------------
+void tick_init (uint restart)
+{
+  (void) restart;
+
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    sf_thrds_pend = sf_thrds_init;
+
+    // initialise nets and scoreboards,
+    for (uint i = 0; i < scfg.num_units; i++)
+    {
+      s_nets[i]      = 0;
+      sf_arrived[i]  = 0;
+    }
+
+    s_fsgn_arrived = 0;
+  }
+  else
+  {
+    // initialise thread semaphore,
+    sb_thrds_pend = sb_thrds_init;
+
+    // if we are using Doug's Momentum, and we have reached the end of the
+    // epoch (i.e. we are on the last example, and are about to move on to
+    // the last tick, we have to wait for the partial link delta sums
+    //TODO: find a better place to do this calculation
+    if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+	&& example_cnt == (xcfg.num_examples - 1)
+	&& tick == SPINN_SB_END_TICK + 1)
+    {
+      // update thread semaphore,
+      sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
+
+      // and initialise lds summation and scoreboard
+      s_lds_part = 0;
+      s_lds_arrived = 0;
+    }
+
+    // prepare for next epoch
+    s_lds_part = 0;
+    s_lds_arrived = 0;
+
+    // initialise errors and scoreboards,
+    for (uint i = 0; i < scfg.num_units; i++)
+    {
+      s_errors[i]   = 0;
+      sb_arrived[i] = 0;
+    }
+
+    sb_done = 0;
+    s_bsgn_arrived = 0;
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
 void var_init (uint reset_examples)
@@ -392,7 +452,7 @@ void stage_done (uint ec, uint key)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                   epoch, example_cnt, phase, tick
                 );
-      io_printf (IO_BUF, "(bd:%u)\n", sb_done);
+      io_printf (IO_BUF, "(s_active:%u bd:%u)\n", s_active, sb_done);
       for (uint i = 0; i < scfg.num_units; i++)
       {
         io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,

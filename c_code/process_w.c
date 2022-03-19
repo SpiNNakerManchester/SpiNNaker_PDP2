@@ -577,17 +577,8 @@ void wf_advance_tick (uint unused0, uint unused1)
   }
 #endif
 
-  // initialise thread semaphore,
-  wf_thrds_pend = SPINN_WF_THRDS;
-
-  // initialise scoreboard,
-  wf_arrived = 0;
-
-  // update pointer to processing unit outputs,
-  wf_procs = 1 - wf_procs;
-
-  // update pointer to received unit outputs,
-  wf_comms = 1 - wf_comms;
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART);
 
   // and check if end of event
   if (tick_stop)
@@ -623,17 +614,8 @@ void wb_advance_tick (uint unused0, uint unused1)
   tot_tick++;
 #endif
 
-  // initialise thread semaphore,
-  wb_thrds_pend = SPINN_WB_THRDS;
-
-  // initialise scoreboard,
-  wb_arrived = 0;
-
-  // initialise error,
-  for (uint i = 0; i < wcfg.num_rows; i++)
-  {
-    w_errors[i] = 0;
-  }
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART);
 
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)

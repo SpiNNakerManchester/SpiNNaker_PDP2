@@ -25,7 +25,6 @@
 #include "mlp_externs.h"
 
 #include "init_i.h"
-#include "comms_i.h"
 #include "process_i.h"
 #include "activation.h"
 
@@ -153,7 +152,7 @@ void ib_process (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
-// FORWARD phase: the tick has been completed, move FORWARD to the next tick
+// FORWARD phase: the tick has been completed, move to the next tick
 // updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
 void if_advance_tick (uint unused0, uint unused1)
@@ -169,10 +168,10 @@ void if_advance_tick (uint unused0, uint unused1)
   tot_tick++;
 #endif
 
-  // initialise thread semaphore,
-  if_thrds_pend = SPINN_IF_THRDS;
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART);
 
-  // check if end of event
+  // and check if end of event
   if (tick_stop)
   {
     if_advance_event ();
@@ -187,7 +186,7 @@ void if_advance_tick (uint unused0, uint unused1)
 
 
 // ------------------------------------------------------------------------
-// BACKPROP phase: the tick has been completed, move FORWARD to the next tick
+// BACKPROP phase: the tick has been completed, move to the next tick
 // updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
 void ib_advance_tick (uint unused0, uint unused1)
@@ -203,8 +202,8 @@ void ib_advance_tick (uint unused0, uint unused1)
   tot_tick++;
 #endif
 
-  // initialise thread semaphore,
-  ib_thrds_pend = SPINN_IB_THRDS;
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART);
 
   // and check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
@@ -503,4 +502,49 @@ void in_soft_clamp_back (uint inx)
 #endif
 }
 */
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// stores unit net received for the current tick
+// ------------------------------------------------------------------------
+void store_net (uint inx)
+{
+#ifdef TRACE
+  io_printf (IO_BUF, "store_nets\n");
+#endif
+
+  i_net_history[(tick * icfg.num_units) + inx] = i_nets[inx];
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// restores unit net for the requested tick
+// ------------------------------------------------------------------------
+void restore_net (uint inx, uint tick)
+{
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_net\n");
+#endif
+
+  i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// restores all unit nets for the requested tick
+// ------------------------------------------------------------------------
+void restore_nets (uint tick)
+{
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_nets\n");
+#endif
+
+  for (uint inx = 0; inx < icfg.num_units; inx++)
+  {
+    i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
+  }
+}
 // ------------------------------------------------------------------------

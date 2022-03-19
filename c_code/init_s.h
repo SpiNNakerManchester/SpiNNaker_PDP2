@@ -18,9 +18,10 @@
 #ifndef __INIT_S_H__
 #define __INIT_S_H__
 
-uint cfg_init (void);
-uint mem_init (void);
-void var_init (uint reset_examples);
+uint cfg_init  (void);
+uint mem_init  (void);
+void tick_init (uint restart);
+void var_init  (uint reset_examples);
 
 void stage_init     (void);
 void stage_start    (void);

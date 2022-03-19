@@ -36,6 +36,7 @@
 #define SPINN_BOOL_ZERO      0
 #define SPINN_BOOL_ONE       (1 << SPINN_BOOL_SHIFT)
 #define SPINN_DLRV_ABRT      SPINN_BOOL_ONE
+#define SPINN_RESTART        TRUE
 
 // ------------------------------------------------------------------------
 // profiler constants
@@ -154,6 +155,7 @@
 #define SPINN_DELTA_MASK     (SPINN_BOOL_MASK - 1)
 #define SPINN_ERROR_MASK     (SPINN_BOOL_MASK - 1)
 #define SPINN_STPD_MASK      (SPINN_BOOL_MASK - 1)
+#define SPINN_TICK_MASK      (SPINN_BOOL_MASK - 1)
 // ------------------------------------------------------------------------
 
 

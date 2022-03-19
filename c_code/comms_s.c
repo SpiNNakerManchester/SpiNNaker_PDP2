@@ -81,7 +81,7 @@ void s_receiveControlPacket (uint key, uint unused)
   // or process backprop sync packet,
   if (pkt_type == SPINN_SYNC_KEY)
   {
-    s_sync_packet ();
+    s_sync_packet (key);
     return;
   }
 
@@ -247,8 +247,7 @@ void s_lds_packet (uint payload)
     uint cpsr = spin1_int_disable ();
 
 #if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(sb_thrds_pend & SPINN_THRD_LDSA))
-      wrng_cth++;
+    if (!(sb_thrds_pend & SPINN_THRD_LDSA)) wrng_cth++;
 #endif
 
     // check if all other threads done
@@ -287,8 +286,9 @@ void s_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
-  if (phase == SPINN_BACKPROP)
-    wrng_fph++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
   // get tick stop decision,
@@ -304,12 +304,13 @@ void s_stop_packet (uint key)
 // ------------------------------------------------------------------------
 // process a backprop sync packet
 // ------------------------------------------------------------------------
-void s_sync_packet (void)
+void s_sync_packet (uint key)
 {
 #ifdef DEBUG
   spk_recv++;
-  if (phase == SPINN_FORWARD)
-    wrng_bph++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
   // advance tick
@@ -369,8 +370,7 @@ void s_bsgn_packet (void)
 {
 #ifdef DEBUG
   bsg_recv++;
-  if (phase == SPINN_FORWARD)
-    wrng_bph++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
 #endif
 
   // update count of sync packets,
@@ -415,8 +415,7 @@ void s_fsgn_packet (void)
 {
 #ifdef DEBUG
   fsg_recv++;
-  if (phase == SPINN_BACKPROP)
-    wrng_fph++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
 #endif
 
   // update count of forward sync generation packets,
@@ -445,7 +444,7 @@ void s_dlrv_packet (void)
   io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - restarted!\n",
 	     epoch, example_cnt, phase, tick
     );
-  io_printf (IO_BUF, "(bd:%u)\n", sb_done);
+  io_printf (IO_BUF, "(s_active:%u bd:%u)\n", s_active, sb_done);
   for (uint i = 0; i < scfg.num_units; i++)
   {
     io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,
@@ -453,67 +452,19 @@ void s_dlrv_packet (void)
       );
   }
   io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", sf_thrds_pend, sb_thrds_pend);
-#endif
-
-  // restart tick
   if (phase == SPINN_FORWARD)
   {
-#ifdef DEBUG
     fsg_sent = 0;
     fsg_recv = 0;
-#endif
-
-    // initialise thread semaphore,
-    sf_thrds_pend = sf_thrds_init;
-
-    // initialise nets and scoreboards,
-    for (uint i = 0; i < scfg.num_units; i++)
-    {
-      s_nets[i]      = 0;
-      sf_arrived[i]  = 0;
-    }
-
-    s_fsgn_arrived = 0;
   }
   else
   {
-#ifdef DEBUG
     bsg_sent = 0;
     bsg_recv = 0;
+  }
 #endif
 
-    // initialise thread semaphore,
-    sb_thrds_pend = sb_thrds_init;
-
-    // if we are using Doug's Momentum, and we have reached the end of the
-    // epoch (i.e. we are on the last example, and are about to move on to
-    // the last tick, we have to wait for the partial link delta sums
-    //TODO: find a better place to do this calculation
-    if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-	&& example_cnt == (xcfg.num_examples - 1)
-	&& tick == SPINN_SB_END_TICK + 1)
-    {
-      // update thread semaphore,
-      sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
-
-      // and initialise lds summation and scoreboard
-      s_lds_part = 0;
-      s_lds_arrived = 0;
-    }
-
-    // prepare for next epoch
-    s_lds_part = 0;
-    s_lds_arrived = 0;
-
-    // initialise errors and scoreboards,
-    for (uint i = 0; i < scfg.num_units; i++)
-    {
-      s_errors[i]   = 0;
-      sb_arrived[i] = 0;
-    }
-
-    sb_done = 0;
-    s_bsgn_arrived = 0;
-  }
+  // restart tick
+  tick_init (SPINN_RESTART);
 }
 // ------------------------------------------------------------------------

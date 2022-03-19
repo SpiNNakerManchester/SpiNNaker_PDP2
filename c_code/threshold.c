@@ -290,61 +290,12 @@ void timeout (uint ticks, uint unused)
     }
     else
     {
-      // send deadlock recovery packet to all other cores
+      // send deadlock recovery packet to all other cores,
       while (!spin1_send_mc_packet(tf_dlrv_key, 0, NO_PAYLOAD));
 
-#ifdef DEBUG
-      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - restarted\n",
-		 epoch, example_cnt, phase, tick
-	);
-      io_printf (IO_BUF, "(tactive:%u ta:%u/%u tb:%u/%u)\n",
-		 tf_active, tf_arrived, tcfg.num_units,
-		 tb_arrived, tcfg.num_units
-	);
-      io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n",
-		 tf_thrds_pend, tb_thrds_pend
-	);
-#endif
-
-      // restart tick
-      if (phase == SPINN_FORWARD)
-      {
-#ifdef DEBUG
-        crt_sent = 0;
-        crt_recv = 0;
-        fsg_recv = 0;
-#endif
-
-        // initialise thread semaphore,
-        tf_thrds_pend = tf_thrds_init;
-
-        // initialise scoreboards,
-        tf_arrived = 0;
-        tf_crit_arrived = 0;
-
-        // initialise previous value,
-        tf_crit_prev = TRUE;
-
-        // and initialise processing thread flag
-        tf_active = FALSE;
-      }
-      else
-      {
-#ifdef DEBUG
-	bsg_sent = 0;
-	bsg_recv = 0;
-#endif
-
-        // initialise thread semaphore,
-        tb_thrds_pend = tb_thrds_init;
-
-        // initialise scoreboards,
-        tb_arrived = 0;
-        tb_bsgn_arrived = 0;
-
-        // and trigger computation
-        spin1_schedule_callback(tb_process, 0, 0, SPINN_TB_PROCESS_P);
-      }
+      // and restart tick
+      //NOTE: this core sends but does *not* receive dlrv packets!
+      t_dlrv_packet ();
     }
   }
   else

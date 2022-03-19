@@ -33,4 +33,8 @@ void in_soft_clamp (uint inx);
 void compute_in_back (uint inx);
 void in_integr_back  (uint inx);
 
+void store_net    (uint inx);
+void restore_net  (uint inx, uint tick);
+void restore_nets (uint tick);
+
 #endif

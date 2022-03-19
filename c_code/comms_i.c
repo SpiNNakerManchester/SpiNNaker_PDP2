@@ -82,7 +82,7 @@ void i_receiveControlPacket (uint key, uint unused)
   // or process backprop sync packet,
   if (pkt_type == SPINN_SYNC_KEY)
   {
-    i_sync_packet ();
+    i_sync_packet (key);
     return;
   }
 
@@ -195,8 +195,9 @@ void i_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
-  if (phase == SPINN_BACKPROP)
-    wrng_fph++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
   // get tick STOP decision,
@@ -212,12 +213,13 @@ void i_stop_packet (uint key)
 // ------------------------------------------------------------------------
 // process a sync packet
 // ------------------------------------------------------------------------
-void i_sync_packet (void)
+void i_sync_packet (uint key)
 {
 #ifdef DEBUG
   spk_recv++;
-  if (phase == SPINN_FORWARD)
-    wrng_bph++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
   // advance tick
@@ -279,62 +281,10 @@ void i_dlrv_packet (void)
   io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - restarted\n",
 	     epoch, example_cnt, phase, tick
     );
+  io_printf (IO_BUF, "(i_active:%u)\n", i_active);
 #endif
 
-  if (phase == SPINN_FORWARD)
-  {
-    // initialise thread semaphore
-    if_thrds_pend = SPINN_IF_THRDS;
-  }
-  else
-  {
-    // initialise thread semaphore
-    ib_thrds_pend = SPINN_IB_THRDS;
-  }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores unit net received for the current tick
-// ------------------------------------------------------------------------
-void store_net (uint inx)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "store_nets\n");
-#endif
-
-  i_net_history[(tick * icfg.num_units) + inx] = i_nets[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores unit net for the requested tick
-// ------------------------------------------------------------------------
-void restore_net (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_net\n");
-#endif
-
-  i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores all unit nets for the requested tick
-// ------------------------------------------------------------------------
-void restore_nets (uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_nets\n");
-#endif
-
-  for (uint inx = 0; inx < icfg.num_units; inx++)
-  {
-    i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
-  }
+  // prepare to restart tick
+  tick_init (SPINN_RESTART);
 }
 // ------------------------------------------------------------------------

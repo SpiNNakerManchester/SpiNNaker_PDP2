@@ -29,7 +29,7 @@
 #include "mlp_macros.h"
 #include "mlp_externs.h"
 #include "init_t.h"
-#include "comms_t.h"
+#include "process_t.h"
 
 
 // ------------------------------------------------------------------------
@@ -460,6 +460,71 @@ uint init_out_weak_clamp (void)
 
 
 // ------------------------------------------------------------------------
+// initialise variables at (re)start of a new tick
+// ------------------------------------------------------------------------
+void tick_init (uint restart)
+{
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    tf_thrds_pend = tf_thrds_init;
+
+    // initialise scoreboards,
+    tf_arrived = 0;
+    tf_crit_arrived = 0;
+
+    // initialise previous criterion value,
+    tf_crit_prev = TRUE;
+
+    // initialise criterion,
+    tf_stop_crit = TRUE;
+
+    // and record outputs - if recording all ticks
+    if (!restart)
+    {
+      if (!xcfg.rec_last_tick_only)
+      {
+	if (t_rec_tick_data)
+	{
+	  record_tick_data ();
+	}
+
+	if (t_rec_outputs)
+	{
+	  record_outputs ();
+	}
+
+	if (t_rec_step_updt)
+	{
+	  stage_step++;
+	}
+      }
+    }
+  }
+  else
+  {
+    // initialise thread semaphore,
+    tb_thrds_pend = tb_thrds_init;
+
+    // and initialise scoreboards
+    tb_arrived = 0;
+    tb_bsgn_arrived = 0;
+
+    // and update error buffer pointers
+    if (!restart)
+    {
+      // update pointer to processing errors,
+      tb_procs = 1 - tb_procs;
+
+      // andupdate pointer to received errors,
+      tb_comms = 1 - tb_comms;
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
 void var_init (uint reset_examples, uint reset_epochs_trained)
@@ -871,9 +936,6 @@ void stage_done (uint ec, uint key)
   }
   if (wrng_fph) io_printf (IO_BUF, "fwd wrong phase:%d\n", wrng_fph);
   if (wrng_bph) io_printf (IO_BUF, "bkp wrong phase:%d\n", wrng_bph);
-#endif
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);

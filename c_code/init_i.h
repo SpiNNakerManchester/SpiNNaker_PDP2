@@ -18,9 +18,10 @@
 #ifndef __INIT_I_H__
 #define __INIT_I_H__
 
-uint cfg_init (void);
-uint mem_init (void);
-void var_init (uint reset_examples);
+uint cfg_init  (void);
+uint mem_init  (void);
+void tick_init (uint restart);
+void var_init  (uint reset_examples);
 
 uint init_in_integr (void);
 

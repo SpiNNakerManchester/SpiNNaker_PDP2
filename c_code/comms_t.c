@@ -98,7 +98,7 @@ void t_receiveControlPacket (uint key, uint unused)
   // or process backprop sync packet,
   if (pkt_type == SPINN_SYNC_KEY)
   {
-    t_sync_packet ();
+    t_sync_packet (key);
     return;
   }
 
@@ -336,8 +336,9 @@ void t_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
-  if (phase == SPINN_BACKPROP)
-    wrng_fph++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
   // get tick stop decision,
@@ -353,12 +354,13 @@ void t_stop_packet (uint key)
 // ------------------------------------------------------------------------
 // process a backprop sync packet
 // ------------------------------------------------------------------------
-void t_sync_packet (void)
+void t_sync_packet (uint key)
 {
 #ifdef DEBUG
   spk_recv++;
-  if (phase == SPINN_FORWARD)
-    wrng_bph++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
   // advance tick
@@ -426,45 +428,25 @@ void t_dlrv_packet (void)
   io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n",
 	     tf_thrds_pend, tb_thrds_pend
     );
-#endif
-
-  // restart tick
   if (phase == SPINN_FORWARD)
   {
-#ifdef DEBUG
     crt_sent = 0;
     crt_recv = 0;
     fsg_recv = 0;
-#endif
-
-    // initialise thread semaphore,
-    tf_thrds_pend = tf_thrds_init;
-
-    // initialise scoreboards,
-    tf_arrived = 0;
-    tf_crit_arrived = 0;
-
-    // initialise previous value,
-    tf_crit_prev = TRUE;
-
-    // and initialise processing thread flag
-    tf_active = FALSE;
   }
   else
   {
-#ifdef DEBUG
     bsg_sent = 0;
     bsg_recv = 0;
+  }
 #endif
 
-    // initialise thread semaphore,
-    tb_thrds_pend = tb_thrds_init;
+  // prepare to restart tick,
+  tick_init (SPINN_RESTART);
 
-    // initialise scoreboards,
-    tb_arrived = 0;
-    tb_bsgn_arrived = 0;
-
-    // and trigger computation
+  // and trigger computation
+  if (phase == SPINN_BACKPROP)
+  {
     spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
   }
 }
@@ -562,8 +544,15 @@ void t_bsgn_packet (void)
       }
 
       // and send backprop sync packet to allow next tick to start
+      uint pkt_key = bpsKey;
+
+#ifdef DEBUG
+      // include tick (for synchronisation checks)
+      pkt_key |= (tick & SPINN_TICK_MASK);
+#endif
+
       uint use_pl = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
-      while (!spin1_send_mc_packet (bpsKey, 0, use_pl));
+      while (!spin1_send_mc_packet (pkt_key, 0, use_pl));
 
 #ifdef DEBUG
       if (tcfg.is_last_output) spk_sent++;
@@ -576,197 +565,5 @@ void t_bsgn_packet (void)
       tb_thrds_pend &= ~SPINN_THRD_BSGN;
     }
   }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// in the FORWARD phase the convergence criterion may require the simulation to
-// stop before the maximum time is reached. This routine sends a broadcast
-// message to communicate the final decision if the criterion has been reached
-// across all the output groups to all the cores in the simulation
-// ------------------------------------------------------------------------
-void send_stop_crit (void)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "send_stop_crit\n");
-#endif
-
-  // "aggregate" criteria,
-  tf_stop_crit = tf_stop_crit && tf_crit_prev;
-
-  // make stop decision,
-  if (tcfg.is_last_output)
-  {
-    tf_group_crit = tf_stop_crit;
-
-    if (!xcfg.training)
-    {
-      t_test_results.examples_correct += tf_stop_crit && (ev_tick >=min_ticks);
-    }
-
-    tf_stop_crit = (ev_tick >= max_ticks)
-                     || (tick == ncfg.global_max_ticks - 1)
-                     || (tf_stop_crit && (ev_tick >= min_ticks));
-    tick_stop = tf_stop_crit;
-  }
-
-  // FORWARD aggregated criterion,
-  //NOTE: be careful with variable size
-  uint stop_crit = (tf_stop_crit) ? SPINN_BOOL_ONE : SPINN_BOOL_ZERO;
-
-  uint use_pl = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
-  while (!spin1_send_mc_packet ((tf_stop_key | stop_crit), 0, use_pl));
-
-#ifdef DEBUG
-  if (tcfg.is_last_output) stp_sent++;
-  else crt_sent++;
-#endif
-
-  // and initialise criterion for next tick
-  tf_stop_crit = TRUE;
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores the net of the specified unit for the current tick
-// ------------------------------------------------------------------------
-void store_net (uint inx)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "store_net\n");
-#endif
-
-  t_net_history[(tick * tcfg.num_units) + inx] = t_nets[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the net of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_net (uint inx, uint tick)
-{
-#ifdef TRACE
-    io_printf (IO_BUF, "restore_net\n");
-#endif
-
-  t_nets[inx] = t_net_history[((tick * tcfg.num_units) + inx)];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores the output of the specified unit for the current tick
-// ------------------------------------------------------------------------
-void store_output (uint inx)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "store_output\n");
-#endif
-
-  t_output_history[(tick * tcfg.num_units) + inx] = t_outputs[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the output of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_output (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_output\n");
-#endif
-
-  t_outputs[inx] = t_output_history[((tick * tcfg.num_units) + inx)];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the output of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_outputs (uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_outputs\n");
-#endif
-
-  for (uint inx = 0; inx < tcfg.num_units; inx++)
-  {
-    t_outputs[inx] = t_output_history[((tick * tcfg.num_units) + inx)];
-  }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores the output derivative of the specified unit for the current tick
-// ------------------------------------------------------------------------
-void store_output_deriv (uint inx)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "store_output_deriv\n");
-#endif
-
-  t_output_deriv_history[(tick * tcfg.num_units) + inx] = t_output_deriv[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the output derivative of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_output_deriv (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_output_deriv\n");
-#endif
-
-  t_output_deriv[inx] =
-    t_output_deriv_history[(tick * tcfg.num_units) + inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// record outputs - to be picked up by the host
-// ------------------------------------------------------------------------
-void record_outputs (void)
-{
-  // cast outputs to the right size,
-  short_activ_t outputs[tcfg.num_units];
-
-  for (uint i = 0; i < tcfg.num_units; i++)
-  {
-    outputs[i] = (short_activ_t) (t_outputs[i]
-            >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
-  }
-
-  // record outputs,
-  recording_record(OUTPUTS,
-      (void *) outputs, tcfg.num_units * sizeof (short_activ_t)
-  );
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// record tick data - to be picked up by the host
-// ------------------------------------------------------------------------
-void record_tick_data (void)
-{
-  tick_record_t tick_data;
-
-  // prepare tick data,
-  tick_data.epoch   = epoch;
-  tick_data.example = example_cnt;
-  tick_data.event   = evt;
-  tick_data.tick    = tick;
-
-  // and record it
-  recording_record(TICK_DATA, (void *) &tick_data, sizeof (tick_record_t));
 }
 // ------------------------------------------------------------------------

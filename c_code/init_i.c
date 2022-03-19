@@ -231,6 +231,27 @@ uint init_in_integr (void)
 
 
 // ------------------------------------------------------------------------
+// initialise variables at (re)start of a tick
+// ------------------------------------------------------------------------
+void tick_init (uint restart)
+{
+  (void) restart;
+
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore
+    if_thrds_pend = SPINN_IF_THRDS;
+  }
+  else
+  {
+    // initialise thread semaphore
+    ib_thrds_pend = SPINN_IB_THRDS;
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
 void var_init (uint reset_examples)
@@ -427,6 +448,7 @@ void stage_done (uint ec, uint key)
       io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
                       epoch, example_cnt, phase, tick
                     );
+      io_printf (IO_BUF, "(i_active:%u)\n", i_active);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }

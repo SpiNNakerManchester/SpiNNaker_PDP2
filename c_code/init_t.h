@@ -18,9 +18,10 @@
 #ifndef __INIT_T_H__
 #define __INIT_T_H__
 
-uint cfg_init (void);
-uint mem_init (void);
-void var_init (uint reset_examples, uint reset_epochs_trained);
+uint cfg_init  (void);
+uint mem_init  (void);
+void tick_init (uint restart);
+void var_init  (uint reset_examples, uint reset_epochs_trained);
 
 void t_init_outputs (void);
 

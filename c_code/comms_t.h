@@ -31,20 +31,7 @@ void t_dlrv_packet      (void);
 
 void t_backprop_packet (uint key, uint payload);
 void t_bsgn_packet     (void);
-void t_sync_packet     (void);
-
-void send_stop_crit (void);
-
-void store_net            (uint inx);
-void restore_net          (uint inx, uint tick);
-void store_output         (uint inx);
-void restore_output       (uint inx, uint tick);
-void restore_outputs      (uint tick);
-void store_output_deriv   (uint inx);
-void restore_output_deriv (uint inx, uint tick);
-
-void record_outputs   (void);
-void record_tick_data (void);
+void t_sync_packet     (uint key);
 
 #endif
 

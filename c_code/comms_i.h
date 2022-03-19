@@ -23,13 +23,9 @@ void i_receiveControlPacket (uint key,     uint unused);
 void i_processQueue         (uint unused0, uint unused1);
 
 void i_stop_packet     (uint key);
-void i_sync_packet     (void);
+void i_sync_packet     (uint key);
 void i_net_stop_packet (uint key);
 void i_dlrv_packet     (void);
-
-void store_net    (uint inx);
-void restore_net  (uint inx, uint tick);
-void restore_nets (uint tick);
 
 #endif
  

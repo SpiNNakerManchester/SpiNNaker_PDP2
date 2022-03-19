@@ -243,6 +243,46 @@ uint mem_init (void)
 
 
 // ------------------------------------------------------------------------
+// initialise variables at (re)start of a tick
+// ------------------------------------------------------------------------
+void tick_init (uint restart)
+{
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    wf_thrds_pend = SPINN_WF_THRDS;
+
+    // initialise scoreboard
+    wf_arrived = 0;
+
+    // and update unit output pointers
+    if (!restart) {
+      // update pointer to processing unit outputs,
+      wf_procs = 1 - wf_procs;
+
+      // and update pointer to received unit outputs
+      wf_comms = 1 - wf_comms;
+    }
+  }
+  else
+  {
+    // initialise thread semaphore,
+    wb_thrds_pend = SPINN_WB_THRDS;
+
+    // initialise scoreboard,
+    wb_arrived = 0;
+
+    // and initialise errors
+    for (uint i = 0; i < wcfg.num_rows; i++)
+    {
+      w_errors[i] = 0;
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
 void var_init (uint init_weights, uint reset_examples)
@@ -482,8 +522,8 @@ void stage_done (uint ec, uint key)
                  epoch, example_cnt, phase, tick
                 );
       io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-      io_printf (IO_BUF, "(fa:%u/%u ba:%u/%u)\n",
-                 wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
+      io_printf (IO_BUF, "(wb_active:%u fa:%u/%u ba:%u/%u)\n",
+                 wb_active, wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
                 );
       io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", wf_thrds_pend, wb_thrds_pend);
       io_printf (IO_BUF, "stage aborted\n");

@@ -94,7 +94,7 @@ void w_receiveControlPacket (uint key, uint unused)
   // or process backprop sync packet,
   if (pkt_type == SPINN_SYNC_KEY)
   {
-    w_sync_packet ();
+    w_sync_packet (key);
     return;
   }
 
@@ -226,8 +226,7 @@ void w_forward_packet (uint key, uint payload)
 {
 #ifdef DEBUG
   recv_fwd++;
-  if (phase == SPINN_BACKPROP)
-    wrng_fph++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
 #endif
 
   // get output index: mask out phase, core and block data,
@@ -281,8 +280,9 @@ void w_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
-  if (phase == SPINN_BACKPROP)
-    wrng_fph++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
   // get tick stop decision,
@@ -298,12 +298,13 @@ void w_stop_packet (uint key)
 // ------------------------------------------------------------------------
 // process a backprop sync packet
 // ------------------------------------------------------------------------
-void w_sync_packet (void)
+void w_sync_packet (uint key)
 {
 #ifdef DEBUG
   spk_recv++;
-  if (phase == SPINN_FORWARD)
-    wrng_bph++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
   // advance tick
@@ -362,41 +363,20 @@ void w_dlrv_packet (void)
 	     epoch, example_cnt, phase, tick
     );
   io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-  io_printf (IO_BUF, "(fa:%u/%u ba:%u/%u)\n",
-	     wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
+  io_printf (IO_BUF, "(wb_active:%u fa:%u/%u ba:%u/%u)\n",
+	     wb_active, wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
     );
   io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", wf_thrds_pend, wb_thrds_pend);
+  if (phase == SPINN_FORWARD) fsg_sent = 0;
 #endif
 
-  // restart tick
+  // prepare to restart tick,
+  tick_init (SPINN_RESTART);
+
+  // and trigger computation
   if (phase == SPINN_FORWARD)
   {
-#ifdef DEBUG
-    fsg_sent = 0;
-#endif
-
-    // initialise thread semaphore,
-    wf_thrds_pend = SPINN_WF_THRDS;
-
-    // initialise scoreboard,
-    wf_arrived = 0;
-
-    // and trigger computation
     spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
-  }
-  else
-  {
-    // initialise thread semaphore,
-    wb_thrds_pend = SPINN_WB_THRDS;
-
-    // initialise scoreboard,
-    wb_arrived = 0;
-
-    // and initialise error
-    for (uint i = 0; i < wcfg.num_rows; i++)
-    {
-      w_errors[i] = 0;
-    }
   }
 }
 // ------------------------------------------------------------------------

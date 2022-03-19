@@ -221,17 +221,8 @@ void sf_advance_tick (uint unused0, uint unused1)
   fsg_recv = 0;
 #endif
 
-  // initialise thread semaphore,
-  sf_thrds_pend = sf_thrds_init;
-
-  // initialise nets and scoreboards,
-  for (uint i = 0; i < scfg.num_units; i++)
-  {
-    s_nets[i] = 0;
-    sf_arrived[i] = 0;
-  }
-
-  s_fsgn_arrived = 0;
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART);
 
   // and check if end of event
   if (tick_stop)
@@ -266,36 +257,8 @@ void sb_advance_tick (uint unused0, uint unused1)
   bsg_recv = 0;
 #endif
 
-  // if we are using Doug's Momentum, and we have reached the end of the
-  // epoch (i.e. we are on the last example, and are about to move on to
-  // the last tick, we have to wait for the partial link delta sums
-  //TODO: find a better place to do this calculation
-  if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-      && example_cnt == (xcfg.num_examples - 1)
-      && tick == SPINN_SB_END_TICK + 1)
-  {
-    // initialise thread semaphore for LDSA,
-    sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
-
-    // and initialise lds summation and scoreboard
-    s_lds_part = 0;
-    s_lds_arrived = 0;
-  }
-  else
-  {
-    // initialise thread semaphore,
-    sb_thrds_pend = sb_thrds_init;
-  }
-
-  // initialise errors and scorebords,
-  for (uint i = 0; i < scfg.num_units; i++)
-  {
-    s_errors[i]   = 0;
-    sb_arrived[i] = 0;
-  }
-
-  sb_done = 0;
-  s_bsgn_arrived = 0;
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART);
 
   // and check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)
