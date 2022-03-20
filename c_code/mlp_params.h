@@ -28,6 +28,8 @@
 // ------------------------------------------------------------------------
 #define SPINN_TIMER_TICK_PERIOD  100000
 #define SPINN_PRINT_SHIFT        16
+//NOTE: must be a power of 2!
+#define SPINN_MAX_UNITS          256
 
 // deadlock recovery constants
 #define SPINN_DLRV_MAX_CNT       3
@@ -122,40 +124,42 @@
 // multicast packet routing keys and masks
 // ------------------------------------------------------------------------
 // packet type keys
-#define SPINN_DATA_KEY       0x00000000
-#define SPINN_SYNC_KEY       0x00001000
-#define SPINN_FSGN_KEY       0x00002000
-#define SPINN_BSGN_KEY       0x00003000
-#define SPINN_LDSA_KEY       0x00004000
-#define SPINN_CRIT_KEY       0x00005000
-#define SPINN_STPN_KEY       0x00006000
-#define SPINN_STOP_KEY       0x00007000
-#define SPINN_DLRV_KEY       0x0000f000
-
-// packet type mask
-#define SPINN_TYPE_MASK      0x0000f000
+#define SPINN_KEY_SHIFT      12
+#define SPINN_KEY_BITS       4
+#define SPINN_TYPE_MASK      (((1 << SPINN_KEY_BITS) - 1) << SPINN_KEY_SHIFT)
+#define SPINN_DATA_KEY       ( 0 << SPINN_KEY_SHIFT)
+#define SPINN_SYNC_KEY       ( 1 << SPINN_KEY_SHIFT)
+#define SPINN_FSGN_KEY       ( 2 << SPINN_KEY_SHIFT)
+#define SPINN_BSGN_KEY       ( 3 << SPINN_KEY_SHIFT)
+#define SPINN_LDSA_KEY       ( 4 << SPINN_KEY_SHIFT)
+#define SPINN_CRIT_KEY       ( 5 << SPINN_KEY_SHIFT)
+#define SPINN_STPN_KEY       ( 6 << SPINN_KEY_SHIFT)
+#define SPINN_STOP_KEY       ( 7 << SPINN_KEY_SHIFT)
+#define SPINN_DLRV_KEY       (15 << SPINN_KEY_SHIFT)
 
 // packet condition keys
 #define SPINN_PHASE_KEY(p)   (p << SPINN_PHASE_SHIFT)
 
-// computation phase
-#define SPINN_PHASE_SHIFT    11
+// computation phase and colour
+#define SPINN_PHASE_SHIFT    (SPINN_KEY_SHIFT - 1)
 #define SPINN_PHASE_MASK     (1 << SPINN_PHASE_SHIFT)
+#define SPINN_COLR_SHIFT     (SPINN_PHASE_SHIFT - 1)
+#define SPINN_COLR_MASK      (1 << SPINN_COLR_SHIFT)
 
 // boolean result (criterion, tick stop, abort and such)
-#define SPINN_BOOL_SHIFT     10
+#define SPINN_BOOL_SHIFT     (SPINN_COLR_SHIFT - 1)
 #define SPINN_BOOL_MASK      (1 << SPINN_BOOL_SHIFT)
 #define SPINN_CRIT_MASK      SPINN_BOOL_MASK
 #define SPINN_STOP_MASK      SPINN_BOOL_MASK
 #define SPINN_ABRT_MASK      SPINN_BOOL_MASK
 
 // packet data masks
-#define SPINN_OUTPUT_MASK    (SPINN_BOOL_MASK - 1)
-#define SPINN_NET_MASK       (SPINN_BOOL_MASK - 1)
-#define SPINN_DELTA_MASK     (SPINN_BOOL_MASK - 1)
-#define SPINN_ERROR_MASK     (SPINN_BOOL_MASK - 1)
-#define SPINN_STPD_MASK      (SPINN_BOOL_MASK - 1)
 #define SPINN_TICK_MASK      (SPINN_BOOL_MASK - 1)
+#define SPINN_OUTPUT_MASK    (SPINN_MAX_UNITS - 1)
+#define SPINN_NET_MASK       (SPINN_MAX_UNITS - 1)
+#define SPINN_DELTA_MASK     (SPINN_MAX_UNITS - 1)
+#define SPINN_ERROR_MASK     (SPINN_MAX_UNITS - 1)
+#define SPINN_STPD_MASK      (SPINN_MAX_UNITS - 1)
 // ------------------------------------------------------------------------
 
 
