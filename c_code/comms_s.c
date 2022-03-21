@@ -71,6 +71,13 @@ void s_receiveControlPacket (uint key, uint unused)
   // check packet type,
   uint pkt_type = key & SPINN_TYPE_MASK;
 
+  // process backprop sync generation packet,
+  if (pkt_type == SPINN_BSGN_KEY)
+  {
+    s_bsgn_packet ();
+    return;
+  }
+
   // process tick stop packet,
   if (pkt_type == SPINN_STOP_KEY)
   {
@@ -78,21 +85,14 @@ void s_receiveControlPacket (uint key, uint unused)
     return;
   }
 
-  // or process backprop sync packet,
+  // process backprop sync packet,
   if (pkt_type == SPINN_SYNC_KEY)
   {
     s_sync_packet (key);
     return;
   }
 
-  // or process network stop packet,
-  if (pkt_type == SPINN_STPN_KEY)
-  {
-    s_net_stop_packet (key);
-    return;
-  }
-
-  // or process deadlock recovery packet,
+  // process deadlock recovery packet,
   if (pkt_type == SPINN_DLRV_KEY)
   {
 #ifdef DEBUG
@@ -112,7 +112,14 @@ void s_receiveControlPacket (uint key, uint unused)
     return;
   }
 
-  // or process unexpected data packet,
+  // process network stop packet,
+  if (pkt_type == SPINN_STPN_KEY)
+  {
+    s_net_stop_packet (key);
+    return;
+  }
+
+  // process unexpected data packet,
   //NOTE: this is a workaround for an undiagnosed
   //bug that drops the payload from data packets
   if (pkt_type == SPINN_DATA_KEY)
@@ -179,19 +186,13 @@ void s_processQueue (uint unused0, uint unused1)
       }
     }
 
-    // or process LDS packet,
+    // process LDS packet,
     else if (pkt_type == SPINN_LDSA_KEY)
     {
       s_lds_packet (payload);
     }
 
-    // or process backprop sync generation packet,
-    else if (pkt_type == SPINN_BSGN_KEY)
-    {
-      s_bsgn_packet ();
-    }
-
-    // or process forward sync generation packet,
+    // process forward sync generation packet,
     else if (pkt_type == SPINN_FSGN_KEY)
     {
       s_fsgn_packet ();
@@ -259,7 +260,7 @@ void s_lds_packet (uint payload)
       // and send sync packet to allow next tick to start
       if (scfg.is_tree_root)
       {
-        while (!spin1_send_mc_packet (bpsKey, 0, WITH_PAYLOAD));
+        while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
         bsg_sent++;
@@ -381,17 +382,11 @@ void s_bsgn_packet (void)
   // and check if all expected packets arrived
   if (s_bsgn_arrived == scfg.bsgn_expected)
   {
-    // access thread semaphore with interrupts disabled,
-    uint cpsr = spin1_int_disable ();
-
-    // and check if all other threads done
+    // check if all other threads done
     if (sb_thrds_pend == SPINN_THRD_BSGN)
     {
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
-
-      // and send sync packet to allow next tick to start
-      while (!spin1_send_mc_packet (bpsKey, 0, WITH_PAYLOAD));
+      // send sync packet to allow next tick to start
+      while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
       bsg_sent++;
@@ -399,11 +394,8 @@ void s_bsgn_packet (void)
     }
     else
     {
-      // report sync thread done,
+      // report sync thread done
       sb_thrds_pend &= ~SPINN_THRD_BSGN;
-
-      // and restore interrupts after flag access
-      spin1_mode_restore (cpsr);
     }
   }
 }

@@ -181,7 +181,7 @@ void sb_process (uint key, uint payload)
         // and send sync packet to allow next tick to start
         if (scfg.is_tree_root)
         {
-          while (!spin1_send_mc_packet (bpsKey, 0, WITH_PAYLOAD));
+          while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
           bsg_sent++;

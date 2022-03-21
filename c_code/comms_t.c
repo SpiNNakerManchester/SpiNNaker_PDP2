@@ -88,6 +88,13 @@ void t_receiveControlPacket (uint key, uint unused)
   // check packet type,
   uint pkt_type = key & SPINN_TYPE_MASK;
 
+  // process backprop sync generation packet,
+  if (pkt_type == SPINN_BSGN_KEY)
+  {
+    t_bsgn_packet ();
+    return;
+  }
+
   // process tick stop packet,
   if (pkt_type == SPINN_STOP_KEY)
   {
@@ -95,21 +102,14 @@ void t_receiveControlPacket (uint key, uint unused)
     return;
   }
 
-  // or process backprop sync packet,
+  // process backprop sync packet,
   if (pkt_type == SPINN_SYNC_KEY)
   {
     t_sync_packet (key);
     return;
   }
 
-  // or process network stop packet,
-  if (pkt_type == SPINN_STPN_KEY)
-  {
-    t_net_stop_packet (key);
-    return;
-  }
-
-  // or process deadlock recovery packet,
+  // process deadlock recovery packet,
   if (pkt_type == SPINN_DLRV_KEY)
   {
 #ifdef DEBUG
@@ -126,6 +126,13 @@ void t_receiveControlPacket (uint key, uint unused)
       t_dlrv_packet ();
     }
 
+    return;
+  }
+
+  // process network stop packet,
+  if (pkt_type == SPINN_STPN_KEY)
+  {
+    t_net_stop_packet (key);
     return;
   }
 
@@ -150,13 +157,6 @@ void t_handleBKPPacket (uint key, uint payload)
   if (pkt_type == SPINN_DATA_KEY)
   {
     t_backprop_packet (key, payload);
-    return;
-  }
-
-  // or process synchronisation packet,
-  if (pkt_type == SPINN_BSGN_KEY)
-  {
-    t_bsgn_packet ();
     return;
   }
 
@@ -495,7 +495,9 @@ void t_bsgn_packet (void)
 #ifdef DEBUG
   bsg_recv++;
   if (phase == SPINN_FORWARD)
+  {
     wrng_bph++;
+  }
 #endif
 
   // update scoreboard,
@@ -511,8 +513,14 @@ void t_bsgn_packet (void)
       send_sync ();
 
 #ifdef DEBUG
-      if (tcfg.is_last_output) spk_sent++;
-      else bsg_sent++;
+      if (tcfg.is_last_output)
+      {
+	spk_sent++;
+      }
+      else
+      {
+	bsg_sent++;
+      }
 #endif
 
       // and advance tick

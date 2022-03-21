@@ -1172,19 +1172,13 @@ void send_stop_crit (void)
 void send_sync (void)
 {
   uint pkt_key = bpsKey;
-  uint use_pl;
 
   if (tcfg.is_last_output)
   {
     pkt_key |= (tick & SPINN_TICK_MASK);
-    use_pl = NO_PAYLOAD;
-  }
-  else
-  {
-    use_pl = WITH_PAYLOAD;
   }
 
-  while (!spin1_send_mc_packet (pkt_key, 0, use_pl));
+  while (!spin1_send_mc_packet (pkt_key, 0, NO_PAYLOAD));
 }
 // ------------------------------------------------------------------------
 
