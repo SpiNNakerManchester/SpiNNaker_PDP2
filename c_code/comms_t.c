@@ -419,32 +419,8 @@ void t_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void t_dlrv_packet (void)
 {
-#ifdef DEBUG
-  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - restarted\n",
-	     epoch, example_cnt, phase, tick
-    );
-  io_printf (IO_BUF, "(tactive:%u ta:%u/%u tb:%u/%u)\n",
-	     tf_active, tf_arrived, tcfg.num_units,
-	     tb_arrived, tcfg.num_units
-    );
-  io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n",
-	     tf_thrds_pend, tb_thrds_pend
-    );
-  if (phase == SPINN_FORWARD)
-  {
-    crt_sent = 0;
-    crt_recv = 0;
-    fsg_recv = 0;
-  }
-  else
-  {
-    bsg_sent = 0;
-    bsg_recv = 0;
-  }
-#endif
-
   // prepare to restart tick,
-  tick_init (SPINN_RESTART);
+  spin1_schedule_callback (tick_init, SPINN_RESTART, 0, SPINN_T_TICK_P);
 
   // and trigger computation
   if (phase == SPINN_BACKPROP)

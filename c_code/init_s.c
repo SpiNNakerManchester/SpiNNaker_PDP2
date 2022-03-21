@@ -182,9 +182,31 @@ uint mem_init (void)
 // ------------------------------------------------------------------------
 // initialise variables at (re)start of a tick
 // ------------------------------------------------------------------------
-void tick_init (uint restart)
+void tick_init (uint restart, uint unused)
 {
-  (void) restart;
+  (void) unused;
+
+#ifdef DEBUG
+  if (restart)
+  {
+    timeout_rep (FALSE);
+  }
+  else
+  {
+    tot_tick++;
+  }
+
+  if (phase == SPINN_FORWARD)
+  {
+    fsg_sent = 0;
+    fsg_recv = 0;
+  }
+  else
+  {
+    bsg_sent = 0;
+    bsg_recv = 0;
+  }
+#endif
 
   if (phase == SPINN_FORWARD)
   {
@@ -364,6 +386,34 @@ prf_bkp_max = 0;                     // maximum BACKPROP processing time
 
 
 // ------------------------------------------------------------------------
+// report critical variables on timeout
+// ------------------------------------------------------------------------
+void timeout_rep (uint abort)
+{
+  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
+	     epoch, example_cnt, phase, tick
+    );
+  if (abort)
+  {
+    io_printf (IO_BUF, "abort!\n");
+  }
+  else
+  {
+    io_printf (IO_BUF, "restarted\n");
+  }
+  io_printf (IO_BUF, "(s_active:%u bd:%u)\n", s_active, sb_done);
+  for (uint i = 0; i < scfg.num_units; i++)
+  {
+    io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,
+	       sf_arrived[i], sb_arrived[i]
+      );
+  }
+  io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", sf_thrds_pend, sb_thrds_pend);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // load stage configuration from SDRAM
 // ------------------------------------------------------------------------
 void stage_init (void)
@@ -449,17 +499,7 @@ void stage_done (uint ec, uint key)
       break;
 
     case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
-                  epoch, example_cnt, phase, tick
-                );
-      io_printf (IO_BUF, "(s_active:%u bd:%u)\n", s_active, sb_done);
-      for (uint i = 0; i < scfg.num_units; i++)
-      {
-        io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,
-                    sf_arrived[i], sb_arrived[i]
-                  );
-      }
-      io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", sf_thrds_pend, sb_thrds_pend);
+      timeout_rep (TRUE);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }

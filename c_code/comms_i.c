@@ -279,14 +279,7 @@ void i_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void i_dlrv_packet (void)
 {
-#ifdef DEBUG
-  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - restarted\n",
-	     epoch, example_cnt, phase, tick
-    );
-  io_printf (IO_BUF, "(i_active:%u)\n", i_active);
-#endif
-
   // prepare to restart tick
-  tick_init (SPINN_RESTART);
+  spin1_schedule_callback (tick_init, SPINN_RESTART, 0, SPINN_I_TICK_P);
 }
 // ------------------------------------------------------------------------

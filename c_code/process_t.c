@@ -213,15 +213,8 @@ void tf_advance_tick (uint unused0, uint unused1)
   io_printf (IO_BUF, "tf_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  tot_tick++;
-  crt_sent = 0;
-  crt_recv = 0;
-  fsg_recv = 0;
-#endif
-
   // prepare to restart tick,
-  tick_init (!SPINN_RESTART);
+  tick_init (!SPINN_RESTART, 0);
 
   // and check if done with event
   if (tick_stop)
@@ -259,14 +252,8 @@ void tb_advance_tick (uint unused0, uint unused1)
   io_printf (IO_BUF, "tb_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  tot_tick++;
-  bsg_sent = 0;
-  bsg_recv = 0;
-#endif
-
   // prepare to restart tick,
-  tick_init (!SPINN_RESTART);
+  tick_init (!SPINN_RESTART, 0);
 
   // and check if done with BACKPROP phase
   if (tick == SPINN_TB_END_TICK)

@@ -360,20 +360,8 @@ void w_net_stop_packet (uint key)
 // ------------------------------------------------------------------------
 void w_dlrv_packet (void)
 {
-#ifdef DEBUG
-  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - restarted\n",
-	     epoch, example_cnt, phase, tick
-    );
-  io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-  io_printf (IO_BUF, "(wb_active:%u fa:%u/%u ba:%u/%u)\n",
-	     wb_active, wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
-    );
-  io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", wf_thrds_pend, wb_thrds_pend);
-  if (phase == SPINN_FORWARD) fsg_sent = 0;
-#endif
-
   // prepare to restart tick,
-  tick_init (SPINN_RESTART);
+  spin1_schedule_callback (tick_init, SPINN_RESTART, 0, SPINN_W_TICK_P);
 
   // and trigger computation
   if (phase == SPINN_FORWARD)

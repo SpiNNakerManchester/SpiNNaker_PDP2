@@ -245,8 +245,30 @@ uint mem_init (void)
 // ------------------------------------------------------------------------
 // initialise variables at (re)start of a tick
 // ------------------------------------------------------------------------
-void tick_init (uint restart)
+void tick_init (uint restart, uint unused)
 {
+  (void) unused;
+
+#ifdef DEBUG
+  if (restart)
+  {
+    timeout_rep (FALSE);
+  }
+  else
+  {
+    //NOTE: tick 0 is not a computation tick
+    if (tick)
+    {
+      tot_tick++;
+    }
+  }
+
+  if (phase == SPINN_FORWARD)
+  {
+    fsg_sent = 0;
+  }
+#endif
+
   if (phase == SPINN_FORWARD)
   {
     // initialise thread semaphore,
@@ -430,6 +452,31 @@ prf_bkp_max = 0;                     // maximum BACKPROP processing time
 
 
 // ------------------------------------------------------------------------
+// report critical variables on timeout
+// ------------------------------------------------------------------------
+void timeout_rep (uint abort)
+{
+  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
+	     epoch, example_cnt, phase, tick
+    );
+  if (abort)
+  {
+    io_printf (IO_BUF, "abort!\n");
+  }
+  else
+  {
+    io_printf (IO_BUF, "restarted\n");
+  }
+  io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
+  io_printf (IO_BUF, "(wb_active:%u fa:%u/%u ba:%u/%u)\n",
+	     wb_active, wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
+    );
+  io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", wf_thrds_pend, wb_thrds_pend);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // load stage configuration from SDRAM
 // ------------------------------------------------------------------------
 void stage_init (void)
@@ -518,14 +565,7 @@ void stage_done (uint ec, uint key)
       break;
 
     case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
-                 epoch, example_cnt, phase, tick
-                );
-      io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-      io_printf (IO_BUF, "(wb_active:%u fa:%u/%u ba:%u/%u)\n",
-                 wb_active, wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
-                );
-      io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", wf_thrds_pend, wb_thrds_pend);
+      timeout_rep (TRUE);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }

@@ -442,31 +442,7 @@ void s_fsgn_packet (void)
 // ------------------------------------------------------------------------
 void s_dlrv_packet (void)
 {
-#ifdef DEBUG
-  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - restarted!\n",
-	     epoch, example_cnt, phase, tick
-    );
-  io_printf (IO_BUF, "(s_active:%u bd:%u)\n", s_active, sb_done);
-  for (uint i = 0; i < scfg.num_units; i++)
-  {
-    io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,
-	       sf_arrived[i], sb_arrived[i]
-      );
-  }
-  io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", sf_thrds_pend, sb_thrds_pend);
-  if (phase == SPINN_FORWARD)
-  {
-    fsg_sent = 0;
-    fsg_recv = 0;
-  }
-  else
-  {
-    bsg_sent = 0;
-    bsg_recv = 0;
-  }
-#endif
-
   // restart tick
-  tick_init (SPINN_RESTART);
+  spin1_schedule_callback (tick_init, SPINN_RESTART, 0, SPINN_S_TICK_P);
 }
 // ------------------------------------------------------------------------

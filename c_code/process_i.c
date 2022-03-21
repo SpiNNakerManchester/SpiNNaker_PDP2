@@ -164,12 +164,8 @@ void if_advance_tick (uint unused0, uint unused1)
   io_printf (IO_BUF, "if_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  tot_tick++;
-#endif
-
   // prepare to start tick,
-  tick_init (!SPINN_RESTART);
+  tick_init (!SPINN_RESTART, 0);
 
   // and check if end of event
   if (tick_stop)
@@ -198,12 +194,8 @@ void ib_advance_tick (uint unused0, uint unused1)
   io_printf (IO_BUF, "ib_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  tot_tick++;
-#endif
-
   // prepare to start tick,
-  tick_init (!SPINN_RESTART);
+  tick_init (!SPINN_RESTART, 0);
 
   // and check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)

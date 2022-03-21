@@ -249,8 +249,21 @@ uint init_in_integr (void)
 // ------------------------------------------------------------------------
 // initialise variables at (re)start of a tick
 // ------------------------------------------------------------------------
-void tick_init (uint restart)
+void tick_init (uint restart, uint unused)
 {
+  (void) unused;
+
+#ifdef DEBUG
+  if (restart)
+  {
+    timeout_rep (FALSE);
+  }
+  else
+  {
+    tot_tick++;
+  }
+#endif
+
   dlrv = restart;
 
   if (phase == SPINN_FORWARD)
@@ -376,6 +389,27 @@ prf_bkp_max = 0;                     // maximum BACKPROP processing time
 
 
 // ------------------------------------------------------------------------
+// report critical variables on timeout
+// ------------------------------------------------------------------------
+void timeout_rep (uint abort)
+{
+  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
+	     epoch, example_cnt, phase, tick
+    );
+  if (abort)
+  {
+    io_printf (IO_BUF, "abort!\n");
+  }
+  else
+  {
+    io_printf (IO_BUF, "restarted\n");
+  }
+  io_printf (IO_BUF, "(i_active:%u)\n", i_active);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // load stage configuration from SDRAM
 // ------------------------------------------------------------------------
 void stage_init (void)
@@ -461,10 +495,7 @@ void stage_done (uint ec, uint key)
       break;
 
     case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
-                      epoch, example_cnt, phase, tick
-                    );
-      io_printf (IO_BUF, "(i_active:%u)\n", i_active);
+      timeout_rep (TRUE);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }
