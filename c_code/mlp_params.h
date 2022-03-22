@@ -178,13 +178,13 @@
 // thread parameters
 // ------------------------------------------------------------------------
 #define SPINN_NO_THRDS       0
-#define SPINN_THRD_PROC      1
-#define SPINN_THRD_COMS      ((SPINN_THRD_PROC) << 1)
-#define SPINN_THRD_CRIT      ((SPINN_THRD_COMS) << 1)
-#define SPINN_THRD_STOP      ((SPINN_THRD_CRIT) << 1)
-#define SPINN_THRD_LDSA      ((SPINN_THRD_STOP) << 1)
-#define SPINN_THRD_FSGN      ((SPINN_THRD_LDSA) << 1)
-#define SPINN_THRD_BSGN      ((SPINN_THRD_FSGN) << 1)
+#define SPINN_THRD_PROC      0x00000001
+#define SPINN_THRD_COMS      0x00000002
+#define SPINN_THRD_CRIT      0x00000004
+#define SPINN_THRD_STOP      0x00000008
+#define SPINN_THRD_LDSA      0x00000010
+#define SPINN_THRD_FSGN      0x00000020
+#define SPINN_THRD_BSGN      0x00000040
 
 #define SPINN_WF_THRDS       (SPINN_NO_THRDS)
 #define SPINN_WB_THRDS       (SPINN_NO_THRDS)
