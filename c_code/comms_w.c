@@ -245,7 +245,7 @@ void w_forward_packet (uint key, uint payload)
   if (wf_arrived == wcfg.num_rows)
   {
     // trigger forward sync generation,
-    while (!spin1_send_mc_packet (fsgKey, 0, WITH_PAYLOAD));
+    while (!spin1_send_mc_packet (fsgKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
     fsg_sent++;

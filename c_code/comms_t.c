@@ -88,6 +88,13 @@ void t_receiveControlPacket (uint key, uint unused)
   // check packet type,
   uint pkt_type = key & SPINN_TYPE_MASK;
 
+  // process forward sync gen packet,
+  if (pkt_type == SPINN_FSGN_KEY)
+  {
+    t_fsgn_packet ();
+    return;
+  }
+
   // process backprop sync generation packet,
   if (pkt_type == SPINN_BSGN_KEY)
   {
@@ -205,12 +212,6 @@ void t_processFWDQueue (uint unused0, uint unused1)
       t_criterion_packet (key);
     }
 
-    // or process forward sync gen packet,
-    else if (pkt_type == SPINN_FSGN_KEY)
-    {
-      t_fsgn_packet ();
-    }
-
 #ifdef DEBUG
     // or report unexpected packet type,
     else
@@ -297,15 +298,9 @@ void t_fsgn_packet (void)
     wrng_fph++;
 #endif
 
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable();
-
-  // and check if all other threads are done
+  // check if all other threads are done
   if (tf_thrds_pend == SPINN_THRD_FSGN)
   {
-    // restore interrupts after flag access,
-    spin1_mode_restore(cpsr);
-
     // send criterion/stop packet,
     send_stop_crit();
 
@@ -319,11 +314,8 @@ void t_fsgn_packet (void)
   }
   else
   {
-    // if not done report thread done,
+    // report thread done
     tf_thrds_pend &= ~SPINN_THRD_FSGN;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore(cpsr);
   }
 }
 // ------------------------------------------------------------------------

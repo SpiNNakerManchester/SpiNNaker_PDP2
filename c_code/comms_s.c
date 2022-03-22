@@ -71,6 +71,13 @@ void s_receiveControlPacket (uint key, uint unused)
   // check packet type,
   uint pkt_type = key & SPINN_TYPE_MASK;
 
+  // process forward sync generation packet,
+  if (pkt_type == SPINN_FSGN_KEY)
+  {
+    s_fsgn_packet ();
+    return;
+  }
+
   // process backprop sync generation packet,
   if (pkt_type == SPINN_BSGN_KEY)
   {
@@ -190,12 +197,6 @@ void s_processQueue (uint unused0, uint unused1)
     else if (pkt_type == SPINN_LDSA_KEY)
     {
       s_lds_packet (payload);
-    }
-
-    // process forward sync generation packet,
-    else if (pkt_type == SPINN_FSGN_KEY)
-    {
-      s_fsgn_packet ();
     }
 
 #ifdef DEBUG
@@ -419,7 +420,7 @@ void s_fsgn_packet (void)
   if (s_fsgn_arrived == scfg.fsgn_expected)
   {
     // report forward sync gen
-    while (!spin1_send_mc_packet(fsgKey, 0, WITH_PAYLOAD));
+    while (!spin1_send_mc_packet(fsgKey, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
     fsg_sent++;
