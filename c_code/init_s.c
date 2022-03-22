@@ -232,8 +232,8 @@ void tick_init (uint restart, uint unused)
     // the last tick, we have to wait for the partial link delta sums
     //TODO: find a better place to do this calculation
     if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-	&& example_cnt == (xcfg.num_examples - 1)
-	&& tick == SPINN_SB_END_TICK + 1)
+        && example_cnt == (xcfg.num_examples - 1)
+        && tick == SPINN_SB_END_TICK + 1)
     {
       // update thread semaphore,
       sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
@@ -391,7 +391,7 @@ prf_bkp_max = 0;                     // maximum BACKPROP processing time
 void timeout_rep (uint abort)
 {
   io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
-	     epoch, example_cnt, phase, tick
+             epoch, example_cnt, phase, tick
     );
   if (abort)
   {
@@ -405,7 +405,7 @@ void timeout_rep (uint abort)
   for (uint i = 0; i < scfg.num_units; i++)
   {
     io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,
-	       sf_arrived[i], sb_arrived[i]
+               sf_arrived[i], sb_arrived[i]
       );
   }
   io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", sf_thrds_pend, sb_thrds_pend);

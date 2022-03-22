@@ -1153,9 +1153,8 @@ void send_stop_crit (void)
   // FORWARD aggregated criterion - stop decision if last t core
   uint stop_crit = tf_stop_crit ? SPINN_BOOL_ONE : SPINN_BOOL_ZERO;
   uint pkt_key = tf_stop_key | stop_crit | (tick & SPINN_TICK_MASK);
-  uint use_pld = tcfg.is_last_output ? NO_PAYLOAD : WITH_PAYLOAD;
 
-  while (!spin1_send_mc_packet (pkt_key, 0, use_pld));
+  while (!spin1_send_mc_packet (pkt_key, 0, NO_PAYLOAD));
 
 #ifdef DEBUG
   if (tcfg.is_last_output) stp_sent++;

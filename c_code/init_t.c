@@ -525,17 +525,17 @@ void tick_init (uint restart, uint unused)
     {
       if (t_rec_tick_data)
       {
-	record_tick_data ();
+        record_tick_data ();
       }
 
       if (t_rec_outputs)
       {
-	record_outputs ();
+        record_outputs ();
       }
 
       if (t_rec_step_updt)
       {
-	stage_step++;
+        stage_step++;
       }
     }
   }
@@ -833,7 +833,7 @@ prf_bkp_max = 0;                     // maximum BACKPROP processing time
 void timeout_rep (uint abort)
 {
   io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
-	     epoch, example_cnt, phase, tick
+             epoch, example_cnt, phase, tick
     );
   if (abort)
   {
@@ -844,11 +844,11 @@ void timeout_rep (uint abort)
     io_printf (IO_BUF, "restarted\n");
   }
   io_printf (IO_BUF, "(tf_active:%u ta:%u/%u tb:%u/%u)\n",
-	     tf_active, tf_arrived, tcfg.num_units,
-	     tb_arrived, tcfg.num_units
+             tf_active, tf_arrived, tcfg.num_units,
+             tb_arrived, tcfg.num_units
     );
   io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n",
-	     tf_thrds_pend, tb_thrds_pend
+             tf_thrds_pend, tb_thrds_pend
     );
 }
 // ------------------------------------------------------------------------

@@ -394,7 +394,7 @@ prf_bkp_max = 0;                     // maximum BACKPROP processing time
 void timeout_rep (uint abort)
 {
   io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
-	     epoch, example_cnt, phase, tick
+             epoch, example_cnt, phase, tick
     );
   if (abort)
   {

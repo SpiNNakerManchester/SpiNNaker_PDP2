@@ -126,19 +126,6 @@ void s_receiveControlPacket (uint key, uint unused)
     return;
   }
 
-  // process unexpected data packet,
-  //NOTE: this is a workaround for an undiagnosed
-  //bug that drops the payload from data packets
-  if (pkt_type == SPINN_DATA_KEY)
-  {
-#ifdef DEBUG
-    wrng_cth++;
-#endif
-
-    s_receiveDataPacket (key, 0);
-    return;
-  }
-
 #ifdef DEBUG
   // or report unexpected packet type
   stage_done (SPINN_UNXPD_PKT, key);

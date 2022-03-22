@@ -102,6 +102,13 @@ void t_receiveControlPacket (uint key, uint unused)
     return;
   }
 
+  // process criterion packet,
+  if (pkt_type == SPINN_CRIT_KEY)
+  {
+    t_criterion_packet (key);
+    return;
+  }
+
   // process tick stop packet,
   if (pkt_type == SPINN_STOP_KEY)
   {
@@ -206,12 +213,6 @@ void t_processFWDQueue (uint unused0, uint unused1)
       tf_process (key, payload);
     }
 
-    // or process criterion packet,
-    else if (pkt_type == SPINN_CRIT_KEY)
-    {
-      t_criterion_packet (key);
-    }
-
 #ifdef DEBUG
     // or report unexpected packet type,
     else
@@ -254,15 +255,9 @@ void t_criterion_packet (uint key)
   // and check if all criterion packets arrived
   if (tf_crit_arrived == tcfg.crit_expected)
   {
-    // access thread semaphore with interrupts disabled,
-    uint cpsr = spin1_int_disable ();
-
-    // and check if all other threads are done
+    // check if all other threads are done
     if (tf_thrds_pend == SPINN_THRD_CRIT)
     {
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
-
       // send criterion/stop packet,
       send_stop_crit ();
 
@@ -276,11 +271,8 @@ void t_criterion_packet (uint key)
     }
     else
     {
-      // if not done report thread done,
+      // report thread done
       tf_thrds_pend &= ~SPINN_THRD_CRIT;
-
-      // and restore interrupts after semaphore access
-      spin1_mode_restore (cpsr);
     }
   }
 }
@@ -507,11 +499,11 @@ void t_bsgn_packet (void)
 #ifdef DEBUG
       if (tcfg.is_last_output)
       {
-	spk_sent++;
+        spk_sent++;
       }
       else
       {
-	bsg_sent++;
+        bsg_sent++;
       }
 #endif
 
