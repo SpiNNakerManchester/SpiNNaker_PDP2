@@ -175,6 +175,11 @@ void sb_process (uint key, uint payload)
       // check if all other threads done
       if (sb_thrds_pend == SPINN_THRD_PROC)
       {
+#ifdef DEBUG
+        // report processing thread done,
+        sb_thrds_pend = 0;
+#endif
+
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
 
@@ -190,7 +195,7 @@ void sb_process (uint key, uint payload)
       }
       else
       {
-        // if not done report processing thread done,
+        // report processing thread done,
         sb_thrds_pend &= ~SPINN_THRD_PROC;
 
         // and restore interrupts after flag access

@@ -967,7 +967,7 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
   if (tcfg.is_last_sgrp)
   {
-    io_printf (IO_BUF, "crit recv:%d\n", crt_recv);
+    io_printf (IO_BUF, "crit recv:%d/%u\n", crt_recv, tcfg.crit_expected);
   }
   if (tcfg.is_last_output)
   {

@@ -258,6 +258,11 @@ void t_criterion_packet (uint key)
     // check if all other threads are done
     if (tf_thrds_pend == SPINN_THRD_CRIT)
     {
+#ifdef DEBUG
+      // report thread done
+      tf_thrds_pend = 0;
+#endif
+
       // send criterion/stop packet,
       send_stop_crit ();
 
@@ -293,6 +298,11 @@ void t_fsgn_packet (void)
   // check if all other threads are done
   if (tf_thrds_pend == SPINN_THRD_FSGN)
   {
+#ifdef DEBUG
+    // report thread done
+    tf_thrds_pend = 0;
+#endif
+
     // send criterion/stop packet,
     send_stop_crit();
 
@@ -446,6 +456,11 @@ void t_backprop_packet (uint key, uint payload)
     // and check if all other threads are done,
     if (tb_thrds_pend == SPINN_THRD_COMS)
     {
+#ifdef DEBUG
+      // report comms thread done
+      tb_thrds_pend = 0;
+#endif
+
       // send backprop sync packet to allow next tick to start,
       send_sync ();
 
@@ -493,6 +508,11 @@ void t_bsgn_packet (void)
     // check if all other threads done
     if (tb_thrds_pend == SPINN_THRD_BSGN)
     {
+#ifdef DEBUG
+      // report sync thread done
+      tb_thrds_pend = 0;
+#endif
+
       // send backprop sync packet to allow next tick to start,
       send_sync ();
 

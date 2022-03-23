@@ -206,6 +206,8 @@ void tick_init (uint restart, uint unused)
     bsg_sent = 0;
     bsg_recv = 0;
   }
+#else
+  (void) restart;
 #endif
 
   if (phase == SPINN_FORWARD)
@@ -404,8 +406,8 @@ void timeout_rep (uint abort)
   io_printf (IO_BUF, "(s_active:%u bd:%u)\n", s_active, sb_done);
   for (uint i = 0; i < scfg.num_units; i++)
   {
-    io_printf (IO_BUF, "%2d: (fa:%u ba:%u)\n", i,
-               sf_arrived[i], sb_arrived[i]
+    io_printf (IO_BUF, "%2d: (fa:%u/%u ba:%u/%u)\n", i,
+               sf_arrived[i], scfg.fwd_expected, sb_arrived[i], scfg.bkp_expected
       );
   }
   io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", sf_thrds_pend, sb_thrds_pend);
@@ -513,9 +515,9 @@ void stage_done (uint ec, uint key)
   io_printf (IO_BUF, "lds sent:%d\n", lds_sent);
   io_printf (IO_BUF, "lds recv:%d\n", lds_recv);
   io_printf (IO_BUF, "fsgn sent:%d\n", fsg_sent);
-  io_printf (IO_BUF, "fsgn recv:%d\n", fsg_recv);
+  io_printf (IO_BUF, "fsgn recv:%d/%u\n", fsg_recv, scfg.fsgn_expected);
   io_printf (IO_BUF, "bsgn sent:%d\n", bsg_sent);
-  io_printf (IO_BUF, "bsgn recv:%d\n", bsg_recv);
+  io_printf (IO_BUF, "bsgn recv:%d/%u\n", bsg_recv, scfg.bsgn_expected);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
   io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);

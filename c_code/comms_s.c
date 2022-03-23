@@ -242,6 +242,11 @@ void s_lds_packet (uint payload)
     // check if all other threads done
     if (sb_thrds_pend == SPINN_THRD_LDSA)
     {
+#ifdef DEBUG
+      // report processing thread done,
+      sb_thrds_pend = 0;
+#endif
+
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
@@ -373,6 +378,11 @@ void s_bsgn_packet (void)
     // check if all other threads done
     if (sb_thrds_pend == SPINN_THRD_BSGN)
     {
+#ifdef DEBUG
+      // report processing thread done,
+      sb_thrds_pend = 0;
+#endif
+
       // send sync packet to allow next tick to start
       while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
 

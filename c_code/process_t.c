@@ -108,6 +108,11 @@ void tf_process (uint key, uint payload)
     // and check if all other threads are done
     if (tf_thrds_pend == SPINN_THRD_PROC)
     {
+#ifdef DEBUG
+      // report thread done,
+      tf_thrds_pend = 0;
+#endif
+
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
@@ -124,7 +129,7 @@ void tf_process (uint key, uint payload)
     }
     else
     {
-      // if not done report thread done,
+      // report thread done,
       tf_thrds_pend &= ~SPINN_THRD_PROC;
 
       // and restore interrupts after semaphore access
