@@ -1159,7 +1159,7 @@ void send_stop_crit (void)
   uint stop_crit = tf_stop_crit ? SPINN_BOOL_ONE : SPINN_BOOL_ZERO;
   uint pkt_key = tf_stop_key | stop_crit | (tick & SPINN_TICK_MASK);
 
-  while (!spin1_send_mc_packet (pkt_key, 0, NO_PAYLOAD));
+  while (!spin1_trigger_user_event (pkt_key, 0));
 
 #ifdef DEBUG
   if (tcfg.is_last_output) stp_sent++;
@@ -1181,7 +1181,7 @@ void send_sync (void)
     pkt_key |= (tick & SPINN_TICK_MASK);
   }
 
-  while (!spin1_send_mc_packet (pkt_key, 0, NO_PAYLOAD));
+  while (!spin1_trigger_user_event (pkt_key, 0));
 }
 // ------------------------------------------------------------------------
 

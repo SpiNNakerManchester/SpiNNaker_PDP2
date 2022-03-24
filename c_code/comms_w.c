@@ -245,7 +245,7 @@ void w_forward_packet (uint key, uint payload)
   if (wf_arrived == wcfg.num_rows)
   {
     // trigger forward sync generation,
-    while (!spin1_send_mc_packet (fsgKey, 0, NO_PAYLOAD));
+    while (!spin1_trigger_user_event (fsgKey, 0));
 
 #ifdef DEBUG
     fsg_sent++;
@@ -399,5 +399,18 @@ void restore_outputs (uint tick)
   {
     w_outputs[0][inx] = w_output_history[(tick * wcfg.num_rows) + inx];
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// send a control packet - used in FIQ callbacks
+// ------------------------------------------------------------------------
+void w_sendControlPacket (uint key, uint unused)
+{
+  (void) unused;
+
+  // send control packet - no payload
+  while (!spin1_send_mc_packet(key, 0, NO_PAYLOAD));
 }
 // ------------------------------------------------------------------------

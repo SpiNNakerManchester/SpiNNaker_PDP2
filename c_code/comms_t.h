@@ -33,5 +33,7 @@ void t_backprop_packet (uint key, uint payload);
 void t_bsgn_packet     (void);
 void t_sync_packet     (uint key);
 
+void t_sendControlPacket (uint key, uint unused);
+
 #endif
 

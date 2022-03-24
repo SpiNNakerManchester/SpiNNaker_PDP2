@@ -213,6 +213,9 @@ void c_main (void)
   spin1_callback_on (MC_PACKET_RECEIVED, s_receiveControlPacket, SPINN_PACKET_P);
   spin1_callback_on (MCPL_PACKET_RECEIVED, s_receiveDataPacket, SPINN_PACKET_P);
 
+  // set up user event callback to send some control packets
+  spin1_callback_on (USER_EVENT, s_sendControlPacket, SPINN_S_SEND_P);
+
   // setup simulation,
   simulation_set_start_function (get_started);
 

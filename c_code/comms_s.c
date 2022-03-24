@@ -250,7 +250,7 @@ void s_lds_packet (uint payload)
       // restore interrupts after flag access,
       spin1_mode_restore (cpsr);
 
-      // and send sync packet to allow next tick to start
+      // report backprop sync generation ready
       if (scfg.is_tree_root)
       {
         while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
@@ -383,8 +383,8 @@ void s_bsgn_packet (void)
       sb_thrds_pend = 0;
 #endif
 
-      // send sync packet to allow next tick to start
-      while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+      // report backprop sync generation ready
+      while (!spin1_trigger_user_event (bpsKey, 0));
 
 #ifdef DEBUG
       bsg_sent++;
@@ -416,8 +416,8 @@ void s_fsgn_packet (void)
   // and check if all expected packets arrived
   if (s_fsgn_arrived == scfg.fsgn_expected)
   {
-    // report forward sync gen
-    while (!spin1_send_mc_packet(fsgKey, 0, NO_PAYLOAD));
+    // report forward sync generation ready
+    while (!spin1_trigger_user_event (fsgKey, 0));
 
 #ifdef DEBUG
     fsg_sent++;
@@ -434,5 +434,18 @@ void s_dlrv_packet (void)
 {
   // restart tick
   spin1_schedule_callback (tick_init, SPINN_RESTART, 0, SPINN_S_TICK_P);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// send a control packet - used in FIQ callbacks
+// ------------------------------------------------------------------------
+void s_sendControlPacket (uint key, uint unused)
+{
+  (void) unused;
+
+  // send control packet - no payload
+  while (!spin1_send_mc_packet(key, 0, NO_PAYLOAD));
 }
 // ------------------------------------------------------------------------

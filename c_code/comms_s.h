@@ -31,4 +31,6 @@ void s_lds_packet  (uint payload);
 void s_bsgn_packet (void);
 void s_sync_packet (uint key);
 
+void s_sendControlPacket (uint key, uint unused);
+
 #endif

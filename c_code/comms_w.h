@@ -34,4 +34,6 @@ void w_ldsa_packet (uint payload);
 void store_output    (uint index);
 void restore_outputs (uint tick);
 
+void w_sendControlPacket (uint key, uint unused);
+
 #endif

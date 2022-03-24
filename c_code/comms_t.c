@@ -542,3 +542,16 @@ void t_bsgn_packet (void)
   }
 }
 // ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// send a control packet - used in FIQ callbacks
+// ------------------------------------------------------------------------
+void t_sendControlPacket (uint key, uint unused)
+{
+  (void) unused;
+
+  // send control packet - no payload
+  while (!spin1_send_mc_packet(key, 0, NO_PAYLOAD));
+}
+// ------------------------------------------------------------------------
