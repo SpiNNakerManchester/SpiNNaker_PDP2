@@ -21,7 +21,7 @@
 void tf_process (uint key,     uint payload);
 void tb_process (uint unused0, uint unused1);
 
-void tf_advance_tick   (void);
+void tf_advance_tick   (uint unused0, uint unused1);
 void tb_advance_tick   (uint unused0, uint unused1);
 void tf_advance_event  (void);
 void t_advance_example (void);
@@ -47,5 +47,19 @@ void max_stop_crit       (uint inx);
 
 void error_cross_entropy (uint inx);
 void error_squared       (uint inx);
+
+void send_stop_crit       (void);
+void send_sync            (void);
+
+void store_net            (uint inx);
+void restore_net          (uint inx, uint tick);
+void store_output         (uint inx);
+void restore_output       (uint inx, uint tick);
+void restore_outputs      (uint tick);
+void store_output_deriv   (uint inx);
+void restore_output_deriv (uint inx, uint tick);
+
+void record_outputs   (void);
+void record_tick_data (void);
 
 #endif

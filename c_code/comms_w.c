@@ -33,15 +33,10 @@
 // includes functions to transfer data between DTCM and SDRAM
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// initial handling of received packets
-// (FORWARD, BACKPROP, lds, stop, net_stop and sync types)
+// process data packet
 // ------------------------------------------------------------------------
-void w_receivePacket (uint key, uint payload)
+void w_receiveDataPacket (uint key, uint payload)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   // check packet phase,
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
@@ -80,6 +75,65 @@ void w_receivePacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
+// process control packet
+// ------------------------------------------------------------------------
+void w_receiveControlPacket (uint key, uint unused)
+{
+  (void) unused;
+
+  // check packet type,
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
+  // process tick stop packet,
+  if (pkt_type == SPINN_STOP_KEY)
+  {
+    w_stop_packet (key);
+    return;
+  }
+
+  // or process backprop sync packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    w_sync_packet (key);
+    return;
+  }
+
+  // or process network stop packet,
+  if (pkt_type == SPINN_STPN_KEY)
+  {
+    w_net_stop_packet (key);
+    return;
+  }
+
+  // or process deadlock recovery packet,
+  if (pkt_type == SPINN_DLRV_KEY)
+  {
+#ifdef DEBUG
+    dlr_recv++;
+#endif
+
+    if (key & SPINN_ABRT_MASK)
+    {
+      // report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
+    }
+    else
+    {
+      w_dlrv_packet ();
+    }
+
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // handle FORWARD-phase packets
 // (FORWARD, stop, net_stop and sync types)
 // ------------------------------------------------------------------------
@@ -92,27 +146,6 @@ void w_handleFWDPacket (uint key, uint payload)
   if (pkt_type == SPINN_DATA_KEY)
   {
     w_forward_packet (key, payload);
-    return;
-  }
-
-  // or process tick stop packet,
-  if (pkt_type == SPINN_STOP_KEY)
-  {
-    w_stop_packet (key);
-    return;
-  }
-
-  // or process network stop packet,
-  if (pkt_type == SPINN_STPN_KEY)
-  {
-    w_net_stop_packet (key);
-    return;
-  }
-
-  // or process synchronisation packet,
-  if (pkt_type == SPINN_SYNC_KEY)
-  {
-    w_sync_packet ();
     return;
   }
 
@@ -162,7 +195,7 @@ void w_processBKPQueue (uint unused0, uint unused1)
     // or process LDS result packet,
     else if (pkt_type == SPINN_LDSA_KEY)
     {
-      w_lds_packet (payload);
+      w_ldsa_packet (payload);
     }
 
 #ifdef DEBUG
@@ -193,12 +226,11 @@ void w_forward_packet (uint key, uint payload)
 {
 #ifdef DEBUG
   recv_fwd++;
-  if (phase == SPINN_BACKPROP)
-    wrng_fph++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
 #endif
 
   // get output index: mask out phase, core and block data,
-  uint inx = key & SPINN_BLKOUT_MASK;
+  uint inx = key & SPINN_OUTPUT_MASK;
 
   // store received unit output,
   w_outputs[wf_comms][inx] = (activation_t) payload;
@@ -212,32 +244,31 @@ void w_forward_packet (uint key, uint payload)
   // and check if all expected unit outputs have arrived
   if (wf_arrived == wcfg.num_rows)
   {
-    // initialise scoreboard for next tick,
-    wf_arrived = 0;
+    // trigger forward sync generation,
+    while (!spin1_trigger_user_event (fsgKey, 0));
 
-    // update pointer to received unit outputs,
-    wf_comms = 1 - wf_comms;
+#ifdef DEBUG
+    fsg_sent++;
+#endif
+  }
+}
+// ------------------------------------------------------------------------
 
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(wf_thrds_pend & SPINN_THRD_COMS))
-      wrng_cth++;
+
+// ------------------------------------------------------------------------
+// process an LDS result packet
+// ------------------------------------------------------------------------
+void w_ldsa_packet (uint payload)
+{
+#ifdef DEBUG
+  lds_recv++;
 #endif
 
-    // and check if all other threads are done,
-    if (wf_thrds_pend == SPINN_THRD_COMS)
-    {
-      // if done initialise thread semaphore,
-      wf_thrds_pend = SPINN_WF_THRDS;
+  //TODO: need to synchronise the arrival of final ldsa packet
+  // to all w cores!
 
-      // and advance tick
-      spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
-    }
-    else
-    {
-      // if not done report comms thread done
-      wf_thrds_pend &= ~SPINN_THRD_COMS;
-    }
-  }
+  // the final link delta sum for the epoch arrived
+  w_lds_final = (lds_t) payload;
 }
 // ------------------------------------------------------------------------
 
@@ -249,32 +280,37 @@ void w_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
-  if (phase == SPINN_BACKPROP)
-    wrng_fph++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
-  // tick stop decision arrived,
-  tick_stop = key & SPINN_STPD_MASK;
+  // get tick stop decision,
+  //NOTE: be careful with variable size
+  tick_stop = (key & SPINN_STOP_MASK) ? 1 : 0;
 
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(wf_thrds_pend & SPINN_THRD_STOP))
-    wrng_sth++;
+  // and advance tick
+  spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_W_TICK_P);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a backprop sync packet
+// ------------------------------------------------------------------------
+void w_sync_packet (uint key)
+{
+#ifdef DEBUG
+  spk_recv++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
+#else
+  (void) key;
 #endif
 
-  // check if all other threads done
-  if (wf_thrds_pend == SPINN_THRD_STOP)
-  {
-    // if done initialise thread semaphore,
-    wf_thrds_pend = SPINN_WF_THRDS;
-
-    // and advance tick
-    spin1_schedule_callback (wf_advance_tick, 0, 0, SPINN_WF_TICK_P);
-  }
-  else
-  {
-    // if not done report stop thread done
-    wf_thrds_pend &= ~SPINN_THRD_STOP;
-  }
+  // advance tick
+  spin1_schedule_callback (wb_advance_tick, 0, 0, SPINN_W_TICK_P);
 }
 // ------------------------------------------------------------------------
 
@@ -292,10 +328,9 @@ void w_net_stop_packet (uint key)
   net_stop = key & SPINN_STPD_MASK;
 
   // check if ready for network stop decision
-  if (sync_rdy && epoch_rdy)
+  if (epoch_rdy)
   {
-    // clear flags for next tick,
-    sync_rdy = FALSE;
+    // clear flag for next tick,
     epoch_rdy = FALSE;
 
     // and decide what to do
@@ -321,92 +356,17 @@ void w_net_stop_packet (uint key)
 
 
 // ------------------------------------------------------------------------
-// process a sync packet
+// process a deadlock recovery packet
 // ------------------------------------------------------------------------
-void w_sync_packet (void)
+void w_dlrv_packet (void)
 {
-#ifdef DEBUG
-  spk_recv++;
-#endif
+  // prepare to restart tick,
+  spin1_schedule_callback (tick_init, SPINN_RESTART, 0, SPINN_W_TICK_P);
 
-  // update count of sync packets,
-  w_sync_arrived++;
-
-  // and check if all expected packets arrived
-  if (w_sync_arrived == wcfg.sync_expected)
+  // and trigger computation
+  if (phase == SPINN_FORWARD)
   {
-    // prepare for next synchronisation,
-    w_sync_arrived = 0;
-
-    // and check if can trigger next example computation
-    if (net_stop_rdy && epoch_rdy)
-    {
-      // clear flags for next tick,
-      net_stop_rdy = FALSE;
-      epoch_rdy = FALSE;
-
-      // and decide what to do
-      if (net_stop)
-      {
-        // finish stage and report no error
-        //TODO: check if need to schedule or can simply call
-        spin1_schedule_callback (stage_done, SPINN_NO_ERROR, 0, SPINN_DONE_P);
-      }
-      else
-      {
-        // and trigger computation
-        spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
-      }
-    }
-    else
-    {
-      // flag as ready
-      sync_rdy = TRUE;
-    }
-  }
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// process an LDS result packet
-// ------------------------------------------------------------------------
-void w_lds_packet (uint payload)
-{
-#ifdef DEBUG
-  lds_recv++;
-#endif
-
-  // the final link delta sum for the epoch arrived
-  w_lds_final = (lds_t) payload;
-
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(wb_thrds_pend & SPINN_THRD_LDSA))
-    wrng_cth++;
-#endif
-
-  // check if all other threads done
-  if (wb_thrds_pend == SPINN_THRD_LDSA)
-  {
-    // initialise semaphore (no link delta summation in next tick),
-    wb_thrds_pend = SPINN_WB_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    wb_advance_tick ();
-  }
-  else
-  {
-    // if not done report processing thread done,
-    wb_thrds_pend &= ~SPINN_THRD_LDSA;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
+    spin1_schedule_callback (wf_process, 0, 0, SPINN_WF_PROCESS_P);
   }
 }
 // ------------------------------------------------------------------------
@@ -439,5 +399,18 @@ void restore_outputs (uint tick)
   {
     w_outputs[0][inx] = w_output_history[(tick * wcfg.num_rows) + inx];
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// send a control packet - used in FIQ callbacks
+// ------------------------------------------------------------------------
+void w_sendControlPacket (uint key, uint unused)
+{
+  (void) unused;
+
+  // send control packet - no payload
+  while (!spin1_send_mc_packet(key, 0, NO_PAYLOAD));
 }
 // ------------------------------------------------------------------------

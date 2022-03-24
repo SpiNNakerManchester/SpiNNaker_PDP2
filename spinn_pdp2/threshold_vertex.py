@@ -496,7 +496,7 @@ class ThresholdVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
-        # write link keys: fds (padding)
+        # write link keys: bps (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: stp
@@ -504,6 +504,9 @@ class ThresholdVertex(
             self, self.stp_link), data_type = DataType.UINT32)
 
         # write link keys: lds (padding)
+        spec.write_value (0, data_type = DataType.UINT32)
+
+        # write link keys: fsg (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
         # reserve and write the stage configuration region

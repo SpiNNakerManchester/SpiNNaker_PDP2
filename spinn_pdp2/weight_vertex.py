@@ -110,6 +110,9 @@ class WeightVertex(
         self._lds_link = (f"lds_w{self.group.id}/{self.subgroup}"
                           f"_{self.from_group.id}/{self.from_subgroup}")
 
+        self._fsg_link = (f"fsg_w{self.group.id}/{self.subgroup}"
+                          f"_{self.from_group.id}/{self.from_subgroup}")
+
         # weight core-specific parameters
         # weight matrix parameters
         self._num_rows = self.from_group.subunits[self.from_subgroup]
@@ -210,6 +213,10 @@ class WeightVertex(
         return self._lds_link
 
     @property
+    def fsg_link (self):
+        return self._fsg_link
+
+    @property
     def config (self):
         """ returns a packed string that corresponds to
             (C struct) w_conf in mlp_types.h:
@@ -218,7 +225,6 @@ class WeightVertex(
             {
               uint           num_rows;
               uint           num_cols;
-              scoreboard_t   sync_expected;
               activation_t   initOutput;
               short_fpreal_t learningRate;
               short_fpreal_t weightDecay;
@@ -228,12 +234,6 @@ class WeightVertex(
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
-        # expect one sync packet from 'group' and one from 'from_group'
-        if self.group == self.from_group and self.subgroup == self.from_subgroup:
-            sync_expected = 1
-        else:
-            sync_expected = 2
-
         # init output is an MLP fixed-point activation_t
         init_output = int (self.from_group.init_output *\
                            (1 << MLPConstants.ACTIV_SHIFT))
@@ -250,10 +250,9 @@ class WeightVertex(
         momentum = int (self._momentum *\
                               (1 << MLPConstants.SHORT_FPREAL_SHIFT))
 
-        return struct.pack ("<3Ii3h2x",
+        return struct.pack ("<2Ii3h2x",
                             self._num_rows,
                             self._num_cols,
-                            sync_expected,
                             init_output,
                             learning_rate,
                             weight_decay,
@@ -359,7 +358,7 @@ class WeightVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
-        # write link keys: fds (padding)
+        # write link keys: bps (padding)
         spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: stp (padding)
@@ -368,6 +367,10 @@ class WeightVertex(
         # write link keys: lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
+
+        # write link keys: fsg
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.fsg_link), data_type = DataType.UINT32)
 
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,

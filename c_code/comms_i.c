@@ -33,15 +33,10 @@
 // includes functions to transfer data between DTCM and SDRAM
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// enqueue received packet
-// (FORWARD, BACKPROP, stop and net_stop types)
+// enqueue data packet
 // ------------------------------------------------------------------------
-void i_receivePacket (uint key, uint payload)
+void i_receiveDataPacket (uint key, uint payload)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   // queue packet - if space available
   uint new_tail = (i_pkt_queue.tail + 1) % SPINN_INPUT_PQ_LEN;
   if (new_tail == i_pkt_queue.head)
@@ -63,6 +58,65 @@ void i_receivePacket (uint key, uint payload)
       spin1_schedule_callback (i_processQueue, 0, 0, SPINN_I_PROCESS_P);
     }
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process control packet
+// ------------------------------------------------------------------------
+void i_receiveControlPacket (uint key, uint unused)
+{
+  (void) unused;
+
+  // check packet type,
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
+  // process tick stop packet,
+  if (pkt_type == SPINN_STOP_KEY)
+  {
+    i_stop_packet (key);
+    return;
+  }
+
+  // or process backprop sync packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    i_sync_packet (key);
+    return;
+  }
+
+  // or process network stop packet,
+  if (pkt_type == SPINN_STPN_KEY)
+  {
+    i_net_stop_packet (key);
+    return;
+  }
+
+  // or process deadlock recovery packet,
+  if (pkt_type == SPINN_DLRV_KEY)
+  {
+#ifdef DEBUG
+    dlr_recv++;
+#endif
+
+    if (key & SPINN_ABRT_MASK)
+    {
+      // report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
+    }
+    else
+    {
+      i_dlrv_packet ();
+    }
+
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -113,18 +167,6 @@ void i_processQueue (uint unused0, uint unused1)
       }
     }
 
-    // or process stop packet,
-    else if (pkt_type == SPINN_STOP_KEY)
-    {
-      i_stop_packet (key);
-    }
-
-    // or process network stop packet,
-    else if (pkt_type == SPINN_STPN_KEY)
-    {
-      i_net_stop_packet (key);
-    }
-
 #ifdef DEBUG
     // or report unknown packet type,
     else
@@ -153,39 +195,37 @@ void i_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
-  // tick STOP decision arrived,
-  tick_stop = key & SPINN_STPD_MASK;
+  // get tick STOP decision,
+  //NOTE: be careful with variable size
+  tick_stop = (key & SPINN_STOP_MASK) ? 1 : 0;
 
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
+  // and advance tick
+  spin1_schedule_callback (if_advance_tick, 0, 0, SPINN_I_TICK_P);
+}
+// ------------------------------------------------------------------------
 
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(if_thrds_pend & SPINN_THRD_STOP))
-      wrng_sth++;
+
+// ------------------------------------------------------------------------
+// process a sync packet
+// ------------------------------------------------------------------------
+void i_sync_packet (uint key)
+{
+#ifdef DEBUG
+  spk_recv++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
+#else
+  (void) key;
 #endif
 
-  // and check if all other threads done
-  if (if_thrds_pend == SPINN_THRD_STOP)
-  {
-    // if done initialise semaphore,
-    if_thrds_pend = SPINN_IF_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    if_advance_tick ();
-  }
-  else
-  {
-    // if not done report processing thread done
-    if_thrds_pend &= ~SPINN_THRD_STOP;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
-  }
+  // advance tick
+  spin1_schedule_callback (ib_advance_tick, 0, 0, SPINN_I_TICK_P);
 }
 // ------------------------------------------------------------------------
 
@@ -235,28 +275,11 @@ void i_net_stop_packet (uint key)
 
 
 // ------------------------------------------------------------------------
-// stores unit net received for the current tick
+// process a deadlock recovery packet
 // ------------------------------------------------------------------------
-void store_net (uint inx)
+void i_dlrv_packet (void)
 {
-#ifdef TRACE
-  io_printf (IO_BUF, "store_nets\n");
-#endif
-
-  i_net_history[(tick * icfg.num_units) + inx] = i_nets[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores unit net for the requested tick
-// ------------------------------------------------------------------------
-void restore_net (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_nets\n");
-#endif
-
-  i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
+  // prepare to restart tick
+  spin1_schedule_callback (tick_init, SPINN_RESTART, 0, SPINN_I_TICK_P);
 }
 // ------------------------------------------------------------------------

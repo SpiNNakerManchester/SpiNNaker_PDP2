@@ -60,7 +60,10 @@ class SumVertex(
         self._network  = network
         self._group    = group
         self._subgroup = subgroup
-        self._idx    = idx
+        self._idx      = idx
+
+        # is this the root of a SumVertex tree?
+        self._is_tree_root = idx == 0
 
         super(SumVertex, self).__init__(
             label = f"s_core{self.group.id}/{self.subgroup}/{self.idx}",
@@ -74,10 +77,10 @@ class SumVertex(
         self._ex_cfg  = self.network.ex_set.example_config
 
         # forward, backprop, link delta summation and sync link names
-        self._fwd_link = f"fwd_s{self.group.id}/{self.subgroup}"
-        self._bkp_link = f"bkp_s{self.group.id}/{self.subgroup}"
-        self._lds_link = f"lds_s{self.group.id}/{self.subgroup}"
-        self._fds_link = f"fds_s{self.group.id}/{self.subgroup}"
+        self._fwd_link = f"fwd_s{self.group.id}/{self.subgroup}/{self.idx}"
+        self._bkp_link = f"bkp_s{self.group.id}/{self.subgroup}/{self.idx}"
+        self._lds_link = f"lds_s{self.group.id}/{self.subgroup}/{self.idx}"
+        self._fsg_link = f"fsg_s{self.group.id}/{self.subgroup}/{self.idx}"
 
         # sum core-specific parameters
         # NOTE: if all-zero w cores are optimised out these need reviewing
@@ -124,8 +127,16 @@ class SumVertex(
         return self._subgroup
 
     @property
+    def units (self):
+        return self._units
+
+    @property
     def idx (self):
         return self._idx
+
+    @property
+    def is_tree_root (self):
+        return self._is_tree_root
 
     @property
     def fwd_link (self):
@@ -140,8 +151,8 @@ class SumVertex(
         return self._lds_link
 
     @property
-    def fds_link (self):
-        return self._fds_link
+    def fsg_link (self):
+        return self._fsg_link
 
     @property
     def config (self):
@@ -151,21 +162,24 @@ class SumVertex(
             typedef struct s_conf
             {
               uint         num_units;
-              scoreboard_t fwd_expect;
-              scoreboard_t bkp_expect;
-              scoreboard_t lds_expect;
+              scoreboard_t fwd_expected;
+              scoreboard_t bkp_expected;
+              scoreboard_t lds_expected;
+              scoreboard_t fsgn_expected;
+              scoreboard_t bsgn_expected;
               uchar        is_first_group;
               uchar        is_tree_root;
+              uchar        is_first_root;
             } s_conf_t;
 
             pack: standard sizes, little-endian byte order,
             explicit padding
         """
         # check if first group in the network
-        if self.group == self.network.groups[0]:
-            is_first_group = 1
-        else:
-            is_first_group = 0
+        is_first_group = self.group == self.network.groups[0]
+
+        # check if this is the root of the link delta sum s_core tree
+        is_first_root = is_first_group and self.subgroup == 0 and self.is_tree_root
 
         # number of vertices in this SumVertex tree
         num_vrt = ((self.network.subgroups - 2) //
@@ -182,41 +196,56 @@ class SumVertex(
             expected = MLPConstants.MAX_S_CORE_LINKS
 
         # keep track of these on a unit-by-unit basis
-        fwd_expect = expected
-        bkp_expect = expected
+        fwd_expected = expected
+        bkp_expected = expected
 
         # keep track of the total, not unit-by-unit, count of lds packets
         k = lvs // MLPConstants.MAX_S_CORE_LINKS
         if self.idx > (num_vrt - 2 - k):
             # lds packets from w cores only
-            lds_expect = expected * self._units
+            lds_expected = expected * self.units
         elif self.idx == (num_vrt - 2 - k):
             # lds packets from w cores and other s cores
             wp = lvs % MLPConstants.MAX_S_CORE_LINKS
             sp = MLPConstants.MAX_S_CORE_LINKS - wp
-            lds_expect = wp * self._units + sp
+            lds_expected = wp * self.units + sp
         else:
             # lds packets from other s cores only
-            lds_expect = MLPConstants.MAX_S_CORE_LINKS
+            lds_expected = MLPConstants.MAX_S_CORE_LINKS
 
         # first subgroup expects a partial lds from every other subgroup
-        if self.idx == 0 and self.subgroup == 0:
-            lds_expect += self.group.subgroups - 1
+        if self.is_tree_root and self.subgroup == 0:
+            lds_expected += self.group.subgroups - 1
 
             # first group expects a partial lds from every other group
             if is_first_group:
-                lds_expect += len (self.network.groups) - 1
+                lds_expected += len (self.network.groups) - 1
 
-        # is this the root of a SumVertex tree?
-        is_tree_root = self.idx == 0
+        # backprop sync gen packets are handled by root nodes only
+        if self.is_tree_root and self.subgroup == 0:
+            # first subgroup expects from every other subgroup in group
+            bsgn_expected = self.group.subgroups - 1
 
-        return struct.pack ("<4I2B2x",
-                            self._units,
-                            fwd_expect,
-                            bkp_expect,
-                            lds_expect,
+            # first group expect from every other group
+            if is_first_group:
+                bsgn_expected += len (self.network.groups) - 1
+        else:
+            bsgn_expected = 0
+
+        # forward sync gen packets are handled by all nodes and
+        # receive from w cores
+        fsgn_expected = bsgn_expected + fwd_expected
+
+        return struct.pack ("<6I3Bx",
+                            self.units,
+                            fwd_expected,
+                            bkp_expected,
+                            lds_expected,
+                            fsgn_expected,
+                            bsgn_expected,
                             is_first_group,
-                            is_tree_root
+                            self.is_tree_root,
+                            is_first_root
                             )
 
     @property
@@ -296,12 +325,8 @@ class SumVertex(
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.bkp_link), data_type = DataType.UINT32)
 
-        # write link keys: fds (padding if not SumVertex tree root)
-        if (self.idx == 0):
-            spec.write_value (routing_info.get_first_key_from_pre_vertex (
-                self, self.fds_link), data_type = DataType.UINT32)
-        else:
-            spec.write_value (0, data_type = DataType.UINT32)
+        # write link keys: bps (padding)
+        spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: stp (padding)
         spec.write_value (0, data_type = DataType.UINT32)
@@ -309,6 +334,10 @@ class SumVertex(
         # write link keys: lds
         spec.write_value (routing_info.get_first_key_from_pre_vertex (
             self, self.lds_link), data_type = DataType.UINT32)
+
+        # write link keys: fsg
+        spec.write_value (routing_info.get_first_key_from_pre_vertex (
+            self, self.fsg_link), data_type = DataType.UINT32)
 
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
@@ -403,6 +432,10 @@ class SumVertexTree(
 
             gfe.add_machine_edge_instance (
                 MachineEdge (vt, self.vertices[to_vrt]), vt.lds_link
+                )
+
+            gfe.add_machine_edge_instance (
+                MachineEdge (vt, self.vertices[to_vrt]), vt.fsg_link
                 )
 
             # take away one free link from vertex to_vrt

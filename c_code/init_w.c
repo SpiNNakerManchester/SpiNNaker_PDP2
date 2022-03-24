@@ -121,7 +121,6 @@ uint cfg_init (void)
   io_printf (IO_BUF, "uf: %d\n", xcfg.update_function);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
-  io_printf (IO_BUF, "sk: 0x%08x\n", rt[FDS]);
   io_printf (IO_BUF, "ld: 0x%08x\n", rt[LDS]);
 #endif
 
@@ -244,6 +243,68 @@ uint mem_init (void)
 
 
 // ------------------------------------------------------------------------
+// initialise variables at (re)start of a tick
+// ------------------------------------------------------------------------
+void tick_init (uint restart, uint unused)
+{
+  (void) unused;
+
+#ifdef DEBUG
+  if (restart)
+  {
+    timeout_rep (FALSE);
+  }
+  else
+  {
+    //NOTE: tick 0 is not a computation tick
+    if (tick)
+    {
+      tot_tick++;
+    }
+  }
+
+  if (phase == SPINN_FORWARD)
+  {
+    fsg_sent = 0;
+  }
+#endif
+
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    wf_thrds_pend = SPINN_WF_THRDS;
+
+    // initialise scoreboard
+    wf_arrived = 0;
+
+    // and update unit output pointers
+    if (!restart) {
+      // update pointer to processing unit outputs,
+      wf_procs = 1 - wf_procs;
+
+      // and update pointer to received unit outputs
+      wf_comms = 1 - wf_comms;
+    }
+  }
+  else
+  {
+    // initialise thread semaphore,
+    wb_thrds_pend = SPINN_WB_THRDS;
+
+    // initialise scoreboard,
+    wb_arrived = 0;
+
+    // and initialise errors
+    for (uint i = 0; i < wcfg.num_rows; i++)
+    {
+      w_errors[i] = 0;
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
 void var_init (uint init_weights, uint reset_examples)
@@ -296,7 +357,6 @@ void var_init (uint init_weights, uint reset_examples)
   tick = SPINN_W_INIT_TICK;
 
   // initialise sync flags
-  sync_rdy = FALSE;
   epoch_rdy = FALSE;
   net_stop_rdy = FALSE;
   net_stop = 0;
@@ -344,27 +404,27 @@ void var_init (uint init_weights, uint reset_examples)
   wb_update_func = w_update_procs[xcfg.update_function];
 
   // initialise packet keys
-  //NOTE: colour is implicitly initialised to 0
-  fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
-  bkpKey = rt[BKP] | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  fwdKey = rt[FWD] | SPINN_DATA_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
+  bkpKey = rt[BKP] | SPINN_DATA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
   ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY(SPINN_BACKPROP);
+  fsgKey = rt[FSG] | SPINN_FSGN_KEY | SPINN_PHASE_KEY(SPINN_FORWARD);
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
   // DEBUG variables
   // ------------------------------------------------------------------------
-  pkt_sent = 0;  // total packets sent
   sent_fwd = 0;  // packets sent in FORWARD phase
   sent_bkp = 0;  // packets sent in BACKPROP phase
-  pkt_recv = 0;  // total packets received
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
   pkt_fwbk = 0;  // unused packets received in FORWARD phase
   pkt_bwbk = 0;  // unused packets received in BACKPROP phase
   spk_recv = 0;  // sync packets received
+  fsg_sent = 0;  // forward sync generation packets sent (current tick)
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
+  dlr_recv = 0;  // deadlock recovery packets received
   lds_sent = 0;  // link_delta packets sent
   lds_recv = 0;  // link_delta packets received
   wrng_fph = 0;  // FORWARD packets received in wrong phase
@@ -387,6 +447,31 @@ prf_bkp_min = SPINN_PROFILER_START;  // minimum BACKPROP processing time
 prf_bkp_max = 0;                     // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// report critical variables on timeout
+// ------------------------------------------------------------------------
+void timeout_rep (uint abort)
+{
+  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
+             epoch, example_cnt, phase, tick
+    );
+  if (abort)
+  {
+    io_printf (IO_BUF, "abort!\n");
+  }
+  else
+  {
+    io_printf (IO_BUF, "restarted\n");
+  }
+  io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
+  io_printf (IO_BUF, "(wb_active:%u fa:%u/%u ba:%u/%u)\n",
+             wb_active, wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
+    );
+  io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", wf_thrds_pend, wb_thrds_pend);
 }
 // ------------------------------------------------------------------------
 
@@ -480,14 +565,7 @@ void stage_done (uint ec, uint key)
       break;
 
     case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
-                 epoch, example_cnt, phase, tick
-                );
-      io_printf (IO_BUF, "(fp:%u  fc:%u)\n", wf_procs, wf_comms);
-      io_printf (IO_BUF, "(fptd:%u bptd:%u)\n", wf_thrds_pend, wb_thrds_pend);
-      io_printf (IO_BUF, "(fa:%u/%u ba:%u/%u)\n",
-                 wf_arrived, wcfg.num_rows, wb_arrived, wcfg.num_cols
-                );
+      timeout_rep (TRUE);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }
@@ -496,15 +574,15 @@ void stage_done (uint ec, uint key)
 #ifdef DEBUG
   // report diagnostics
   io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "unused recv: fwd:%d bkp:%d\n", pkt_fwbk, pkt_bwbk);
   io_printf (IO_BUF, "lds sent:%d\n", lds_sent);
   io_printf (IO_BUF, "lds recv:%d\n", lds_recv);
+  io_printf (IO_BUF, "fsgn sent:%d\n", fsg_sent);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+  io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);
   io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
   if (wrng_fph) io_printf (IO_BUF, "fwd wrong phase:%d\n", wrng_fph);
   if (wrng_bph) io_printf (IO_BUF, "bkp wrong phase:%d\n", wrng_bph);
@@ -533,9 +611,12 @@ void stage_done (uint ec, uint key)
 #endif
 
   // and let host know that we're done
-  if (ec == SPINN_NO_ERROR) {
+  if (ec == SPINN_NO_ERROR)
+  {
     simulation_ready_to_read ();
-  } else {
+  }
+  else
+  {
     rt_error (RTE_SWERR);
   }
 }

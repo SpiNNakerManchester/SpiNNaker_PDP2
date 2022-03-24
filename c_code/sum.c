@@ -44,13 +44,16 @@ uint coreID;               // 5-bit virtual core ID
 uint fwdKey;               // packet ID for FORWARD-phase data
 uint bkpKey;               // packet ID for BACKPROP-phase data
 uint ldsKey;               // packet ID for link delta summation
-uint fdsKey;               // packet ID for FORWARD synchronisation
+uint bpsKey;               // packet ID for BACKPROP synchronisation
+uint fsgKey;               // packet ID for FORWARD sync generation
 
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 
-uchar        net_stop;     // network stop decision
 uchar        net_stop_rdy; // ready to deal with network stop decision
+
+uchar        tick_stop;    // current tick stop decision
+uchar        net_stop;     // network stop decision
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
@@ -59,14 +62,12 @@ uint         evt;          // current event in example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
+
+uint         dlrv;         // deadlock recovery mode
+
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
-uchar        tick_stop;    // current tick stop decision
-
-uint         to_epoch   = 0;
-uint         to_example = 0;
-uint         to_tick    = 0;
 // ------------------------------------------------------------------------
 
 
@@ -94,24 +95,28 @@ address_t      xadr;           // stage configuration SDRAM address
 // ------------------------------------------------------------------------
 // sum cores compute unit nets and errors (accumulate b-d-ps).
 // ------------------------------------------------------------------------
-long_net_t     * s_nets[2];         // unit nets computed in current tick
-long_error_t   * s_errors[2];       // errors computed in current tick
+long_net_t     * s_nets;            // unit nets computed in current tick
+long_error_t   * s_errors;          // errors computed in current tick
 pkt_queue_t      s_pkt_queue;       // queue to hold received packets
 uchar            s_active;          // processing packets from queue?
 lds_t            s_lds_part;        // partial link delta sum
 
 // FORWARD phase specific
 // (net computation)
-scoreboard_t   * sf_arrived[2];     // keep count of expected net b-d-p
-scoreboard_t     sf_done;           // current tick net computation done
+scoreboard_t   * sf_arrived;        // keep count of expected net b-d-p
 uint             sf_thrds_pend;     // thread semaphore
+uint             sf_thrds_init;     // thread semaphore initialisation
 
 // BACKPROP phase specific
 // (error computation)
-scoreboard_t   * sb_arrived[2];     // keep count of expected error b-d-p
+scoreboard_t   * sb_arrived;        // keep count of expected error b-d-p
 scoreboard_t     sb_done;           // current tick error computation done
 uint             sb_thrds_pend;     // thread semaphore
+uint             sb_thrds_init;     // thread semaphore initialisation
 scoreboard_t     s_lds_arrived;     // keep count of the number of partial link delta sums
+scoreboard_t     s_bsgn_arrived;    // keep count of expected sync packets
+scoreboard_t     s_fsgn_arrived;    // keep count of forward sync gen packets
+uint             s_fsgn_expected;   // expected count of forward sync gen packets
 // ------------------------------------------------------------------------
 
 
@@ -119,22 +124,27 @@ scoreboard_t     s_lds_arrived;     // keep count of the number of partial link 
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-uint pkt_sent;  // total packets sent
 uint sent_fwd;  // packets sent in FORWARD phase
 uint sent_bkp;  // packets sent in BACKPROP phase
-uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
-uint spk_sent;  // sync packets sent
+uint spk_recv;  // sync packets received
+uint fsg_sent;  // forward sync generation packets sent (current tick)
+uint fsg_recv;  // forward sync generation packets received (current tick)
+uint bsg_sent;  // BACKPROP sync generation packets sent (current tick)
+uint bsg_recv;  // BACKPROP sync generation packets received (current tick)
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
+uint dlr_recv;  // deadlock recovery packets received
 uint lds_sent;  // link_delta packets sent
 uint lds_recv;  // link_delta packets received
-uint wrng_phs;  // packets received in wrong phase
+uint wrng_fph;  // FORWARD packets received in wrong phase
+uint wrng_bph;  // BACKPROP packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
+
 uint tot_tick;  // total number of ticks executed
 // ------------------------------------------------------------------------
 #endif
@@ -150,32 +160,6 @@ uint prf_bkp_min;  // minimum BACKPROP processing time
 uint prf_bkp_max;  // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
-
-
-// ------------------------------------------------------------------------
-// timer callback: check that there has been progress in execution.
-// If no progress has been made terminate with SPINN_TIMEOUT_EXIT code.
-// ------------------------------------------------------------------------
-void timeout (uint ticks, uint unused)
-{
-  (void) ticks;
-  (void) unused;
-
-  // check if progress has been made
-  if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
-  {
-    // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT, 0);
-  }
-  else
-  {
-    // update checked variables
-    to_epoch   = epoch;
-    to_example = example_cnt;
-    to_tick    = tick;
-  }
-}
-// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
@@ -225,13 +209,12 @@ void c_main (void)
   // initialise variables,
   var_init (TRUE);
 
-  // set up timer (used for background deadlock check),
-  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
-  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
-
   // set up packet received callbacks,
-  spin1_callback_on (MC_PACKET_RECEIVED, s_receivePacket, SPINN_PACKET_P);
-  spin1_callback_on (MCPL_PACKET_RECEIVED, s_receivePacket, SPINN_PACKET_P);
+  spin1_callback_on (MC_PACKET_RECEIVED, s_receiveControlPacket, SPINN_PACKET_P);
+  spin1_callback_on (MCPL_PACKET_RECEIVED, s_receiveDataPacket, SPINN_PACKET_P);
+
+  // set up user event callback to send some control packets
+  spin1_callback_on (USER_EVENT, s_sendControlPacket, SPINN_S_SEND_P);
 
   // setup simulation,
   simulation_set_start_function (get_started);

@@ -29,7 +29,7 @@
 #include "mlp_macros.h"
 #include "mlp_externs.h"
 #include "init_t.h"
-#include "comms_t.h"
+#include "process_t.h"
 
 
 // ------------------------------------------------------------------------
@@ -326,14 +326,15 @@ uint mem_init (void)
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 //NOTE: There is a conflict in the initialisation routine between
-// versions 2.63 and 2.64 of LENS. This function LENS version 2.63.
+// versions 2.63 and 2.64 of LENS. This function follows LENS 2.63.
 // Added comments indicate changes to apply LENS version 2.64
 // ------------------------------------------------------------------------
 void t_init_outputs (void)
 {
   // if OUTPUT INTEGRATOR is used
   // reset the array of the last values
-  if (tcfg.out_integr_en) {
+  if (tcfg.out_integr_en)
+  {
     // initialise every unit output and send for processing
     for (uint i = 0; i < tcfg.num_units; i++)
     {
@@ -384,6 +385,20 @@ uint init_out_integr (void)
   if ((t_instant_outputs = ((activation_t *)
        spin1_malloc (tcfg.num_units * ncfg.global_max_ticks *
            sizeof (activation_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((t_last_integr_output_dlrv = ((activation_t *)
+       spin1_malloc (tcfg.num_units * sizeof (activation_t)))) == NULL
+     )
+  {
+    return (SPINN_MEM_UNAVAIL);
+  }
+
+  if ((t_last_integr_output_deriv_dlrv = ((long_deriv_t *)
+       spin1_malloc (tcfg.num_units * sizeof (long_deriv_t)))) == NULL
      )
   {
     return (SPINN_MEM_UNAVAIL);
@@ -459,6 +474,95 @@ uint init_out_weak_clamp (void)
 
 
 // ------------------------------------------------------------------------
+// initialise variables at (re)start of a new tick
+// ------------------------------------------------------------------------
+void tick_init (uint restart, uint unused)
+{
+  (void) unused;
+
+#ifdef DEBUG
+  if (restart)
+  {
+    timeout_rep (FALSE);
+  }
+  else
+  {
+    tot_tick++;
+  }
+
+  if (phase == SPINN_FORWARD)
+  {
+    crt_sent = 0;
+    crt_recv = 0;
+    fsg_recv = 0;
+  }
+  else
+  {
+    bsg_sent = 0;
+    bsg_recv = 0;
+  }
+#endif
+
+  dlrv = restart;
+
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    tf_thrds_pend = tf_thrds_init;
+
+    // initialise scoreboards,
+    tf_arrived = 0;
+    tf_crit_arrived = 0;
+
+    // initialise previous criterion value,
+    tf_crit_prev = TRUE;
+
+    // initialise criterion,
+    tf_stop_crit = TRUE;
+
+    // and record outputs - if recording all ticks,
+    if (!restart && !xcfg.rec_last_tick_only)
+    {
+      if (t_rec_tick_data)
+      {
+        record_tick_data ();
+      }
+
+      if (t_rec_outputs)
+      {
+        record_outputs ();
+      }
+
+      if (t_rec_step_updt)
+      {
+        stage_step++;
+      }
+    }
+  }
+  else
+  {
+    // initialise thread semaphore,
+    tb_thrds_pend = tb_thrds_init;
+
+    // and initialise scoreboards
+    tb_arrived = 0;
+    tb_bsgn_arrived = 0;
+
+    // and update error buffer pointers,
+    if (!restart)
+    {
+      // update pointer to processing errors,
+      tb_procs = 1 - tb_procs;
+
+      // andupdate pointer to received errors,
+      tb_comms = 1 - tb_comms;
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // initialise variables
 // ------------------------------------------------------------------------
 void var_init (uint reset_examples, uint reset_epochs_trained)
@@ -493,6 +597,10 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
 
   // initialise phase
   phase = SPINN_FORWARD;
+
+  // initialise deadlock recovery attempt counts
+  t_dlrv_cnt = 0;
+  t_dlrv_rep = 0;
 
   // initialise example and event ticks
   tick = SPINN_T_INIT_TICK;
@@ -554,10 +662,41 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   tf_arrived = 0;
   tb_arrived = 0;
   tf_crit_arrived = 0;
+  tb_bsgn_arrived = 0;
+
+  //NOTE: backprop sync gen and criterion expect the same number of pkts
+  tb_bsgn_expected = tcfg.crit_expected;
+
+  // last t also expects a backprop sync gen packet from first s
+  if (tcfg.is_last_output)
+  {
+    tb_bsgn_expected += 1;
+  }
 
   // initialise thread semaphores
-  tf_thrds_pend = SPINN_TF_THRDS;
-  tb_thrds_pend = SPINN_TB_THRDS;
+  tf_thrds_init = SPINN_TF_THRDS;
+  tb_thrds_init = SPINN_TB_THRDS;
+
+  // some cores do not receive a previous criterion value
+  if (tcfg.crit_expected == 0)
+  {
+    tf_thrds_init &= ~SPINN_THRD_CRIT;
+  }
+
+  // last output subgroup receives forward sync gen packets
+  if (tcfg.is_last_output)
+  {
+    tf_thrds_init |= SPINN_THRD_FSGN;
+  }
+
+  // some cores do not receive a backprop sync generation packet
+  if (tb_bsgn_expected == 0)
+  {
+    tb_thrds_init &= ~SPINN_THRD_BSGN;
+  }
+
+  tf_thrds_pend = tf_thrds_init;
+  tb_thrds_pend = tb_thrds_init;
 
   // initialise recording options
   t_rec_results = xcfg.rec_results && tcfg.is_last_output &&
@@ -598,18 +737,7 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
                - SPINN_SHORT_ACTIV_SHIFT);
   }
 
-  // check if expecting a previous criterion value
-  if (tcfg.crit_expected)
-  {
-    tf_crit_init = 0;
-  }
-  else
-  {
-    tf_crit_init = 1;
-  }
-
-  // initialise flag and previous value
-  tf_crit_rdy = tf_crit_init;
+  // initialise previous value
   tf_crit_prev = TRUE;
 
   // initialise processing thread flag
@@ -620,20 +748,30 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   t_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is implicitly initialised to 0
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
   if (tcfg.is_last_output)
   {
+    // backprop sync distribution key
+    //NOTE: backprop sync follows the stop route but uses a different key
+    bpsKey = rt[STP] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+
     // tick stop key
     tf_stop_key = rt[STP] | SPINN_STOP_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
 
     // network stop key
     tf_stpn_key = rt[STP] | SPINN_STPN_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+
+    // deadlock recovery key
+    tf_dlrv_key = rt[STP] | SPINN_DLRV_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
   else
   {
+    // backprop sync generation key
+    //NOTE: backprop sync follows the stop route but uses a different key
+    bpsKey = rt[STP] | SPINN_BSGN_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
+
     // criterion key
     tf_stop_key = rt[STP] | SPINN_CRIT_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
   }
@@ -642,19 +780,25 @@ void var_init (uint reset_examples, uint reset_epochs_trained)
   // ------------------------------------------------------------------------
   // DEBUG variables
   // ------------------------------------------------------------------------
-  pkt_sent = 0;  // total packets sent
   sent_fwd = 0;  // packets sent in FORWARD phase
   sent_bkp = 0;  // packets sent in BACKPROP phase
-  pkt_recv = 0;  // total packets received
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
-  crt_sent = 0;  // criterion packets sent
-  crt_recv = 0;  // criterion packets received
+  spk_sent = 0;  // sync packets sent
+  spk_recv = 0;  // sync packets received
+  crt_sent = 0;  // criterion packets sent (current tick)
+  crt_recv = 0;  // criterion packets received (current tick)
+  fsg_recv = 0;  // forward sync generation packets received (current tick)
+  bsg_sent = 0;  // BACKPROP sync generation packets sent (current tick)
+  bsg_recv = 0;  // BACKPROP sync generation packets received (current tick)
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_sent = 0;  // network_stop packets sent
   stn_recv = 0;  // network_stop packets received
-  wrng_phs = 0;  // packets received in wrong phase
+  dlr_sent = 0;  // deadlock recovery packets sent
+  dlr_recv = 0;  // deadlock recovery packets received
+  wrng_fph = 0;  // FORWARD packets received in wrong phase
+  wrng_bph = 0;  // BACKPROP received in wrong phase
   tot_tick = 0;  // total number of ticks executed
   // ------------------------------------------------------------------------
 #endif
@@ -679,6 +823,33 @@ prf_bkp_min = SPINN_PROFILER_START;  // minimum BACKPROP processing time
 prf_bkp_max = 0;                     // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// report critical variables on timeout
+// ------------------------------------------------------------------------
+void timeout_rep (uint abort)
+{
+  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
+             epoch, example_cnt, phase, tick
+    );
+  if (abort)
+  {
+    io_printf (IO_BUF, "abort!\n");
+  }
+  else
+  {
+    io_printf (IO_BUF, "restarted\n");
+  }
+  io_printf (IO_BUF, "(tf_active:%u ta:%u/%u tb:%u/%u)\n",
+             tf_active, tf_arrived, tcfg.num_units,
+             tb_arrived, tcfg.num_units
+    );
+  io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n",
+             tf_thrds_pend, tb_thrds_pend
+    );
 }
 // ------------------------------------------------------------------------
 
@@ -737,7 +908,7 @@ void stage_start (void)
 // ------------------------------------------------------------------------
 void stage_done (uint ec, uint key)
 {
-#if !defined(DEBUG_EXIT)
+#if !defined(DEBUG) && !defined(DEBUG_EXIT)
   //NOTE: parameter 'key' is used only in DEBUG reporting
   (void) key;
 #endif
@@ -760,7 +931,6 @@ void stage_done (uint ec, uint key)
       io_printf (IO_BUF, "stage OK\n");
       break;
 
-#if defined(DEBUG_EXIT)
     case SPINN_CFG_UNAVAIL:
       io_printf (IO_BUF, "core configuration failed\n");
       io_printf (IO_BUF, "stage aborted\n");
@@ -783,48 +953,45 @@ void stage_done (uint ec, uint key)
       break;
 
     case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
-                 epoch, example_cnt, phase, tick
-                );
-      io_printf (IO_BUF, "(tactive:%u ta:%u/%u tb:%u/%u)\n",
-                  tf_active, tf_arrived, tcfg.num_units,
-                  tb_arrived, tcfg.num_units
-                );
-      io_printf (IO_BUF, "(tcr:%u fptd:%u bptd:%u)\n",
-                  tf_crit_rdy, tf_thrds_pend, tb_thrds_pend
-                );
+      timeout_rep (TRUE);
       io_printf (IO_BUF, "stage aborted\n");
       break;
-#endif
   }
 #endif
 
 #ifdef DEBUG
   // report diagnostics,
   io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "crit sent:%d\n", crt_sent);
   if (tcfg.is_last_sgrp)
   {
-    io_printf (IO_BUF, "crit recv:%d\n", crt_recv);
+    io_printf (IO_BUF, "crit recv:%d/%u\n", crt_recv, tcfg.crit_expected);
   }
   if (tcfg.is_last_output)
   {
+    io_printf (IO_BUF, "fsgn recv:%d\n", fsg_recv);
+  }
+  io_printf (IO_BUF, "bsgn sent:%d\n", bsg_sent);
+  io_printf (IO_BUF, "bsgn recv:%d\n", bsg_recv);
+  if (tcfg.is_last_output)
+  {
     io_printf (IO_BUF, "stop sent:%d\n", stp_sent);
+    io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
     io_printf (IO_BUF, "stpn sent:%d\n", stn_sent);
+    io_printf (IO_BUF, "dlrv sent:%d\n", dlr_sent);
+    io_printf (IO_BUF, "dlrv reps:%d\n", t_dlrv_rep);
   }
   else
   {
     io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
+    io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
     io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
+    io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);
   }
-  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
-#endif
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
+  if (wrng_fph) io_printf (IO_BUF, "fwd wrong phase:%d\n", wrng_fph);
+  if (wrng_bph) io_printf (IO_BUF, "bkp wrong phase:%d\n", wrng_bph);
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
@@ -850,7 +1017,8 @@ void stage_done (uint ec, uint key)
   // close recording channels,
   if (tcfg.output_grp)
   {
-    if (stage_rec_flags) {
+    if (stage_rec_flags)
+    {
       recording_finalise();
     }
   }
@@ -859,7 +1027,9 @@ void stage_done (uint ec, uint key)
   if (ec == SPINN_NO_ERROR)
   {
     simulation_ready_to_read ();
-  } else {
+  }
+  else
+  {
     rt_error (RTE_SWERR);
   }
 }

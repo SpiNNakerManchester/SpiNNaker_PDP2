@@ -25,7 +25,6 @@
 #include "mlp_externs.h"
 
 #include "init_i.h"
-#include "comms_i.h"
 #include "process_i.h"
 #include "activation.h"
 
@@ -41,7 +40,7 @@ void if_process (uint key, uint payload)
 #ifdef DEBUG
   recv_fwd++;
   if (phase != SPINN_FORWARD)
-    wrng_phs++;
+    wrng_fph++;
 #endif
 
 #ifdef PROFILE
@@ -49,7 +48,7 @@ void if_process (uint key, uint payload)
   tc[T2_LOAD] = SPINN_PROFILER_START;
 #endif
 
-  // get net index: mask out block, phase and colour data,
+  // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
 
   // store received net to be processed,
@@ -75,16 +74,12 @@ void if_process (uint key, uint payload)
     net_tmp = (net_t) i_nets[inx];
   }
 
-  // incorporate net index to the packet key and send,
+  // and incorporate net index to the packet key and send
   while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
 #ifdef DEBUG
-  pkt_sent++;
   sent_fwd++;
 #endif
-
-  // mark net as done,
-  if_done++;
 
 #ifdef PROFILE
   // update profiler values,
@@ -92,42 +87,6 @@ void if_process (uint key, uint payload)
   if (cnt < prf_fwd_min) prf_fwd_min = cnt;
   if (cnt > prf_fwd_max) prf_fwd_max = cnt;
 #endif
-
-  // and check if all nets done
-  if (if_done == icfg.num_units)
-  {
-    // prepare for next tick,
-    if_done = 0;
-
-    // access thread semaphore with interrupts disabled
-    uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(if_thrds_pend & SPINN_THRD_PROC))
-      wrng_pth++;
-#endif
-
-    // check if all other threads done
-    if (if_thrds_pend == SPINN_THRD_PROC)
-    {
-      // if done initialise semaphore,
-      if_thrds_pend = SPINN_IF_THRDS;
-
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
-
-      // and advance tick
-      if_advance_tick ();
-    }
-    else
-    {
-      // if not done report processing thread done,
-      if_thrds_pend &= ~SPINN_THRD_PROC;
-
-      // and restore interrupts after flag access
-      spin1_mode_restore (cpsr);
-    }
-  }
 }
 // ------------------------------------------------------------------------
 
@@ -140,7 +99,7 @@ void ib_process (uint key, uint payload)
 #ifdef DEBUG
   recv_bkp++;
   if (phase != SPINN_BACKPROP)
-    wrng_phs++;
+    wrng_bph++;
 #endif
 
 #ifdef PROFILE
@@ -148,15 +107,12 @@ void ib_process (uint key, uint payload)
   tc[T2_LOAD] = SPINN_PROFILER_START;
 #endif
 
-  // get delta index: mask out block, phase and colour data,
+  // get delta index: mask out block and phase data,
   uint inx = key & SPINN_DELTA_MASK;
 
   // store received delta to be processed,
   i_deltas[inx] = ((long_delta_t) ((delta_t) payload))
     << (SPINN_LONG_DELTA_SHIFT - SPINN_DELTA_SHIFT);
-
-  // restore net for the previous tick
-  restore_net (inx, tick - 1);
 
   compute_in_back (inx);
 
@@ -182,7 +138,6 @@ void ib_process (uint key, uint payload)
   while (!spin1_send_mc_packet ((bkpKey | inx), delta, WITH_PAYLOAD));
 
 #ifdef DEBUG
-  pkt_sent++;
   sent_bkp++;
 #endif
 
@@ -192,38 +147,27 @@ void ib_process (uint key, uint payload)
   if (cnt < prf_bkp_min) prf_bkp_min = cnt;
   if (cnt > prf_bkp_max) prf_bkp_max = cnt;
 #endif
-
-  // mark delta as done,
-  ib_done++;
-
-  // and check if all deltas done
-  if (ib_done == icfg.num_units)
-  {
-    // prepare for next tick,
-    ib_done = 0;
-
-    // and advance tick
-    ib_advance_tick ();
-  }
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// FORWARD phase: the tick has been completed, move FORWARD to the next tick
+// FORWARD phase: the tick has been completed, move to the next tick
 // updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
-void if_advance_tick (void)
+void if_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "if_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  tot_tick++;
-#endif
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART, 0);
 
-  // check if end of event
+  // and check if end of event
   if (tick_stop)
   {
     if_advance_event ();
@@ -238,20 +182,22 @@ void if_advance_tick (void)
 
 
 // ------------------------------------------------------------------------
-// BACKPROP phase: the tick has been completed, move FORWARD to the next tick
+// BACKPROP phase: the tick has been completed, move to the next tick
 // updating the indices to the events/examples as required
 // ------------------------------------------------------------------------
-void ib_advance_tick (void)
+void ib_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "ib_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  tot_tick++;
-#endif
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART, 0);
 
-  // check if end of BACKPROP phase
+  // and check if end of BACKPROP phase
   if (tick == SPINN_IB_END_TICK)
   {
     // initialise the tick count
@@ -265,8 +211,11 @@ void ib_advance_tick (void)
   }
   else
   {
-    // if not done decrement tick
+    // if not done decrement tick,
     tick--;
+
+    // and restore nets
+    restore_nets (tick);
   }
 }
 // ------------------------------------------------------------------------
@@ -431,7 +380,20 @@ void in_integr (uint inx)
   io_printf (IO_BUF, "in_integr\n");
 #endif
 
-  long_net_t  last_net = i_last_integr_net[inx];
+  // use stored value if in deadlock recovery
+  long_net_t last_net = i_last_integr_net[inx];
+  if (dlrv)
+  {
+    last_net = i_last_integr_net_dlrv[inx];
+  }
+  else
+  {
+    // remember last value in case of deadlock recovery
+    i_last_integr_net_dlrv[inx] = i_last_integr_net[inx];
+
+    last_net = i_last_integr_net[inx];
+  }
+
   long_net_t  desired_net = i_nets[inx];
   long_fpreal dt = icfg.in_integr_dt;
 
@@ -519,7 +481,19 @@ void in_integr_back (uint inx)
   io_printf (IO_BUF, "in_integr_back\n");
 #endif
 
-  long_delta_t last_delta = i_last_integr_delta[inx];
+  // use stored value if in deadlock recovery
+  long_delta_t last_delta;
+  if (dlrv)
+  {
+    last_delta = i_last_integr_delta_dlrv[inx];
+  }
+  else
+  {
+    // remember last value in case of deadlock recovery
+    i_last_integr_delta_dlrv[inx] = i_last_integr_delta[inx];
+
+    last_delta = i_last_integr_delta[inx];
+  }
 
   long_fpreal dt = icfg.in_integr_dt;
 
@@ -545,4 +519,49 @@ void in_soft_clamp_back (uint inx)
 #endif
 }
 */
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// stores unit net received for the current tick
+// ------------------------------------------------------------------------
+void store_net (uint inx)
+{
+#ifdef TRACE
+  io_printf (IO_BUF, "store_nets\n");
+#endif
+
+  i_net_history[(tick * icfg.num_units) + inx] = i_nets[inx];
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// restores unit net for the requested tick
+// ------------------------------------------------------------------------
+void restore_net (uint inx, uint tick)
+{
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_net\n");
+#endif
+
+  i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// restores all unit nets for the requested tick
+// ------------------------------------------------------------------------
+void restore_nets (uint tick)
+{
+#ifdef TRACE
+  io_printf (IO_BUF, "restore_nets\n");
+#endif
+
+  for (uint inx = 0; inx < icfg.num_units; inx++)
+  {
+    i_nets[inx] = i_net_history[(tick * icfg.num_units) + inx];
+  }
+}
 // ------------------------------------------------------------------------

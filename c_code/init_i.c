@@ -225,7 +225,57 @@ uint init_in_integr (void)
       return (SPINN_MEM_UNAVAIL);
   }
 
+  // allocate memory for deadlock recovery outputs
+  if ((i_last_integr_net_dlrv = ((long_net_t *)
+         spin1_malloc (icfg.num_units * sizeof (long_net_t)))) == NULL
+       )
+  {
+      return (SPINN_MEM_UNAVAIL);
+  }
+
+  // allocate memory for deadlock recovery deltas
+  if ((i_last_integr_delta_dlrv = ((long_delta_t *)
+         spin1_malloc (icfg.num_units * sizeof (long_delta_t)))) == NULL
+       )
+  {
+      return (SPINN_MEM_UNAVAIL);
+  }
+
   return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// initialise variables at (re)start of a tick
+// ------------------------------------------------------------------------
+void tick_init (uint restart, uint unused)
+{
+  (void) unused;
+
+#ifdef DEBUG
+  if (restart)
+  {
+    timeout_rep (FALSE);
+  }
+  else
+  {
+    tot_tick++;
+  }
+#endif
+
+  dlrv = restart;
+
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore
+    if_thrds_pend = SPINN_IF_THRDS;
+  }
+  else
+  {
+    // initialise thread semaphore
+    ib_thrds_pend = SPINN_IB_THRDS;
+  }
 }
 // ------------------------------------------------------------------------
 
@@ -270,12 +320,9 @@ void var_init (uint reset_examples)
     i_it_idx = ev[event_idx].it_idx * icfg.num_units;
   }
 
-  // initialise scoreboards
-  if_done = 0;
-  ib_done = 0;
-
   // initialise thread semaphores
   if_thrds_pend = SPINN_IF_THRDS;
+  ib_thrds_pend = SPINN_IB_THRDS;
 
   // initialise processing thread flag
   i_active = FALSE;
@@ -285,7 +332,6 @@ void var_init (uint reset_examples)
   i_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is implicitly initialised to 0
   fwdKey = rt[FWD] | SPINN_PHASE_KEY(SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
@@ -293,7 +339,7 @@ void var_init (uint reset_examples)
   // reset the memory of the INTEGRATOR state variables
   if (icfg.in_integr_en)
   {
-    for (uint i = 0; i<icfg.num_units; i++)
+    for (uint i = 0; i < icfg.num_units; i++)
     {
       i_last_integr_net[i] = (long_net_t) icfg.initNets;
       i_last_integr_delta[i] = 0;
@@ -310,16 +356,17 @@ void var_init (uint reset_examples)
   // ------------------------------------------------------------------------
   // DEBUG variables
   // ------------------------------------------------------------------------
-  pkt_sent = 0;  // total packets sent
   sent_fwd = 0;  // packets sent in FORWARD phase
   sent_bkp = 0;  // packets sent in BACKPROP phase
-  pkt_recv = 0;  // total packets received
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
+  spk_recv = 0;  // sync packets received
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
-  wrng_phs = 0;  // packets received in wrong phase
+  dlr_recv = 0;  // deadlock recovery packets received
+  wrng_fph = 0;  // FORWARD packets received in wrong phase
+  wrng_bph = 0;  // BACKPROP received in wrong phase
   wrng_pth = 0;  // unexpected processing thread
   wrng_cth = 0;  // unexpected comms thread
   wrng_sth = 0;  // unexpected stop thread
@@ -337,6 +384,27 @@ prf_bkp_min = SPINN_PROFILER_START;  // minimum BACKPROP processing time
 prf_bkp_max = 0;                     // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// report critical variables on timeout
+// ------------------------------------------------------------------------
+void timeout_rep (uint abort)
+{
+  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
+             epoch, example_cnt, phase, tick
+    );
+  if (abort)
+  {
+    io_printf (IO_BUF, "abort!\n");
+  }
+  else
+  {
+    io_printf (IO_BUF, "restarted\n");
+  }
+  io_printf (IO_BUF, "(i_active:%u)\n", i_active);
 }
 // ------------------------------------------------------------------------
 
@@ -427,10 +495,7 @@ void stage_done (uint ec, uint key)
       break;
 
     case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
-                      epoch, example_cnt, phase, tick
-                    );
-      io_printf (IO_BUF, "(fd:%u bd:%u)\n", if_done, ib_done);
+      timeout_rep (TRUE);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }
@@ -439,13 +504,14 @@ void stage_done (uint ec, uint key)
 #ifdef DEBUG
   // report diagnostics
   io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
-  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);
+  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
+  if (wrng_fph) io_printf (IO_BUF, "fwd wrong phase:%d\n", wrng_fph);
+  if (wrng_bph) io_printf (IO_BUF, "bkp wrong phase:%d\n", wrng_bph);
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
@@ -472,7 +538,9 @@ void stage_done (uint ec, uint key)
   if (ec == SPINN_NO_ERROR)
   {
     simulation_ready_to_read ();
-  } else {
+  }
+  else
+  {
     rt_error (RTE_SWERR);
   }
 }

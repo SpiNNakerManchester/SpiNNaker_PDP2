@@ -112,11 +112,16 @@ uint cfg_init (void)
   io_printf (IO_BUF, "fe: %d\n", scfg.fwd_expected);
   io_printf (IO_BUF, "be: %d\n", scfg.bkp_expected);
   io_printf (IO_BUF, "le: %d\n", scfg.lds_expected);
+  io_printf (IO_BUF, "fz: %d\n", scfg.fsgn_expected);
+  io_printf (IO_BUF, "bz: %d\n", scfg.bsgn_expected);
   io_printf (IO_BUF, "uf: %d\n", xcfg.update_function);
   io_printf (IO_BUF, "fg: %d\n", scfg.is_first_group);
+  io_printf (IO_BUF, "tr: %d\n", scfg.is_tree_root);
+  io_printf (IO_BUF, "r0: %d\n", scfg.is_first_root);
   io_printf (IO_BUF, "fk: 0x%08x\n", rt[FWD]);
   io_printf (IO_BUF, "bk: 0x%08x\n", rt[BKP]);
   io_printf (IO_BUF, "lk: 0x%08x\n", rt[LDS]);
+  io_printf (IO_BUF, "fs: 0x%08x\n", rt[FSG]);
 #endif
 
   return (SPINN_NO_ERROR);
@@ -130,14 +135,7 @@ uint cfg_init (void)
 uint mem_init (void)
 {
   // allocate memory for nets
-  if ((s_nets[0] = ((long_net_t *)
-         spin1_malloc (scfg.num_units * sizeof (long_net_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((s_nets[1] = ((long_net_t *)
+  if ((s_nets = ((long_net_t *)
          spin1_malloc (scfg.num_units * sizeof (long_net_t)))) == NULL
      )
   {
@@ -145,14 +143,7 @@ uint mem_init (void)
   }
 
   // allocate memory for errors
-  if ((s_errors[0] = ((long_error_t *)
-         spin1_malloc (scfg.num_units * sizeof (long_error_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((s_errors[1] = ((long_error_t *)
+  if ((s_errors = ((long_error_t *)
          spin1_malloc (scfg.num_units * sizeof (long_error_t)))) == NULL
      )
   {
@@ -168,14 +159,7 @@ uint mem_init (void)
   }
 
   // allocate memory for received net b-d-ps scoreboards
-  if ((sf_arrived[0] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((sf_arrived[1] = ((scoreboard_t *)
+  if ((sf_arrived = ((scoreboard_t *)
           spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
      )
   {
@@ -183,14 +167,7 @@ uint mem_init (void)
   }
 
   // allocate memory for received error b-d-ps scoreboards
-  if ((sb_arrived[0] = ((scoreboard_t *)
-          spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
-     )
-  {
-    return (SPINN_MEM_UNAVAIL);
-  }
-
-  if ((sb_arrived[1] = ((scoreboard_t *)
+  if ((sb_arrived = ((scoreboard_t *)
           spin1_malloc (scfg.num_units * sizeof (scoreboard_t)))) == NULL
      )
   {
@@ -198,6 +175,90 @@ uint mem_init (void)
   }
 
   return (SPINN_NO_ERROR);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// initialise variables at (re)start of a tick
+// ------------------------------------------------------------------------
+void tick_init (uint restart, uint unused)
+{
+  (void) unused;
+
+#ifdef DEBUG
+  if (restart)
+  {
+    timeout_rep (FALSE);
+  }
+  else
+  {
+    tot_tick++;
+  }
+
+  if (phase == SPINN_FORWARD)
+  {
+    fsg_sent = 0;
+    fsg_recv = 0;
+  }
+  else
+  {
+    bsg_sent = 0;
+    bsg_recv = 0;
+  }
+#else
+  (void) restart;
+#endif
+
+  if (phase == SPINN_FORWARD)
+  {
+    // initialise thread semaphore,
+    sf_thrds_pend = sf_thrds_init;
+
+    // initialise nets and scoreboards,
+    for (uint i = 0; i < scfg.num_units; i++)
+    {
+      s_nets[i]      = 0;
+      sf_arrived[i]  = 0;
+    }
+
+    s_fsgn_arrived = 0;
+  }
+  else
+  {
+    // initialise thread semaphore,
+    sb_thrds_pend = sb_thrds_init;
+
+    // if we are using Doug's Momentum, and we have reached the end of the
+    // epoch (i.e. we are on the last example, and are about to move on to
+    // the last tick, we have to wait for the partial link delta sums
+    //TODO: find a better place to do this calculation
+    if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
+        && example_cnt == (xcfg.num_examples - 1)
+        && tick == SPINN_SB_END_TICK + 1)
+    {
+      // update thread semaphore,
+      sb_thrds_pend = sb_thrds_init | SPINN_THRD_LDSA;
+
+      // and initialise lds summation and scoreboard
+      s_lds_part = 0;
+      s_lds_arrived = 0;
+    }
+
+    // prepare for next epoch
+    s_lds_part = 0;
+    s_lds_arrived = 0;
+
+    // initialise errors and scoreboards,
+    for (uint i = 0; i < scfg.num_units; i++)
+    {
+      s_errors[i]   = 0;
+      sb_arrived[i] = 0;
+    }
+
+    sb_done = 0;
+    s_bsgn_arrived = 0;
+  }
 }
 // ------------------------------------------------------------------------
 
@@ -239,21 +300,29 @@ void var_init (uint reset_examples)
   // initialise nets, errors and scoreboards
   for (uint i = 0; i < scfg.num_units; i++)
   {
-    s_nets[0][i] = 0;
-    s_nets[1][i] = 0;
-    s_errors[0][i] = 0;
-    s_errors[1][i] = 0;
-    sf_arrived[0][i] = 0;
-    sf_arrived[1][i] = 0;
-    sb_arrived[0][i] = 0;
-    sb_arrived[1][i] = 0;
+    s_nets[i] = 0;
+    s_errors[i] = 0;
+    sf_arrived[i] = 0;
+    sb_arrived[i] = 0;
   }
-  sf_done = 0;
+
   sb_done = 0;
 
+  s_fsgn_arrived = 0;
+  s_bsgn_arrived = 0;
+
   // initialise thread semaphores
-  sf_thrds_pend = SPINN_SF_THRDS;
-  sb_thrds_pend = SPINN_SB_THRDS;
+  sf_thrds_init = SPINN_SF_THRDS;
+  sb_thrds_init = SPINN_SB_THRDS;
+
+  // not all s cores take part in backprop sync generation
+  if (scfg.bsgn_expected == 0)
+  {
+    sb_thrds_init &= ~SPINN_THRD_BSGN;
+  }
+
+  sf_thrds_pend = sf_thrds_init;
+  sb_thrds_pend = sb_thrds_init;
 
   // initialise processing thread flag
   s_active = FALSE;
@@ -267,29 +336,36 @@ void var_init (uint reset_examples)
   s_pkt_queue.tail = 0;
 
   // initialise packet keys
-  //NOTE: colour is implicitly initialised to 0
   fwdKey = rt[FWD] | SPINN_PHASE_KEY (SPINN_FORWARD);
   bkpKey = rt[BKP] | SPINN_PHASE_KEY (SPINN_BACKPROP);
   ldsKey = rt[LDS] | SPINN_LDSA_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
-  fdsKey = rt[FDS] | SPINN_SYNC_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+
+  //NOTE: backprop sync gen packets follow the forward sync gen route but
+  //      use a different key
+  fsgKey = rt[FSG] | SPINN_FSGN_KEY | SPINN_PHASE_KEY (SPINN_FORWARD);
+  bpsKey = rt[FSG] | SPINN_BSGN_KEY | SPINN_PHASE_KEY (SPINN_BACKPROP);
 
 #ifdef DEBUG
   // ------------------------------------------------------------------------
   // DEBUG variables
   // ------------------------------------------------------------------------
-  pkt_sent = 0;  // total packets sent
   sent_fwd = 0;  // packets sent in FORWARD phase
   sent_bkp = 0;  // packets sent in BACKPROP phase
-  pkt_recv = 0;  // total packets received
   recv_fwd = 0;  // packets received in FORWARD phase
   recv_bkp = 0;  // packets received in BACKPROP phase
-  spk_sent = 0;  // sync packets sent
+  spk_recv = 0;  // sync packets received
+  fsg_sent = 0;  // forward sync generation packets sent (current tick)
+  fsg_recv = 0;  // forward sync generation packets received (current tick)
+  bsg_sent = 0;  // BACKPROP sync generation packets sent
+  bsg_recv = 0;  // BACKPROP sync generation packets received
   stp_sent = 0;  // stop packets sent
   stp_recv = 0;  // stop packets received
   stn_recv = 0;  // network_stop packets received
+  dlr_recv = 0;  // deadlock recovery packets received
   lds_recv = 0;  // link_delta packets received
   lds_sent = 0;  // link_delta packets sent
-  wrng_phs = 0;  // packets received in wrong phase
+  wrng_fph = 0;  // FORWARD packets received in wrong phase
+  wrng_bph = 0;  // BACKPROP received in wrong phase
   wrng_pth = 0;  // unexpected processing thread
   wrng_cth = 0;  // unexpected comms thread
   wrng_sth = 0;  // unexpected stop thread
@@ -307,6 +383,34 @@ prf_bkp_min = SPINN_PROFILER_START;  // minimum BACKPROP processing time
 prf_bkp_max = 0;                     // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// report critical variables on timeout
+// ------------------------------------------------------------------------
+void timeout_rep (uint abort)
+{
+  io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - ",
+             epoch, example_cnt, phase, tick
+    );
+  if (abort)
+  {
+    io_printf (IO_BUF, "abort!\n");
+  }
+  else
+  {
+    io_printf (IO_BUF, "restarted\n");
+  }
+  io_printf (IO_BUF, "(s_active:%u bd:%u)\n", s_active, sb_done);
+  for (uint i = 0; i < scfg.num_units; i++)
+  {
+    io_printf (IO_BUF, "%2d: (fa:%u/%u ba:%u/%u)\n", i,
+               sf_arrived[i], scfg.fwd_expected, sb_arrived[i], scfg.bkp_expected
+      );
+  }
+  io_printf (IO_BUF, "(fptd:0x%02x bptd:0x%02x)\n", sf_thrds_pend, sb_thrds_pend);
 }
 // ------------------------------------------------------------------------
 
@@ -397,17 +501,7 @@ void stage_done (uint ec, uint key)
       break;
 
     case SPINN_TIMEOUT_EXIT:
-      io_printf (IO_BUF, "timeout (h:%u e:%u p:%u t:%u) - abort!\n",
-                  epoch, example_cnt, phase, tick
-                );
-      io_printf (IO_BUF, "(fd:%u bd:%u)\n", sf_done, sb_done);
-      for (uint i = 0; i < scfg.num_units; i++)
-      {
-        io_printf (IO_BUF, "%2d: (fa[0]:%u ba[0]:%u fa[1]:%u ba[1]:%u)\n", i,
-                    sf_arrived[0][i], sb_arrived[0][i],
-                    sf_arrived[1][i], sb_arrived[1][i]
-                  );
-      }
+      timeout_rep (TRUE);
       io_printf (IO_BUF, "stage aborted\n");
       break;
   }
@@ -416,16 +510,20 @@ void stage_done (uint ec, uint key)
 #ifdef DEBUG
   // report diagnostics
   io_printf (IO_BUF, "total ticks:%d\n", tot_tick);
-  io_printf (IO_BUF, "total recv:%d\n", pkt_recv);
-  io_printf (IO_BUF, "total sent:%d\n", pkt_sent);
   io_printf (IO_BUF, "recv: fwd:%d bkp:%d\n", recv_fwd, recv_bkp);
   io_printf (IO_BUF, "sent: fwd:%d bkp:%d\n", sent_fwd, sent_bkp);
   io_printf (IO_BUF, "lds sent:%d\n", lds_sent);
   io_printf (IO_BUF, "lds recv:%d\n", lds_recv);
+  io_printf (IO_BUF, "fsgn sent:%d\n", fsg_sent);
+  io_printf (IO_BUF, "fsgn recv:%d/%u\n", fsg_recv, scfg.fsgn_expected);
+  io_printf (IO_BUF, "bsgn sent:%d\n", bsg_sent);
+  io_printf (IO_BUF, "bsgn recv:%d/%u\n", bsg_recv, scfg.bsgn_expected);
   io_printf (IO_BUF, "stop recv:%d\n", stp_recv);
   io_printf (IO_BUF, "stpn recv:%d\n", stn_recv);
-  io_printf (IO_BUF, "sync sent:%d\n", spk_sent);
-  if (wrng_phs) io_printf (IO_BUF, "wrong phase:%d\n", wrng_phs);
+  io_printf (IO_BUF, "dlrv recv:%d\n", dlr_recv);
+  io_printf (IO_BUF, "sync recv:%d\n", spk_recv);
+  if (wrng_fph) io_printf (IO_BUF, "fwd wrong phase:%d\n", wrng_fph);
+  if (wrng_bph) io_printf (IO_BUF, "bkp wrong phase:%d\n", wrng_bph);
   if (wrng_pth) io_printf (IO_BUF, "wrong pth:%d\n", wrng_pth);
   if (wrng_cth) io_printf (IO_BUF, "wrong cth:%d\n", wrng_cth);
   if (wrng_sth) io_printf (IO_BUF, "wrong sth:%d\n", wrng_sth);
@@ -449,9 +547,12 @@ void stage_done (uint ec, uint key)
 #endif
 
   // and let host know that we're done
-  if (ec == SPINN_NO_ERROR) {
+  if (ec == SPINN_NO_ERROR)
+  {
     simulation_ready_to_read ();
-  } else {
+  }
+  else
+  {
     rt_error (RTE_SWERR);
   }
 }
