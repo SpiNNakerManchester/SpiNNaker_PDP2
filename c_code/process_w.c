@@ -79,7 +79,6 @@ void wf_process (uint unused0, uint unused1)
     while (!spin1_send_mc_packet ((fwdKey | j), (uint) net_part, WITH_PAYLOAD));
 
 #ifdef DEBUG
-    pkt_sent++;
     sent_fwd++;
 #endif
 
@@ -89,35 +88,6 @@ void wf_process (uint unused0, uint unused1)
     if (cnt < prf_fwd_min) prf_fwd_min = cnt;
     if (cnt > prf_fwd_max) prf_fwd_max = cnt;
 #endif
-  }
-
-  // access thread semaphore with interrupts disabled
-  uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(wf_thrds_pend & SPINN_THRD_PROC))
-    wrng_pth++;
-#endif
-
-  // and check if all other threads done
-  if (wf_thrds_pend == SPINN_THRD_PROC)
-  {
-    // if done initialise thread semaphore,
-    wf_thrds_pend = SPINN_WF_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    wf_advance_tick (0, 0);
-  }
-  else
-  {
-    // if not done report processing thread done,
-    wf_thrds_pend &= ~SPINN_THRD_PROC;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
   }
 }
 // ------------------------------------------------------------------------
@@ -141,7 +111,7 @@ void wb_process (uint key, uint payload)
 #endif
 
   // get delta index: mask out phase and block data,
-  uint inx = key & SPINN_BLKDLT_MASK;
+  uint inx = key & SPINN_DELTA_MASK;
 
   // packet carries a delta as payload
   delta_t delta = (delta_t) payload;
@@ -203,17 +173,11 @@ void wb_process (uint key, uint payload)
     if (wb_arrived == wcfg.num_cols)
     {
       // send computed error dot product,
-      while (!spin1_send_mc_packet ((bkpKey | i),
-              (uint) w_errors[i], WITH_PAYLOAD)
-            );
+      while (!spin1_send_mc_packet ((bkpKey | i), (uint) w_errors[i], WITH_PAYLOAD));
 
 #ifdef DEBUG
-      pkt_sent++;
       sent_bkp++;
 #endif
-
-      // and initialise error for next tick
-      w_errors[i] = 0;
     }
   }
 
@@ -238,7 +202,6 @@ void wb_process (uint key, uint payload)
     while (!spin1_send_mc_packet (ldsKey, (uint) lds_to_send, WITH_PAYLOAD));
 
 #ifdef DEBUG
-    pkt_sent++;
     lds_sent++;
 #endif
   }
@@ -249,51 +212,6 @@ void wb_process (uint key, uint payload)
   if (cnt < prf_bkp_min) prf_bkp_min = cnt;
   if (cnt > prf_bkp_max) prf_bkp_max = cnt;
 #endif
-
-  // if done with all deltas advance tick
-  if (wb_arrived == wcfg.num_cols)
-  {
-    // initialise arrival scoreboard for next tick,
-    wb_arrived = 0;
-
-    // access thread semaphore with interrupts disabled
-    uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(wb_thrds_pend & SPINN_THRD_PROC))
-      wrng_pth++;
-#endif
-
-    // and check if all other threads done
-    if (wb_thrds_pend == SPINN_THRD_PROC)
-    {
-      // if done initialise thread semaphore,
-      // if we are using Doug's Momentum, and we have reached the end of the
-      // epoch (i.e. we are on the last example, and are about to move on to
-      // the last tick, we have to wait for the total link delta sum to
-      // arrive
-      if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-          && example_cnt == (xcfg.num_examples - 1)
-          && tick == SPINN_WB_END_TICK + 1)
-      {
-        wb_thrds_pend = SPINN_WB_THRDS | SPINN_THRD_LDSA;
-      }
-
-      // restore interrupts after semaphore access,
-      spin1_mode_restore (cpsr);
-
-      // and advance tick
-      wb_advance_tick ();
-    }
-    else
-    {
-      // report processing thread done,
-      wb_thrds_pend &= ~SPINN_THRD_PROC;
-
-      // and restore interrupts after semaphore access
-      spin1_mode_restore (cpsr);
-    }
-  }
 }
 // ------------------------------------------------------------------------+
 
@@ -650,19 +568,8 @@ void wf_advance_tick (uint unused0, uint unused1)
   io_printf (IO_BUF, "wf_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  //NOTE: tick 0 is not a computation tick
-  if (tick)
-  {
-    tot_tick++;
-  }
-#endif
-
-  // change packet key colour,
-  fwdKey ^= SPINN_COLOUR_KEY;
-
-  // update pointer to processing unit outputs,
-  wf_procs = 1 - wf_procs;
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART, 0);
 
   // and check if end of event
   if (tick_stop)
@@ -685,18 +592,17 @@ void wf_advance_tick (uint unused0, uint unused1)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void wb_advance_tick (void)
+void wb_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "wb_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  tot_tick++;
-#endif
-
-  // change packet key colour,
-  bkpKey ^= SPINN_COLOUR_KEY;
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART, 0);
 
   // and check if end of example's BACKPROP phase
   if (tick == SPINN_WB_END_TICK)
@@ -734,16 +640,7 @@ void wf_advance_event (void)
   // check if done with example's FORWARD phase
   if ((++evt >= num_events) || (tick == ncfg.global_max_ticks - 1))
   {
-    // access thread semaphore with interrupts disabled
-    uint cpsr = spin1_int_disable ();
-
-    // initialise thread semaphore,
-    wf_thrds_pend = SPINN_WF_THRDS;
-
-    // restore interrupts after flag access,
-    spin1_mode_restore (cpsr);
-
-    // and check if in training mode
+    // check if in training mode
     if (xcfg.training)
     {
       // move on to BACKPROP phase
@@ -830,10 +727,9 @@ void w_advance_example (void)
   uint cpsr = spin1_int_disable ();
 
   // and check if can trigger next example computation
-  if (sync_rdy && net_stop_rdy)
+  if (net_stop_rdy)
   {
-    // clear flags for next tick,
-    sync_rdy = FALSE;
+    // clear flag for next tick,
     net_stop_rdy = FALSE;
 
     // restore interrupts after flag access,

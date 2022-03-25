@@ -908,8 +908,8 @@ class MLPNetwork():
                 gfe.add_machine_vertex_instance (tv)
 
         # groups and subgroups with special functions
-        first_lds_grp = self.groups[0]
-        first_subgroup_svt = first_lds_grp.s_vertex[0]
+        first_grp = self.groups[0]
+        first_subgroup_svt = first_grp.s_vertex[0]
 
         last_out_grp = self.output_chain[-1]
         last_out_subgroup_t_vertex = (
@@ -977,19 +977,11 @@ class MLPNetwork():
                         last_out_subgroup_t_vertex.stp_link
                         )
 
-                    # intra-subgroup sync s to w (multicast) link
+                    # forward sync generation w to s links
                     gfe.add_machine_edge_instance (
-                        MachineEdge (svt.root, wv),
-                        svt.root.fds_link
+                        MachineEdge (wv, svt_leaf),
+                        wv.fsg_link
                         )
-
-                    # inter-subgroup sync s to w (multicast) link
-                    #NOTE: avoid duplicates
-                    if grp != from_grp or sgrp != from_sgrp:
-                        gfe.add_machine_edge_instance (
-                            MachineEdge (from_svt.root, wv),
-                            from_svt.root.fds_link
-                            )
 
                 # forward s to i link
                 gfe.add_machine_edge_instance (
@@ -1025,7 +1017,7 @@ class MLPNetwork():
                             ),
                         svt.root.lds_link
                         )
-                elif grp != first_lds_grp:
+                elif grp != first_grp:
                     # first group collects from all other groups
                     gfe.add_machine_edge_instance (
                         MachineEdge (
@@ -1068,6 +1060,33 @@ class MLPNetwork():
                         MachineEdge (last_out_subgroup_t_vertex, tv),
                         last_out_subgroup_t_vertex.stp_link
                         )
+
+                # forward sync generation s to s links
+                #NOTE: s cores that are tree internal nodes not involved
+                if sgrp != 0:
+                    # first subgroup collects from all other subgroups
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (
+                            svt.root,
+                            grp.s_vertex[0].root
+                            ),
+                        svt.root.fsg_link
+                        )
+                elif grp != first_grp:
+                    # first group collects from all other groups
+                    gfe.add_machine_edge_instance (
+                        MachineEdge (
+                            svt.root,
+                            first_subgroup_svt.root
+                            ),
+                        svt.root.fsg_link
+                        )
+
+        # forward sync generation first s to last t link
+        gfe.add_machine_edge_instance (
+            MachineEdge (first_subgroup_svt.root, last_out_subgroup_t_vertex),
+            first_subgroup_svt.root.fsg_link
+            )
 
         self._graph_rdy = True
 

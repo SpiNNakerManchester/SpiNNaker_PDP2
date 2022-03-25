@@ -81,8 +81,10 @@ uint bkpKey;               // packet ID for BACKPROP-phase data
 uint32_t stage_step;       // current stage step
 uint32_t stage_num_steps;  // current stage number of steps
 
-uchar        net_stop;     // network stop decision
 uchar        net_stop_rdy; // ready to deal with network stop decision
+
+uchar        tick_stop;    // current tick stop decision
+uchar        net_stop;     // network stop decision
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
@@ -91,14 +93,12 @@ uint         evt;          // current event in example
 uint         num_events;   // number of events in current example
 uint         event_idx;    // index into current event
 proc_phase_t phase;        // FORWARD or BACKPROP
+
+uint         dlrv;         // deadlock recovery mode
+
 uint         max_ticks;    // maximum number of ticks in current event
 uint         min_ticks;    // minimum number of ticks in current event
 uint         tick;         // current tick in phase
-uchar        tick_stop;    // current tick stop decision
-
-uint         to_epoch   = 0;
-uint         to_example = 0;
-uint         to_tick    = 0;
 // ------------------------------------------------------------------------
 
 
@@ -135,18 +135,19 @@ uchar            i_active;          // processing packets from queue?
 
 long_net_t     * i_last_integr_net;   //last INTEGRATOR output value
 long_delta_t   * i_last_integr_delta; //last INTEGRATOR delta value
+long_net_t     * i_last_integr_net_dlrv;   // deadlock recovery
+long_delta_t   * i_last_integr_delta_dlrv; // deadlock recovery
 
 uint             i_it_idx;          // index into current inputs/targets
 
 // FORWARD phase specific
 // (net processing)
-scoreboard_t     if_done;           // current tick net computation done
 uint             if_thrds_pend;     // thread semaphore
 
 // BACKPROP phase specific
 // (delta processing)
 long_delta_t   * ib_init_delta;     // initial delta value for every tick
-scoreboard_t     ib_done;           // current tick delta computation done
+uint             ib_thrds_pend;     // thread semaphore
 
 // history arrays
 long_net_t     * i_net_history;     //sdram pointer where to store input history
@@ -157,16 +158,17 @@ long_net_t     * i_net_history;     //sdram pointer where to store input history
 // ------------------------------------------------------------------------
 // DEBUG variables
 // ------------------------------------------------------------------------
-uint pkt_sent;  // total packets sent
 uint sent_fwd;  // packets sent in FORWARD phase
 uint sent_bkp;  // packets sent in BACKPROP phase
-uint pkt_recv;  // total packets received
 uint recv_fwd;  // packets received in FORWARD phase
 uint recv_bkp;  // packets received in BACKPROP phase
+uint spk_recv;  // sync packets received
 uint stp_sent;  // stop packets sent
 uint stp_recv;  // stop packets received
 uint stn_recv;  // network_stop packets received
-uint wrng_phs;  // packets received in wrong phase
+uint dlr_recv;  // deadlock recovery packets received
+uint wrng_fph;  // FORWARD packets received in wrong phase
+uint wrng_bph;  // BACKPROP packets received in wrong phase
 uint wrng_pth;  // unexpected processing thread
 uint wrng_cth;  // unexpected comms thread
 uint wrng_sth;  // unexpected stop thread
@@ -185,32 +187,6 @@ uint prf_bkp_min;  // minimum BACKPROP processing time
 uint prf_bkp_max;  // maximum BACKPROP processing time
 // ------------------------------------------------------------------------
 #endif
-
-
-// ------------------------------------------------------------------------
-// timer callback: check that there has been progress in execution.
-// If no progress has been made terminate with SPINN_TIMEOUT_EXIT code.
-// ------------------------------------------------------------------------
-void timeout (uint ticks, uint unused)
-{
-  (void) ticks;
-  (void) unused;
-
-  // check if progress has been made
-  if ((to_epoch == epoch) && (to_example == example_cnt) && (to_tick == tick))
-  {
-    // report timeout error
-    stage_done (SPINN_TIMEOUT_EXIT, 0);
-  }
-  else
-  {
-    // update checked variables
-    to_epoch   = epoch;
-    to_example = example_cnt;
-    to_tick    = tick;
-  }
-}
-// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
@@ -260,13 +236,9 @@ void c_main (void)
   // initialise variables,
   var_init (TRUE);
 
-  // set up timer (used for background deadlock check),
-  spin1_set_timer_tick (SPINN_TIMER_TICK_PERIOD);
-  spin1_callback_on (TIMER_TICK, timeout, SPINN_TIMER_P);
-
   // set up packet received callbacks,
-  spin1_callback_on (MC_PACKET_RECEIVED, i_receivePacket, SPINN_PACKET_P);
-  spin1_callback_on (MCPL_PACKET_RECEIVED, i_receivePacket, SPINN_PACKET_P);
+  spin1_callback_on (MC_PACKET_RECEIVED, i_receiveControlPacket, SPINN_PACKET_P);
+  spin1_callback_on (MCPL_PACKET_RECEIVED, i_receiveDataPacket, SPINN_PACKET_P);
 
   // setup simulation,
   simulation_set_start_function (get_started);

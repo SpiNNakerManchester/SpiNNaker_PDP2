@@ -41,7 +41,7 @@ void sf_process (uint key, uint payload)
 #ifdef DEBUG
   recv_fwd++;
   if (phase != SPINN_FORWARD)
-    wrng_phs++;
+    wrng_fph++;
 #endif
 
 #ifdef PROFILE
@@ -52,15 +52,11 @@ void sf_process (uint key, uint payload)
   // get net index: mask out block and phase data,
   uint inx = key & SPINN_NET_MASK;
 
-  // get error colour: mask out block, phase and net index data,
-  uint pkt_clr = key & SPINN_COLOUR_MASK;
-  uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
-
   // accumulate new net b-d-p,
-  s_nets[clr][inx] += (long_net_t) ((net_t) payload);
+  s_nets[inx] += (long_net_t) ((net_t) payload);
 
   // mark net b-d-p as arrived,
-  sf_arrived[clr][inx]++;
+  sf_arrived[inx]++;
 
 #ifdef PROFILE
   // update profiler values,
@@ -70,75 +66,30 @@ void sf_process (uint key, uint payload)
 #endif
 
   // and check if dot product complete to compute net
-  if (sf_arrived[clr][inx] == scfg.fwd_expected)
+  if (sf_arrived[inx] == scfg.fwd_expected)
   {
     net_t net_tmp;
 
     // saturate and cast the long nets before sending,
-    if (s_nets[clr][inx] >= (long_net_t) SPINN_NET_MAX)
+    if (s_nets[inx] >= (long_net_t) SPINN_NET_MAX)
     {
       net_tmp = (net_t) SPINN_NET_MAX;
     }
-    else if (s_nets[clr][inx] <= (long_net_t) SPINN_NET_MIN)
+    else if (s_nets[inx] <= (long_net_t) SPINN_NET_MIN)
     {
       net_tmp = (net_t) SPINN_NET_MIN;
     }
     else
     {
-      net_tmp = (net_t) s_nets[clr][inx];
+      net_tmp = (net_t) s_nets[inx];
     }
 
-    // incorporate colour and net index to the packet key and send,
-    while (!spin1_send_mc_packet ((fwdKey | pkt_clr | inx),
-        net_tmp, WITH_PAYLOAD));
+    // and incorporate net index to the packet key and send,
+    while (!spin1_send_mc_packet ((fwdKey | inx), net_tmp, WITH_PAYLOAD));
 
 #ifdef DEBUG
-    pkt_sent++;
     sent_fwd++;
 #endif
-
-    // prepare for next tick,
-    s_nets[clr][inx] = 0;
-    sf_arrived[clr][inx] = 0;
-
-    // mark net as done,
-    sf_done++;
-
-    // and check if all nets done
-    if (sf_done == scfg.num_units)
-    {
-       // prepare for next tick,
-       sf_done = 0;
-
-      // access thread semaphore with interrupts disabled
-      uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-      if (!(sf_thrds_pend & SPINN_THRD_PROC))
-        wrng_pth++;
-#endif
-
-      // and check if all other threads done
-      if (sf_thrds_pend == SPINN_THRD_PROC)
-      {
-        // if done initialise semaphore
-        sf_thrds_pend = SPINN_SF_THRDS;
-
-        // restore interrupts after flag access,
-        spin1_mode_restore (cpsr);
-
-        // and advance tick
-        sf_advance_tick ();
-      }
-      else
-      {
-        // if not done report processing thread done,
-        sf_thrds_pend &= ~SPINN_THRD_PROC;
-
-        // and restore interrupts after flag access
-        spin1_mode_restore (cpsr);
-      }
-    }
   }
 }
 // ------------------------------------------------------------------------
@@ -152,7 +103,7 @@ void sb_process (uint key, uint payload)
 #ifdef DEBUG
   recv_bkp++;
   if (phase != SPINN_BACKPROP)
-    wrng_phs++;
+    wrng_bph++;
 #endif
 
 #ifdef PROFILE
@@ -160,18 +111,14 @@ void sb_process (uint key, uint payload)
   tc[T2_LOAD] = SPINN_PROFILER_START;
 #endif
 
-  // get error index: mask out block, phase and colour data,
+  // get error index: mask out block and phase data,
   uint inx = key & SPINN_ERROR_MASK;
 
-  // get error colour: mask out block, phase and net index data,
-  uint pkt_clr = key & SPINN_COLOUR_MASK;
-  uint clr = pkt_clr >> SPINN_COLOUR_SHIFT;
-
   // accumulate new error b-d-p,
-  s_errors[clr][inx] += (error_t) payload;
+  s_errors[inx] += (error_t) payload;
 
   // mark error b-d-p as arrived,
-  sb_arrived[clr][inx]++;
+  sb_arrived[inx]++;
 
 #ifdef PROFILE
   // update profiler values,
@@ -181,13 +128,13 @@ void sb_process (uint key, uint payload)
 #endif
 
   // and check if error complete to send to next stage
-  if (sb_arrived[clr][inx] == scfg.bkp_expected)
+  if (sb_arrived[inx] == scfg.bkp_expected)
   {
     //NOTE: may need to use long_error_t and saturate before sending
-    error_t error = s_errors[clr][inx];
+    error_t error = s_errors[inx];
 
 /*
-    long_error_t err_tmp = s_errors[clr][inx]
+    long_error_t err_tmp = s_errors[inx]
                               >> (SPINN_LONG_ERR_SHIFT - SPINN_ERROR_SHIFT);
 
     if (err_tmp >= (long_error_t) SPINN_ERROR_MAX)
@@ -204,18 +151,12 @@ void sb_process (uint key, uint payload)
     }
 */
 
-    // incorporate colour and error index to the packet key and send,
-    while (!spin1_send_mc_packet ((bkpKey | pkt_clr | inx),
-        error, WITH_PAYLOAD));
+    // incorporate error index to the packet key and send,
+    while (!spin1_send_mc_packet ((bkpKey | inx), error, WITH_PAYLOAD));
 
 #ifdef DEBUG
-    pkt_sent++;
     sent_bkp++;
 #endif
-
-    // prepare for next tick,
-    s_errors[clr][inx] = 0;
-    sb_arrived[clr][inx] = 0;
 
     // mark error as done,
     sb_done++;
@@ -223,9 +164,6 @@ void sb_process (uint key, uint payload)
     // and check if all errors done
     if (sb_done == scfg.num_units)
     {
-      // prepare for next tick,
-      sb_done = 0;
-
       // access thread semaphore with interrupts disabled
       uint cpsr = spin1_int_disable ();
 
@@ -237,30 +175,27 @@ void sb_process (uint key, uint payload)
       // check if all other threads done
       if (sb_thrds_pend == SPINN_THRD_PROC)
       {
-        // if done initialise semaphore:
-        sb_thrds_pend = SPINN_SB_THRDS;
-
-        // if we are using Doug's Momentum, and we have reached the end of the
-        // epoch (i.e. we are on the last example, and are about to move on to
-        // the last tick, we need have to wait for the partial link delta sums
-        // to arrive
-        //TODO: find a better place to do this calculation
-        if (xcfg.update_function == SPINN_DOUGSMOMENTUM_UPDATE
-            && example_cnt == (xcfg.num_examples - 1)
-            && tick == SPINN_SB_END_TICK + 1)
-        {
-          sb_thrds_pend = SPINN_SB_THRDS | SPINN_THRD_LDSA;
-        }
+#ifdef DEBUG
+        // report processing thread done,
+        sb_thrds_pend = 0;
+#endif
 
         // restore interrupts after flag access,
         spin1_mode_restore (cpsr);
 
-        // and advance tick
-        sb_advance_tick ();
+        // and send sync packet to allow next tick to start
+        if (scfg.is_tree_root)
+        {
+          while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+          bsg_sent++;
+#endif
+        }
       }
       else
       {
-        // if not done report processing thread done,
+        // report processing thread done,
         sb_thrds_pend &= ~SPINN_THRD_PROC;
 
         // and restore interrupts after flag access
@@ -276,17 +211,19 @@ void sb_process (uint key, uint payload)
 // FORWARD phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sf_advance_tick (void)
+void sf_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "sf_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  tot_tick++;
-#endif
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART, 0);
 
-  // check if end of event
+  // and check if end of event
   if (tick_stop)
   {
     sf_advance_event ();
@@ -304,17 +241,19 @@ void sf_advance_tick (void)
 // BACKPROP phase: once the processing is completed and all the units have been
 // processed, advance the simulation tick
 // ------------------------------------------------------------------------
-void sb_advance_tick (void)
+void sb_advance_tick (uint unused0, uint unused1)
 {
+  (void) unused0;
+  (void) unused1;
+
 #ifdef TRACE
   io_printf (IO_BUF, "sb_advance_tick\n");
 #endif
 
-#ifdef DEBUG
-  tot_tick++;
-#endif
+  // prepare to start tick,
+  tick_init (!SPINN_RESTART, 0);
 
-  // check if end of BACKPROP phase
+  // and check if end of BACKPROP phase
   if (tick == SPINN_SB_END_TICK)
   {
     // initialise the tick count
@@ -350,6 +289,9 @@ void sf_advance_event (void)
     // check if in training mode
     if (xcfg.training)
     {
+      //TODO: if using Doug's momentum and tick == SPINN_SB_END_TICK
+      // SPINN_THRD_LDSA has to be added to sb_thrds_init
+
       // move on to BACKPROP phase
       phase = SPINN_BACKPROP;
     }
@@ -425,19 +367,8 @@ void s_advance_example (void)
     example_cnt = 0;
   }
 
-  // start from first event for next example,
+  // and start from first event for next example,
   evt = 0;
   num_events = ex[example_inx].num_events;
-
-  // and send sync packet to allow next example to start
-  if (scfg.is_tree_root)
-  {
-    while (!spin1_send_mc_packet (fdsKey, 0, NO_PAYLOAD));
-
-#ifdef DEBUG
-    pkt_sent++;
-    spk_sent++;
-#endif
-  }
 }
 // ------------------------------------------------------------------------

@@ -23,3 +23,12 @@ file                     | function
 rogers-basic.py          | network description and simulation control
 rogers-basic.ex          | training/testing set
 rogers-basic_weights.txt | initial weights
+
+
+### simple_past_tense: network that learns past tense of English verbs
+
+file                          | function
+------------------------------|-------------------------------------------
+simple_past_tense.py          | network description and simulation control
+simple_past_tense.ex          | training/testing set
+simple_past_tense_weights.txt | initial weights

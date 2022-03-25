@@ -32,15 +32,10 @@
 // sum core communications routines
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// enqueue received packet
-// (FORWARD, BACKPROP, lds, stop and net_stop types)
+// enqueue data packet
 // ------------------------------------------------------------------------
-void s_receivePacket (uint key, uint payload)
+void s_receiveDataPacket (uint key, uint payload)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   // queue packet - if space available
   uint new_tail = (s_pkt_queue.tail + 1) % SPINN_SUM_PQ_LEN;
   if (new_tail == s_pkt_queue.head)
@@ -62,6 +57,79 @@ void s_receivePacket (uint key, uint payload)
       spin1_schedule_callback (s_processQueue, 0, 0, SPINN_S_PROCESS_P);
     }
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process control packet
+// ------------------------------------------------------------------------
+void s_receiveControlPacket (uint key, uint unused)
+{
+  (void) unused;
+
+  // check packet type,
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
+  // process forward sync generation packet,
+  if (pkt_type == SPINN_FSGN_KEY)
+  {
+    s_fsgn_packet ();
+    return;
+  }
+
+  // process backprop sync generation packet,
+  if (pkt_type == SPINN_BSGN_KEY)
+  {
+    s_bsgn_packet ();
+    return;
+  }
+
+  // process tick stop packet,
+  if (pkt_type == SPINN_STOP_KEY)
+  {
+    s_stop_packet (key);
+    return;
+  }
+
+  // process backprop sync packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    s_sync_packet (key);
+    return;
+  }
+
+  // process deadlock recovery packet,
+  if (pkt_type == SPINN_DLRV_KEY)
+  {
+#ifdef DEBUG
+    dlr_recv++;
+#endif
+
+    if (key & SPINN_ABRT_MASK)
+    {
+      // report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
+    }
+    else
+    {
+      s_dlrv_packet ();
+    }
+
+    return;
+  }
+
+  // process network stop packet,
+  if (pkt_type == SPINN_STPN_KEY)
+  {
+    s_net_stop_packet (key);
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -112,22 +180,10 @@ void s_processQueue (uint unused0, uint unused1)
       }
     }
 
-    // or process LDS packet,
+    // process LDS packet,
     else if (pkt_type == SPINN_LDSA_KEY)
     {
       s_lds_packet (payload);
-    }
-
-    // or process stop packet,
-    else if (pkt_type == SPINN_STOP_KEY)
-    {
-      s_stop_packet (key);
-    }
-
-    // or process network stop packet,
-    else if (pkt_type == SPINN_STPN_KEY)
-    {
-      s_net_stop_packet (key);
     }
 
 #ifdef DEBUG
@@ -152,45 +208,109 @@ void s_processQueue (uint unused0, uint unused1)
 
 
 // ------------------------------------------------------------------------
+// process LDS packet: accumulate the received partial link delta sums
+// ------------------------------------------------------------------------
+void s_lds_packet (uint payload)
+{
+#ifdef DEBUG
+  lds_recv++;
+#endif
+
+  // add the received value to the total so far,
+  s_lds_part += (lds_t) payload;
+
+  // increment the count of partial link delta sums arrived,
+  s_lds_arrived++;
+
+  // check whether all the partial sums have arrived
+  if (s_lds_arrived == scfg.lds_expected)
+  {
+    // broadcast (first subgroup) or relay (all others) lds value
+    while (!spin1_send_mc_packet (ldsKey, s_lds_part, WITH_PAYLOAD));
+
+#ifdef DEBUG
+    lds_sent++;
+#endif
+
+    // access thread semaphore with interrupts disabled
+    uint cpsr = spin1_int_disable ();
+
+#if defined(DEBUG) && defined(DEBUG_THRDS)
+    if (!(sb_thrds_pend & SPINN_THRD_LDSA)) wrng_cth++;
+#endif
+
+    // check if all other threads done
+    if (sb_thrds_pend == SPINN_THRD_LDSA)
+    {
+#ifdef DEBUG
+      // report processing thread done,
+      sb_thrds_pend = 0;
+#endif
+
+      // restore interrupts after flag access,
+      spin1_mode_restore (cpsr);
+
+      // report backprop sync generation ready
+      if (scfg.is_tree_root)
+      {
+        while (!spin1_send_mc_packet (bpsKey, 0, NO_PAYLOAD));
+
+#ifdef DEBUG
+        bsg_sent++;
+#endif
+      }
+    }
+    else
+    {
+      // report processing thread done,
+      sb_thrds_pend &= ~SPINN_THRD_LDSA;
+
+      // and restore interrupts after flag access
+      spin1_mode_restore (cpsr);
+    }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // process a tick stop packet
 // ------------------------------------------------------------------------
 void s_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
-  // tick stop decision arrived,
-  tick_stop = key & SPINN_STPD_MASK;
+  // get tick stop decision,
+  //NOTE: be careful with variable size
+  tick_stop = (key & SPINN_STOP_MASK) ? 1 : 0;
 
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
+  // and advance tick
+  spin1_schedule_callback (sf_advance_tick, 0, 0, SPINN_S_TICK_P);
+}
+// ------------------------------------------------------------------------
 
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(sf_thrds_pend & SPINN_THRD_STOP))
-    wrng_sth++;
+
+// ------------------------------------------------------------------------
+// process a backprop sync packet
+// ------------------------------------------------------------------------
+void s_sync_packet (uint key)
+{
+#ifdef DEBUG
+  spk_recv++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
+#else
+  (void) key;
 #endif
 
-  // and check if all other threads done
-  if (sf_thrds_pend == SPINN_THRD_STOP)
-  {
-    // if done initialise semaphore,
-    sf_thrds_pend = SPINN_SF_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    sf_advance_tick ();
-  }
-  else
-  {
-    // if not done report processing thread done,
-    sf_thrds_pend &= ~SPINN_THRD_STOP;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
-  }
+  // advance tick
+  spin1_schedule_callback (sb_advance_tick, 0, 0, SPINN_S_TICK_P);
 }
 // ------------------------------------------------------------------------
 
@@ -240,63 +360,92 @@ void s_net_stop_packet (uint key)
 
 
 // ------------------------------------------------------------------------
-// process LDS packet: accumulate the received partial link delta sums
+// process a backprop sync generation packet
 // ------------------------------------------------------------------------
-void s_lds_packet (uint payload)
+void s_bsgn_packet (void)
 {
 #ifdef DEBUG
-  lds_recv++;
+  bsg_recv++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
 #endif
 
-  // add the received value to the total so far,
-  s_lds_part += (lds_t) payload;
+  // update count of sync packets,
+  s_bsgn_arrived++;
 
-  // increment the count of partial link delta sums arrived,
-  s_lds_arrived++;
-
-  // check whether all the partial sums have arrived
-  if (s_lds_arrived == scfg.lds_expected)
+  // and check if all expected packets arrived
+  if (s_bsgn_arrived == scfg.bsgn_expected)
   {
-    // broadcast (first subgroup) or relay (all others) lds value
-    while (!spin1_send_mc_packet (ldsKey, s_lds_part, WITH_PAYLOAD));
+    // check if all other threads done
+    if (sb_thrds_pend == SPINN_THRD_BSGN)
+    {
+#ifdef DEBUG
+      // report processing thread done,
+      sb_thrds_pend = 0;
+#endif
+
+      // report backprop sync generation ready
+      while (!spin1_trigger_user_event (bpsKey, 0));
 
 #ifdef DEBUG
-    pkt_sent++;
-    lds_sent++;
+      bsg_sent++;
 #endif
-
-    // prepare for next epoch
-    s_lds_part = 0;
-    s_lds_arrived = 0;
-
-    // access thread semaphore with interrupts disabled
-    uint cpsr = spin1_int_disable ();
-
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-    if (!(sb_thrds_pend & SPINN_THRD_LDSA))
-      wrng_cth++;
-#endif
-
-    // check if all other threads done
-    if (sb_thrds_pend == SPINN_THRD_LDSA)
-    {
-      // if done initialise semaphore
-      sb_thrds_pend = SPINN_SB_THRDS;
-
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
-
-      // and advance tick
-      sb_advance_tick ();
     }
     else
     {
-      // if not done report processing thread done,
-      sb_thrds_pend &= ~SPINN_THRD_LDSA;
-
-      // and restore interrupts after flag access
-      spin1_mode_restore (cpsr);
+      // report sync thread done
+      sb_thrds_pend &= ~SPINN_THRD_BSGN;
     }
   }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a forward sync generation packet
+// ------------------------------------------------------------------------
+void s_fsgn_packet (void)
+{
+#ifdef DEBUG
+  fsg_recv++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
+#endif
+
+  // update count of forward sync generation packets,
+  s_fsgn_arrived++;
+
+  // and check if all expected packets arrived
+  if (s_fsgn_arrived == scfg.fsgn_expected)
+  {
+    // report forward sync generation ready
+    while (!spin1_trigger_user_event (fsgKey, 0));
+
+#ifdef DEBUG
+    fsg_sent++;
+#endif
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void s_dlrv_packet (void)
+{
+  // restart tick
+  spin1_schedule_callback (tick_init, SPINN_RESTART, 0, SPINN_S_TICK_P);
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// send a control packet - used in FIQ callbacks
+// ------------------------------------------------------------------------
+void s_sendControlPacket (uint key, uint unused)
+{
+  (void) unused;
+
+  // send control packet - no payload
+  while (!spin1_send_mc_packet(key, 0, NO_PAYLOAD));
 }
 // ------------------------------------------------------------------------

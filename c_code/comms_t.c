@@ -36,22 +36,17 @@
 // includes functions to transfer data between DTCM and SDRAM
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
-// initial handling of received packets
-// (FORWARD, BACKPROP, criterion, stop and net_stop types)
+// process data packet
 // ------------------------------------------------------------------------
-void t_receivePacket (uint key, uint payload)
+void t_receiveDataPacket (uint key, uint payload)
 {
-#ifdef DEBUG
-  pkt_recv++;
-#endif
-
   // check packet phase,
   uint ph = (key & SPINN_PHASE_MASK) >> SPINN_PHASE_SHIFT;
 
   // BACKPROP-phase packets are handled immediately
   if (ph == SPINN_BACKPROP)
   {
-    w_handleBKPPacket (key, payload);
+    t_handleBKPPacket (key, payload);
     return;
   }
 
@@ -84,25 +79,105 @@ void t_receivePacket (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
-// handle BACKPROP-phase packets
-// (BACKPROP type)
+// process control packet
 // ------------------------------------------------------------------------
-void w_handleBKPPacket (uint key, uint payload)
+void t_receiveControlPacket (uint key, uint unused)
 {
-#ifdef DEBUG
+  (void) unused;
+
   // check packet type,
   uint pkt_type = key & SPINN_TYPE_MASK;
 
-  // and report unexpected packet type
-  if (pkt_type != SPINN_DATA_KEY)
+  // process forward sync gen packet,
+  if (pkt_type == SPINN_FSGN_KEY)
   {
-    stage_done (SPINN_UNXPD_PKT, key);
+    t_fsgn_packet ();
     return;
   }
+
+  // process backprop sync generation packet,
+  if (pkt_type == SPINN_BSGN_KEY)
+  {
+    t_bsgn_packet ();
+    return;
+  }
+
+  // process criterion packet,
+  if (pkt_type == SPINN_CRIT_KEY)
+  {
+    t_criterion_packet (key);
+    return;
+  }
+
+  // process tick stop packet,
+  if (pkt_type == SPINN_STOP_KEY)
+  {
+    t_stop_packet (key);
+    return;
+  }
+
+  // process backprop sync packet,
+  if (pkt_type == SPINN_SYNC_KEY)
+  {
+    t_sync_packet (key);
+    return;
+  }
+
+  // process deadlock recovery packet,
+  if (pkt_type == SPINN_DLRV_KEY)
+  {
+#ifdef DEBUG
+    dlr_recv++;
 #endif
 
+    if (key & SPINN_ABRT_MASK)
+    {
+      // report timeout error
+      stage_done (SPINN_TIMEOUT_EXIT, 0);
+    }
+    else
+    {
+      t_dlrv_packet ();
+    }
+
+    return;
+  }
+
+  // process network stop packet,
+  if (pkt_type == SPINN_STPN_KEY)
+  {
+    t_net_stop_packet (key);
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// handle BACKPROP-phase packets
+// (BACKPROP type)
+// ------------------------------------------------------------------------
+void t_handleBKPPacket (uint key, uint payload)
+{
+  // check packet type,
+  uint pkt_type = key & SPINN_TYPE_MASK;
+
   // process BACKPROP data packet,
-  t_backprop_packet (key, payload);
+  if (pkt_type == SPINN_DATA_KEY)
+  {
+    t_backprop_packet (key, payload);
+    return;
+  }
+
+#ifdef DEBUG
+  // or report unexpected packet type
+  stage_done (SPINN_UNXPD_PKT, key);
+#endif
 }
 // ------------------------------------------------------------------------
 
@@ -138,24 +213,6 @@ void t_processFWDQueue (uint unused0, uint unused1)
       tf_process (key, payload);
     }
 
-    // or process criterion packet,
-    else if (pkt_type == SPINN_CRIT_KEY)
-    {
-      t_criterion_packet (key);
-    }
-
-    // or process tick stop packet,
-    else if (pkt_type == SPINN_STOP_KEY)
-    {
-      t_stop_packet (key);
-    }
-
-    // or process network stop packet,
-    else if (pkt_type == SPINN_STPN_KEY)
-    {
-      t_net_stop_packet (key);
-    }
-
 #ifdef DEBUG
     // or report unexpected packet type,
     else
@@ -187,7 +244,10 @@ void t_criterion_packet (uint key)
 #endif
 
   // partial criterion value arrived,
-  tf_crit_prev = tf_crit_prev && (key & SPINN_STPD_MASK);
+  //NOTE: be careful with variable size
+  uchar crit_recv = (key & SPINN_CRIT_MASK) ? 1 : 0;
+  
+  tf_crit_prev = tf_crit_prev && crit_recv;
 
   // update scoreboard,
   tf_crit_arrived++;
@@ -195,40 +255,69 @@ void t_criterion_packet (uint key)
   // and check if all criterion packets arrived
   if (tf_crit_arrived == tcfg.crit_expected)
   {
-    // initialise scoreboard for next tick,
-    tf_crit_arrived = 0;
-
-    // access flag with interrupts disabled,
-    uint cpsr = spin1_int_disable ();
-
-    // and check if updated criterion value can be forwarded
-    if (tf_crit_rdy)
+    // check if all other threads are done
+    if (tf_thrds_pend == SPINN_THRD_CRIT)
     {
-      // initialise flag,
-      tf_crit_rdy = 0;
+#ifdef DEBUG
+      // report thread done
+      tf_thrds_pend = 0;
+#endif
 
-      // restore interrupts after flag access,
-      spin1_mode_restore (cpsr);
-
-      // send stop packet,
-      tf_send_stop ();
+      // send criterion/stop packet,
+      send_stop_crit ();
 
       // and advance tick if last_output_group
       //NOTE: last output group does not get a tick stop packet
       // so it's ready to advance tick
       if (tcfg.is_last_output)
       {
-        tf_advance_tick ();
+        spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_T_TICK_P);
       }
     }
     else
     {
-      // flag ready to forward criterion,
-      tf_crit_rdy = 1;
-
-      // and restore interrupts after flag access
-      spin1_mode_restore (cpsr);
+      // report thread done
+      tf_thrds_pend &= ~SPINN_THRD_CRIT;
     }
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
+// process a forward sync generation packet
+// ------------------------------------------------------------------------
+void t_fsgn_packet (void)
+{
+#ifdef DEBUG
+  fsg_recv++;
+  if (phase == SPINN_BACKPROP)
+    wrng_fph++;
+#endif
+
+  // check if all other threads are done
+  if (tf_thrds_pend == SPINN_THRD_FSGN)
+  {
+#ifdef DEBUG
+    // report thread done
+    tf_thrds_pend = 0;
+#endif
+
+    // send criterion/stop packet,
+    send_stop_crit();
+
+    // and advance tick if last_output_group
+    //NOTE: last output group does not get a tick stop packet
+    // so it's ready to advance tick
+    if (tcfg.is_last_output)
+    {
+      spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_T_TICK_P);
+    }
+  }
+  else
+  {
+    // report thread done
+    tf_thrds_pend &= ~SPINN_THRD_FSGN;
   }
 }
 // ------------------------------------------------------------------------
@@ -241,39 +330,37 @@ void t_stop_packet (uint key)
 {
 #ifdef DEBUG
   stp_recv++;
+  if (phase == SPINN_BACKPROP) wrng_fph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
 #endif
 
-  // tick stop decision arrived,
-  tick_stop = key & SPINN_STPD_MASK;
+  // get tick stop decision,
+  //NOTE: be careful with variable size
+  tick_stop = (key & SPINN_STOP_MASK) ? 1 : 0;
 
-  // access thread semaphore with interrupts disabled,
-  uint cpsr = spin1_int_disable ();
+  // and advance tick
+  spin1_schedule_callback (tf_advance_tick, 0, 0, SPINN_T_TICK_P);
+}
+// ------------------------------------------------------------------------
 
-#if defined(DEBUG) && defined(DEBUG_THRDS)
-  if (!(tf_thrds_pend & SPINN_THRD_STOP))
-    wrng_sth++;
+
+// ------------------------------------------------------------------------
+// process a backprop sync packet
+// ------------------------------------------------------------------------
+void t_sync_packet (uint key)
+{
+#ifdef DEBUG
+  spk_recv++;
+  if (phase == SPINN_FORWARD) wrng_bph++;
+  uint tick_recv = key & SPINN_TICK_MASK;
+  if (tick_recv != tick) wrng_pth++;
+#else
+  (void) key;
 #endif
 
-  // and check if all other threads done
-  if (tf_thrds_pend == SPINN_THRD_STOP)
-  {
-    // initialise semaphore,
-    tf_thrds_pend = SPINN_TF_THRDS;
-
-    // restore interrupts after semaphore access,
-    spin1_mode_restore (cpsr);
-
-    // and advance tick
-    tf_advance_tick ();
-  }
-  else
-  {
-    // if not done report stop thread done,
-    tf_thrds_pend &= ~SPINN_THRD_STOP;
-
-    // and restore interrupts after semaphore access
-    spin1_mode_restore (cpsr);
-  }
+  // advance tick
+  spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
 }
 // ------------------------------------------------------------------------
 
@@ -322,6 +409,23 @@ void t_net_stop_packet (uint key)
 
 
 // ------------------------------------------------------------------------
+// process a deadlock recovery packet
+// ------------------------------------------------------------------------
+void t_dlrv_packet (void)
+{
+  // prepare to restart tick,
+  spin1_schedule_callback (tick_init, SPINN_RESTART, 0, SPINN_T_TICK_P);
+
+  // and trigger computation
+  if (phase == SPINN_BACKPROP)
+  {
+    spin1_schedule_callback (tb_process, 0, 0, SPINN_TB_PROCESS_P);
+  }
+}
+// ------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------
 // process a BACKPROP data packet
 // ------------------------------------------------------------------------
 void t_backprop_packet (uint key, uint payload)
@@ -329,7 +433,7 @@ void t_backprop_packet (uint key, uint payload)
 #ifdef DEBUG
   recv_bkp++;
   if (phase == SPINN_FORWARD)
-    wrng_phs++;
+    wrng_bph++;
 #endif
 
   // get error index: mask out phase, core and block data,
@@ -344,12 +448,6 @@ void t_backprop_packet (uint key, uint payload)
   // if all expected errors have arrived may move to next tick
   if (tb_arrived == tcfg.num_units)
   {
-    // initialise arrival scoreboard for next tick,
-    tb_arrived = 0;
-
-    // update pointer to received errors,
-    tb_comms = 1 - tb_comms;
-
 #if defined(DEBUG) && defined(DEBUG_THRDS)
     if (!(tb_thrds_pend & SPINN_THRD_COMS))
       wrng_cth++;
@@ -358,15 +456,29 @@ void t_backprop_packet (uint key, uint payload)
     // and check if all other threads are done,
     if (tb_thrds_pend == SPINN_THRD_COMS)
     {
-      // if done initialise thread semaphore,
-      tb_thrds_pend = SPINN_TB_THRDS;
+#ifdef DEBUG
+      // report comms thread done
+      tb_thrds_pend = 0;
+#endif
+
+      // send backprop sync packet to allow next tick to start,
+      send_sync ();
+
+#ifdef DEBUG
+      if (tcfg.is_last_output) spk_sent++;
+      else bsg_sent++;
+#endif
 
       // and advance tick
-      spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_TB_TICK_P);
+      //NOTE: last t core does *not* get a sync packet
+      if (tcfg.is_last_output)
+      {
+        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
+      }
     }
     else
     {
-      // if not done report comms thread done
+      // report comms thread done
       tb_thrds_pend &= ~SPINN_THRD_COMS;
     }
   }
@@ -375,186 +487,71 @@ void t_backprop_packet (uint key, uint payload)
 
 
 // ------------------------------------------------------------------------
-// in the FORWARD phase the convergence criterion may require the simulation to
-// stop before the maximum time is reached. This routine sends a broadcast
-// message to communicate the final decision if the criterion has been reached
-// across all the output groups to all the cores in the simulation
+// process a bakprop sync generation packet
 // ------------------------------------------------------------------------
-void tf_send_stop (void)
+void t_bsgn_packet (void)
 {
-#ifdef TRACE
-  io_printf (IO_BUF, "tf_send_stop\n");
+#ifdef DEBUG
+  bsg_recv++;
+  if (phase == SPINN_FORWARD)
+  {
+    wrng_bph++;
+  }
 #endif
 
-  // "aggregate" criteria,
-  tf_stop_crit = tf_stop_crit && tf_crit_prev;
+  // update scoreboard,
+  tb_bsgn_arrived++;
 
-  // initialise previous value,
-  //TODO: should this be done in critical section?
-  tf_crit_prev = TRUE;
-
-  // make stop decision,
-  if (tcfg.is_last_output)
+  // and check if all backprop sync gen packets arrived
+  if (tb_bsgn_arrived == tb_bsgn_expected)
   {
-    tf_group_crit = tf_stop_crit;
-
-    if (!xcfg.training)
+    // check if all other threads done
+    if (tb_thrds_pend == SPINN_THRD_BSGN)
     {
-      t_test_results.examples_correct += tf_stop_crit && (ev_tick >=min_ticks);
-    }
+#ifdef DEBUG
+      // report sync thread done
+      tb_thrds_pend = 0;
+#endif
 
-    tf_stop_crit = (ev_tick >= max_ticks)
-                     || (tick == ncfg.global_max_ticks - 1)
-                     || (tf_stop_crit && (ev_tick >= min_ticks));
-    tick_stop = tf_stop_crit;
-  }
-
-  // FORWARD aggregated criterion,
-  while (!spin1_send_mc_packet ((tf_stop_key | tf_stop_crit),
-                                 0,
-                                 NO_PAYLOAD
-                               )
-        );
+      // send backprop sync packet to allow next tick to start,
+      send_sync ();
 
 #ifdef DEBUG
-  pkt_sent++;
-  if (tcfg.is_last_output)
-  {
-    stp_sent++;
+      if (tcfg.is_last_output)
+      {
+        spk_sent++;
+      }
+      else
+      {
+        bsg_sent++;
+      }
+#endif
+
+      // and advance tick
+      //NOTE: last t core does *not* get a sync packet
+      if (tcfg.is_last_output)
+      {
+        spin1_schedule_callback (tb_advance_tick, 0, 0, SPINN_T_TICK_P);
+      }
+    }
+    else
+    {
+      // report sync thread done
+      tb_thrds_pend &= ~SPINN_THRD_BSGN;
+    }
   }
-  else
-  {
-    crt_sent++;
-  }
-#endif
-
-  // and initialise criterion for next tick
-  tf_stop_crit = TRUE;
 }
 // ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
-// stores the net of the specified unit for the current tick
+// send a control packet - used in FIQ callbacks
 // ------------------------------------------------------------------------
-void store_net (uint inx)
+void t_sendControlPacket (uint key, uint unused)
 {
-#ifdef TRACE
-  io_printf (IO_BUF, "store_net\n");
-#endif
+  (void) unused;
 
-  t_net_history[(tick * tcfg.num_units) + inx] = t_nets[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the net of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_net (uint inx, uint tick)
-{
-#ifdef TRACE
-    io_printf (IO_BUF, "restore_net\n");
-#endif
-
-  t_nets[inx] = t_net_history[((tick * tcfg.num_units) + inx)];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores the output of the specified unit for the current tick
-// ------------------------------------------------------------------------
-void store_output (uint inx)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "store_output\n");
-#endif
-
-  t_output_history[(tick * tcfg.num_units) + inx] = t_outputs[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the output of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_output (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_output\n");
-#endif
-
-  t_outputs[inx] = t_output_history[((tick * tcfg.num_units) + inx)];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// stores the output derivative of the specified unit for the current tick
-// ------------------------------------------------------------------------
-void store_output_deriv (uint inx)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "store_output_deriv\n");
-#endif
-
-  t_output_deriv_history[(tick * tcfg.num_units) + inx] = t_output_deriv[inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// restores the output derivative of the specified unit for the requested tick
-// ------------------------------------------------------------------------
-void restore_output_deriv (uint inx, uint tick)
-{
-#ifdef TRACE
-  io_printf (IO_BUF, "restore_output_deriv\n");
-#endif
-
-  t_output_deriv[inx] =
-    t_output_deriv_history[(tick * tcfg.num_units) + inx];
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// record outputs - to be picked up by the host
-// ------------------------------------------------------------------------
-void record_outputs (void)
-{
-  // cast outputs to the right size,
-  short_activ_t outputs[tcfg.num_units];
-
-  for (uint i = 0; i < tcfg.num_units; i++)
-  {
-    outputs[i] = (short_activ_t) (t_outputs[i]
-            >> (SPINN_ACTIV_SHIFT - SPINN_SHORT_ACTIV_SHIFT));
-  }
-
-  // record outputs,
-  recording_record(OUTPUTS,
-      (void *) outputs, tcfg.num_units * sizeof (short_activ_t)
-  );
-}
-// ------------------------------------------------------------------------
-
-
-// ------------------------------------------------------------------------
-// record tick data - to be picked up by the host
-// ------------------------------------------------------------------------
-void record_tick_data (void)
-{
-  tick_record_t tick_data;
-
-  // prepare tick data,
-  tick_data.epoch   = epoch;
-  tick_data.example = example_cnt;
-  tick_data.event   = evt;
-  tick_data.tick    = tick;
-
-  // and record it
-  recording_record(TICK_DATA, (void *) &tick_data, sizeof (tick_record_t));
+  // send control packet - no payload
+  while (!spin1_send_mc_packet(key, 0, NO_PAYLOAD));
 }
 // ------------------------------------------------------------------------
