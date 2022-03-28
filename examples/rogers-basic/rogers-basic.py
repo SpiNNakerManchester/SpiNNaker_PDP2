@@ -79,7 +79,7 @@ set1 = rogers.example_set (label = "set1")
 set1.read_Lens_examples_file ("rogers-basic.ex")
 
 # set network parameters
-rogers.set (num_updates = 10,
+rogers.set (num_presentations = 10,
               learning_rate = 0.005,
               weight_decay = 0.0002,
               momentum = 0.0,

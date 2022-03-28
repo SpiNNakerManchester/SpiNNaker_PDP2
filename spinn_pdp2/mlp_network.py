@@ -57,7 +57,7 @@ class MLPNetwork():
         self._weight_decay     = MLPConstants.DEF_WEIGHT_DECAY
         self._momentum         = MLPConstants.DEF_MOMENTUM
         self._update_function  = MLPConstants.DEF_UPDATE_FUNC
-        self._num_updates      = MLPConstants.DEF_NUM_UPDATES
+        self._num_presntns     = MLPConstants.DEF_NUM_UPDATES
         self._num_examples     = None
 
         # default stage parameter values
@@ -248,7 +248,7 @@ class MLPNetwork():
         if self._stg_epochs is not None:
             num_epochs = self._stg_epochs
         else:
-            num_epochs = self._num_updates
+            num_epochs = round((self._ex_set.num_examples * self._num_presntns) /num_examples)
 
         return struct.pack("<7Bx2I",
                            self._stage_id,
@@ -414,7 +414,7 @@ class MLPNetwork():
 
 
     def set (self,
-             num_updates      = None,
+             num_presentations = None,
              train_group_crit = None,
              test_group_crit  = None,
              learning_rate    = None,
@@ -437,9 +437,9 @@ class MLPNetwork():
         :type weight_decay: float
         :type momentum: float
         """
-        if num_updates is not None:
-            print (f"setting num_updates to {num_updates}")
-            self._num_updates = num_updates
+        if num_presentations is not None:
+            print (f"setting num_presentations to {num_presentations}")
+            self._num_presntns = num_presentations
 
         if train_group_crit is not None:
             print (f"setting train_group_crit to {train_group_crit}")

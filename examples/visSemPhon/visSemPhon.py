@@ -80,7 +80,7 @@ visSemPhon.link (Visual, Semantic)
 visSemPhon.link (Visual, Semantic_H)
 
 # set network parameters
-visSemPhon.set (num_updates = 10000,
+visSemPhon.set (num_presentations = 10000,
     learning_rate = 0.05,
     momentum = 0.9,
     train_group_crit = 0.0,
