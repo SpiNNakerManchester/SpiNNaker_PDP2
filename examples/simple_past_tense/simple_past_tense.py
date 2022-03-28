@@ -62,7 +62,7 @@ set1.set (grace_time = 1.0,
           )
 
 # set network parameters
-simple_past_tense.set (num_updates = 10,
+simple_past_tense.set (num_presentations = 10,
                test_group_crit = 0.2
                )
 
