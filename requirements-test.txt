@@ -24,5 +24,4 @@ pytest-forked
 pytest-progress
 sphinx >= 2
 testfixtures
-statistics
 mock
