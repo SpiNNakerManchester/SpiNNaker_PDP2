@@ -14,7 +14,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from spinnaker_testbase import ScriptChecker
-from unittest import SkipTest  # pylint: disable=unused-import
 
 
 class TestScripts(ScriptChecker):
@@ -28,6 +27,11 @@ class TestScripts(ScriptChecker):
     Then the new file can be added to github for reference only.
     """
 # flake8: noqa
+
+    def test_examples_simple_past_tense_simple_past_tense(self):
+        from spinnman.exceptions import SpinnmanTimeoutException
+        from spinnman.exceptions import SpiNNManCoresNotInStateException
+        self.check_script("examples/simple_past_tense/simple_past_tense.py", skip_exceptions=[SpinnmanTimeoutException,SpiNNManCoresNotInStateException])
 
     def test_examples_rogers_basic_rogers_basic(self):
         self.check_script("examples/rogers-basic/rogers-basic.py")
