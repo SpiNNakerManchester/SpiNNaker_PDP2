@@ -22,8 +22,15 @@ class ScriptBuilder(RootScriptBuilder):
     """
 
     def build_pdp2_scripts(self):
+        #  see https:/github.com/SpiNNakerManchester/SpiNNaker_PDP2/issues/60
+        skip_exceptions = {}
+        skip_exceptions["simple_past_tense.py"] = [
+            "from spinnman.exceptions import SpinnmanTimeoutException",
+            "from spinnman.exceptions import SpiNNManCoresNotInStateException"]
+
         # create_test_scripts supports test that are too long or exceptions
-        self.create_test_scripts(["examples"])
+        self.create_test_scripts(["examples"],
+                                 skip_exceptions=skip_exceptions)
 
 
 if __name__ == '__main__':
