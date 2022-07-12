@@ -259,14 +259,13 @@ class SumVertex(
 
 
     @overrides (MachineVertex.get_n_keys_for_partition)
-    def get_n_keys_for_partition (self, _partition):
+    def get_n_keys_for_partition (self, partition_id):
         return MLPConstants.KEY_SPACE_SIZE
 
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
     def generate_machine_data_specification(
             self, spec, placement, iptags, reverse_iptags):
-
         routing_info = FecDataView.get_routing_infos()
         # Generate the system data region for simulation.c requirements
         generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)

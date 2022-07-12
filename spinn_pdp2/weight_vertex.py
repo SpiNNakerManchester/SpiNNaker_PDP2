@@ -270,7 +270,7 @@ class WeightVertex(
 
 
     @overrides (MachineVertex.get_n_keys_for_partition)
-    def get_n_keys_for_partition (self, _partition):
+    def get_n_keys_for_partition (self, partition_id):
         return MLPConstants.KEY_SPACE_SIZE
 
 
