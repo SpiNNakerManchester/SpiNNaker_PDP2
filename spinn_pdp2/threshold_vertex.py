@@ -520,7 +520,7 @@ class ThresholdVertex(
                 region = MLPRegions.REC_INFO.value,
                 size = self._REC_INFO_BYTES
                 )
-
+            data_n_steps = FecDataView.get_max_run_time_steps()
             # write the actual recording channel sizes for a stage
             _sizes = [data_n_steps * sz for sz in self.VAR_CHANNEL_SIZES]
             _sizes.extend([sz for sz in self.CONST_CHANNEL_SIZES])
