@@ -19,7 +19,7 @@ import struct
 import spinnaker_graph_front_end as gfe
 
 from pacman.model.graphs.machine import MachineEdge
-
+from spinn_front_end_common.data import FecDataView
 from spinn_pdp2.input_vertex     import InputVertex
 from spinn_pdp2.sum_vertex       import SumVertexTree
 from spinn_pdp2.threshold_vertex import ThresholdVertex
@@ -648,7 +648,7 @@ class MLPNetwork():
                 ftv = g.t_vertex[0]
                 try:
                     rec_tick_data = ftv.read (
-                        gfe.placements().get_placement_of_vertex (ftv),
+                        FecDataView.get_placement_of_vertex(ftv),
                         gfe.buffer_manager(), MLPExtraRecordings.TICK_DATA.value
                         )
                 except Exception as err:
@@ -666,7 +666,7 @@ class MLPNetwork():
                         gtv = g.t_vertex[s]
                         try:
                             rec_outputs[g.write_blk].append (gtv.read (
-                                gfe.placements().get_placement_of_vertex (gtv),
+                                FecDataView.get_placement_of_vertex(gtv),
                                 gfe.buffer_manager(),
                                 MLPVarSizeRecordings.OUTPUTS.value)
                                 )
@@ -801,7 +801,7 @@ class MLPNetwork():
             ltv = g.t_vertex[g.subgroups - 1]
             try:
                 rec_test_results = ltv.read (
-                    gfe.placements().get_placement_of_vertex (ltv),
+                    FecDataView.get_placement_of_vertex(ltv),
                     gfe.buffer_manager(), MLPConstSizeRecordings.TEST_RESULTS.value
                     )
             except Exception as err:
