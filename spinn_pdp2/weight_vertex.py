@@ -18,7 +18,7 @@ import struct
 from data_specification.enums.data_type import DataType
 
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
-from pacman.model.resources.resource_container import ConstantSDRAM
+from pacman.model.resources import ConstantSDRAM
 
 from spinn_utilities.overrides import overrides
 
