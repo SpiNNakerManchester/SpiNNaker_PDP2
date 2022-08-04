@@ -1,4 +1,4 @@
-# Copyright (c) 2015-2021 The University of Manchester
+# Copyright (c) 2015-2022 The University of Manchester
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,7 @@ import struct
 from data_specification.enums.data_type import DataType
 
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
-from pacman.model.resources.resource_container \
-    import ResourceContainer, ConstantSDRAM
+from pacman.model.resources import ConstantSDRAM
 
 from spinn_utilities.overrides import overrides
 
@@ -261,12 +260,9 @@ class WeightVertex(
                             )
 
     @property
-    @overrides (MachineVertex.resources_required)
-    def resources_required (self):
-        resources = ResourceContainer (
-            sdram = ConstantSDRAM(SYSTEM_BYTES_REQUIREMENT + self._sdram_usage)
-            )
-        return resources
+    @overrides (MachineVertex.sdram_required)
+    def sdram_required (self):
+        return ConstantSDRAM(SYSTEM_BYTES_REQUIREMENT + self._sdram_usage)
 
 
     @overrides (MachineVertex.get_n_keys_for_partition)

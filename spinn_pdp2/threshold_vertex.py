@@ -1,4 +1,4 @@
-# Copyright (c) 2015-2021 The University of Manchester
+# Copyright (c) 2015-2022 The University of Manchester
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@ import struct
 from data_specification.enums.data_type import DataType
 
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
-from pacman.model.resources import ResourceContainer, VariableSDRAM, ConstantSDRAM
+from pacman.model.resources import VariableSDRAM, ConstantSDRAM
 
 from spinn_utilities.overrides import overrides
 
@@ -342,17 +342,12 @@ class ThresholdVertex(
                             )
 
     @property
-    @overrides (MachineVertex.resources_required)
-    def resources_required (self):
+    @overrides (MachineVertex.sdram_required)
+    def sdram_required (self):
         if self.group.output_grp:
-            resources = ResourceContainer (
-                sdram = VariableSDRAM(self._sdram_fixed, self._sdram_variable)
-                )
+             return VariableSDRAM(self._sdram_fixed, self._sdram_variable)
         else:
-            resources = ResourceContainer (
-                sdram = ConstantSDRAM(self._sdram_fixed)
-                )
-        return resources
+            return ConstantSDRAM(self._sdram_fixed)
 
 
     @overrides (MachineVertex.get_n_keys_for_partition)
