@@ -67,8 +67,7 @@ class SumVertex(
 
         super(SumVertex, self).__init__(
             label = f"s_core{self.group.id}/{self.subgroup}/{self.idx}",
-            binary_name = "sum.aplx",
-            constraints = None)
+            binary_name = "sum.aplx")
 
         self._stage = 0
 

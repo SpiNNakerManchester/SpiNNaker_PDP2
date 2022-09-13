@@ -64,8 +64,7 @@ class WeightVertex(
         super(WeightVertex, self).__init__(
             label = (f"w_core{self.group.id}/{self.subgroup}"
                      f"_{self.from_group.id}/{self.from_subgroup}"),
-            binary_name = "weight.aplx",
-            constraints = None)
+            binary_name = "weight.aplx")
 
         self._stage = 0
 
