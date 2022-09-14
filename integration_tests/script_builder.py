@@ -27,6 +27,9 @@ class ScriptBuilder(RootScriptBuilder):
         skip_exceptions["simple_past_tense.py"] = [
             "from spinnman.exceptions import SpinnmanTimeoutException",
             "from spinnman.exceptions import SpiNNManCoresNotInStateException"]
+        skip_exceptions["visSemPhon.py"] = [
+            "from spinnman.exceptions import SpinnmanTimeoutException",
+            "from spinnman.exceptions import SpiNNManCoresNotInStateException"]
 
         # create_test_scripts supports test that are too long or exceptions
         self.create_test_scripts(["examples"],
