@@ -40,4 +40,6 @@ class TestScripts(ScriptChecker):
         self.check_script("examples/rand10x40/rand10x40.py")
 
     def test_examples_visSemPhon_visSemPhon(self):
-        self.check_script("examples/visSemPhon/visSemPhon.py")
+        from spinnman.exceptions import SpinnmanTimeoutException
+        from spinnman.exceptions import SpiNNManCoresNotInStateException
+        self.check_script("examples/visSemPhon/visSemPhon.py", skip_exceptions=[SpinnmanTimeoutException,SpiNNManCoresNotInStateException])
