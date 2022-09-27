@@ -68,8 +68,7 @@ class ThresholdVertex(
 
         super(ThresholdVertex, self).__init__(
             label = f"t_core{self.group.id}/{self.subgroup}",
-            binary_name = "threshold.aplx",
-            constraints = None)
+            binary_name = "threshold.aplx")
 
         self._stage = 0
 

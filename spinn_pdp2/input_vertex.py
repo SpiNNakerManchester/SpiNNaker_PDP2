@@ -59,8 +59,7 @@ class InputVertex(
 
         super(InputVertex, self).__init__(
             label = f"i_core{self.group.id}/{self.subgroup}",
-            binary_name = "input.aplx",
-            constraints = None)
+            binary_name = "input.aplx")
 
         self._stage = 0
 
