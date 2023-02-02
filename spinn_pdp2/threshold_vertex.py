@@ -366,7 +366,7 @@ class ThresholdVertex(
             placement, channel
             )
         if missing_data:
-            raise Exception("missing data!")
+            raise ValueError("missing data!")
 
         # return data as "packed" bytes
         return raw_data
