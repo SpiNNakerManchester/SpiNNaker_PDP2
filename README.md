@@ -1,3 +1,6 @@
+[![Python Build Status](https://github.com/SpiNNakerManchester/SpiNNaker_PDP2/workflows/Python%20Actions/badge.svg?branch=master)](https://github.com/SpiNNakerManchester/SpiNNaker_PDP2/actions?query=workflow%3A%22Python+Actions%22+branch%3Amaster)
+[![C Build Status](https://github.com/SpiNNakerManchester/SpiNNaker_PDP2/workflows/C%20Actions/badge.svg?branch=master)](https://github.com/SpiNNakerManchester/SpiNNaker_PDP2/actionpiNNFrontEndCommon?branch=master)
+
 PDP<sup>2</sup>: Cognitive Systems Modelling on SpiNNaker
 =========================================================
 
