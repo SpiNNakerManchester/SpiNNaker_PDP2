@@ -56,9 +56,6 @@ jobs:
       run: |
         echo "SPINN_DIRS=$PWD/spinnaker_tools" >> $GITHUB_ENV
         echo "NEURAL_MODELLING_DIRS=$PWD/neural_modelling" >> $GITHUB_ENV
-    - name: Install SpiNNUtils
-      run: python setup.py install
-      working-directory: SpiNNUtils
 
     #- name: Lint C code using Vera++
     #  uses: ./support/actions/vera
