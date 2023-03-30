@@ -291,6 +291,17 @@ void var_init (uint reset_examples)
   {
     example_inx = 0;
   }
+  else
+  {
+    if (xcfg.training)
+    {
+      example_inx = train_cnt;
+    }
+    else
+    {
+      example_inx = test_cnt;
+    }
+  }
 
   // initialise example counter
   example_cnt = 0;

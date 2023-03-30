@@ -421,6 +421,16 @@ void t_advance_example (void)
     // prepare for next epoch,
     epoch++;
 
+    // record the last example presented
+    if (xcfg.training)
+    {
+      train_cnt = example_inx;
+    }
+    else
+    {
+      test_cnt = example_inx;
+    }
+
     // check if stage done,
     if (tcfg.is_last_output)
     {

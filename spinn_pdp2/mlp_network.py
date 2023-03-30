@@ -1096,7 +1096,8 @@ class MLPNetwork():
     def train (self,
                update_function = None,
                num_examples = None,
-               num_updates = None
+               num_updates = None,
+	       reset_examples = False
               ):
         """ do one stage in train mode
         """
@@ -1112,7 +1113,7 @@ class MLPNetwork():
         self._stg_examples = num_examples
 
         # always reset the example index at the start of training stage 
-        self._stg_reset = True
+        self._stg_reset = reset_examples
 
         self._training = 1
 

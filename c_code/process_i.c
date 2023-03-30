@@ -287,6 +287,16 @@ void i_advance_example (void)
     // prepare for next epoch,
     epoch++;
 
+    // record the last example presented
+    if (xcfg.training)
+    {
+      train_cnt = example_inx;
+    }
+    else
+    {
+      test_cnt = example_inx;
+    }
+
     // access network stop flag with interrupts disabled,
     uint cpsr = spin1_int_disable ();
 
