@@ -526,9 +526,9 @@ class MLPNetwork():
           for each unit in group:
             for each incoming link to unit:
               <R link-weight>
-        	  if num-values >= 2:
+              if num-values >= 2:
                 <R link-lastWeightDelta>
-        	  if num-values >= 3:
+              if num-values >= 3:
                 <R link-lastValue>
         """
         # check if file exists
@@ -734,7 +734,7 @@ class MLPNetwork():
                         for ex in range (example):
                             evt_inx += len (self._ex_set.examples[ex].events)
 
-                        # and prepare for next 
+                        # and prepare for next
                         current_example = example
 
                     # compute index into target array
@@ -931,7 +931,7 @@ class MLPNetwork():
                     from_svt = from_grp.s_vertex[from_sgrp]
                     from_tv  = from_grp.t_vertex[from_sgrp]
 
-                    # sum tree leaf to connect to depends on group/subgroup 
+                    # sum tree leaf to connect to depends on group/subgroup
                     svt_leaf      = svt.leaf (from_grp, from_sgrp)
                     from_svt_leaf = from_svt.leaf (grp, sgrp)
 
@@ -1027,7 +1027,7 @@ class MLPNetwork():
                         svt.root.lds_link
                         )
 
-                # t to t criterion link 
+                # t to t criterion link
                 # intra-group criterion link to last subgroup t
                 if sgrp < (grp.subgroups - 1):
                     gfe.add_machine_edge_instance (
@@ -1111,7 +1111,7 @@ class MLPNetwork():
         # sort the number of examples at configuration time
         self._stg_examples = num_examples
 
-        # always reset the example index at the start of training stage 
+        # always reset the example index at the start of training stage
         self._stg_reset = True
 
         self._training = 1
@@ -1211,7 +1211,14 @@ class MLPNetwork():
 
         # initialise recording buffers for new stage run
         if self._stage_id != 0:
-            gfe.buffer_manager().reset()
+            for group in self.groups:
+                for vtx in group.t_vertex:
+                    buff_man = gfe.buffer_manager()
+                    pl = FecDataView().get_placement_of_vertex(vtx)
+                    buff_man.clear_recorded_data(
+                        pl.x, pl.y, pl.p, MLPExtraRecordings.TICK_DATA.value)
+                    buff_man.clear_recorded_data(
+                        pl.x, pl.y, pl.p, MLPExtraRecordings.OUTPUT_DATA.value)
 
         # run stage
         gfe.run_until_complete (self._stage_id)
