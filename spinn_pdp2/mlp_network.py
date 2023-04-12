@@ -1211,14 +1211,18 @@ class MLPNetwork():
 
         # initialise recording buffers for new stage run
         if self._stage_id != 0:
+            buff_man = gfe.buffer_manager()
             for group in self.groups:
-                for vtx in group.t_vertex:
-                    buff_man = gfe.buffer_manager()
-                    pl = FecDataView().get_placement_of_vertex(vtx)
-                    buff_man.clear_recorded_data(
-                        pl.x, pl.y, pl.p, MLPExtraRecordings.TICK_DATA.value)
-                    buff_man.clear_recorded_data(
-                        pl.x, pl.y, pl.p, MLPExtraRecordings.OUTPUT_DATA.value)
+                if group.output_grp:
+                    for vtx in group.t_vertex:
+                        pl = FecDataView().get_placement_of_vertex(vtx)
+                        buff_man.clear_recorded_data(
+                            pl.x, pl.y, pl.p, MLPVarSizeRecordings.OUTPUTS.value)
+                        buff_man.clear_recorded_data(
+                            pl.x, pl.y, pl.p, MLPConstSizeRecordings.TEST_RESULTS.value)
+                        if vtx._is_first_out:
+                            buff_man.clear_recorded_data(
+                                pl.x, pl.y, pl.p, MLPExtraRecordings.TICK_DATA.value)
 
         # run stage
         gfe.run_until_complete (self._stage_id)
