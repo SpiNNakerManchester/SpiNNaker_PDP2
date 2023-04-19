@@ -45,17 +45,20 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install pip, etc
       uses: ./support/actions/python-tools
+
     - name: Install Spinnaker Dependencies
-      uses: ./support/actions/checkout-spinn-deps
+      uses: ./support/actions/install-spinn-deps
       with:
         repositories: >
           SpiNNUtils SpiNNMachine SpiNNMan PACMAN DataSpecification spalloc
           SpiNNFrontEndCommon TestBase SpiNNakerGraphFrontEnd
         install: true
+
     - name: Install matplotlib
       uses: ./support/actions/install-matplotlib
+
     - name: Setup
-      uses: ./support/actions/run-setup
+      uses: ./support/actions/run-install
 
     - name: Test with pytest
       uses: ./support/actions/pytest
