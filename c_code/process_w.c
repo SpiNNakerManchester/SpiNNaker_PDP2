@@ -688,6 +688,16 @@ void w_advance_example (void)
     // prepare for next epoch,
     epoch++;
 
+    // record the last example presented
+    if (xcfg.training)
+    {
+      train_cnt = example_inx;
+    }
+    else
+    {
+      test_cnt = example_inx;
+    }
+
     // reset example count for next epoch,
     example_cnt = 0;
 

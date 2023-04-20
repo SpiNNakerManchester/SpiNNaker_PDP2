@@ -57,6 +57,8 @@ uchar        net_stop;     // network stop decision
 
 uint         epoch;        // current training iteration
 uint         example_cnt;  // example count in epoch
+uint         train_cnt;    // latest example trained
+uint         test_cnt;     // latest example tested
 uint         example_inx;  // current example index
 uint         evt;          // current event in example
 uint         num_events;   // number of events in current example

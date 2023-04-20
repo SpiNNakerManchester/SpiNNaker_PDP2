@@ -21,7 +21,12 @@ from spinn_pdp2.mlp_types   import MLPInputProcs
 # simple_past_tense
 #
 # a simple model that learns to associate the present tense of English verbs with
-# the appropriate past tense form e.g. aching-ached
+# the appropriate past tense form e.g. aching-ached. There are two example files for
+# this model - a short one with 40 items (simple_past_tense_40_items.ex) and a longer
+# containing 1868 verbs taken from the CELEX corpus (simple_past_tense_1868_items.ex).
+# Verbs are representing as strings of consonants and vowels in the form CCCVVCC-VC.
+# Each vowel or consonant is coded as a string of 24 bits using the system for coding
+# English phonetics developed by Harm (1998).
 #
 #-----------------------------------------------------------
 
@@ -52,8 +57,9 @@ simple_past_tense.link (Hidden, Output)
 # instantiate network example set
 set1 = simple_past_tense.example_set (label = "set1")
 
-# read Lens-style examples file
-set1.read_Lens_examples_file ("simple_past_tense.ex")
+# read Lens-style examples file - choose the long or the short version
+set1.read_Lens_examples_file ("simple_past_tense_40_items.ex")
+#set1.read_Lens_examples_file ("simple_past_tense_1868_items.ex")
 
 # set example set parameters
 set1.set (grace_time = 1.0,
@@ -86,14 +92,11 @@ simple_past_tense.test ()
 # generate Lens-style output file
 simple_past_tense.write_Lens_output_file ("%s_test.out" % model)
 
-# train using steepest descent
-simple_past_tense.train (update_function = MLPUpdateFuncs.UPD_STEEPEST)
-
-# generate Lens-style output file
-simple_past_tense.write_Lens_output_file ("%s_train.out" % model)
-
-# do a final test of the network
-simple_past_tense.test ()
+# do 10 loops of training using steepest descent
+for x in range (1, 11):
+  simple_past_tense.train (update_function = MLPUpdateFuncs.UPD_STEEPEST)
+  # test the network
+  simple_past_tense.test ()
 
 # generate Lens-style output file
 simple_past_tense.write_Lens_output_file ("%s_train_test.out" % model)
