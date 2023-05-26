@@ -45,6 +45,8 @@ extern uchar        net_stop;     // network stop decision
 
 extern uint         epoch;        // current training/testing iteration
 extern uint         example_cnt;  // example count in epoch
+extern uint         train_cnt;    // latest example trained
+extern uint         test_cnt;     // latest example tested
 extern uint         example_inx;  // current example index
 extern uint         evt;          // current event in example
 extern uint         max_evt;      // the last event reached in the current example
