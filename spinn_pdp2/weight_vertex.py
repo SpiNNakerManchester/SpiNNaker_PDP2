@@ -15,8 +15,6 @@
 
 import struct
 
-from data_specification.enums.data_type import DataType
-
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
 from pacman.model.resources import ConstantSDRAM
 
@@ -27,6 +25,7 @@ from spinn_front_end_common.abstract_models import \
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
 from spinn_front_end_common.data import FecDataView
+from spinn_front_end_common.interface.ds import DataType
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
 
