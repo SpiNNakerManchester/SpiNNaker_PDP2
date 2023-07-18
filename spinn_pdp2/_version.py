@@ -13,8 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__version__ = "1.0.0"
-__version_month__ = "Apr"
-__version_year__ = "2021"
-__version_day__ = "01"
-__version_name__ = "apr2021"
+__version__ = "1!7.0.0-a6"
+__version_month__ = "July"
+__version_year__ = "2023"
+__version_day__ = "18"
+__version_name__ = "Revisionist"
