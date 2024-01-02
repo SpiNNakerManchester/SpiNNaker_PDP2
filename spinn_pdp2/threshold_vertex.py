@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import struct
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 from spinn_machine.tags import IPTag, ReverseIPTag
 
@@ -568,7 +568,7 @@ class ThresholdVertex(
 
 
     @overrides(AbstractReceiveBuffersToHost.get_recorded_region_ids)
-    def get_recorded_region_ids(self) -> list[int]:
+    def get_recorded_region_ids(self) -> List[int]:
         if self.group.output_grp:
             ids = [ch.value for ch in MLPVarSizeRecordings]
             ids.extend([ch.value for ch in MLPConstSizeRecordings])
