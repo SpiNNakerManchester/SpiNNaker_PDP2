@@ -14,11 +14,15 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import struct
+from typing import Iterable, Optional
+
+from spinn_machine.tags import IPTag, ReverseIPTag
 
 import spinnaker_graph_front_end as gfe
 
 from pacman.model.graphs.machine import MachineEdge
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
+from pacman.model.placements import Placement
 from pacman.model.resources import ConstantSDRAM
 
 from spinn_utilities.overrides import overrides
@@ -28,7 +32,8 @@ from spinn_front_end_common.abstract_models import \
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
 from spinn_front_end_common.data import FecDataView
-from spinn_front_end_common.interface.ds import DataType
+from spinn_front_end_common.interface.ds import (
+    DataSpecificationGenerator, DataSpecificationReloader, DataType)
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
 
@@ -248,18 +253,20 @@ class SumVertex(
 
     @property
     @overrides (MachineVertex.sdram_required)
-    def sdram_required (self):
+    def sdram_required (self) -> ConstantSDRAM:
         return ConstantSDRAM(SYSTEM_BYTES_REQUIREMENT + self._sdram_usage)
 
 
     @overrides (MachineVertex.get_n_keys_for_partition)
-    def get_n_keys_for_partition (self, partition_id):
+    def get_n_keys_for_partition(self, partition_id: str) -> int:
         return MLPConstants.KEY_SPACE_SIZE
 
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
     def generate_machine_data_specification(
-            self, spec, placement, iptags, reverse_iptags):
+            self, spec: DataSpecificationGenerator, placement: Placement,
+            iptags: Optional[Iterable[IPTag]],
+            reverse_iptags: Optional[Iterable[ReverseIPTag]]):
         routing_info = FecDataView.get_routing_infos()
         # Generate the system data region for simulation.c requirements
         generate_steps_system_data_region(spec, MLPRegions.SYSTEM.value, self)
@@ -347,7 +354,8 @@ class SumVertex(
 
 
     @overrides(AbstractRewritesDataSpecification.regenerate_data_specification)
-    def regenerate_data_specification(self, spec, placement):
+    def regenerate_data_specification(
+            self, spec: DataSpecificationReloader, placement: Placement):
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
                                     self._STAGE_CONFIGURATION_BYTES)
@@ -362,12 +370,12 @@ class SumVertex(
 
 
     @overrides(AbstractRewritesDataSpecification.reload_required)
-    def reload_required(self):
+    def reload_required(self) -> bool:
         return True
 
 
     @overrides(AbstractRewritesDataSpecification.set_reload_required)
-    def set_reload_required(self, new_value):
+    def set_reload_required(self, new_value: bool):
         """
             TODO: not really sure what this method is used for!
         """
