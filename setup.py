@@ -14,9 +14,9 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-import distutils.dir_util
 from setuptools import setup
 import os
+import shutil
 import sys
 
 
@@ -28,8 +28,8 @@ if __name__ == '__main__':
         this_dir = os.path.dirname(os.path.abspath(__file__))
         build_dir = os.path.join(this_dir, "build")
         if os.path.isdir(build_dir):
-            distutils.dir_util.remove_tree(build_dir)
+            shutil.rmtree(build_dir)
         egg_dir = os.path.join(this_dir, "SpiNNaker_PDP2.egg-info")
         if os.path.isdir(egg_dir):
-            distutils.dir_util.remove_tree(egg_dir)
+            shutil.rmtree(egg_dir)
     setup()
