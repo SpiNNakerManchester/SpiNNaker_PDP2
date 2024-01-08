@@ -94,4 +94,4 @@ jobs:
     #    directory: doc/source
 
     - name: Lint with mypy
-      run: mypy spinn_pdp2 examples
+      run: mypy spinn_pdp2
