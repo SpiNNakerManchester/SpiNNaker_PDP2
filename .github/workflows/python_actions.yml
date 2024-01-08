@@ -91,3 +91,6 @@ jobs:
     #  uses: ./support/actions/sphinx
     #  with:
     #    directory: doc/source
+
+    - name: Lint with mypy
+      run: mypy $BASE_PKG
