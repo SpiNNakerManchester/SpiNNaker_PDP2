@@ -14,8 +14,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import struct
+from typing import Iterable, Optional
+
+from spinn_machine.tags import IPTag, ReverseIPTag
 
 from pacman.model.graphs.machine.machine_vertex import MachineVertex
+from pacman.model.placements import Placement
 from pacman.model.resources import ConstantSDRAM
 
 from spinn_utilities.overrides import overrides
@@ -25,7 +29,8 @@ from spinn_front_end_common.abstract_models import \
 from spinn_front_end_common.abstract_models.impl \
     import MachineDataSpecableVertex
 from spinn_front_end_common.data import FecDataView
-from spinn_front_end_common.interface.ds import DataType
+from spinn_front_end_common.interface.ds import (
+    DataSpecificationGenerator, DataSpecificationReloader, DataType)
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
 
@@ -193,17 +198,18 @@ class InputVertex(
 
     @property
     @overrides (MachineVertex.sdram_required)
-    def sdram_required (self):
+    def sdram_required (self) -> ConstantSDRAM:
         return ConstantSDRAM(SYSTEM_BYTES_REQUIREMENT + self._sdram_usage)
 
     @overrides (MachineVertex.get_n_keys_for_partition)
-    def get_n_keys_for_partition (self, partition_id):
+    def get_n_keys_for_partition(self, partition_id: str) -> int:
         return MLPConstants.KEY_SPACE_SIZE
-
 
     @overrides(MachineDataSpecableVertex.generate_machine_data_specification)
     def generate_machine_data_specification(
-            self, spec, placement, iptags, reverse_iptags):
+            self, spec: DataSpecificationGenerator, placement: Placement,
+            iptags: Optional[Iterable[IPTag]],
+            reverse_iptags: Optional[Iterable[ReverseIPTag]]):
         routing_info = FecDataView.get_routing_infos()
 
         # Generate the system data region for simulation.c requirements
@@ -288,12 +294,16 @@ class InputVertex(
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
         # write link keys: fwd
-        spec.write_value (routing_info.get_first_key_from_pre_vertex (
-            self, self.fwd_link), data_type = DataType.UINT32)
+        key = routing_info.get_first_key_from_pre_vertex(
+            self, self.fwd_link)
+        assert key is not None
+        spec.write_value(key, data_type=DataType.UINT32)
 
         # write link keys: bkp
-        spec.write_value (routing_info.get_first_key_from_pre_vertex (
-            self, self.bkp_link), data_type = DataType.UINT32)
+        key = routing_info.get_first_key_from_pre_vertex(
+            self, self.bkp_link)
+        assert key is not None
+        spec.write_value (key, data_type = DataType.UINT32)
 
         # write link keys: bps (padding)
         spec.write_value (0, data_type = DataType.UINT32)
@@ -321,7 +331,8 @@ class InputVertex(
 
 
     @overrides(AbstractRewritesDataSpecification.regenerate_data_specification)
-    def regenerate_data_specification(self, spec, placement):
+    def regenerate_data_specification(
+            self, spec: DataSpecificationReloader, placement: Placement):
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
                                     self._STAGE_CONFIGURATION_BYTES)
@@ -336,12 +347,12 @@ class InputVertex(
 
 
     @overrides(AbstractRewritesDataSpecification.reload_required)
-    def reload_required(self):
+    def reload_required(self) -> bool:
         return True
 
 
     @overrides(AbstractRewritesDataSpecification.set_reload_required)
-    def set_reload_required(self, new_value):
+    def set_reload_required(self, new_value: bool):
         """
             TODO: not really sure what this method is used for!
         """
