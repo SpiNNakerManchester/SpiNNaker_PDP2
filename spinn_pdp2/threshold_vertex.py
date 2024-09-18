@@ -366,9 +366,8 @@ class ThresholdVertex(
         :param channel: recording channel to be read
         :return: recorded data as packed bytes
         """
-        raw_data, missing_data = buffer_manager.get_data_by_placement(
-            placement, channel
-            )
+        raw_data, missing_data = buffer_manager.get_recording(
+            placement, channel)
         if missing_data:
             raise ValueError("missing data!")
 
