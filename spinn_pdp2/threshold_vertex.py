@@ -483,12 +483,12 @@ class ThresholdVertex(
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
         # write link keys: fwd
-        key = routing_info.get_safe_first_key_from_pre_vertex(
+        key = routing_info.get_key_from(
             self, self.fwd_link)
         spec.write_value(key, data_type=DataType.UINT32)
 
         # write link keys: bkp
-        key = routing_info.get_safe_first_key_from_pre_vertex(
+        key = routing_info.get_key_from(
             self, self.bkp_link)
         spec.write_value (key, data_type = DataType.UINT32)
 
@@ -496,7 +496,7 @@ class ThresholdVertex(
         spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: stp
-        key = routing_info.get_safe_first_key_from_pre_vertex(
+        key = routing_info.get_key_from(
             self, self.stp_link)
         spec.write_value(key, data_type=DataType.UINT32)
 
