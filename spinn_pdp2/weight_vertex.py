@@ -392,8 +392,8 @@ class WeightVertex(
 
 
     @overrides(AbstractRewritesDataSpecification.regenerate_data_specification)
-    def regenerate_data_specification(
-            self, spec: DataSpecificationReloader, placement: Placement):
+    def regenerate_data_specification(self, spec: DataSpecificationReloader,
+                                      placement: Placement) -> None:
         # Reserve and write the stage configuration region
         spec.reserve_memory_region (MLPRegions.STAGE.value,
                                     self._STAGE_CONFIGURATION_BYTES)
@@ -413,7 +413,7 @@ class WeightVertex(
 
 
     @overrides(AbstractRewritesDataSpecification.set_reload_required)
-    def set_reload_required(self, new_value: bool):
+    def set_reload_required(self, new_value: bool) -> None:
         """
             TODO: not really sure what this method is used for!
         """
