@@ -58,7 +58,7 @@ jobs:
         echo "NEURAL_MODELLING_DIRS=$PWD/neural_modelling" >> $GITHUB_ENV
 
     #- name: Lint C code using Vera++
-    #  uses: ./support/actions/vera
+    #  uses: SpiNNakerManchester/SupportScripts/actions/vera@main
     #  with:
     #    base-dir: c_code
 
