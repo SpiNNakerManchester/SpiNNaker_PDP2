@@ -56,7 +56,7 @@ jobs:
         install: true
 
     - name: Install matplotlib
-      uses: SpiNNakerManchester/SupportScripts/actions/install-matplotlib@action-dash
+      uses: SpiNNakerManchester/SupportScripts/actions/install-matplotlib@main
 
     - name: Setup
       uses: ./support/actions/run-install
