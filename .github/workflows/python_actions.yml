@@ -59,7 +59,7 @@ jobs:
       uses: SpiNNakerManchester/SupportScripts/actions/install-matplotlib@main
 
     - name: Setup
-      uses: ./support/actions/run-install
+      uses: SpiNNakerManchester/SupportScripts/actions/run-install@action-dash
 
     - name: Test with pytest
       uses: SpiNNakerManchester/SupportScripts/actions/pytest@action-dash
