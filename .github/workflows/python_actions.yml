@@ -79,7 +79,7 @@ jobs:
 
     - name: Run rat copyright enforcement
       if: matrix.python-version == 3.12
-      uses: ./support/actions/check-copyrights
+      uses: SpiNNakerManchester/SupportScripts/actions/check-copyrights@action-dash
 
     # Currently no xml files so no need to validate
     #- name: Validate all XML
