@@ -35,7 +35,7 @@ jobs:
       with:
         python-version: 3.12
     - name: Install Ubuntu dependencies
-      uses: ./support/actions/apt-get-install
+      uses: SpiNNakerManchester/SupportScripts/actions/apt-get-install@action-dash
       with:
         packages: doxygen gcc-arm-none-eabi
 
