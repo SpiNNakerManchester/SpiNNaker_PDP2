@@ -62,7 +62,7 @@ jobs:
       uses: ./support/actions/run-install
 
     - name: Test with pytest
-      uses: ./support/actions/pytest
+      uses: SpiNNakerManchester/SupportScripts/actions/pytest@action-dash
       with:
         tests: unittests
         coverage: ${{ matrix.python-version == 3.12 }}
