@@ -81,13 +81,6 @@ jobs:
       if: matrix.python-version == 3.12
       uses: SpiNNakerManchester/SupportScripts/actions/check-copyrights@action-dash
 
-    # Currently no xml files so no need to validate
-    #- name: Validate all XML
-    #  if: matrix.python-version == 3.8
-    #  uses: ./support/actions/validate-xml
-    #  with:
-    #    base-path: spinn_pdp2
-
     #- name: Build documentation with sphinx (3.8 only)
     #  uses: ./support/actions/sphinx
     #  with:
