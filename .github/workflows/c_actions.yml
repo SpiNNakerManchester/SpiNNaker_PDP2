@@ -35,18 +35,18 @@ jobs:
       with:
         python-version: 3.12
     - name: Install Ubuntu dependencies
-      uses: ./support/actions/apt-get-install
+      uses: SpiNNakerManchester/SupportScripts/actions/apt-get-install@main
       with:
         packages: doxygen gcc-arm-none-eabi
 
     - name: Checkout SpiNNaker Dependencies
-      uses: ./support/actions/install-spinn-deps
+      uses: SpiNNakerManchester/SupportScripts/actions/install-spinn-deps@main
       with:
         # Note: SpiNNUtils needed for spinn_utilities.make_tools
         repositories: spinnaker_tools spinn_common SpiNNFrontEndCommon
 
     - name: "Prepare: Install SpiNNUtils"
-      uses: ./support/actions/install-spinn-deps
+      uses: SpiNNakerManchester/SupportScripts/actions/install-spinn-deps@main
       with:
         # Note: SpiNNUtils needed for spinn_utilities.make_tools
         repositories: SpiNNUtils
@@ -58,7 +58,7 @@ jobs:
         echo "NEURAL_MODELLING_DIRS=$PWD/neural_modelling" >> $GITHUB_ENV
 
     #- name: Lint C code using Vera++
-    #  uses: ./support/actions/vera
+    #  uses: SpiNNakerManchester/SupportScripts/actions/vera@main
     #  with:
     #    base-dir: c_code
 

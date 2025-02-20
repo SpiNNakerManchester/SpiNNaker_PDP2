@@ -44,11 +44,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install pip, etc
-      uses: ./support/actions/python-tools
+      uses: SpiNNakerManchester/SupportScripts/actions/python-tools@main
     - name: Install mypy
       run: pip install mypy
     - name: Install Spinnaker Dependencies
-      uses: ./support/actions/install-spinn-deps
+      uses: SpiNNakerManchester/SupportScripts/actions/install-spinn-deps@main
       with:
         repositories: >
           SpiNNUtils SpiNNMachine SpiNNMan PACMAN spalloc
@@ -56,13 +56,13 @@ jobs:
         install: true
 
     - name: Install matplotlib
-      uses: ./support/actions/install-matplotlib
+      uses: SpiNNakerManchester/SupportScripts/actions/install-matplotlib@main
 
     - name: Setup
-      uses: ./support/actions/run-install
+      uses: SpiNNakerManchester/SupportScripts/actions/run-install@main
 
     - name: Test with pytest
-      uses: ./support/actions/pytest
+      uses: SpiNNakerManchester/SupportScripts/actions/pytest@main
       with:
         tests: unittests
         coverage: ${{ matrix.python-version == 3.12 }}
@@ -73,20 +73,13 @@ jobs:
     #  run: flake8 spinn_pdp2 unittests
 
     #- name: Lint with pylint
-    #  uses: ./support/actions/pylint
+    #  uses: SpiNNakerManchester/SupportScripts/actions/pylint@main
     #  with:
     #    package: spinn_pdp2
 
     - name: Run rat copyright enforcement
       if: matrix.python-version == 3.12
-      uses: ./support/actions/check-copyrights
-
-    # Currently no xml files so no need to validate
-    #- name: Validate all XML
-    #  if: matrix.python-version == 3.8
-    #  uses: ./support/actions/validate-xml
-    #  with:
-    #    base-path: spinn_pdp2
+      uses: SpiNNakerManchester/SupportScripts/actions/check-copyrights@main
 
     #- name: Build documentation with sphinx (3.8 only)
     #  uses: ./support/actions/sphinx
