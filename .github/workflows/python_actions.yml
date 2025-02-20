@@ -59,10 +59,10 @@ jobs:
       uses: SpiNNakerManchester/SupportScripts/actions/install-matplotlib@main
 
     - name: Setup
-      uses: SpiNNakerManchester/SupportScripts/actions/run-install@action-dash
+      uses: SpiNNakerManchester/SupportScripts/actions/run-install@main
 
     - name: Test with pytest
-      uses: SpiNNakerManchester/SupportScripts/actions/pytest@action-dash
+      uses: SpiNNakerManchester/SupportScripts/actions/pytest@main
       with:
         tests: unittests
         coverage: ${{ matrix.python-version == 3.12 }}
@@ -79,7 +79,7 @@ jobs:
 
     - name: Run rat copyright enforcement
       if: matrix.python-version == 3.12
-      uses: SpiNNakerManchester/SupportScripts/actions/check-copyrights@action-dash
+      uses: SpiNNakerManchester/SupportScripts/actions/check-copyrights@main
 
     #- name: Build documentation with sphinx (3.8 only)
     #  uses: ./support/actions/sphinx
