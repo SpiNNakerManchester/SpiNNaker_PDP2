@@ -33,10 +33,10 @@ from spinn_front_end_common.interface.ds import (
     DataSpecificationGenerator, DataSpecificationReloader, DataType)
 from spinn_front_end_common.utilities.constants \
     import SYSTEM_BYTES_REQUIREMENT
+from spinn_front_end_common.utilities.data_utils import (
+    generate_steps_system_data_region)
 
 from spinnaker_graph_front_end.utilities import SimulatorVertex
-from spinnaker_graph_front_end.utilities.data_utils \
-    import generate_steps_system_data_region
 
 from spinn_pdp2.mlp_types import MLPRegions, MLPConstants
 
