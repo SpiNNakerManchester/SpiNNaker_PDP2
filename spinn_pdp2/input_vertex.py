@@ -294,13 +294,11 @@ class InputVertex(
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
         # write link keys: fwd
-        key = routing_info.get_key_from(
-            self, self.fwd_link)
+        key = routing_info.get_machine_key(self, self.fwd_link)
         spec.write_value(key, data_type=DataType.UINT32)
 
         # write link keys: bkp
-        key = routing_info.get_key_from(
-            self, self.bkp_link)
+        key = routing_info.get_machine_key(self, self.bkp_link)
         spec.write_value (key, data_type = DataType.UINT32)
 
         # write link keys: bps (padding)

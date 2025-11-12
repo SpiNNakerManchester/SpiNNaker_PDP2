@@ -319,13 +319,11 @@ class SumVertex(
         spec.switch_write_focus (MLPRegions.ROUTING.value)
 
         # write link keys: fwd
-        key = routing_info.get_key_from(
-            self, self.fwd_link)
+        key = routing_info.get_machine_key(self, self.fwd_link)
         spec.write_value(key, data_type=DataType.UINT32)
 
         # write link keys: bkp
-        key = routing_info.get_key_from(
-            self, self.bkp_link)
+        key = routing_info.get_machine_key(self, self.bkp_link)
         spec.write_value(key, data_type=DataType.UINT32)
 
         # write link keys: bps (padding)
@@ -335,13 +333,11 @@ class SumVertex(
         spec.write_value (0, data_type = DataType.UINT32)
 
         # write link keys: lds
-        key = routing_info.get_key_from(
-            self, self.lds_link)
+        key = routing_info.get_machine_key(self, self.lds_link)
         spec.write_value(key, data_type=DataType.UINT32)
 
         # write link keys: fsg
-        key = routing_info.get_key_from (
-            self, self.fsg_link)
+        key = routing_info.get_machine_key(self, self.fsg_link)
         spec.write_value(key, data_type=DataType.UINT32)
 
         # Reserve and write the stage configuration region
