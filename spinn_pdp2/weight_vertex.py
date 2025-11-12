@@ -371,7 +371,7 @@ class WeightVertex(
         spec.write_value(key, data_type=DataType.UINT32)
 
         # write link keys: fsg
-        key = routing_info.get_machine_key_from(self, self.fsg_link)
+        key = routing_info.get_machine_key(self, self.fsg_link)
         spec.write_value(key, data_type=DataType.UINT32)
 
         # Reserve and write the stage configuration region
