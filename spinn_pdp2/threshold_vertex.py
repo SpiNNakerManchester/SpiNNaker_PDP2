@@ -37,12 +37,12 @@ from spinn_front_end_common.interface.buffer_management.buffer_models import (
     AbstractReceiveBuffersToHost)
 from spinn_front_end_common.interface.buffer_management import (
     recording_utilities)
+from spinn_front_end_common.utilities.data_utils import (
+    generate_steps_system_data_region)
 from spinn_front_end_common.utilities.helpful_functions import (
     locate_memory_region_for_placement)
 
 from spinnaker_graph_front_end.utilities import SimulatorVertex
-from spinnaker_graph_front_end.utilities.data_utils \
-    import generate_steps_system_data_region
 
 from spinn_pdp2.mlp_types import MLPConstants, MLPRegions, \
     MLPVarSizeRecordings, MLPConstSizeRecordings, MLPExtraRecordings
