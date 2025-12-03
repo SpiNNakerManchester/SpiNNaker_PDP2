@@ -15,7 +15,7 @@
 
 all: input.aplx sum.aplx threshold.aplx weight.aplx
 
-%.aplx: %.mk %.c
+%.aplx: %.mk src/%.c
 	"$(MAKE)" -f $<
 
 tidy:
