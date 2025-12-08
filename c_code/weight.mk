@@ -22,6 +22,8 @@ APP = weight
 
 # Directory to create APLX files in (must include trailing slash)
 APP_OUTPUT_DIR = ../binaries/
+# key for the database in this APP_OUTPUT_DIR
+DATABASE_KEY = P
 
 SOURCES = weight.c comms_w.c process_w.c init_w.c activation.c
 

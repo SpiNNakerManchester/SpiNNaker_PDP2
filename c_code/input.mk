@@ -22,6 +22,8 @@ APP = input
 
 # Directory to create APLX files in (must include trailing slash)
 APP_OUTPUT_DIR = ../binaries/
+# key for the database in this APP_OUTPUT_DIR
+DATABASE_KEY = P
 
 SOURCES = input.c comms_i.c process_i.c init_i.c activation.c
 

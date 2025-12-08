@@ -22,6 +22,8 @@ APP = threshold
 
 # Directory to create APLX files in (must include trailing slash)
 APP_OUTPUT_DIR = ../binaries/
+# key for the database in this APP_OUTPUT_DIR
+DATABASE_KEY = P
 
 SOURCES = threshold.c comms_t.c process_t.c init_t.c activation.c
 
