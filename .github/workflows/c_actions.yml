@@ -54,8 +54,7 @@ jobs:
 
     - name: Set environment variables
       run: |
-        echo "SPINN_DIRS=$PWD/spinnaker_tools" >> $GITHUB_ENV
-        echo "NEURAL_MODELLING_DIRS=$PWD/neural_modelling" >> $GITHUB_ENV
+        echo "SPINN_DIRS=$PWD/spinnaker_tools_install" >> $GITHUB_ENV
 
     #- name: Lint C code using Vera++
     #  uses: SpiNNakerManchester/SupportScripts/actions/vera@main
@@ -64,7 +63,7 @@ jobs:
 
     - name: Build C dependencies
       run: |
-        make -C $SPINN_DIRS
+        make -C spinnaker_tools install
         make -C spinn_common install
         make -C SpiNNFrontEndCommon/c_common install
 

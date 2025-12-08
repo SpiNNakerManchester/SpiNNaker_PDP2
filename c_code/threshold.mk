@@ -15,23 +15,18 @@
 
 # threshold core makefile
 
+FEC_INSTALL_DIR := $(strip $(if $(FEC_INSTALL_DIR), $(FEC_INSTALL_DIR), $(if $(SPINN_DIRS), $(SPINN_DIRS)/fec_install, $(error FEC_INSTALL_DIR or SPINN_DIRS is not set.  Please define FEC_INSTALL_DIR or SPINN_DIRS))))
+
 # The name of the application to be built
 APP = threshold
 
 # Directory to create APLX files in (must include trailing slash)
 APP_OUTPUT_DIR = ../binaries/
 
-SOURCE_DIRS = .
 SOURCES = threshold.c comms_t.c process_t.c init_t.c activation.c
 
 LIBRARIES += -lm
 CFLAGS += -Wno-shift-negative-value
 
 # The GFE application standard makefile
-include $(SPINN_DIRS)/make/local.mk
-
-all: $(APP_OUTPUT_DIR)$(APP).aplx
-
-# Tidy up
-tidy:
-	$(RM) $(OBJECTS) $(BUILD_DIR)$(APP).elf $(BUILD_DIR)$(APP).txt
+include $(FEC_INSTALL_DIR)/make/fec.mk
