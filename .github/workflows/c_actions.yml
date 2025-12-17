@@ -52,10 +52,6 @@ jobs:
         repositories: SpiNNUtils
         install: true
 
-    - name: Set environment variables
-      run: |
-        echo "SPINN_DIRS=$PWD/spinnaker_tools_install" >> $GITHUB_ENV
-
     #- name: Lint C code using Vera++
     #  uses: SpiNNakerManchester/SupportScripts/actions/vera@main
     #  with:
