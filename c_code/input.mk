@@ -15,7 +15,11 @@
 
 # input core makefile
 
-FEC_INSTALL_DIR := $(strip $(if $(FEC_INSTALL_DIR), $(FEC_INSTALL_DIR), $(if $(SPINN_DIRS), $(SPINN_DIRS)/fec_install, $(error FEC_INSTALL_DIR or SPINN_DIRS is not set.  Please define FEC_INSTALL_DIR or SPINN_DIRS))))
+ifndef FEC_INSTALL_DIR:
+    CUR_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/)
+    # assume parallel clone
+    FEC_INSTALL_DIR := $(abspath $(CUR_DIR)/../../SpiNNFrontEndCommon/c_common/front_end_common_lib)
+endif
 
 # The name of the application to be built
 APP = input
