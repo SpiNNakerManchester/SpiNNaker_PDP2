@@ -23,6 +23,8 @@ APP = sum
 
 # Directory to create APLX files in (must include trailing slash)
 APP_OUTPUT_DIR = ../binaries/
+# key for the database in this APP_OUTPUT_DIR
+DATABASE_KEY = P
 
 SOURCES = sum.c comms_s.c process_s.c init_s.c
 
