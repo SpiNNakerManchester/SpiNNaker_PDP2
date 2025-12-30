@@ -15,7 +15,7 @@
 
 # threshold core makefile
 
-CUR_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/)
+CUR_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 FEC_INSTALL_DIR := $(strip $(if $(FEC_INSTALL_DIR), $(FEC_INSTALL_DIR), $(abspath $(CUR_DIR)/../../SpiNNFrontEndCommon/c_common/front_end_common_lib)))
 
 # The name of the application to be built
