@@ -29,6 +29,4 @@ APP_OUTPUT_DIR := $(CURRENT_DIR)/../binaries/
 clean:
 	$(RM) $(APP_OUTPUT_DIR)logs.sqlite3
 	$(RM) $(APP_OUTPUT_DIR)*.aplx
-	$(RM) -r $(CURRENT_DIR)/build/modified_src
-	for d in input sum threshold weight; \
-		do ("$(MAKE)" -f $$d.mk clean) || exit $$?; done
+	$(RM) -r $(CURRENT_DIR)/build
