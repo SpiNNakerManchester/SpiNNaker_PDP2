@@ -27,6 +27,6 @@ CURRENT_DIR := $(abspath $(dir $(MAKEFILE_PATH)))
 APP_OUTPUT_DIR := $(CURRENT_DIR)/../binaries/
 
 clean:
-	$(RM) $(APP_OUTPUT_DIR)logs.sqlite3
+	$(RM) $(APP_OUTPUT_DIR)logs*.sqlite3
 	$(RM) $(APP_OUTPUT_DIR)*.aplx
 	$(RM) -r $(CURRENT_DIR)/build
