@@ -15,13 +15,16 @@
 
 # threshold core makefile
 
-FEC_INSTALL_DIR := $(strip $(if $(FEC_INSTALL_DIR), $(FEC_INSTALL_DIR), $(if $(SPINN_DIRS), $(SPINN_DIRS)/fec_install, $(error FEC_INSTALL_DIR or SPINN_DIRS is not set.  Please define FEC_INSTALL_DIR or SPINN_DIRS))))
+CUR_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+FEC_INSTALL_DIR := $(strip $(if $(FEC_INSTALL_DIR), $(FEC_INSTALL_DIR), $(abspath $(CUR_DIR)/../../SpiNNFrontEndCommon/c_common/front_end_common_lib)))
 
 # The name of the application to be built
 APP = threshold
 
 # Directory to create APLX files in (must include trailing slash)
 APP_OUTPUT_DIR = ../binaries/
+# key for the database in this APP_OUTPUT_DIR
+DATABASE_KEY = P
 
 SOURCES = threshold.c comms_t.c process_t.c init_t.c activation.c
 

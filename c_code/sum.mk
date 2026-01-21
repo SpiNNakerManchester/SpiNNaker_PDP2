@@ -15,13 +15,16 @@
 
 # sum core makefile
 
-FEC_INSTALL_DIR := $(strip $(if $(FEC_INSTALL_DIR), $(FEC_INSTALL_DIR), $(if $(SPINN_DIRS), $(SPINN_DIRS)/fec_install, $(error FEC_INSTALL_DIR or SPINN_DIRS is not set.  Please define FEC_INSTALL_DIR or SPINN_DIRS))))
+CUR_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+FEC_INSTALL_DIR := $(strip $(if $(FEC_INSTALL_DIR), $(FEC_INSTALL_DIR), $(abspath $(CUR_DIR)/../../SpiNNFrontEndCommon/c_common/front_end_common_lib)))
 
 # The name of the application to be built
 APP = sum
 
 # Directory to create APLX files in (must include trailing slash)
 APP_OUTPUT_DIR = ../binaries/
+# key for the database in this APP_OUTPUT_DIR
+DATABASE_KEY = P
 
 SOURCES = sum.c comms_s.c process_s.c init_s.c
 

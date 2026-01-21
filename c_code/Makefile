@@ -22,6 +22,11 @@ tidy:
 	for d in input sum threshold weight; \
 		do ("$(MAKE)" -f $$d.mk tidy) || exit $$?; done
 
+MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+CURRENT_DIR := $(abspath $(dir $(MAKEFILE_PATH)))
+APP_OUTPUT_DIR := $(CURRENT_DIR)/../binaries/
+
 clean:
-	for d in input sum threshold weight; \
-		do ("$(MAKE)" -f $$d.mk clean) || exit $$?; done
+	$(RM) $(APP_OUTPUT_DIR)logs*.sqlite3
+	$(RM) $(APP_OUTPUT_DIR)*.aplx
+	$(RM) -r $(CURRENT_DIR)/build
