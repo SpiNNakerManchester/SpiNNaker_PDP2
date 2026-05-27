@@ -1117,7 +1117,7 @@ class MLPNetwork():
 
         self._training = 1
 
-        if self._stg_epochs == None:
+        if self._stg_epochs is None:
             updates = "default"
         else:
             updates = self._stg_epochs
@@ -1150,7 +1150,7 @@ class MLPNetwork():
 
         self._training = 0
 
-        if self._stg_examples == None:
+        if self._stg_examples is None:
             examples = "default"
         else:
             examples = self._stg_examples
