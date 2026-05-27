@@ -172,10 +172,10 @@ class WeightVertex(
 
         # saturate weight
         if wt_float >= MLPConstants.WF_MAX:
-            wtemp = MLPConstants.WF_MAX;
+            wtemp = MLPConstants.WF_MAX
             print (f"warning: input weight >= {MLPConstants.WF_MAX}")
         elif wt_float <= MLPConstants.WF_MIN:
-            wtemp = MLPConstants.WF_MIN;
+            wtemp = MLPConstants.WF_MIN
             print (f"warning: input weight <= {MLPConstants.WF_MIN}")
         else:
             wtemp = wt_float
