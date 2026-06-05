@@ -189,7 +189,8 @@ class MLPExampleSet ():
 
         ef = open (self._examples_file, "r")
 
-        if VERBOSE: print ("processing example set header")
+        if VERBOSE:
+            print ("processing example set header")
 
         # process example set header
         line = ef.readline ()
@@ -200,39 +201,44 @@ class MLPExampleSet ():
                 _, val = line.split (':')
                 try:
                     self.max_time = float (val)
-                except:
+                except:  #noqa: E722
                     self.max_time = float ('nan')
-                if VERBOSE: print (f"setting set max:{self.max_time}")
+                if VERBOSE:
+                    print (f"setting set max:{self.max_time}")
             elif ('min:' in line):
                 _, val = line.split (':')
                 try:
                     self.min_time = float (val)
-                except:
+                except:  #noqa: E722
                     self.min_time = float ('nan')
-                if VERBOSE: print (f"setting set min:{self.min_time}")
+                if VERBOSE:
+                    print (f"setting set min:{self.min_time}")
             elif ('grace:' in line):
                 _, val = line.split (':')
                 try:
                     self.grace_time = float (val)
-                except:
+                except:  #noqa: E722
                     self.grace_time = float ('nan')
-                if VERBOSE: print (f"setting set grace:{self.grace_time}")
+                if VERBOSE:
+                    print (f"setting set grace:{self.grace_time}")
             elif ('defI:' in line):
                 _, val = line.split (':')
                 try:
                     self.def_input = float (val)
-                except:
+                except:  #noqa: E722
                     self.def_input = float ('nan')
-                if VERBOSE: print (f"setting set defI:{self.def_input}")
+                if VERBOSE:
+                    print (f"setting set defI:{self.def_input}")
             elif ('actI:' in line):
                 print ("set active input not supported")
             elif ('defT:' in line):
                 _, val = line.split (':')
                 try:
                     self.def_target = float (val)
-                except:
+                except:  #noqa: E722
                     self.def_target = float ('nan')
-                if VERBOSE: print (f"setting set defT:{self.def_target}")
+                if VERBOSE:
+                    print (f"setting set defT:{self.def_target}")
             elif ('actT:' in line):
                 print ("set active target not supported")
             else:
@@ -251,17 +257,20 @@ class MLPExampleSet ():
             # create new example, initially empty
             _ex = MLPExample (ex_id)
 
-            if VERBOSE: print (f"processing example {ex_id}")
+            if VERBOSE:
+                print (f"processing example {ex_id}")
 
             # process the example header
             done = False
             while not done:
                 if (line.strip () == ''):
-                    if VERBOSE: print ("ignoring empty line")
+                    if VERBOSE:
+                        print ("ignoring empty line")
                 elif ('name:' in line):
                     _, _name = line.split (':')
                     _ex.name = _name.rstrip ()
-                    if VERBOSE: print (f"setting example name:{_ex.name}")
+                    if VERBOSE:
+                        print (f"setting example name:{_ex.name}")
 
                 elif ('proc:' in line):
                     print ("example procedure not supported")
@@ -269,18 +278,21 @@ class MLPExampleSet ():
                 elif ('freq:' in line):
                     _, freq = line.split (':')
                     _ex.freq = float (freq)
-                    if VERBOSE: print (f"setting example freq:{_ex.freq}")
+                    if VERBOSE:
+                        print (f"setting example freq:{_ex.freq}")
 
                 else:
                     # try to get number of events
                     try:
                         num_ev = int (line)
                         done = True
-                        if VERBOSE: print (f"setting example num_ev:{num_ev}")
-                    except:
+                        if VERBOSE:
+                            print (f"setting example num_ev:{num_ev}")
+                    except:  #noqa: E722
                         # if absent, number of events defaults to 1
                         num_ev = 1
-                        if VERBOSE: print (f"setting (default) example num_ev:{num_ev}")
+                        if VERBOSE:
+                            print (f"setting (default) example num_ev:{num_ev}")
                         break
 
                 # prepare to process next line
@@ -312,7 +324,8 @@ class MLPExampleSet ():
 
                     ev_list, line = evl.split (']')
 
-                    if VERBOSE: print (f"processing event list {ev_list}")
+                    if VERBOSE:
+                        print (f"processing event list {ev_list}")
 
                     maxt = None
                     mint = None
@@ -328,33 +341,37 @@ class MLPExampleSet ():
                             _, val = s.split (':')
                             try:
                                 maxt = float (val)
-                            except:
+                            except:  #noqa: E722
                                 maxt = float ('nan')
-                            if VERBOSE: print (f"setting event max:{maxt}")
+                            if VERBOSE:
+                                print (f"setting event max:{maxt}")
 
                         elif ('min:' in s):
                             _, val = s.split (':')
                             try:
                                 mint = float (val)
-                            except:
+                            except:  #noqa: E722
                                 mint = float ('nan')
-                            if VERBOSE: print (f"setting event min:{mint}")
+                            if VERBOSE:
+                                print (f"setting event min:{mint}")
 
                         elif ('grace:' in s):
                             _, val = s.split (':')
                             try:
                                 grct = float (val)
-                            except:
+                            except:  #noqa: E722
                                 grct = float ('nan')
-                            if VERBOSE: print (f"setting event grace:{grct}")
+                            if VERBOSE:
+                                print (f"setting event grace:{grct}")
 
                         elif ('defI:' in s):
                             _, val = s.split (':')
                             try:
                                 defi = float (val)
-                            except:
+                            except:  #noqa: E722
                                 defi = float ('nan')
-                            if VERBOSE: print (f"setting event defI:{defi}")
+                            if VERBOSE:
+                                print (f"setting event defI:{defi}")
 
                         elif ('actI:' in s):
                             print ("event active Input not supported")
@@ -363,9 +380,10 @@ class MLPExampleSet ():
                             _, val = s.split (':')
                             try:
                                 deft = float (val)
-                            except:
+                            except:  #noqa: E722
                                 deft = float ('nan')
-                            if VERBOSE: print (f"setting event defT:{deft}")
+                            if VERBOSE:
+                                print (f"setting event defT:{deft}")
 
                         elif ('actT:' in s):
                             print ("event active Target not supported")
@@ -380,7 +398,8 @@ class MLPExampleSet ():
                             ev_act = int (s)
                             ev_iid = ev_act
                             ev_tid = ev_act
-                            if VERBOSE: print (f"event in event list: {ev_act}")
+                            if VERBOSE:
+                                print (f"event in event list: {ev_act}")
 
                     if maxt is not None:
                         events[ev_act].max_time = maxt
@@ -400,7 +419,8 @@ class MLPExampleSet ():
                 # get inputs and targets for every event
                 # check line for inputs
                 if ('I:' in line) or ('i:' in line):
-                    if VERBOSE: print (f"reading event {ev_iid}/-")
+                    if VERBOSE:
+                        print (f"reading event {ev_iid}/-")
 
                     # remove line identifier
                     _, _is = (line.rstrip (" ;\n")).split (":")
@@ -426,7 +446,8 @@ class MLPExampleSet ():
                                 vl.values.append (float (v))
 
                             # store inputs in event
-                            if VERBOSE: print (f"added inputs {vl.name}:{vl.values}")
+                            if VERBOSE:
+                                print (f"added inputs {vl.name}:{vl.values}")
                             events[ev_iid].inputs.append (vl)
                     else:
                         # instantiate a new event value container
@@ -440,7 +461,8 @@ class MLPExampleSet ():
                             vl.values.append (float (v))
 
                         # store inputs in event
-                        if VERBOSE: print (f"added inputs {vl.name}:{vl.values}")
+                        if VERBOSE:
+                            print (f"added inputs {vl.name}:{vl.values}")
                         events[ev_iid].inputs.append (vl)
 
                     # update event input index
@@ -448,7 +470,8 @@ class MLPExampleSet ():
 
                 # check line for targets
                 elif ('T:' in line) or ('t:' in line):
-                    if VERBOSE: print (f"reading event -/{ev_tid}")
+                    if VERBOSE:
+                        print (f"reading event -/{ev_tid}")
 
                     # remove line identifier
                     _, _ts = (line.rstrip (" ;\n")).split (":")
@@ -474,7 +497,8 @@ class MLPExampleSet ():
                                 vl.values.append (float (v))
 
                             # store targets in event
-                            if VERBOSE: print (f"added targets {vl.name}:{vl.values}")
+                            if VERBOSE:
+                                print (f"added targets {vl.name}:{vl.values}")
                             events[ev_tid].targets.append (vl)
                     else:
                         # instantiate a new event value container
@@ -488,7 +512,8 @@ class MLPExampleSet ():
                             vl.values.append (float (v))
 
                         # store targets in event
-                        if VERBOSE: print (f"added targets {vl.name}:{vl.values}")
+                        if VERBOSE:
+                            print (f"added targets {vl.name}:{vl.values}")
                         events[ev_tid].targets.append (vl)
 
                     # update event target index
@@ -496,7 +521,8 @@ class MLPExampleSet ():
 
                 # check line for both inputs and targets
                 elif ('B:' in line) or ('b:' in line):
-                    if VERBOSE: print (f"reading event {ev_iid}/{ev_tid}")
+                    if VERBOSE:
+                        print (f"reading event {ev_iid}/{ev_tid}")
 
                     # remove line identifier
                     _, _is = (line.rstrip (" ;\n")).split (":")
@@ -522,7 +548,8 @@ class MLPExampleSet ():
                                 vl.values.append (float (v))
 
                             # store inputs and targets in event
-                            if VERBOSE: print (f"added inputs/targets {vl.name}:{vl.values}")
+                            if VERBOSE:
+                                print (f"added inputs/targets {vl.name}:{vl.values}")
                             events[ev_iid].inputs.append (vl)
                             events[ev_tid].targets.append (vl)
                     else:
@@ -537,7 +564,8 @@ class MLPExampleSet ():
                             vl.values.append (float (v))
 
                         # store inputs and targets in event
-                        if VERBOSE: print (f"added inputs/targets {vl.name}:{vl.values}")
+                        if VERBOSE:
+                            print (f"added inputs/targets {vl.name}:{vl.values}")
                         events[ev_iid].inputs.append (vl)
                         events[ev_tid].targets.append (vl)
 
@@ -558,7 +586,8 @@ class MLPExampleSet ():
 
             # add events to example event list
             for ev in events:
-                if VERBOSE: print (f"adding event {ev.id} to example {_ex.id}")
+                if VERBOSE:
+                    print (f"adding event {ev.id} to example {_ex.id}")
                 _ex.events.append (ev)
 
             # add example to set example list
@@ -652,7 +681,8 @@ class MLPExampleSet ():
                         for _ in range (g.units):
                             g.inputs.append (defi)
 
-                    if VERBOSE: print (f"{g.label}: {len (g.inputs)} inputs")
+                    if VERBOSE:
+                        print (f"{g.label}: {len (g.inputs)} inputs")
 
                 # process event targets
                 grps_done = []
@@ -677,7 +707,8 @@ class MLPExampleSet ():
                         for _ in range (g.units):
                             g.targets.append (deft)
 
-                    if VERBOSE: print (f"{g.label}: {len (g.targets)} targets")
+                    if VERBOSE:
+                        print (f"{g.label}: {len (g.targets)} targets")
 
         self.num_examples = len (self.examples)
 

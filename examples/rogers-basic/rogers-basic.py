@@ -15,7 +15,6 @@
 
 from spinn_pdp2.mlp_network import MLPNetwork
 from spinn_pdp2.mlp_types   import MLPNetworkTypes, MLPGroupTypes, MLPUpdateFuncs
-from spinn_pdp2.mlp_types   import MLPInputProcs
 
 #-----------------------------------------------------------
 # rogers-basic
